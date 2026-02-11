@@ -71,16 +71,14 @@ Usage Examples:
 
 from datetime import datetime, timezone
 from enum import Enum
-from functools import cached_property
 
 from sqlalchemy import Boolean, Date, DateTime
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy import ForeignKey, Integer, String
-from sqlalchemy.orm import declared_attr, relationship, validates
+from sqlalchemy.orm import relationship, validates
 
 from models import db
 from models.contact import Contact, ContactTypeEnum, Email, GenderEnum, Phone
-from models.school_model import School
 
 
 class TeacherStatus(str, Enum):

@@ -2,18 +2,18 @@
 
 District Suite tenant CRUD, configuration, and infrastructure
 
-> [!INFO]
+> [!NOTE]
 > **Coverage**
-> - [FR-TENANT-101](requirements#fr-tenant-101) (Create tenants)
-> - [FR-TENANT-102](requirements#fr-tenant-102) (View/Edit/Deactivate)
-> - [FR-TENANT-103](requirements#fr-tenant-103) (Database routing)
-> - [FR-TENANT-104](requirements#fr-tenant-104) (Reference data provisioning)
-> - [FR-TENANT-106](requirements#fr-tenant-106) (Separate SQLite files)
-> - [FR-TENANT-107](requirements#fr-tenant-107) (Feature flags)
-> - [FR-TENANT-108](requirements#fr-tenant-108) (Polaris admin creates tenant users)
-> - [FR-TENANT-109](requirements#fr-tenant-109) (Tenant admin manages users)
-> - [FR-TENANT-110](requirements#fr-tenant-110) (Role hierarchy)
-> - [FR-TENANT-112](requirements#fr-tenant-112) (Tenant navigation isolation)
+> - [FR-TENANT-101](requirements-district-suite#fr-tenant-101) (Create tenants)
+> - [FR-TENANT-102](requirements-district-suite#fr-tenant-102) (View/Edit/Deactivate)
+> - [FR-TENANT-103](requirements-district-suite#fr-tenant-103) (Database routing)
+> - [FR-TENANT-104](requirements-district-suite#fr-tenant-104) (Reference data provisioning)
+> - [FR-TENANT-106](requirements-district-suite#fr-tenant-106) (Separate SQLite files)
+> - [FR-TENANT-107](requirements-district-suite#fr-tenant-107) (Feature flags)
+> - [FR-TENANT-108](requirements-district-suite#fr-tenant-108) (Polaris admin creates tenant users)
+> - [FR-TENANT-109](requirements-district-suite#fr-tenant-109) (Tenant admin manages users)
+> - [FR-TENANT-110](requirements-district-suite#fr-tenant-110) (Role hierarchy)
+> - [FR-TENANT-112](requirements-district-suite#fr-tenant-112) (Tenant navigation isolation)
 
 > [!TIP]
 > **Automated Tests**: `tests/unit/models/test_tenant.py` (10 tests), `tests/unit/utils/test_db_manager.py` (11 tests), `tests/integration/test_tenant_routes.py` (15 tests)
@@ -368,5 +368,5 @@ District Suite tenant CRUD, configuration, and infrastructure
 
 ---
 
-*Last updated: 2026-01-29*
+*Last updated: February 2026*
 *Version: 1.9 - Added Tenant User Management tests (TC-1200-1218)*

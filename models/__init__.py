@@ -59,11 +59,13 @@ from .district_participation import DistrictParticipation
 from .district_volunteer import DistrictVolunteer
 from .email import EmailDeliveryAttempt, EmailMessage, EmailTemplate
 from .event import Event, EventTeacher
+from .event_flag import EventFlag, FlagType
 from .google_sheet import GoogleSheet
 from .history import History
 from .magic_link import MagicLink
 from .organization import Organization
 from .outreach import OutreachAttempt
+from .pathful_import import PathfulImportLog, PathfulUnmatchedRecord
 from .recruitment_note import RecruitmentNote
 from .reports import (
     DistrictEngagementReport,
@@ -76,6 +78,7 @@ from .school_model import School
 from .student import Student
 from .sync_log import SyncLog
 from .teacher import Teacher
+from .teacher_data_flag import TeacherDataFlag, TeacherDataFlagType
 from .teacher_progress import TeacherProgress
 from .teacher_progress_archive import TeacherProgressArchive
 from .tenant import Tenant
@@ -137,10 +140,16 @@ __all__ = [
     "RecruitmentOutcome",
     "OutreachAttempt",
     "MagicLink",
+    "PathfulImportLog",
+    "PathfulUnmatchedRecord",
+    "EventFlag",
+    "FlagType",
+    "TeacherDataFlag",
+    "TeacherDataFlagType",
 ]
 
 # Eager-loading helper options
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import selectinload
 
 
 def eagerload_event_bundle(query):

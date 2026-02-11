@@ -30,7 +30,7 @@ from models.event import (
 from models.school_model import School
 from models.student import Student
 from models.volunteer import EventParticipation, Volunteer
-from routes.events.pathway_events import _create_event_from_salesforce
+from routes.salesforce.pathway_import import _create_event_from_salesforce
 
 # ==============================================================================
 # TC-180: Identify Unaffiliated Events
@@ -62,9 +62,9 @@ class TestIdentifyUnaffiliatedEvents:
         # Verify query constant is correct through inspection
         import inspect
 
-        from routes.events import pathway_events
+        from routes.salesforce import pathway_import
 
-        source = inspect.getsource(pathway_events.sync_unaffiliated_events)
+        source = inspect.getsource(pathway_import.sync_unaffiliated_events)
 
         assert (
             expected_query_fragment in source
@@ -518,9 +518,9 @@ class TestUnaffiliatedSyncCompleteness:
         # Verify the constant exists in the code
         import inspect
 
-        from routes.events import pathway_events
+        from routes.salesforce import pathway_import
 
-        source = inspect.getsource(pathway_events.sync_unaffiliated_events)
+        source = inspect.getsource(pathway_import.sync_unaffiliated_events)
 
         assert "batch_size = 50" in source, "Batch size should be 50 events per batch"
 
@@ -539,10 +539,12 @@ class TestUnaffiliatedEventsErrorHandling:
         """
         Verify Salesforce authentication errors are handled gracefully.
         """
-        with patch("routes.events.pathway_events.Salesforce") as mock_sf:
+        with patch(
+            "routes.salesforce.pathway_import.get_salesforce_client"
+        ) as mock_get_sf:
             from simple_salesforce import SalesforceAuthenticationFailed
 
-            mock_sf.side_effect = SalesforceAuthenticationFailed("code", "message")
+            mock_get_sf.side_effect = SalesforceAuthenticationFailed("code", "message")
 
             response = client.post(
                 "/pathway-events/sync-unaffiliated-events",
@@ -565,9 +567,9 @@ class TestUnaffiliatedEventsErrorHandling:
         # which has try/except inside the event loop
         import inspect
 
-        from routes.events import pathway_events
+        from routes.salesforce import pathway_import
 
-        source = inspect.getsource(pathway_events.sync_unaffiliated_events)
+        source = inspect.getsource(pathway_import.sync_unaffiliated_events)
 
         # Verify there's error handling inside the event processing loop
         assert "except Exception" in source
@@ -577,11 +579,13 @@ class TestUnaffiliatedEventsErrorHandling:
         """
         Verify that finding no unaffiliated events returns success (not failure).
         """
-        with patch("routes.events.pathway_events.Salesforce") as mock_sf:
-            # Mock empty results
-            mock_instance = MagicMock()
-            mock_instance.query_all.return_value = {"records": []}
-            mock_sf.return_value = mock_instance
+        with patch(
+            "routes.salesforce.pathway_import.get_salesforce_client"
+        ) as mock_get_sf:
+            # Mock client with empty results
+            mock_client = MagicMock()
+            mock_client.query_all.return_value = {"records": []}
+            mock_get_sf.return_value = mock_client
 
             response = client.post(
                 "/pathway-events/sync-unaffiliated-events",

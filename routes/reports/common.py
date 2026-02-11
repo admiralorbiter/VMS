@@ -1,32 +1,16 @@
-import io
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 
-import pandas as pd
-import pytz
-import xlsxwriter
-from flask import jsonify, make_response, render_template, request, send_file
-from flask_login import current_user, login_required
-from sqlalchemy import any_, extract
+from flask_login import current_user
 
 from models import db
 from models.district_model import District
-from models.event import (
-    Event,
-    EventAttendance,
-    EventStatus,
-    EventStudentParticipation,
-    EventType,
-    event_districts,
-)
-from models.organization import Organization, VolunteerOrganization
+from models.event import Event, EventStatus, EventStudentParticipation, EventType
 from models.reports import DistrictYearEndReport
 from models.school_model import School
 from models.student import Student
-from models.teacher import Teacher
 
 # from models.upcoming_events import UpcomingEvent  # Moved to microservice
-from models.volunteer import EventParticipation, Skill, Volunteer, VolunteerSkill
 
 # District mapping configuration
 DISTRICT_MAPPING = {
@@ -152,6 +136,112 @@ def get_school_year_date_range(school_year):
     start_date = datetime(year, 8, 1)  # August 1st of start year
     end_date = datetime(year + 1, 7, 31)  # July 31st of end year
     return start_date, end_date
+
+
+# --- Virtual Year Helper Functions ---
+
+
+def get_current_virtual_year() -> str:
+    """Determines the current virtual session year string (August 1st to July 31st)."""
+    from datetime import date
+
+    today = date.today()
+    if today.month > 7 or (today.month == 7 and today.day == 31):  # After July 31st
+        start_year = today.year
+    else:
+        start_year = today.year - 1
+    return f"{start_year}-{start_year + 1}"
+
+
+def get_virtual_year_dates(virtual_year: str) -> tuple:
+    """Calculates the start and end dates for a given virtual session year string (8/1 to 7/31)."""
+    try:
+        start_year = int(virtual_year.split("-")[0])
+        end_year = start_year + 1
+        date_from = datetime(start_year, 8, 1, 0, 0, 0)  # August 1st start
+        date_to = datetime(end_year, 7, 31, 23, 59, 59)  # July 31st end
+        return date_from, date_to
+    except (ValueError, IndexError):
+        current_vy = get_current_virtual_year()
+        return get_virtual_year_dates(current_vy)
+
+
+def get_semester_dates(virtual_year: str, semester_type: str) -> tuple:
+    """
+    Calculates start and end dates for specific semesters.
+
+    Args:
+        virtual_year: The virtual year string (e.g. "2024-2025")
+        semester_type: "Fall" or "Spring"
+
+    Returns:
+        tuple[datetime, datetime]: Start and end dates
+
+    Note:
+        Fall Semester: July 1 - Dec 31
+        Spring Semester: Jan 1 - Jun 30
+    """
+    try:
+        start_year = int(virtual_year.split("-")[0])
+        end_year = start_year + 1
+
+        if semester_type == "Fall":
+            return (
+                datetime(start_year, 7, 1, 0, 0, 0),
+                datetime(start_year, 12, 31, 23, 59, 59),
+            )
+        elif semester_type == "Spring":
+            return (
+                datetime(end_year, 1, 1, 0, 0, 0),
+                datetime(end_year, 6, 30, 23, 59, 59),
+            )
+        return get_virtual_year_dates(virtual_year)
+    except (ValueError, IndexError):
+        return get_virtual_year_dates(virtual_year)
+
+
+def generate_school_year_options(start_cal_year=2018, end_cal_year=None) -> list:
+    """Generates a list of school year strings for dropdowns."""
+    from datetime import date
+
+    if end_cal_year is None:
+        end_cal_year = date.today().year + 1
+
+    school_years = []
+    for year in range(end_cal_year, start_cal_year - 1, -1):
+        school_years.append(f"{year}-{year + 1}")
+    return school_years
+
+
+# --- Cache Utility Functions ---
+
+
+def is_cache_valid(cache_record, max_age_hours=24):
+    """
+    Check if a cache record is still valid based on age.
+
+    Args:
+        cache_record: The cache record to check (must have last_updated attribute)
+        max_age_hours: Maximum age in hours before cache is considered stale
+
+    Returns:
+        bool: True if cache is valid, False otherwise
+    """
+    if not cache_record:
+        return False
+
+    from datetime import timedelta, timezone
+
+    # Convert to timezone-aware datetime if needed
+    if cache_record.last_updated.tzinfo is None:
+        last_updated = cache_record.last_updated.replace(tzinfo=timezone.utc)
+    else:
+        last_updated = cache_record.last_updated
+
+    now = datetime.now(timezone.utc)
+    max_age = timedelta(hours=max_age_hours)
+
+    return (now - last_updated) < max_age
 
 
 def generate_district_stats(school_year, host_filter="all"):
@@ -416,9 +506,10 @@ def generate_district_stats(school_year, host_filter="all"):
 def cache_district_stats(school_year, district_stats):
     """Save district statistics to the cache table"""
     import time
+
     max_retries = 3
     retry_delay = 0.5  # seconds
-    
+
     for district_name, stats in district_stats.items():
         district = District.query.filter_by(name=district_name).first()
         if district:
@@ -431,7 +522,7 @@ def cache_district_stats(school_year, district_stats):
             report.report_data = stats
             report.last_updated = datetime.utcnow()
             db.session.add(report)
-            
+
             # Commit after each district to avoid long-running transactions
             for attempt in range(max_retries):
                 try:
@@ -516,7 +607,6 @@ def calculate_program_breakdown(district_id, school_year, host_filter="all"):
     Returns:
         Dictionary with program breakdown metrics
     """
-    from models.event import EventTeacher
 
     start_date, end_date = get_school_year_date_range(school_year)
 

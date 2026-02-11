@@ -1,0 +1,450 @@
+# Pathful Import Refactor Checklist
+
+**Code cleanup and Phase D implementation tasks**
+
+---
+
+## Overview
+
+This checklist covers two work streams:
+1. **Cleanup**: Untangle the Frankenstein code (mixed Google Sheets + Pathful approaches)
+2. **Phase D**: Implement post-import data management features
+
+Work in order. Each section builds on the previous.
+
+---
+
+## ✅ COMPLETED: Pre-Work (Feb 2, 2026)
+
+Before refactoring, document what exists:
+
+- [x] **Map existing import code paths** — Only Pathful routes remain in `routes/virtual/pathful_import.py`
+  - [x] List all import routes — Canonical route: `/virtual/pathful/import`
+  - [x] Identify which are Google Sheets vs Pathful — All GSheets deprecated
+  - [x] Note any shared functions/utilities — Consolidated to `routes/reports/common.py`
+
+- [x] **Identify dead code** — No `gspread` imports in routes
+  - [x] Google Sheets-specific parsing — Removed (no gspread usage)
+  - [x] Old field mappings — Replaced with Pathful schema
+  - [x] Unused helper functions — Cleaned up
+
+- [x] **Document current Event creation logic** — `pathful_import.py:313`
+  - [x] Where does `match_or_create_event()` live? — `routes/virtual/pathful_import.py`
+  - [x] What's the current matching hierarchy? — session_id → title+date → create
+  - [x] Are there duplicate implementations? — No, single implementation
+
+- [x] **Check for hardcoded assumptions** — All use Pathful column names
+  - [x] Google Sheets column positions — Removed
+  - [x] Old field names — Updated to Pathful schema
+  - [x] Status mappings — Consistent
+
+---
+
+## ✅ COMPLETED: Code Organization (Feb 1, 2026)
+
+### Deleted Empty Route Directories
+- [x] `routes/job_board/` - deleted (empty)
+- [x] `routes/pathways/` - deleted (empty)
+- [x] `routes/playground/` - deleted (empty)
+- [x] `routes/quality/` - deleted (empty)
+- [x] `routes/upcoming_events/` - deleted (empty)
+
+### Consolidated Shared Utilities → `routes/reports/common.py`
+- [x] `get_current_virtual_year()` - moved from usage.py, virtual_session.py
+- [x] `get_virtual_year_dates()` - moved from usage.py, virtual_session.py
+- [x] `get_semester_dates()` - moved from usage.py
+- [x] `generate_school_year_options()` - moved from usage.py, virtual_session.py
+- [x] `is_cache_valid()` - moved from usage.py, virtual_session.py
+
+### Reorganized `templates/virtual/` (Phase 2.5)
+New structure:
+```
+templates/virtual/
+├── pathful/                   # Pathful import (7 files)
+├── deprecated/                # Google Sheets (2 files)
+├── teacher_progress/          # Teacher tracking (3 files)
+├── usage/                     # Usage reports (3 files)
+├── _district_issue_fab.html   # Shared partial
+├── index.html, sessions.html, recruitment.html
+```
+
+Updated render_template() paths in:
+- `routes/virtual/pathful_import.py` (7 calls)
+- `routes/virtual/usage.py` (11 calls)
+- `routes/virtual/routes.py` (1 call)
+- `routes/reports/virtual_session.py` (1 call)
+
+### Known Issues ✅ RESOLVED
+- [x] `test_virtual_session_creation_robust` — ~~route naming mismatch~~ Test passes as of Feb 2, 2026
+
+---
+
+## Phase 0: Code Cleanup (Do First)
+
+### ✅ COMPLETED: 0.1 Consolidate Import Routes (Feb 2, 2026)
+
+- [x] Identify the canonical Pathful import route — `/virtual/pathful/import`
+- [x] Mark deprecated routes with comments/warnings — 4 routes in usage.py have deprecation logging
+- [x] Update UI links pointing to old routes — Verified; only admin legacy page still references, intentional
+- [x] Add deprecation logging to old routes — Done in `usage.py`
+
+### ✅ COMPLETED: 0.2 Remove Google Sheets-Specific Code (Feb 2, 2026)
+
+- [x] Remove/comment out Google Sheets column mappings — No gspread in routes
+- [x] Remove Google Sheets-specific parsing logic — Removed
+- [x] Remove Google Sheets auth/connection code — No google.oauth2 in routes
+- [x] Keep import_playbook.md Playbook C marked as deprecated — Done
+
+### ✅ COMPLETED: 0.3 Consolidate Event Matching Logic (Feb 2, 2026)
+
+- [x] Single `match_or_create_event()` function — At `pathful_import.py:313`
+- [x] Clear matching hierarchy:
+  1. Match by `pathful_session_id`
+  2. Match by title + date
+  3. Create new
+- [x] Remove any duplicate matching implementations — Only one exists
+
+### ✅ COMPLETED: 0.4 Consolidate Participation Attachment (Feb 2, 2026)
+
+- [x] Single function to attach teachers to events — `match_teacher()` at `pathful_import.py:391`
+- [x] Single function to attach presenters to events — `match_volunteer()` at `pathful_import.py:469`
+- [x] Clear handling of duplicates (don't re-add existing) — Uses pathful_user_id/email/name priority matching
+- [x] Consistent use of `PathfulUnmatchedRecord` for failures — Created for both TEACHER and VOLUNTEER types
+
+### ✅ COMPLETED: 0.5 Clean Up Models (Feb 2, 2026)
+
+- [x] Verify `Event` model has all needed fields:
+  - [x] `pathful_session_id` (for matching) — Line 504 in `models/event.py`
+  - [x] `import_source` (per DEC-006) — Line 508 in `models/event.py`
+  - [x] `type` = `EventType.VIRTUAL_SESSION` — In use
+- [x] Verify participation models are consistent — Done
+- [x] Remove any unused/orphan models — Cleaned
+
+### ✅ COMPLETED: 0.6 Test Cleanup (Feb 2, 2026)
+
+- [x] Run existing import with sample Pathful file — All import tests pass
+- [x] Verify events created correctly — `test_pathful_import.py` tests pass
+- [x] Verify teachers/presenters attached — Matching logic verified
+- [x] Verify unmatched records flagged — `PathfulUnmatchedRecord` tests pass
+- [x] Verify re-import is idempotent — `test_virtual_import_logic_idempotency` passes
+
+**✅ CHECKPOINT COMPLETE: Clean, working Pathful import — ready for Phase D**
+
+---
+
+## Phase D-1: Auto-Flagging System ✅
+
+**Completed:** 2026-02-02
+
+### D-1.1 Database ✅
+
+- [x] Create `FlagType` enum
+  ```
+  NEEDS_ATTENTION
+  MISSING_TEACHER
+  MISSING_PRESENTER
+  NEEDS_REASON
+  ```
+- [x] Create `EventFlag` model (`models/event_flag.py`)
+  - [x] `id`, `event_id`, `flag_type`
+  - [x] `created_at`, `created_by`, `created_source`
+  - [x] `resolved_at`, `resolved_by`, `resolution_notes`, `auto_resolved`
+- [x] Create migration (via `db.create_all()`)
+- [x] Test migration - verified with initial scan
+
+### D-1.2 Flag Scanner ✅
+
+- [x] Create `scan_and_create_flags(event_ids)` function (`services/flag_scanner.py`)
+- [x] Implement flag conditions:
+  - [x] Draft + past date → `NEEDS_ATTENTION`
+  - [x] No teachers → `MISSING_TEACHER`
+  - [x] Completed + no presenter → `MISSING_PRESENTER`
+  - [x] Cancelled + no reason → `NEEDS_REASON`
+- [x] Add `create_flag_if_not_exists()` helper (avoid duplicates)
+- [x] Add `check_and_auto_resolve_flags()` for auto-resolution
+
+**Initial Scan Results:** 3034 flags created (622 missing_teacher, 2137 missing_presenter, 275 needs_attention)
+
+### D-1.3 Flag Queue UI ✅
+
+- [x] Create route: `GET /virtual/flags` (`routes/virtual/pathful_import.py`)
+- [x] Create template: `templates/virtual/pathful/flags.html`
+- [x] Implement filters:
+  - [x] By flag type
+  - [x] By district (for scoping)
+  - [x] Show/hide resolved
+- [x] Display flag details inline (event info)
+- [x] Add "Resolve" action
+
+### D-1.4 Flag Resolution ✅
+
+- [x] Create route: `POST /virtual/flags/<id>/resolve`
+- [x] Accept resolution notes
+- [x] Set `resolved_at`, `resolved_by`
+- [x] Auto-resolve infrastructure in `check_and_auto_resolve_flags()`:
+  - [x] Teacher tagged → resolve `MISSING_TEACHER`
+  - [x] Presenter tagged → resolve `MISSING_PRESENTER`
+  - [x] Reason set → resolve `NEEDS_REASON`
+  - [x] Status changed from Draft → resolve `NEEDS_ATTENTION`
+
+### D-1.5 Integration (Partial)
+
+- [ ] Add flag count to virtual events dashboard
+- [x] Add "Run Scan" action to flag queue
+- [ ] Show flag indicators on event list
+
+**Checkpoint: Flags auto-created and resolvable ✅**
+
+---
+
+## Phase D-2: Cancellation Reasons ✅
+
+### D-2.1 Database
+
+- [x] Create `CancellationReason` enum (8 values)
+- [x] Add fields to `Event` model:
+  - [x] `cancellation_reason` (enum, nullable)
+  - [x] `cancellation_notes` (text, nullable)
+  - [x] `cancellation_set_by` (FK to users.id)
+  - [x] `cancellation_set_at` (datetime)
+- [x] Create migration (manual ALTER TABLE for SQLite)
+- [x] Run migration (dev)
+
+### D-2.2 Validation
+
+- [x] Create `set_cancellation_reason()` method on Event model
+  - [x] Reason only valid when status = CANCELLED
+  - [x] Notes required when reason = OTHER
+  - [x] Notes minimum length (10 chars)
+- [x] Add validation to event save/update in `edit_event` route
+
+### D-2.3 UI
+
+- [x] Add cancellation section to event edit form
+  - [x] Show only when status = CANCELLED (JS toggle)
+  - [x] Reason dropdown with all 8 options
+  - [x] Notes textarea (required indicator for OTHER)
+  - [x] Dynamic validation via JavaScript
+- [ ] Add reason badge to event list (future enhancement)
+- [x] Add reason display to event detail view (banner in primary info card)
+
+### D-2.4 Import Integration
+
+- [x] Verified import does NOT overwrite manual cancellation reasons
+- [x] Import only touches specific fields, cancellation fields untouched
+- [ ] If Pathful ever provides reason data, map it (future)
+
+### D-2.5 Flag Integration
+
+- [x] Auto-create `NEEDS_REASON` flag for cancelled + no reason (via flag scanner)
+- [x] Auto-resolve `NEEDS_REASON` when reason is set
+
+**Checkpoint: Can set cancellation reasons, auto-flagged if missing ✅**
+
+---
+
+## Phase D-3: District Admin Access ✅ (2026-02-02)
+
+### D-3.1 Role Setup ✅
+
+- [x] Use existing `TenantRole.ADMIN` (no new role needed)
+  - Tenant users with `tenant_role = 'admin'` are district admins
+- [x] Role hierarchy: Staff > TenantRole.ADMIN > TenantRole.COORDINATOR > TenantRole.USER
+- [x] Test users can be created via tenant user management
+
+### D-3.2 Scoping Helpers ✅
+
+Created `services/scoping.py` with:
+- [x] `get_user_district_name(user)` - gets tenant's linked district name
+- [x] `is_tenant_user(user)` - check if user is tenant-scoped
+- [x] `is_staff_user(user)` - check if user is PrepKC staff
+- [x] `can_view_event(user, event)` - view permission check
+- [x] `can_edit_event(user, event)` - edit permission check
+- [x] `get_editable_fields(user, event)` - field-level restrictions
+- [x] `scope_events_query(query, user)` - apply district filter to event queries
+- [x] `scope_flags_query(query, user)` - apply district filter to flag queries
+
+### D-3.3 Event List Scoping ✅
+
+- [x] Update `/virtual/sessions` route (`pathful_import.py`)
+  - [x] Added `admin_or_tenant_required` decorator
+  - [x] Apply `scope_events_query()` to main query
+  - [x] Scope summary stats for tenant users
+  - [x] Pass `is_tenant_user` and `user_district` to template
+- [x] Tenant admins see only their district's events
+- [x] Staff users see all events (unchanged)
+
+### D-3.4 Event Edit Permissions ✅
+
+- [x] Update event edit route (`routes/events/routes.py`)
+  - [x] Removed `@global_users_only` decorator
+  - [x] Added `can_edit_event()` permission check
+  - [x] Returns 403 if not authorized
+  - [x] Passes `editable_fields` to template
+- [x] Field-level restrictions implemented:
+  - [x] Tenant admin CAN: cancellation_reason, cancellation_notes, educators, professionals, status
+  - [x] Tenant admin CANNOT: title, dates, student counts, other core fields
+- [x] Edit template (`events/edit.html`) updated:
+  - [x] Added tenant notice banner
+  - [x] JavaScript disables non-editable fields
+
+### D-3.5 Flag Queue Scoping ✅
+
+- [x] Update `/virtual/flags` route (`pathful_import.py`)
+  - [x] Changed from `@admin_required` to `@admin_or_tenant_required`
+  - [x] Filter query by `user_district` for tenant users
+  - [x] Scope flag summary stats
+  - [x] Pass tenant context to template
+- [x] Tenant admins see only their district's flags
+- [x] Staff users see all flags (unchanged)
+
+### D-3.6 UI Adjustments ✅
+
+- [x] Added district badge in `sessions.html` header for tenant users
+- [x] District filter pre-selected for tenant users
+- [x] Disabled fields styled with gray background and "not-allowed" cursor
+- [x] Tenant users see "Review Flags" button (no Import button)
+
+**Checkpoint: District admins can manage their schools' virtual session data** ✅
+
+---
+
+## Phase D-4: Audit Logging
+
+> **Implementation Note:** Extended the existing audit system (`models/audit_log.py` + `routes/utils.py:log_audit_action()`) instead of creating a parallel model. Follows `documentation/content/audit_requirements.md` naming conventions.
+
+### D-4.1 Audit Service ✅
+
+- [x] Create `VirtualSessionAction` enum in `services/audit_service.py`
+  - `teacher_tagged`, `teacher_untagged`
+  - `presenter_tagged`, `presenter_untagged`
+  - `status_changed`, `cancellation_set`
+  - `flag_resolved`, `flag_created`
+  - `imported`, `updated_via_import`, `field_updated`
+- [x] Create `log_virtual_session_change()` function
+  - Wraps `log_audit_action()` with virtual session context
+  - Includes user role and district in metadata
+  - Handles system/import user (user=None)
+- [x] Create convenience functions
+  - `log_teacher_tagged()`, `log_teacher_untagged()`
+  - `log_presenter_tagged()`, `log_presenter_untagged()`
+  - `log_status_changed()`, `log_cancellation_set()`
+  - `log_flag_resolved()`, `log_session_imported()`
+
+### D-4.2 Logging Helper ✅
+
+- [x] Accept: event, action, user, field_name, old_value, new_value, source, notes
+- [x] Auto-populate user_role, user_district from user object
+- [x] Handle system/import user (user=None, role='system')
+- [x] Action naming: `pol.virtual.session.{action}`
+
+### D-4.3 Integrate Logging ✅
+
+- [x] Log on status change: `pol.virtual.session.status_changed`
+- [x] Log on cancellation reason set: `pol.virtual.session.cancellation_set`
+- [x] Log on flag resolve: `pol.virtual.session.flag_resolved`
+- [x] Log on import complete: `pol.import.completed`
+- [ ] Log on teacher tag/untag (future: when tagging UI exists)
+- [ ] Log on presenter tag/untag (future: when tagging UI exists)
+
+### D-4.4 Audit Views (Optional, Deferred)
+
+- [ ] Create route: `GET /virtual/audit/event/<id>` - Show logs for event
+- [ ] Create route: `GET /virtual/audit/recent` - Recent changes
+- [x] Use existing `/admin/audit-logs` with action filter
+
+### D-4.5 Verification
+
+- [ ] Manual test: edit virtual session → verify log in `/admin/audit-logs`
+- [ ] Manual test: import data → verify log
+- [ ] Manual test: resolve flag → verify log
+
+**Checkpoint: Core audit logging in place, views via existing admin audit logs**
+
+---
+
+## Phase D-5: Teacher/Presenter Tagging UI ✅
+
+> Implemented Feb 2, 2026 - Manual tagging of teachers/presenters on virtual sessions
+
+### D-5.1 Form Updates ✅
+
+- [x] Add `educators` StringField to EventForm
+- [x] Add `professionals` StringField to EventForm
+- [x] Participants section on `edit.html` (only for Virtual Sessions)
+- [x] Pre-populate from model in GET handler
+- [x] Save to model in POST handler
+
+### D-5.2 Audit Logging ✅
+
+- [x] Log `pol.virtual.session.teacher_tagged` on educator changes
+- [x] Log `pol.virtual.session.presenter_tagged` on professional changes
+
+### D-5.3 Flag Integration ✅
+
+- [x] Call `check_and_auto_resolve_flags()` after save
+- [x] `MISSING_TEACHER` flags auto-resolve when educator added
+- [x] `MISSING_PRESENTER` flags auto-resolve when professional added
+
+### D-5.4 Permissions ✅
+
+- [x] `get_editable_fields()` includes `educators` and `professionals`
+- [x] District admins can edit these fields
+
+**Checkpoint: Manual tagging available, flags auto-resolve on tag**
+
+---
+
+## Final Testing
+
+### Integration Tests
+
+- [ ] Full workflow: Import → Auto-flag → District admin review → Resolve
+- [ ] Verify teacher progress calculations still work
+- [ ] Verify dashboards show correct data
+- [ ] Verify re-import doesn't break manual edits
+
+### Permission Tests
+
+- [ ] Staff can do everything
+- [ ] District admin scoped correctly
+- [ ] District viewer is read-only
+- [ ] Unauthorized access returns 403
+
+### Audit Tests
+
+- [ ] Every edit type creates log entry
+- [ ] Log entries have correct user/role
+- [ ] Import creates log entries with source='import'
+- [ ] Audit views filter correctly
+
+### Edge Cases
+
+- [ ] Event with no school (orphan) — who can edit?
+- [ ] User with multiple districts
+- [ ] Event at school that changes districts
+- [ ] Concurrent edits (last write wins, both logged)
+
+---
+
+## Deployment
+
+- [ ] Run all migrations on staging
+- [ ] Test full workflow on staging
+- [ ] Backfill flags for existing events (one-time script)
+- [ ] Deploy to production
+- [ ] Monitor for errors
+- [ ] Train district admins
+
+---
+
+## Post-Deployment
+
+- [ ] Archive this checklist (mark complete)
+- [ ] Update user guide with new workflows
+- [ ] Create district admin training doc
+- [ ] Schedule check-in: Are district admins using it? Issues?
+
+---
+
+*Created: January 30, 2026*

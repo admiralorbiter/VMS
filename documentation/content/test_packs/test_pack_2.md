@@ -2,9 +2,9 @@
 
 Event creation, Website display, Volunteer signup, and Email notifications.
 
-> [!INFO]
+> [!NOTE]
 > **Coverage**
-> [FR-INPERSON-101](requirements#fr-inperson-101)–[FR-INPERSON-109](requirements#fr-inperson-109) (Events + visibility), [FR-SIGNUP-121](requirements#fr-signup-121)–[FR-SIGNUP-127](requirements#fr-signup-127) (Signup + email)
+> [FR-INPERSON-101](requirements-in-person#fr-inperson-101)–[FR-INPERSON-109](requirements-in-person#fr-inperson-109) (Events + visibility), [FR-SIGNUP-121](requirements-in-person#fr-signup-121)–[FR-SIGNUP-127](requirements-in-person#fr-signup-127) (Signup + email)
 
 ---
 
@@ -333,5 +333,5 @@ This section provides comprehensive test specifications for requirements FR-INPE
 
 ---
 
-*Last updated: January 2026*
+*Last updated: February 2026*
 *Version: 1.0*

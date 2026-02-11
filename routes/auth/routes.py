@@ -50,7 +50,6 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from forms import LoginForm  # Adjust import path as needed
 from models import User, db  # Adjust import path as needed
-from models.user import SecurityLevel
 
 auth_bp = Blueprint("auth", __name__)
 

@@ -96,13 +96,11 @@ from flask_login import current_user, login_required
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 from sqlalchemy import func, or_
 from werkzeug.security import generate_password_hash
-from werkzeug.utils import secure_filename
 
 from config import Config
 from models import db
 from models.bug_report import BugReport, BugReportType
 from models.class_model import Class
-from models.client_project_model import ClientProject, ProjectStatus
 from models.district_model import District
 from models.event import EventType
 from models.google_sheet import GoogleSheet
@@ -113,11 +111,9 @@ from models.reports import (
     OrganizationSummaryCache,
     RecentVolunteersReportCache,
     RecruitmentCandidatesCache,
-    VirtualSessionDistrictCache,
-    VirtualSessionReportCache,
 )
 from models.school_model import School
-from models.sync_log import SyncLog, SyncStatus
+from models.sync_log import SyncLog
 from models.user import SecurityLevel, User
 from routes.decorators import global_users_only
 from routes.reports.common import get_school_year_date_range
@@ -214,6 +210,58 @@ def admin():
         latest_sync=latest_sync,
         latest_student_sync=latest_student_sync,
         latest_overall_sync=latest_overall_sync,
+    )
+
+
+@management_bp.route("/admin/data-flags")
+@login_required
+def data_flags():
+    """
+    Admin page to review all teacher data flags across tenants.
+
+    Permission Requirements:
+        - Admin access required
+
+    Query Parameters:
+        type: Filter by flag type (missing_session, not_tracked, other)
+        status: Filter by status (open, resolved, all). Default: open
+    """
+    if not current_user.is_admin:
+        flash("Access denied. Admin privileges required.", "error")
+        return redirect(url_for("management.admin"))
+
+    from models.teacher_data_flag import TeacherDataFlag, TeacherDataFlagType
+
+    # Build query
+    q = TeacherDataFlag.query
+
+    # Status filter (default to open)
+    status = request.args.get("status", "open")
+    if status == "open":
+        q = q.filter_by(is_resolved=False)
+    elif status == "resolved":
+        q = q.filter_by(is_resolved=True)
+
+    # Type filter
+    type_filter = request.args.get("type", "")
+    if type_filter in TeacherDataFlagType.all_types():
+        q = q.filter_by(flag_type=type_filter)
+
+    flags = q.order_by(TeacherDataFlag.created_at.desc()).all()
+
+    # Stats — always count open flags regardless of current filter
+    total_open = TeacherDataFlag.query.filter_by(is_resolved=False).count()
+    count_by_type = {}
+    for ft in TeacherDataFlagType.all_types():
+        count_by_type[ft] = TeacherDataFlag.query.filter_by(
+            is_resolved=False, flag_type=ft
+        ).count()
+
+    return render_template(
+        "management/data_flags.html",
+        flags=flags,
+        total_open=total_open,
+        count_by_type=count_by_type,
     )
 
 
@@ -508,121 +556,6 @@ def import_data():
 
     flash("Import started successfully", "success")
     return redirect(url_for("management.admin"))
-
-
-@management_bp.route("/management/import-classes", methods=["POST"])
-@login_required
-def import_classes():
-    """
-    Import class data from Salesforce.
-
-    Fetches class information from Salesforce and synchronizes it
-    with the local database. Handles both creation of new classes
-    and updates to existing ones.
-
-    Salesforce Objects:
-        - Class__c: Class data with school associations
-
-    Process Flow:
-        1. Authenticate with Salesforce
-        2. Query Class__c objects
-        3. Create/update class records
-        4. Associate with schools
-        5. Commit all changes
-
-    Permission Requirements:
-        - Admin access required
-
-    Returns:
-        JSON response with import results and statistics
-
-    Raises:
-        401: Salesforce authentication failure
-        403: Unauthorized access attempt
-        500: Import or database error
-    """
-    if not current_user.is_admin:
-        return jsonify({"error": "Unauthorized"}), 403
-
-    try:
-        print("Starting class import process...")
-        # Define Salesforce query
-        salesforce_query = """
-        SELECT Id, Name, School__c, Class_Year_Number__c
-        FROM Class__c
-        """
-
-        # Connect to Salesforce
-        sf = Salesforce(
-            username=Config.SF_USERNAME,
-            password=Config.SF_PASSWORD,
-            security_token=Config.SF_SECURITY_TOKEN,
-            domain="login",
-        )
-
-        # Execute the query
-        result = sf.query_all(salesforce_query)
-        sf_rows = result.get("records", [])
-
-        success_count = 0
-        error_count = 0
-        errors = []
-
-        # Process each row from Salesforce
-        for row in sf_rows:
-            try:
-                # Check if class exists
-                existing_class = Class.query.filter_by(salesforce_id=row["Id"]).first()
-
-                if existing_class:
-                    # Update existing class
-                    existing_class.name = row["Name"]
-                    existing_class.school_salesforce_id = row["School__c"]
-                    existing_class.class_year = int(row["Class_Year_Number__c"])
-                else:
-                    # Create new class
-                    new_class = Class(
-                        salesforce_id=row["Id"],
-                        name=row["Name"],
-                        school_salesforce_id=row["School__c"],
-                        class_year=int(row["Class_Year_Number__c"]),
-                    )
-                    db.session.add(new_class)
-
-                success_count += 1
-            except Exception as e:
-                error_count += 1
-                errors.append(f"Error processing class {row.get('Name')}: {str(e)}")
-
-        # Commit changes
-        db.session.commit()
-
-        print(f"Class import complete: {success_count} successes, {error_count} errors")
-        if errors:
-            print("Class import errors:")
-            for error in errors:
-                print(f"  - {error}")
-
-        return jsonify(
-            {
-                "success": True,
-                "message": f"Successfully processed {success_count} classes with {error_count} errors",
-                "processed_count": success_count,
-                "error_count": error_count,
-                "errors": errors,
-            }
-        )
-
-    except SalesforceAuthenticationFailed:
-        return (
-            jsonify(
-                {"success": False, "message": "Failed to authenticate with Salesforce"}
-            ),
-            401,
-        )
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
 
 
 # Google Sheet Management Routes
@@ -1015,164 +948,6 @@ def get_google_sheet(sheet_id):
         sheet = GoogleSheet.query.get_or_404(sheet_id)
         return jsonify({"success": True, "sheet": sheet.to_dict()})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@management_bp.route("/management/import-schools", methods=["POST"])
-@login_required
-def import_schools():
-    if not current_user.is_admin:
-        return jsonify({"error": "Unauthorized"}), 403
-
-    try:
-        print("Starting school import process...")
-        # First, import districts
-        district_query = """
-        SELECT Id, Name, School_Code_External_ID__c
-        FROM Account
-        WHERE Type = 'School District'
-        """
-
-        # Connect to Salesforce
-        sf = Salesforce(
-            username=Config.SF_USERNAME,
-            password=Config.SF_PASSWORD,
-            security_token=Config.SF_SECURITY_TOKEN,
-            domain="login",
-        )
-
-        # Execute district query first
-        district_result = sf.query_all(district_query)
-        district_rows = district_result.get("records", [])
-
-        district_success = 0
-        district_errors = []
-
-        # Process districts
-        for row in district_rows:
-            try:
-                existing_district = District.query.filter_by(
-                    salesforce_id=row["Id"]
-                ).first()
-
-                if existing_district:
-                    # Update existing district
-                    existing_district.name = row["Name"]
-                    existing_district.district_code = row["School_Code_External_ID__c"]
-                else:
-                    # Create new district
-                    new_district = District(
-                        salesforce_id=row["Id"],
-                        name=row["Name"],
-                        district_code=row["School_Code_External_ID__c"],
-                    )
-                    db.session.add(new_district)
-
-                district_success += 1
-            except Exception as e:
-                district_errors.append(
-                    f"Error processing district {row.get('Name')}: {str(e)}"
-                )
-
-        # Commit district changes
-        db.session.commit()
-
-        print(
-            f"District import complete: {district_success} successes, {len(district_errors)} errors"
-        )
-        if district_errors:
-            print("District errors:")
-            for error in district_errors:
-                print(f"  - {error}")
-
-        # Now proceed with school import
-        school_query = """
-        SELECT Id, Name, ParentId, Connector_Account_Name__c, School_Code_External_ID__c
-        FROM Account
-        WHERE Type = 'School'
-        """
-
-        # Execute school query
-        school_result = sf.query_all(school_query)
-        school_rows = school_result.get("records", [])
-
-        school_success = 0
-        school_errors = []
-
-        # Process schools
-        for row in school_rows:
-            try:
-                existing_school = School.query.filter_by(id=row["Id"]).first()
-
-                # Find the district using salesforce_id
-                district = District.query.filter_by(
-                    salesforce_id=row["ParentId"]
-                ).first()
-
-                if existing_school:
-                    # Update existing school
-                    existing_school.name = row["Name"]
-                    existing_school.district_id = district.id if district else None
-                    existing_school.salesforce_district_id = row["ParentId"]
-                    existing_school.normalized_name = row["Connector_Account_Name__c"]
-                    existing_school.school_code = row["School_Code_External_ID__c"]
-                else:
-                    # Create new school
-                    new_school = School(
-                        id=row["Id"],
-                        name=row["Name"],
-                        district_id=district.id if district else None,
-                        salesforce_district_id=row["ParentId"],
-                        normalized_name=row["Connector_Account_Name__c"],
-                        school_code=row["School_Code_External_ID__c"],
-                    )
-                    db.session.add(new_school)
-
-                school_success += 1
-            except Exception as e:
-                school_errors.append(
-                    f"Error processing school {row.get('Name')}: {str(e)}"
-                )
-
-        # Commit school changes
-        db.session.commit()
-
-        print(
-            f"School import complete: {school_success} successes, {len(school_errors)} errors"
-        )
-        if school_errors:
-            print("School errors:")
-            for error in school_errors:
-                print(f"  - {error}")
-
-        # After successful school import, update school levels
-        level_update_response = update_school_levels()
-
-        return jsonify(
-            {
-                "success": True,
-                "message": f"Successfully processed {district_success} districts and {school_success} schools",
-                "processed_count": district_success + school_success,
-                "error_count": len(district_errors) + len(school_errors),
-                "district_errors": district_errors,
-                "school_errors": school_errors,
-                "level_update": (
-                    level_update_response.json
-                    if hasattr(level_update_response, "json")
-                    else None
-                ),
-            }
-        )
-
-    except SalesforceAuthenticationFailed:
-        return (
-            jsonify(
-                {"success": False, "message": "Failed to authenticate with Salesforce"}
-            ),
-            401,
-        )
-    except Exception as e:
-        db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
 
@@ -1571,7 +1346,14 @@ def edit_user_form(user_id):
     if not current_user.can_manage_user(user) and current_user.id != user_id:
         return jsonify({"error": "Unauthorized to edit this user"}), 403
 
-    return render_template("management/user_edit_modal.html", user=user)
+    # Get all tenants for the dropdown (sorted by name)
+    from models.tenant import Tenant
+
+    tenants = Tenant.query.order_by(Tenant.name).all()
+
+    return render_template(
+        "management/user_edit_modal.html", user=user, tenants=tenants
+    )
 
 
 @management_bp.route("/management/users/<int:user_id>", methods=["PUT"])
@@ -1594,6 +1376,8 @@ def update_user(user_id):
     email = request.form.get("email")
     security_level = int(request.form.get("security_level", 0))
     new_password = request.form.get("new_password")
+    tenant_id = request.form.get("tenant_id")
+    tenant_id = int(tenant_id) if tenant_id else None
 
     # If not admin, restrict ability to escalate privileges
     if not current_user.is_admin and security_level > current_user.security_level:
@@ -1608,6 +1392,10 @@ def update_user(user_id):
     # Regular users should only be able to update their own security level if they're an admin
     if current_user.is_admin or current_user.security_level > user.security_level:
         user.security_level = security_level
+
+    # Only admins can change tenant affiliation
+    if current_user.is_admin:
+        user.tenant_id = tenant_id
 
     # Update password if provided
     if new_password:

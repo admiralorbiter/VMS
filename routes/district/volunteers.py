@@ -29,7 +29,7 @@ import io
 from datetime import datetime, timezone
 from functools import wraps
 
-from flask import abort, flash, g, jsonify, redirect, render_template, request, url_for
+from flask import flash, g, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from models import db

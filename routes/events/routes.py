@@ -77,6 +77,7 @@ from routes.utils import (
     parse_date,
     parse_event_skills,
 )
+from services.scoping import can_edit_event, get_editable_fields, is_tenant_user
 from utils.cache_refresh_scheduler import refresh_all_caches
 
 
@@ -873,7 +874,6 @@ def view_event(id):
 
 @events_bp.route("/events/edit/<int:id>", methods=["GET", "POST"])
 @login_required
-@global_users_only
 def edit_event(id):
     """
     Edit an existing event
@@ -890,10 +890,24 @@ def edit_event(id):
 
     Raises:
         404: If event not found
+        403: If user doesn't have permission to edit this event
+
+    Phase D-3: District Admin Access (DEC-009)
+    - Staff/admin users can edit all events (all fields)
+    - Tenant admins can edit their district's events (restricted fields)
     """
+
     event = db.session.get(Event, id)
     if not event:
         abort(404)
+
+    # Phase D-3: Check if user can edit this event
+    if not can_edit_event(current_user, event):
+        flash("You do not have permission to edit this event.", "error")
+        abort(403)
+
+    # Get list of editable fields for this user/event
+    editable_fields = get_editable_fields(current_user, event)
 
     form = EventForm()
 
@@ -901,6 +915,27 @@ def edit_event(id):
         try:
             print("Edit form validation successful")  # Debug
             print(f"Form data: {form.data}")  # Debug
+
+            # Phase D-4: Capture original values for audit logging (safely handle string or enum)
+            if event.status:
+                original_status = (
+                    event.status.value
+                    if hasattr(event.status, "value")
+                    else str(event.status)
+                )
+            else:
+                original_status = None
+            if event.cancellation_reason:
+                original_cancellation_reason = (
+                    event.cancellation_reason.value
+                    if hasattr(event.cancellation_reason, "value")
+                    else str(event.cancellation_reason)
+                )
+            else:
+                original_cancellation_reason = None
+            # Phase D-5: Capture original participant values
+            original_educators = event.educators or ""
+            original_professionals = event.professionals or ""
 
             # Update event from form data
             form.populate_obj(event)
@@ -910,15 +945,117 @@ def edit_event(id):
             event.format = EventFormat(form.format.data)
             event.status = EventStatus(form.status.data)
 
+            # Handle cancellation reason (DEC-008)
+            if event.status == EventStatus.CANCELLED:
+                reason_value = form.cancellation_reason.data
+                notes_value = form.cancellation_notes.data
+
+                if reason_value:
+                    try:
+                        event.set_cancellation_reason(
+                            reason=reason_value,
+                            notes=notes_value,
+                            user_id=current_user.id,
+                        )
+                    except ValueError as e:
+                        flash(str(e), "warning")
+            else:
+                # Clear cancellation fields if status is not CANCELLED
+                event.cancellation_reason = None
+                event.cancellation_notes = None
+                event.cancellation_set_by = None
+                event.cancellation_set_at = None
+
             print(f"Updated event: {event}")  # Debug
 
             db.session.commit()
+
+            # Phase D-4: Log changes for virtual sessions
+            # After commit, event attributes might be strings from DB, so check safely
+            event_type = (
+                event.type.value if hasattr(event.type, "value") else event.type
+            )
+            if (
+                event_type == "virtual_session"
+                or event.type == EventType.VIRTUAL_SESSION
+            ):
+                from services.audit_service import (
+                    log_cancellation_set,
+                    log_status_changed,
+                )
+
+                # Safely get status value (might be enum or string)
+                if event.status:
+                    new_status = (
+                        event.status.value
+                        if hasattr(event.status, "value")
+                        else str(event.status)
+                    )
+                else:
+                    new_status = None
+                # Handle cancellation_reason which might be enum or string after form.populate_obj
+                if event.cancellation_reason:
+                    new_cancellation_reason = (
+                        event.cancellation_reason.value
+                        if hasattr(event.cancellation_reason, "value")
+                        else str(event.cancellation_reason)
+                    )
+                else:
+                    new_cancellation_reason = None
+
+                # Log status change if it changed
+                if original_status != new_status:
+                    log_status_changed(event, original_status, new_status)
+
+                # Log cancellation reason if set
+                if new_cancellation_reason and (
+                    original_cancellation_reason != new_cancellation_reason
+                ):
+                    log_cancellation_set(
+                        event, new_cancellation_reason, event.cancellation_notes
+                    )
+
+                # Phase D-5: Log educator/professional changes
+                from services.audit_service import (
+                    VirtualSessionAction,
+                    log_virtual_session_change,
+                )
+
+                new_educators = event.educators or ""
+                new_professionals = event.professionals or ""
+
+                if original_educators != new_educators:
+                    log_virtual_session_change(
+                        event=event,
+                        action=VirtualSessionAction.TEACHER_TAGGED,
+                        field_name="educators",
+                        old_value=original_educators,
+                        new_value=new_educators,
+                    )
+
+                if original_professionals != new_professionals:
+                    log_virtual_session_change(
+                        event=event,
+                        action=VirtualSessionAction.PRESENTER_TAGGED,
+                        field_name="professionals",
+                        old_value=original_professionals,
+                        new_value=new_professionals,
+                    )
+
+                # Phase D-5: Auto-resolve flags after participant changes
+                from services.flag_scanner import check_and_auto_resolve_flags
+
+                check_and_auto_resolve_flags(event)
+
             flash("Event updated successfully!", "success")
             return redirect(url_for("events.view_event", id=event.id))
 
         except Exception as e:
             db.session.rollback()
+            import traceback
+
             print(f"Error updating event: {str(e)}")  # Debug
+            traceback.print_exc()  # Print full stack trace
             flash(f"Error updating event: {str(e)}", "danger")
     else:
         # Pre-populate form with event data for GET requests
@@ -932,6 +1069,14 @@ def edit_event(id):
             form.status.data = event.status.value if event.status else ""
             form.description.data = event.description
             form.volunteers_needed.data = event.volunteers_needed
+            # Pre-populate cancellation reason fields
+            form.cancellation_reason.data = (
+                event.cancellation_reason.value if event.cancellation_reason else ""
+            )
+            form.cancellation_notes.data = event.cancellation_notes or ""
+            # Phase D-5: Pre-populate participant fields
+            form.educators.data = event.educators or ""
+            form.professionals.data = event.professionals or ""
 
         # Print form validation errors for debugging
         if request.method == "POST":
@@ -940,7 +1085,14 @@ def edit_event(id):
                 for error in errors:
                     flash(f"{field}: {error}", "danger")
 
-    return render_template("events/edit.html", event=event, form=form)
+    return render_template(
+        "events/edit.html",
+        event=event,
+        form=form,
+        # Phase D-3: Field-level restrictions for tenant users
+        editable_fields=editable_fields,
+        is_tenant_user=is_tenant_user(current_user),
+    )
 
 
 @events_bp.route("/events/purge", methods=["POST"])
@@ -1057,438 +1209,6 @@ def find_or_create_skill():
         return jsonify({"success": True, "skill": {"id": skill.id, "name": skill.name}})
     except Exception as e:
         db.session.rollback()
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@events_bp.route("/events/import-from-salesforce", methods=["POST"])
-@login_required
-@global_users_only
-def import_events_from_salesforce():
-    """
-    Import events and participants from Salesforce
-
-    This endpoint performs a comprehensive import of both events and
-    participant data from Salesforce. It handles authentication, data
-    processing, and error reporting.
-
-    Returns:
-        JSON response with import results and statistics
-    """
-    try:
-        started_at = datetime.now(timezone.utc)
-        print("Fetching data from Salesforce...")
-        success_count = 0
-        error_count = 0
-        errors = []
-        skipped_count = 0
-
-        # Connect to Salesforce
-        sf = Salesforce(
-            username=Config.SF_USERNAME,
-            password=Config.SF_PASSWORD,
-            security_token=Config.SF_SECURITY_TOKEN,
-            domain="login",
-        )
-
-        # First query: Get events
-        events_query = """
-        SELECT Id, Name, Session_Type__c, Format__c, Start_Date_and_Time__c,
-            End_Date_and_Time__c, Session_Status__c, Location_Information__c,
-            Description__c, Cancellation_Reason__c, Non_Scheduled_Students_Count__c,
-            District__c, School__c, Legacy_Skill_Covered_for_the_Session__c,
-            Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c,
-            Total_Requested_Volunteer_Jobs__c, Available_Slots__c, Parent_Account__c,
-            Session_Host__c
-        FROM Session__c
-        WHERE Session_Status__c != 'Draft' AND Session_Type__c != 'Connector Session'
-        ORDER BY Start_Date_and_Time__c DESC
-        """
-
-        # Execute events query
-        events_result = sf.query_all(events_query)
-        events_rows = events_result.get("records", [])
-        total_events = len(events_rows)
-
-        print(f"Found {total_events} events in Salesforce")
-        print(
-            f"Query filter: Session_Status__c != 'Draft' AND Session_Type__c != 'Connector Session'"
-        )
-
-        status_counts = {}
-        type_counts = {}
-
-        # Process events
-        for i, row in enumerate(events_rows):
-            # Progress indicator every 500 events
-            if i > 0 and i % 500 == 0:
-                print(f"Progress: {i}/{total_events} events processed")
-
-            status = row.get("Session_Status__c", "Unknown")
-            session_type = row.get("Session_Type__c", "Unknown")
-            status_counts[status] = status_counts.get(status, 0) + 1
-            type_counts[session_type] = type_counts.get(session_type, 0) + 1
-
-            success_count, error_count, skipped_count = process_event_row(
-                row, success_count, error_count, errors, skipped_count
-            )
-
-        # Compact status summary
-        print(f"\n{'='*60}")
-        print(f"EVENTS IMPORT SUMMARY")
-        print(f"{'='*60}")
-        print(f"Total from Salesforce: {total_events}")
-        print(f"Successfully processed: {success_count}")
-        print(f"Errors: {error_count}")
-        print(f"Skipped (invalid): {skipped_count}")
-
-        if success_count + error_count + skipped_count != total_events:
-            print(
-                f"⚠️  COUNT MISMATCH: {success_count} + {error_count} + {skipped_count} != {total_events}"
-            )
-            print(
-                f"Missing: {total_events - (success_count + error_count + skipped_count)} events"
-            )
-
-        print(f"\nStatus breakdown:")
-        for status, count in sorted(status_counts.items()):
-            print(f"  {status}: {count}")
-
-        print(f"\nSession type breakdown:")
-        for session_type, count in sorted(type_counts.items()):
-            print(f"  {session_type}: {count}")
-
-        # Quick validation check
-        if (
-            type_counts.get("DIA", 0) + type_counts.get("DIA - Classroom Speaker", 0)
-            > 0
-        ):
-            dia_events_in_db = Event.query.filter(
-                Event.type.in_([EventType.DIA, EventType.DIA_CLASSROOM_SPEAKER])
-            ).count()
-            if dia_events_in_db == 0:
-                print(
-                    f"⚠️  WARNING: {type_counts.get('DIA', 0) + type_counts.get('DIA - Classroom Speaker', 0)} DIA events in Salesforce but 0 in database"
-                )
-
-        # Second query: Get participants
-        participants_query = """
-        SELECT
-            Id,
-            Name,
-            Contact__c,
-            Session__c,
-            Status__c,
-            Delivery_Hours__c,
-            Age_Group__c,
-            Email__c,
-            Title__c
-        FROM Session_Participant__c
-        WHERE Participant_Type__c = 'Volunteer'
-        """
-
-        # Execute participants query
-        participants_result = sf.query_all(participants_query)
-        participant_rows = participants_result.get("records", [])
-
-        # Process participants
-        participant_success = 0
-        participant_error = 0
-        for row in participant_rows:
-            participant_success, participant_error = process_participation_row(
-                row, participant_success, participant_error, errors
-            )
-
-        # Commit all changes
-        db.session.commit()
-
-        # Final summary
-        print(f"\n{'='*60}")
-        print(f"FINAL IMPORT SUMMARY")
-        print(f"{'='*60}")
-        print(f"Events: {success_count}/{total_events} processed successfully")
-        print(
-            f"Participants: {participant_success}/{len(participant_rows)} processed successfully"
-        )
-        print(f"Total errors: {error_count + participant_error}")
-        print(f"{'='*60}")
-
-        # Separate actual errors from expected skips
-        actual_errors = [e for e in errors if "Error processing" in e]
-        skipped_events = [e for e in errors if "Skipping event" in e]
-
-        if skipped_events:
-            print(f"\nSkipped events (missing required data): {len(skipped_events)}")
-            for skip in skipped_events[:5]:  # Show first 5 skips
-                print(f"  - {skip}")
-            if len(skipped_events) > 5:
-                print(f"  ... and {len(skipped_events) - 5} more skipped events")
-
-        if actual_errors:
-            print(f"\nProcessing errors: {len(actual_errors)}")
-            for error in actual_errors[:5]:  # Show first 5 errors
-                print(f"  - {error}")
-            if len(actual_errors) > 5:
-                print(f"  ... and {len(actual_errors) - 5} more errors")
-
-        # Trigger cache refresh if any data was processed
-        if success_count > 0 or participant_success > 0:
-            print(f"\nData updated. Triggering full cache refresh...")
-            try:
-                refresh_all_caches()
-                print("Cache refresh triggered successfully.")
-            except Exception as e:
-                print(f"Warning: Cache refresh failed: {e}")
-
-        # Record sync log
-        try:
-            total_records = total_events + len(participant_rows)
-            # Determine status based on errors
-            sync_status = SyncStatus.SUCCESS.value
-            if error_count + participant_error > 0:
-                if success_count + participant_success > 0:
-                    sync_status = SyncStatus.PARTIAL.value
-                else:
-                    sync_status = SyncStatus.FAILED.value
-
-            sync_log = SyncLog(
-                sync_type="events_and_participants",
-                started_at=started_at,
-                completed_at=datetime.now(timezone.utc),
-                status=sync_status,
-                records_processed=success_count + participant_success,
-                records_failed=error_count + participant_error,
-                records_skipped=skipped_count,
-                error_details=(
-                    json.dumps(actual_errors[:100]) if actual_errors else None
-                ),
-            )
-            db.session.add(sync_log)
-            db.session.commit()
-        except Exception as e:
-            print(f"Warning: Failed to record sync log: {e}")
-
-        return jsonify(
-            {
-                "success": True,
-                "message": f"Import completed successfully",
-                "processed_count": success_count + participant_success,
-                "error_count": error_count + participant_error,
-                "skipped_count": skipped_count,
-                "events_processed": success_count,
-                "events_skipped": skipped_count,
-                "participants_processed": participant_success,
-                "total_events_from_salesforce": total_events,
-                "total_participants_from_salesforce": len(participant_rows),
-                "errors": actual_errors[:50],  # Limit errors in response
-                "skipped_events": skipped_events[:50],  # Limit skips in response
-            }
-        )
-
-    except SalesforceAuthenticationFailed:
-        print("Error: Failed to authenticate with Salesforce")
-        # Record failure log
-        try:
-            sync_log = SyncLog(
-                sync_type="events_and_participants",
-                started_at=(
-                    started_at
-                    if "started_at" in locals()
-                    else datetime.now(timezone.utc)
-                ),
-                completed_at=datetime.now(timezone.utc),
-                status=SyncStatus.FAILED.value,
-                error_message="Failed to authenticate with Salesforce",
-            )
-            db.session.add(sync_log)
-            db.session.commit()
-        except Exception as log_e:
-            print(f"Warning: Failed to record error sync log: {log_e}")
-
-        return (
-            jsonify(
-                {"success": False, "message": "Failed to authenticate with Salesforce"}
-            ),
-            401,
-        )
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error: {str(e)}")
-        # Record general failure log
-        try:
-            sync_log = SyncLog(
-                sync_type="events_and_participants",
-                started_at=(
-                    started_at
-                    if "started_at" in locals()
-                    else datetime.now(timezone.utc)
-                ),
-                completed_at=datetime.now(timezone.utc),
-                status=SyncStatus.FAILED.value,
-                error_message=str(e),
-            )
-            db.session.add(sync_log)
-            db.session.commit()
-        except Exception as log_e:
-            print(f"Warning: Failed to record general failure sync log: {log_e}")
-
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@events_bp.route("/events/sync-student-participants", methods=["POST"])
-@login_required
-@global_users_only
-def sync_student_participants():
-    """
-    Sync student participation data from Salesforce
-
-    This endpoint fetches student participation data from Salesforce and
-    creates EventStudentParticipation records in the local database.
-
-    Returns:
-        JSON response with sync results and statistics
-    """
-    try:
-        started_at = datetime.now(timezone.utc)
-        print("Fetching student participation data from Salesforce...")
-        success_count = 0
-        error_count = 0
-        errors = []
-
-        # Connect to Salesforce
-        sf = Salesforce(
-            username=Config.SF_USERNAME,
-            password=Config.SF_PASSWORD,
-            security_token=Config.SF_SECURITY_TOKEN,
-            domain="login",
-        )
-
-        # Query for Student participants
-        participants_query = """
-        SELECT
-            Id,
-            Name,
-            Contact__c,
-            Session__c,
-            Status__c,
-            Delivery_Hours__c,
-            Age_Group__c,
-            Email__c,
-            Title__c
-        FROM Session_Participant__c
-        WHERE Participant_Type__c = 'Student'
-        ORDER BY Session__c, Name
-        """
-
-        # Execute participants query
-        participants_result = sf.query_all(participants_query)
-        participant_rows = participants_result.get("records", [])
-
-        print(
-            f"Found {len(participant_rows)} student participation records in Salesforce."
-        )
-
-        # Process participants
-        for row in participant_rows:
-            success_count, error_count = process_student_participation_row(
-                row, success_count, error_count, errors
-            )
-
-        # Commit changes (will only commit if association logic is added and adds to session)
-        db.session.commit()
-
-        # Print summary and errors
-        print(
-            f"\nSuccessfully processed {success_count} student participations with {error_count} total errors"
-        )
-        if errors:
-            print("\nErrors encountered:")
-            for error in errors[:10]:  # Only print first 10 errors
-                print(f"- {error}")
-            if len(errors) > 10:
-                print(f"... and {len(errors) - 10} more errors")
-
-        # Record sync log
-        try:
-            sync_status = SyncStatus.SUCCESS.value
-            if error_count > 0:
-                if success_count > 0:
-                    sync_status = SyncStatus.PARTIAL.value
-                else:
-                    sync_status = SyncStatus.FAILED.value
-
-            sync_log = SyncLog(
-                sync_type="student_participants",
-                started_at=started_at,
-                completed_at=datetime.now(timezone.utc),
-                status=sync_status,
-                records_processed=success_count,
-                records_failed=error_count,
-                error_details=json.dumps(errors[:100]) if errors else None,
-            )
-            db.session.add(sync_log)
-            db.session.commit()
-        except Exception as e:
-            print(f"Warning: Failed to record sync log: {e}")
-
-        return jsonify(
-            {
-                "success": True,
-                "message": f"Processed {success_count} student participations with {error_count} errors.",
-                "processed_count": success_count,
-                "error_count": error_count,
-                "successCount": success_count,
-                "errorCount": error_count,
-                "errors": errors,
-            }
-        )
-
-    except SalesforceAuthenticationFailed:
-        print("Error: Failed to authenticate with Salesforce")
-        # Record failure log
-        try:
-            sync_log = SyncLog(
-                sync_type="student_participants",
-                started_at=(
-                    started_at
-                    if "started_at" in locals()
-                    else datetime.now(timezone.utc)
-                ),
-                completed_at=datetime.now(timezone.utc),
-                status=SyncStatus.FAILED.value,
-                error_message="Failed to authenticate with Salesforce",
-            )
-            db.session.add(sync_log)
-            db.session.commit()
-        except Exception as log_e:
-            print(f"Warning: Failed to record error sync log: {log_e}")
-
-        return (
-            jsonify(
-                {"success": False, "message": "Failed to authenticate with Salesforce"}
-            ),
-            401,
-        )
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error in sync_student_participants: {str(e)}")
-        # Record failure log
-        try:
-            sync_log = SyncLog(
-                sync_type="student_participants",
-                started_at=(
-                    started_at
-                    if "started_at" in locals()
-                    else datetime.now(timezone.utc)
-                ),
-                completed_at=datetime.now(timezone.utc),
-                status=SyncStatus.FAILED.value,
-                error_message=str(e),
-            )
-            db.session.add(sync_log)
-            db.session.commit()
-        except Exception as log_e:
-            print(f"Warning: Failed to record failure sync log: {log_e}")
-
         return jsonify({"success": False, "error": str(e)}), 500
 
 

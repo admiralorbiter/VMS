@@ -43,9 +43,7 @@ Usage Examples:
     ).all()
 """
 
-from datetime import datetime, timezone
-
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -108,6 +106,11 @@ class TeacherProgress(db.Model):
     # [NEW] Multi-tenant support (District Suite)
     tenant_id = Column(Integer, ForeignKey("tenant.id"), nullable=True, index=True)
     tenant = relationship("Tenant", backref="teacher_progress_entries")
+
+    # [NEW] Pathful integration (US-304, US-306)
+    pathful_user_id = Column(
+        String(100), nullable=True, index=True
+    )  # User Auth Id from Pathful exports
 
     def __init__(
         self,

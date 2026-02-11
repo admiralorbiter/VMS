@@ -97,40 +97,22 @@ Teacher Name Processing:
 - Status tracking per teacher
 """
 
-import csv
-import hashlib
-import os
-import re
-import traceback
 from datetime import datetime, timedelta, timezone
-from io import StringIO
-from os import getenv
-from urllib.parse import parse_qs, urlparse
 
 import pandas as pd
 import requests
 from flask import Blueprint, current_app, jsonify, render_template, request
 from flask_login import login_required
-from requests.adapters import HTTPAdapter
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload  # Import for potential optimization if needed
 
-from models.contact import Contact, ContactTypeEnum, LocalStatusEnum, RaceEthnicityEnum
-from models.district_model import District
+from models.contact import LocalStatusEnum
 from models.event import Event, EventFormat, EventStatus, EventTeacher, EventType, db
-from models.history import History
-from models.organization import Organization, VolunteerOrganization
-from models.school_model import School
 from models.teacher import Teacher
 from models.volunteer import EventParticipation, Volunteer
-from routes.reports.common import DISTRICT_MAPPING
 from routes.reports.virtual_session import invalidate_virtual_session_caches
 from routes.utils import admin_required
-from routes.virtual.utils import (
-    generate_school_id,
-    get_or_create_district,
-    get_or_create_school,
-)
+from routes.virtual.utils import get_or_create_district, get_or_create_school
 
 virtual_bp = Blueprint("virtual", __name__, url_prefix="/virtual")
 
@@ -144,26 +126,23 @@ except Exception:
     # Non-fatal during certain tooling/import contexts; the server runtime will surface issues.
     pass
 
-# Register District Portal routes under the Virtual blueprint.
-# NOTE: This import is intentionally placed after the blueprint is created to avoid circular imports.
+# Register Legacy Redirects for backward compatibility.
+# Redirects /virtual/<slug> URLs to new /district/<slug>/portal URLs.
+# NOTE: This replaces the old district_portal, magic_link, teacher_dashboard, and issues imports.
 try:
-    from routes.virtual import district_portal
+    from routes.virtual import legacy_redirects  # noqa: F401
 except Exception:
     # Non-fatal during certain tooling/import contexts; the server runtime will surface issues.
     pass
 
-# Register Teacher Dashboard routes under the Virtual blueprint.
+# Register Pathful Import routes under the Virtual blueprint.
 # NOTE: This import is intentionally placed after the blueprint is created to avoid circular imports.
 try:
-    from routes.virtual import teacher_dashboard
-except Exception:
-    # Non-fatal during certain tooling/import contexts; the server runtime will surface issues.
-    pass
+    from routes.virtual.pathful_import import (
+        load_pathful_routes as _load_pathful_routes,
+    )
 
-# Register District Issue Reporting routes under the Virtual blueprint.
-# NOTE: This import is intentionally placed after the blueprint is created to avoid circular imports.
-try:
-    from routes.virtual import issues
+    _load_pathful_routes()
 except Exception:
     # Non-fatal during certain tooling/import contexts; the server runtime will surface issues.
     pass
@@ -180,7 +159,7 @@ def virtual():
     Returns:
         Rendered virtual sessions template
     """
-    return render_template("virtual/virtual.html")
+    return render_template("virtual/index.html")
 
 
 def split_teacher_names(teacher_name):

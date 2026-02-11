@@ -5,27 +5,18 @@
 # - Managing event attendance details
 # - Data purging operations
 
-import os
-from datetime import date, datetime, timedelta
+from datetime import date
 
-import pandas as pd
-from flask import Blueprint, abort, current_app, jsonify, render_template, request
+from flask import Blueprint, jsonify, render_template, request
 from flask_login import current_user, login_required
-from simple_salesforce.api import Salesforce
-from simple_salesforce.exceptions import SalesforceAuthenticationFailed
-from sqlalchemy import func
 
-from config import Config
 from models import db
 from models.attendance import EventAttendanceDetail
-from models.class_model import Class
-from models.contact import Email, GenderEnum, Phone, RaceEthnicityEnum
 from models.event import Event, EventTeacher, EventType
-from models.school_model import School
 from models.student import Student
-from models.teacher import Teacher, TeacherStatus
+from models.teacher import Teacher
 from routes.decorators import global_users_only
-from routes.utils import admin_required, log_audit_action, parse_date
+from routes.utils import admin_required, log_audit_action
 
 # Create Blueprint for attendance routes
 attendance = Blueprint("attendance", __name__)

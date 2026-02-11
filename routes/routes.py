@@ -55,14 +55,24 @@ from routes.client_projects.routes import client_projects_bp
 
 # District Suite Phase 2 - District Event Management
 from routes.district import district_bp
+from routes.district.tenant_teacher_import import teacher_import_bp
+from routes.district.tenant_teacher_usage import teacher_usage_bp
 from routes.email.routes import email_bp
-from routes.events.pathway_events import pathway_events_bp
 from routes.events.routes import events_bp
 from routes.history.routes import history_bp
 from routes.management.cache_management import cache_management_bp
 from routes.management.management import management_bp
 from routes.organizations.routes import organizations_bp
 from routes.reports import report_bp
+from routes.salesforce.event_import import sf_event_import_bp
+from routes.salesforce.history_import import sf_history_import_bp
+from routes.salesforce.organization_import import sf_organization_import_bp
+from routes.salesforce.pathway_import import sf_pathway_import_bp
+from routes.salesforce.routes import sf_dashboard_bp
+from routes.salesforce.school_import import sf_school_import_bp
+from routes.salesforce.student_import import sf_student_import_bp
+from routes.salesforce.teacher_import import sf_teacher_import_bp
+from routes.salesforce.volunteer_import import sf_volunteer_import_bp
 from routes.students.routes import students_bp
 from routes.teachers.routes import teachers_bp
 from routes.tenants import tenant_users_bp, tenants_bp
@@ -96,12 +106,13 @@ def init_routes(app):
         - bug_reports_bp: Bug reporting routes (/bug_reports/*)
         - client_projects_bp: Client project routes (/client_projects/*)
 
-        - pathway_events_bp: Pathway event routes (/pathway_events/*)
+        - pathway_import_bp: Salesforce pathway events import (/pathway-events/*)
         - api_bp: API endpoints (/api/v1/*)
     """
     app.register_blueprint(auth_bp)
     app.register_blueprint(history_bp)
     app.register_blueprint(volunteers_bp)
+    app.register_blueprint(sf_volunteer_import_bp)
     app.register_blueprint(organizations_bp)
     app.register_blueprint(events_bp)
 
@@ -114,11 +125,19 @@ def init_routes(app):
     app.register_blueprint(tenants_bp)
     app.register_blueprint(tenant_users_bp)  # Tenant user management
     app.register_blueprint(district_bp)  # District Suite Phase 2
+    app.register_blueprint(teacher_import_bp)  # Tenant teacher imports
+    app.register_blueprint(teacher_usage_bp)  # Tenant teacher usage dashboard
     app.register_blueprint(bug_reports_bp)
     app.register_blueprint(client_projects_bp)
     app.register_blueprint(email_bp)
-
-    app.register_blueprint(pathway_events_bp)
+    app.register_blueprint(sf_dashboard_bp)  # Salesforce Import Dashboard
+    app.register_blueprint(sf_event_import_bp)  # Salesforce event imports
+    app.register_blueprint(sf_history_import_bp)  # Salesforce history imports
+    app.register_blueprint(sf_organization_import_bp)  # Salesforce organization imports
+    app.register_blueprint(sf_school_import_bp)  # Salesforce school/class imports
+    app.register_blueprint(sf_student_import_bp)  # Salesforce student imports
+    app.register_blueprint(sf_teacher_import_bp)  # Salesforce teacher imports (global)
+    app.register_blueprint(sf_pathway_import_bp)  # Salesforce pathway events import
     app.register_blueprint(teachers_bp)
     app.register_blueprint(students_bp)
     app.register_blueprint(api_bp, url_prefix="/api/v1")
@@ -135,8 +154,13 @@ def init_routes(app):
         from flask import redirect, url_for
         from flask_login import current_user
 
+        from models import TenantRole
+
         # Redirect tenant users to their district dashboard (FR-TENANT-112)
         if current_user.is_authenticated and current_user.tenant_id:
+            # Virtual Admin users default to virtual sessions page
+            if current_user.tenant_role == TenantRole.VIRTUAL_ADMIN:
+                return redirect(url_for("district.virtual_sessions"))
             return redirect(url_for("district.list_events"))
 
         return render_template("index.html")

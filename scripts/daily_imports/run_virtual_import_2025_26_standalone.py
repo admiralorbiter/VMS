@@ -435,9 +435,6 @@ def run_import_logic_direct(df, academic_year):
             clean_time_string,
             extract_session_id,
             find_existing_event,
-            generate_school_id,
-            get_or_create_district,
-            get_or_create_school,
             get_status_priority,
             map_people_of_color,
             parse_datetime,
@@ -450,6 +447,11 @@ def run_import_logic_direct(df, academic_year):
             standardize_organization,
             update_legacy_fields,
             validate_csv_row,
+        )
+        from routes.virtual.utils import (
+            generate_school_id,
+            get_or_create_district,
+            get_or_create_school,
         )
 
         # First pass: Calculate session datetimes

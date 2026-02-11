@@ -1,0 +1,1062 @@
+{% extends "base.html" %}
+
+{% block title %}{{ district_name }} - Teacher Usage Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/virtual_usage.css') }}">
+<style>
+    .teacher-usage-container {
+        max-width: 98vw;
+        margin: 0 auto;
+        padding: 8px 8px 20px 8px;
+    }
+
+    .district-header {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .back-link {
+        color: white;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 15px;
+        font-weight: 500;
+    }
+
+    .back-link:hover {
+        color: #f0f0f0;
+        text-decoration: underline;
+    }
+
+    .district-title {
+        margin: 0 0 10px 0;
+        font-size: 2.5em;
+        font-weight: 700;
+    }
+
+    .district-subtitle {
+        margin: 0;
+        opacity: 0.9;
+        font-size: 1.1em;
+    }
+
+    .filters-section {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+    }
+
+    .filters-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        align-items: end;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .filter-group label {
+        font-weight: 600;
+        color: #333;
+        font-size: 0.9em;
+    }
+
+    .filter-group select {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .filter-btn {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        background: #28a745;
+        color: white;
+    }
+
+    .filter-btn:hover {
+        background: #218838;
+    }
+
+    .reset-btn {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        background: #dc3545;
+        color: white;
+        text-decoration: none;
+    }
+
+    .reset-btn:hover {
+        background: #c82333;
+        color: white;
+    }
+
+    .export-btn {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        background: #28a745;
+        color: white;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .export-btn:hover {
+        background: #218838;
+        color: white;
+    }
+
+    /* Summary Stats */
+    .summary-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+
+    .stat-card.schools {
+        border-left: 4px solid #28a745;
+    }
+
+    .stat-card.teachers {
+        border-left: 4px solid #007bff;
+    }
+
+    .stat-card.achieved {
+        border-left: 4px solid #28a745;
+    }
+
+    .stat-card.in-progress {
+        border-left: 4px solid #ffd700;
+    }
+
+    .stat-card.not-started {
+        border-left: 4px solid #dc3545;
+    }
+
+    .stat-value {
+        display: block;
+        font-size: 2.5em;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+
+    .stat-value.green {
+        color: #28a745;
+    }
+
+    .stat-value.blue {
+        color: #007bff;
+    }
+
+    .stat-value.yellow {
+        color: #ffd700;
+    }
+
+    .stat-value.red {
+        color: #dc3545;
+    }
+
+    .stat-percentage {
+        display: block;
+        font-size: 1.1em;
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+
+    .stat-label {
+        color: #666;
+        font-weight: 600;
+        font-size: 0.9em;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* School Cards */
+    .school-overview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .school-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border-left: 4px solid #28a745;
+    }
+
+    .school-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .school-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .school-card-title {
+        margin: 0;
+        font-size: 1.2em;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .school-card-stats .stat-number {
+        display: block;
+        font-size: 1.5em;
+        font-weight: 700;
+        color: #28a745;
+    }
+
+    .school-card-stats .stat-label {
+        font-size: 0.75em;
+    }
+
+    .progress-summary {
+        margin-bottom: 15px;
+    }
+
+    .progress-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .progress-bar-mini {
+        width: 60px;
+        height: 6px;
+        background: #e9ecef;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-right: 10px;
+    }
+
+    .progress-fill {
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+
+    .progress-fill.achieved {
+        background: #28a745;
+    }
+
+    .progress-fill.in-progress {
+        background: #ffd700;
+    }
+
+    .progress-fill.not-started {
+        background: #dc3545;
+    }
+
+    .progress-info {
+        flex: 1;
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85em;
+    }
+
+    .progress-percentage {
+        font-weight: 600;
+        color: #333;
+    }
+
+    .progress-label {
+        color: #28a745;
+    }
+
+    .progress-label.yellow {
+        color: #b8860b;
+    }
+
+    .progress-label.red {
+        color: #dc3545;
+    }
+
+    .school-card-footer {
+        text-align: center;
+        color: #28a745;
+        font-size: 0.85em;
+    }
+
+    /* School Detail View */
+    .school-detail {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    .school-detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .school-detail-header h2 {
+        margin: 0;
+        font-size: 1.3em;
+    }
+
+    .close-detail {
+        background: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        cursor: pointer;
+        font-size: 1.2em;
+    }
+
+    .teacher-list {
+        padding: 20px;
+    }
+
+    .teacher-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .teacher-item:last-child {
+        border-bottom: none;
+    }
+
+    .teacher-info .teacher-name {
+        font-weight: 600;
+        color: #007bff;
+        margin-bottom: 3px;
+    }
+
+    .teacher-grade {
+        background: #e9ecef;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.8em;
+        margin-left: 8px;
+    }
+
+    .teacher-email {
+        font-size: 0.85em;
+        color: #666;
+    }
+
+    .teacher-progress {
+        text-align: right;
+    }
+
+    .progress-indicator {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 5px;
+    }
+
+    .progress-bar {
+        width: 80px;
+        height: 8px;
+        background: #e9ecef;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .progress-text {
+        font-size: 0.9em;
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .goal-status {
+        font-size: 0.8em;
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 4px;
+        display: inline-block;
+    }
+
+    .goal-status.achieved {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .goal-status.in_progress {
+        background: #ffd700;
+        color: #8b4513;
+    }
+
+    .goal-status.not_started {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .no-data {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+        font-size: 1.1em;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .no-data a {
+        color: #28a745;
+        font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+        .filters-form {
+            flex-direction: column;
+        }
+
+        .school-overview-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .teacher-item {
+            flex-direction: column;
+            gap: 10px;
+            text-align: center;
+        }
+
+        .teacher-progress {
+            text-align: center;
+        }
+    }
+
+    /* Data Flag Styles */
+    .flag-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 2px 6px;
+        font-size: 0.9em;
+        transition: all 0.2s ease;
+        border-radius: 4px;
+    }
+
+    .flag-btn:hover {
+        background: rgba(0, 0, 0, 0.05);
+    }
+
+    .flag-btn.flagged {
+        color: #dc3545;
+    }
+
+    .flag-btn.unflagged {
+        color: #adb5bd;
+    }
+
+    .flag-btn.unflagged:hover {
+        color: #6c757d;
+    }
+
+    .flag-badge {
+        background: #dc3545;
+        color: white;
+        border-radius: 50%;
+        font-size: 0.65em;
+        padding: 1px 5px;
+        margin-left: 2px;
+        vertical-align: super;
+    }
+
+    /* Flag Modal */
+    .flag-modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 2000;
+        display: none;
+    }
+
+    .flag-modal-backdrop.show {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .flag-modal {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
+        width: 90%;
+        max-width: 480px;
+        overflow: hidden;
+    }
+
+    .flag-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 18px 24px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .flag-modal-header h3 {
+        margin: 0;
+        font-size: 1.1em;
+        color: #333;
+    }
+
+    .flag-modal-close {
+        background: none;
+        border: none;
+        font-size: 1.4em;
+        cursor: pointer;
+        color: #666;
+        padding: 0 4px;
+    }
+
+    .flag-modal-body {
+        padding: 24px;
+    }
+
+    .flag-modal-body label {
+        font-weight: 600;
+        display: block;
+        margin-bottom: 6px;
+        color: #333;
+        font-size: 0.9em;
+    }
+
+    .flag-modal-body select,
+    .flag-modal-body input,
+    .flag-modal-body textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        font-size: 14px;
+        margin-bottom: 16px;
+        box-sizing: border-box;
+    }
+
+    .flag-modal-body textarea {
+        min-height: 80px;
+        resize: vertical;
+    }
+
+    .flag-modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        padding: 16px 24px;
+        border-top: 1px solid #dee2e6;
+        background: #f8f9fa;
+    }
+
+    .flag-submit-btn {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .flag-submit-btn:hover {
+        background: #c82333;
+    }
+
+    .flag-cancel-btn {
+        background: #6c757d;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .flag-cancel-btn:hover {
+        background: #5a6268;
+    }
+
+    .existing-flags {
+        margin-bottom: 16px;
+        padding: 12px;
+        background: #fff3cd;
+        border-radius: 6px;
+        border: 1px solid #ffc107;
+    }
+
+    .existing-flags h4 {
+        margin: 0 0 8px 0;
+        font-size: 0.9em;
+        color: #856404;
+    }
+
+    .existing-flag-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 0;
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+        font-size: 0.85em;
+    }
+
+    .existing-flag-item:last-child {
+        border-bottom: none;
+    }
+
+    .resolve-flag-btn {
+        background: #28a745;
+        color: white;
+        border: none;
+        padding: 3px 10px;
+        border-radius: 4px;
+        font-size: 0.8em;
+        cursor: pointer;
+    }
+
+    .resolve-flag-btn:hover {
+        background: #218838;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="teacher-usage-container">
+    <div class="district-header">
+        <a href="{{ url_for('district.virtual_sessions') }}" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Virtual Sessions
+        </a>
+        <h1 class="district-title">{{ district_name }}</h1>
+        <p class="district-subtitle">Teacher Usage Dashboard - {{ academic_year }} - {{ 'Fall' if semester == 'fall'
+            else 'Spring' }} Semester</p>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-section">
+        <form class="filters-form" method="GET">
+            <div class="filter-group">
+                <label for="year">Academic Year:</label>
+                <select id="year" name="year">
+                    {% for year in year_options %}
+                    <option value="{{ year }}" {% if year==academic_year %}selected{% endif %}>
+                        {{ year }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="semester">Semester:</label>
+                <select id="semester" name="semester">
+                    <option value="fall" {% if semester=='fall' %}selected{% endif %}>Fall (Aug-Dec)</option>
+                    <option value="spring" {% if semester=='spring' %}selected{% endif %}>Spring (Jan-Jul)</option>
+                </select>
+            </div>
+            <button type="submit" class="filter-btn">Apply</button>
+            <a href="{{ url_for('teacher_usage.index') }}" class="reset-btn">Reset</a>
+            {% if teacher_progress_data %}
+            <a href="{{ url_for('teacher_usage.export_excel', year=academic_year, semester=semester) }}"
+                class="export-btn">
+                <i class="fas fa-file-excel"></i> Export to Excel
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    {% if teacher_progress_data %}
+    <!-- Summary Stats -->
+    {% set total_teachers = teacher_progress_data.values() | map(attribute='total_teachers') | sum %}
+    {% set total_achieved = teacher_progress_data.values() | map(attribute='goals_achieved') | sum %}
+    {% set total_in_progress = teacher_progress_data.values() | map(attribute='goals_in_progress') | sum %}
+    {% set total_not_started = teacher_progress_data.values() | map(attribute='goals_not_started') | sum %}
+
+    <div class="summary-stats">
+        <div class="stat-card schools">
+            <span class="stat-value green">{{ teacher_progress_data|length }}</span>
+            <span class="stat-label">Schools</span>
+        </div>
+        <div class="stat-card teachers">
+            <span class="stat-value blue">{{ total_teachers }}</span>
+            <span class="stat-label">Total Teachers</span>
+        </div>
+        <div class="stat-card achieved">
+            <span class="stat-value green">{{ total_achieved }}</span>
+            <span class="stat-percentage green">
+                {{ "%.1f"|format((total_achieved / total_teachers * 100) if total_teachers > 0 else 0) }}% ({{
+                total_achieved }}/{{ total_teachers }})
+            </span>
+            <span class="stat-label">Goals Achieved</span>
+        </div>
+        <div class="stat-card in-progress">
+            <span class="stat-value yellow">{{ total_in_progress }}</span>
+            <span class="stat-percentage" style="color: #b8860b;">
+                {{ "%.1f"|format((total_in_progress / total_teachers * 100) if total_teachers > 0 else 0) }}% ({{
+                total_in_progress }}/{{ total_teachers }})
+            </span>
+            <span class="stat-label">In Progress</span>
+        </div>
+        <div class="stat-card not-started">
+            <span class="stat-value red">{{ total_not_started }}</span>
+            <span class="stat-percentage red">
+                {{ "%.1f"|format((total_not_started / total_teachers * 100) if total_teachers > 0 else 0) }}% ({{
+                total_not_started }}/{{ total_teachers }})
+            </span>
+            <span class="stat-label">Not Started</span>
+        </div>
+    </div>
+
+    <!-- School Cards -->
+    <div class="school-overview-grid">
+        {% for school_name, school_data in teacher_progress_data.items() %}
+        <div class="school-card" onclick="toggleSchoolDetail('{{ school_name|replace(' ', '_')|replace('.', '_') }}')">
+            <div class="school-card-header">
+                <h3 class="school-card-title">{{ school_name }}</h3>
+                <div class="school-card-stats">
+                    <span class="stat-number">{{ school_data.total_teachers }}</span>
+                    <span class="stat-label">Teachers</span>
+                </div>
+            </div>
+
+            <div class="progress-summary">
+                <div class="progress-item">
+                    <div class="progress-bar-mini">
+                        <div class="progress-fill achieved"
+                            style="width: {{ (school_data.goals_achieved / school_data.total_teachers * 100) if school_data.total_teachers > 0 else 0 }}%">
+                        </div>
+                    </div>
+                    <div class="progress-info">
+                        <span class="progress-percentage">{{ "%.1f"|format((school_data.goals_achieved /
+                            school_data.total_teachers * 100) if school_data.total_teachers > 0 else 0) }}% ({{
+                            school_data.goals_achieved }}/{{ school_data.total_teachers }})</span>
+                        <span class="progress-label">Completed</span>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-bar-mini">
+                        <div class="progress-fill in-progress"
+                            style="width: {{ (school_data.goals_in_progress / school_data.total_teachers * 100) if school_data.total_teachers > 0 else 0 }}%">
+                        </div>
+                    </div>
+                    <div class="progress-info">
+                        <span class="progress-percentage">{{ "%.1f"|format((school_data.goals_in_progress /
+                            school_data.total_teachers * 100) if school_data.total_teachers > 0 else 0) }}% ({{
+                            school_data.goals_in_progress }}/{{ school_data.total_teachers }})</span>
+                        <span class="progress-label yellow">In Progress</span>
+                    </div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-bar-mini">
+                        <div class="progress-fill not-started"
+                            style="width: {{ (school_data.goals_not_started / school_data.total_teachers * 100) if school_data.total_teachers > 0 else 0 }}%">
+                        </div>
+                    </div>
+                    <div class="progress-info">
+                        <span class="progress-percentage">{{ "%.1f"|format((school_data.goals_not_started /
+                            school_data.total_teachers * 100) if school_data.total_teachers > 0 else 0) }}% ({{
+                            school_data.goals_not_started }}/{{ school_data.total_teachers }})</span>
+                        <span class="progress-label red">Not Started</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="school-card-footer">
+                <span class="click-hint">Click to view details</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- School Detail Views (Hidden by default) -->
+    {% for school_name, school_data in teacher_progress_data.items() %}
+    <div id="school-detail-{{ school_name|replace(' ', '_')|replace('.', '_') }}" class="school-detail"
+        style="display: none;">
+        <div class="school-detail-header">
+            <h2>{{ school_name }} - Teacher Details</h2>
+            <button class="close-detail"
+                onclick="toggleSchoolDetail('{{ school_name|replace(' ', '_')|replace('.', '_') }}')">×</button>
+        </div>
+        <div class="teacher-list">
+            {% for teacher in school_data.teachers %}
+            <div class="teacher-item">
+                    <div class="teacher-info">
+                        <div class="teacher-name">
+                            <button class="flag-btn {{ 'flagged' if teacher.has_open_flags else 'unflagged' }}"
+                                onclick="event.stopPropagation(); openFlagModal({{ teacher.id }}, '{{ teacher.name|e }}')"
+                                title="{{ 'Has open flags — click to view/add' if teacher.has_open_flags else 'Flag a data issue' }}">
+                                <i class="fas fa-flag"></i>
+                                {% if teacher.open_flags_count > 0 %}
+                                <span class="flag-badge">{{ teacher.open_flags_count }}</span>
+                                {% endif %}
+                            </button>
+                            {{ teacher.name }}
+                            {% if teacher.grade %}
+                            <span class="teacher-grade">Grade {{ teacher.grade }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="teacher-email">{{ teacher.email }}</div>
+                    </div>
+                <div class="teacher-progress">
+                    <div class="progress-indicator">
+                        <div class="progress-bar">
+                            <div class="progress-fill {{ teacher.goal_status_class }}"
+                                style="width: {{ teacher.progress_percentage }}%"></div>
+                        </div>
+                        <div class="progress-text">{{ teacher.completed_sessions }}/{{ teacher.target_sessions }}</div>
+                    </div>
+                    <div class="goal-status {{ teacher.goal_status_class }}">
+                        {{ teacher.goal_status_text }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+
+    {% else %}
+    <div class="no-data">
+        <h3>No Teachers Imported Yet</h3>
+        <p>Import your teacher roster to start tracking virtual session progress.</p>
+        <a href="{{ url_for('teacher_import.index') }}">
+            <i class="fas fa-upload"></i> Import Teachers
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Data Issue Flag Modal -->
+<div id="flagModalBackdrop" class="flag-modal-backdrop" onclick="if(event.target===this) closeFlagModal()">
+    <div class="flag-modal">
+        <div class="flag-modal-header">
+            <h3><i class="fas fa-flag" style="color:#dc3545;margin-right:8px"></i>Report Data Issue</h3>
+            <button class="flag-modal-close" onclick="closeFlagModal()">&times;</button>
+        </div>
+        <div class="flag-modal-body">
+            <p style="margin:0 0 16px 0;color:#666;font-size:0.9em">
+                Flagging: <strong id="flagTeacherName"></strong>
+            </p>
+            <div id="existingFlagsContainer" style="display:none"></div>
+            <label for="flagType">Issue Type</label>
+            <select id="flagType" onchange="toggleFlagDetails()">
+                <option value="" disabled selected>Select an issue…</option>
+                <option value="missing_session">Missing Session</option>
+                <option value="not_tracked">Shouldn't Be On List</option>
+                <option value="other">Other</option>
+            </select>
+            <div id="flagDetailsSection" style="display:none">
+                <label id="flagDetailsLabel">Details</label>
+                <input type="text" id="flagDetailsInput" placeholder="Session name">
+                <textarea id="flagDetailsTextarea" placeholder="Describe the issue..." style="display:none"></textarea>
+            </div>
+        </div>
+        <div class="flag-modal-footer">
+            <button class="flag-cancel-btn" onclick="closeFlagModal()">Cancel</button>
+            <button class="flag-submit-btn" onclick="submitFlag()">
+                <i class="fas fa-flag"></i> Submit Flag
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentFlagTeacherId = null;
+
+    function toggleSchoolDetail(schoolId) {
+        const detail = document.getElementById('school-detail-' + schoolId);
+        if (detail) {
+            if (detail.style.display === 'none') {
+                document.querySelectorAll('.school-detail').forEach(d => d.style.display = 'none');
+                detail.style.display = 'block';
+                detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                detail.style.display = 'none';
+            }
+        }
+    }
+
+    function openFlagModal(teacherId, teacherName) {
+        currentFlagTeacherId = teacherId;
+        document.getElementById('flagTeacherName').textContent = teacherName;
+        document.getElementById('flagType').value = '';
+        document.getElementById('flagDetailsSection').style.display = 'none';
+        document.getElementById('flagDetailsInput').value = '';
+        document.getElementById('flagDetailsTextarea').value = '';
+        document.getElementById('flagModalBackdrop').classList.add('show');
+
+        // Load existing flags
+        loadExistingFlags(teacherId);
+    }
+
+    function closeFlagModal() {
+        document.getElementById('flagModalBackdrop').classList.remove('show');
+        currentFlagTeacherId = null;
+    }
+
+    function toggleFlagDetails() {
+        const type = document.getElementById('flagType').value;
+        const section = document.getElementById('flagDetailsSection');
+        const input = document.getElementById('flagDetailsInput');
+        const textarea = document.getElementById('flagDetailsTextarea');
+        const label = document.getElementById('flagDetailsLabel');
+
+        if (type === 'missing_session') {
+            section.style.display = 'block';
+            input.style.display = 'block';
+            textarea.style.display = 'none';
+            label.textContent = 'Session Name';
+            input.placeholder = 'e.g. Career Day – March 2026';
+        } else if (type === 'other') {
+            section.style.display = 'block';
+            input.style.display = 'none';
+            textarea.style.display = 'block';
+            label.textContent = 'Describe the Issue';
+        } else {
+            section.style.display = 'none';
+        }
+    }
+
+    async function submitFlag() {
+        const flagType = document.getElementById('flagType').value;
+        if (!flagType) {
+            alert('Please select an issue type.');
+            return;
+        }
+
+        let details = '';
+        if (flagType === 'missing_session') {
+            details = document.getElementById('flagDetailsInput').value.trim();
+        } else if (flagType === 'other') {
+            details = document.getElementById('flagDetailsTextarea').value.trim();
+        }
+
+        try {
+            const resp = await fetch(`/district/teacher-usage/flags/${currentFlagTeacherId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ flag_type: flagType, details: details })
+            });
+
+            if (resp.ok) {
+                // Update the flag icon to red
+                const btns = document.querySelectorAll(`.flag-btn`);
+                btns.forEach(btn => {
+                    const onclick = btn.getAttribute('onclick');
+                    if (onclick && onclick.includes(`(${currentFlagTeacherId},`)) {
+                        btn.classList.remove('unflagged');
+                        btn.classList.add('flagged');
+                        // Add or update badge
+                        let badge = btn.querySelector('.flag-badge');
+                        if (badge) {
+                            badge.textContent = parseInt(badge.textContent) + 1;
+                        } else {
+                            badge = document.createElement('span');
+                            badge.className = 'flag-badge';
+                            badge.textContent = '1';
+                            btn.appendChild(badge);
+                        }
+                    }
+                });
+                closeFlagModal();
+            } else {
+                const data = await resp.json();
+                alert(data.error || 'Failed to create flag.');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Network error.');
+        }
+    }
+
+    async function loadExistingFlags(teacherId) {
+        const container = document.getElementById('existingFlagsContainer');
+        container.style.display = 'none';
+        container.innerHTML = '';
+
+        try {
+            const resp = await fetch(`/district/teacher-usage/flags/${teacherId}`);
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (data.flags.length === 0) return;
+
+            let html = '<div class="existing-flags"><h4><i class="fas fa-exclamation-triangle"></i> Open Flags</h4>';
+            data.flags.forEach(flag => {
+                html += `<div class="existing-flag-item">
+                    <span><strong>${flag.flag_type_display}</strong>${flag.details ? ': ' + flag.details : ''}</span>
+                    <button class="resolve-flag-btn" onclick="resolveFlag(${flag.id}, this)">✓ Resolve</button>
+                </div>`;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+            container.style.display = 'block';
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function resolveFlag(flagId, btn) {
+        try {
+            const resp = await fetch(`/district/teacher-usage/flags/${flagId}/resolve`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notes: '' })
+            });
+            if (resp.ok) {
+                btn.closest('.existing-flag-item').remove();
+                // If no more flags, hide the container
+                const container = document.getElementById('existingFlagsContainer');
+                if (!container.querySelector('.existing-flag-item')) {
+                    container.style.display = 'none';
+                }
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+</script>
+{% endblock %}

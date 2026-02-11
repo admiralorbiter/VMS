@@ -24,14 +24,14 @@ from time import perf_counter
 import pandas as pd
 from flask import Blueprint, current_app, render_template, request, send_file
 from flask_login import login_required
-from sqlalchemy import and_, or_, func
+from sqlalchemy import and_, func
 
 from models import db
 from models.event import Event, EventStatus, EventType
 from models.organization import Organization, VolunteerOrganization
 from models.reports import RecentVolunteersReportCache
 from models.volunteer import EventParticipation, Volunteer
-from routes.reports.common import get_current_school_year, get_school_year_date_range
+from routes.reports.common import get_school_year_date_range
 
 # Local blueprint (registered by parent package)
 recent_volunteers_bp = Blueprint("recent_volunteers", __name__)
@@ -213,58 +213,66 @@ def _query_active_volunteers(
     Eliminates the need for multiple queries and reduces database load.
     """
     # Use a single query with proper joins and aggregation
-    query = db.session.query(
-        Volunteer.id,
-        Volunteer.first_name,
-        Volunteer.last_name,
-        func.count(EventParticipation.id).label('event_count'),
-        func.sum(EventParticipation.delivery_hours).label('total_hours'),
-        func.max(Event.start_date).label('last_event_date'),
-        func.max(Event.type).label('last_event_type'),
-        Organization.name.label('organization_name')
-    ).join(EventParticipation, Volunteer.id == EventParticipation.volunteer_id)\
-    .join(Event, Event.id == EventParticipation.event_id)\
-    .outerjoin(VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id)\
-    .outerjoin(Organization, VolunteerOrganization.organization_id == Organization.id)\
-    .filter(
-        Event.start_date >= start_date,
-        Event.start_date <= end_date,
-        Event.status == EventStatus.COMPLETED,
-        Event.type.in_(selected_types),
-        EventParticipation.status.in_([
-            "Attended", "Completed", "Successfully Completed", "Simulcast"
-        ]),
-        Volunteer.exclude_from_reports == False
+    query = (
+        db.session.query(
+            Volunteer.id,
+            Volunteer.first_name,
+            Volunteer.last_name,
+            func.count(EventParticipation.id).label("event_count"),
+            func.sum(EventParticipation.delivery_hours).label("total_hours"),
+            func.max(Event.start_date).label("last_event_date"),
+            func.max(Event.type).label("last_event_type"),
+            Organization.name.label("organization_name"),
+        )
+        .join(EventParticipation, Volunteer.id == EventParticipation.volunteer_id)
+        .join(Event, Event.id == EventParticipation.event_id)
+        .outerjoin(
+            VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id
+        )
+        .outerjoin(
+            Organization, VolunteerOrganization.organization_id == Organization.id
+        )
+        .filter(
+            Event.start_date >= start_date,
+            Event.start_date <= end_date,
+            Event.status == EventStatus.COMPLETED,
+            Event.type.in_(selected_types),
+            EventParticipation.status.in_(
+                ["Attended", "Completed", "Successfully Completed", "Simulcast"]
+            ),
+            Volunteer.exclude_from_reports == False,
+        )
     )
-    
+
     if title_contains:
         like = f"%{title_contains.strip()}%"
         query = query.filter(Event.title.ilike(like))
-    
+
     query = query.group_by(
-        Volunteer.id, 
-        Volunteer.first_name, 
-        Volunteer.last_name,
-        Organization.name
+        Volunteer.id, Volunteer.first_name, Volunteer.last_name, Organization.name
     ).order_by(func.max(Event.start_date).desc())
-    
+
     results = query.all()
-    
+
     # Convert to the expected format
     volunteers = []
     for row in results:
-        volunteers.append({
-            'id': row.id,
-            'name': f"{row.first_name} {row.last_name}",
-            'email': None,  # We'll get this separately if needed
-            'organization': row.organization_name or 'Independent',
-            'event_count': int(row.event_count or 0),
-            'total_hours': float(row.total_hours or 0.0),
-            'last_event_date': row.last_event_date,
-            'last_event_type': row.last_event_type.value if row.last_event_type else None,
-            'events': []  # We'll populate this if needed for detailed view
-        })
-    
+        volunteers.append(
+            {
+                "id": row.id,
+                "name": f"{row.first_name} {row.last_name}",
+                "email": None,  # We'll get this separately if needed
+                "organization": row.organization_name or "Independent",
+                "event_count": int(row.event_count or 0),
+                "total_hours": float(row.total_hours or 0.0),
+                "last_event_date": row.last_event_date,
+                "last_event_type": (
+                    row.last_event_type.value if row.last_event_type else None
+                ),
+                "events": [],  # We'll populate this if needed for detailed view
+            }
+        )
+
     return volunteers
 
 
@@ -278,57 +286,65 @@ def _query_active_volunteers_all(
     Same as _query_active_volunteers but without filtering by event types.
     """
     # Use a single query with proper joins and aggregation
-    query = db.session.query(
-        Volunteer.id,
-        Volunteer.first_name,
-        Volunteer.last_name,
-        func.count(EventParticipation.id).label('event_count'),
-        func.sum(EventParticipation.delivery_hours).label('total_hours'),
-        func.max(Event.start_date).label('last_event_date'),
-        func.max(Event.type).label('last_event_type'),
-        Organization.name.label('organization_name')
-    ).join(EventParticipation, Volunteer.id == EventParticipation.volunteer_id)\
-    .join(Event, Event.id == EventParticipation.event_id)\
-    .outerjoin(VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id)\
-    .outerjoin(Organization, VolunteerOrganization.organization_id == Organization.id)\
-    .filter(
-        Event.start_date >= start_date,
-        Event.start_date <= end_date,
-        Event.status == EventStatus.COMPLETED,
-        EventParticipation.status.in_([
-            "Attended", "Completed", "Successfully Completed", "Simulcast"
-        ]),
-        Volunteer.exclude_from_reports == False
+    query = (
+        db.session.query(
+            Volunteer.id,
+            Volunteer.first_name,
+            Volunteer.last_name,
+            func.count(EventParticipation.id).label("event_count"),
+            func.sum(EventParticipation.delivery_hours).label("total_hours"),
+            func.max(Event.start_date).label("last_event_date"),
+            func.max(Event.type).label("last_event_type"),
+            Organization.name.label("organization_name"),
+        )
+        .join(EventParticipation, Volunteer.id == EventParticipation.volunteer_id)
+        .join(Event, Event.id == EventParticipation.event_id)
+        .outerjoin(
+            VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id
+        )
+        .outerjoin(
+            Organization, VolunteerOrganization.organization_id == Organization.id
+        )
+        .filter(
+            Event.start_date >= start_date,
+            Event.start_date <= end_date,
+            Event.status == EventStatus.COMPLETED,
+            EventParticipation.status.in_(
+                ["Attended", "Completed", "Successfully Completed", "Simulcast"]
+            ),
+            Volunteer.exclude_from_reports == False,
+        )
     )
-    
+
     if title_contains:
         like = f"%{title_contains.strip()}%"
         query = query.filter(Event.title.ilike(like))
-    
+
     query = query.group_by(
-        Volunteer.id, 
-        Volunteer.first_name, 
-        Volunteer.last_name,
-        Organization.name
+        Volunteer.id, Volunteer.first_name, Volunteer.last_name, Organization.name
     ).order_by(func.max(Event.start_date).desc())
-    
+
     results = query.all()
-    
+
     # Convert to the expected format
     volunteers = []
     for row in results:
-        volunteers.append({
-            'id': row.id,
-            'name': f"{row.first_name} {row.last_name}",
-            'email': None,  # We'll get this separately if needed
-            'organization': row.organization_name or 'Independent',
-            'event_count': int(row.event_count or 0),
-            'total_hours': float(row.total_hours or 0.0),
-            'last_event_date': row.last_event_date,
-            'last_event_type': row.last_event_type.value if row.last_event_type else None,
-            'events': []  # We'll populate this if needed for detailed view
-        })
-    
+        volunteers.append(
+            {
+                "id": row.id,
+                "name": f"{row.first_name} {row.last_name}",
+                "email": None,  # We'll get this separately if needed
+                "organization": row.organization_name or "Independent",
+                "event_count": int(row.event_count or 0),
+                "total_hours": float(row.total_hours or 0.0),
+                "last_event_date": row.last_event_date,
+                "last_event_type": (
+                    row.last_event_type.value if row.last_event_type else None
+                ),
+                "events": [],  # We'll populate this if needed for detailed view
+            }
+        )
+
     return volunteers
 
 
@@ -409,55 +425,67 @@ def _query_first_time_in_range(start_date: datetime, end_date: datetime):
     Eliminates the N+1 query problem by using a single query with proper joins.
     """
     # Single query with proper joins and aggregation
-    query = db.session.query(
-        Volunteer.id,
-        Volunteer.first_name,
-        Volunteer.last_name,
-        Volunteer.first_volunteer_date,
-        func.count(EventParticipation.id).label('total_events'),
-        func.sum(EventParticipation.delivery_hours).label('total_hours'),
-        Organization.name.label('organization_name')
-    ).outerjoin(EventParticipation, Volunteer.id == EventParticipation.volunteer_id)\
-    .outerjoin(Event, and_(
-        EventParticipation.event_id == Event.id,
-        Event.start_date >= start_date,
-        Event.start_date <= end_date,
-        Event.status == EventStatus.COMPLETED,
-        EventParticipation.status.in_([
-            "Attended", "Completed", "Successfully Completed"
-        ])
-    ))\
-    .outerjoin(VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id)\
-    .outerjoin(Organization, VolunteerOrganization.organization_id == Organization.id)\
-    .filter(
-        Volunteer.first_volunteer_date >= start_date,
-        Volunteer.first_volunteer_date <= end_date,
-        Volunteer.exclude_from_reports == False
-    )\
-    .group_by(
-        Volunteer.id,
-        Volunteer.first_name,
-        Volunteer.last_name,
-        Volunteer.first_volunteer_date,
-        Organization.name
-    )\
-    .order_by(Volunteer.first_volunteer_date.desc())
-    
+    query = (
+        db.session.query(
+            Volunteer.id,
+            Volunteer.first_name,
+            Volunteer.last_name,
+            Volunteer.first_volunteer_date,
+            func.count(EventParticipation.id).label("total_events"),
+            func.sum(EventParticipation.delivery_hours).label("total_hours"),
+            Organization.name.label("organization_name"),
+        )
+        .outerjoin(EventParticipation, Volunteer.id == EventParticipation.volunteer_id)
+        .outerjoin(
+            Event,
+            and_(
+                EventParticipation.event_id == Event.id,
+                Event.start_date >= start_date,
+                Event.start_date <= end_date,
+                Event.status == EventStatus.COMPLETED,
+                EventParticipation.status.in_(
+                    ["Attended", "Completed", "Successfully Completed"]
+                ),
+            ),
+        )
+        .outerjoin(
+            VolunteerOrganization, Volunteer.id == VolunteerOrganization.volunteer_id
+        )
+        .outerjoin(
+            Organization, VolunteerOrganization.organization_id == Organization.id
+        )
+        .filter(
+            Volunteer.first_volunteer_date >= start_date,
+            Volunteer.first_volunteer_date <= end_date,
+            Volunteer.exclude_from_reports == False,
+        )
+        .group_by(
+            Volunteer.id,
+            Volunteer.first_name,
+            Volunteer.last_name,
+            Volunteer.first_volunteer_date,
+            Organization.name,
+        )
+        .order_by(Volunteer.first_volunteer_date.desc())
+    )
+
     results = query.all()
-    
+
     # Convert to the expected format
     volunteers = []
     for row in results:
-        volunteers.append({
-            'id': row.id,
-            'name': f"{row.first_name} {row.last_name}",
-            'first_volunteer_date': row.first_volunteer_date,
-            'total_events': int(row.total_events or 0),
-            'total_hours': float(row.total_hours or 0.0),
-            'organization': row.organization_name or 'Independent',
-            'events': []  # We'll populate this if needed for detailed view
-        })
-    
+        volunteers.append(
+            {
+                "id": row.id,
+                "name": f"{row.first_name} {row.last_name}",
+                "first_volunteer_date": row.first_volunteer_date,
+                "total_events": int(row.total_events or 0),
+                "total_hours": float(row.total_hours or 0.0),
+                "organization": row.organization_name or "Independent",
+                "events": [],  # We'll populate this if needed for detailed view
+            }
+        )
+
     return volunteers
 
 

@@ -2,9 +2,9 @@
 
 Validation of system resilience, data integrity logic, and operational workflows.
 
-> [!INFO]
+> [!NOTE]
 > **Coverage**
-> [FR-DATA-901](requirements#fr-data-901) (Duplicates), [FR-DATA-902](requirements#fr-data-902) (Profile Creation), [FR-DATA-903](requirements#fr-data-903) (Sync Dependencies), [FR-OPS-904](requirements#fr-ops-904) (Attendance), [FR-OPS-905](requirements#fr-ops-905) (Purge), [FR-OPS-907](requirements#fr-ops-907) (Auto-Admin)
+> [FR-DATA-901](requirements-data-operations#fr-data-901) (Duplicates), [FR-DATA-902](requirements-data-operations#fr-data-902) (Profile Creation), [FR-DATA-903](requirements-data-operations#fr-data-903) (Sync Dependencies), [FR-OPS-904](requirements-data-operations#fr-ops-904) (Attendance), [FR-OPS-905](requirements-data-operations#fr-ops-905) (Purge), [FR-OPS-907](requirements-data-operations#fr-ops-907) (Auto-Admin)
 
 ---
 
@@ -40,7 +40,7 @@ Validation of system resilience, data integrity logic, and operational workflows
 
 ---
 
-*Last updated: January 2026*
+*Last updated: February 2026*
 *Version: 1.0*
 
 ### In-Person Data Operations

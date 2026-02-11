@@ -4,10 +4,8 @@ ValidationResult model for storing individual validation findings.
 """
 
 import json
-from datetime import datetime
 
 from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text
-from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from models import db

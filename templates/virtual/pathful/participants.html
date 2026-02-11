@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}Pathful Matched Participants{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1><i class="fas fa-users text-primary me-2"></i>Pathful Matched Participants</h1>
+            <p class="text-muted mb-0">Educators and professionals matched from Pathful imports</p>
+        </div>
+        <div>
+            <a href="{{ url_for('virtual.pathful_import') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Back to Import
+            </a>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <a class="nav-link {% if tab == 'educators' %}active{% endif %}"
+                href="{{ url_for('virtual.pathful_participants', tab='educators') }}">
+                <i class="fas fa-chalkboard-teacher me-1"></i>
+                Educators
+                <span class="badge bg-primary ms-1">{{ educator_count }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if tab == 'professionals' %}active{% endif %}"
+                href="{{ url_for('virtual.pathful_participants', tab='professionals') }}">
+                <i class="fas fa-user-tie me-1"></i>
+                Professionals
+                <span class="badge bg-purple ms-1" style="background-color: #9b59b6;">{{ professional_count }}</span>
+            </a>
+        </li>
+    </ul>
+
+    <!-- Participants Table -->
+    <div class="card">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">
+                {% if tab == 'educators' %}
+                <i class="fas fa-chalkboard-teacher me-2"></i>Matched Educators ({{ total_count }})
+                {% else %}
+                <i class="fas fa-user-tie me-2"></i>Matched Professionals ({{ total_count }})
+                {% endif %}
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            {% if tab == 'educators' %}
+                            <th>Teacher</th>
+                            <th>School</th>
+                            {% else %}
+                            <th>Volunteer</th>
+                            <th>Organization</th>
+                            {% endif %}
+                            <th>Pathful User ID</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in participants.items %}
+                        <tr>
+                            <td>{{ p.id }}</td>
+                            {% if tab == 'educators' %}
+                            <td>
+                                {% if p.teacher %}
+                                <a href="{{ url_for('teachers.view_teacher', teacher_id=p.teacher.id) }}">
+                                    {{ p.teacher.name or 'Unknown' }}
+                                </a>
+                                {% else %}
+                                <span class="text-muted">No teacher linked</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if p.school %}
+                                {{ p.school.name | truncate(30) }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            {% else %}
+                            <td>
+                                <a href="{{ url_for('volunteers.view_volunteer', volunteer_id=p.id) }}">
+                                    {{ p.first_name }} {{ p.last_name }}
+                                </a>
+                            </td>
+                            <td>{{ p.company | truncate(30) if p.company else '-' }}</td>
+                            {% endif %}
+                            <td>
+                                <code class="small">{{ p.pathful_user_id }}</code>
+                            </td>
+                            <td>
+                                {% if tab == 'educators' and p.teacher %}
+                                <a href="{{ url_for('teachers.view_teacher', teacher_id=p.teacher.id) }}"
+                                    class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% elif tab == 'professionals' %}
+                                <a href="{{ url_for('volunteers.view_volunteer', volunteer_id=p.id) }}"
+                                    class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
+                                No matched {{ 'educators' if tab == 'educators' else 'professionals' }} found.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        {% if participants.pages > 1 %}
+        <div class="card-footer">
+            <nav aria-label="Participants pagination">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if participants.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="{{ url_for('virtual.pathful_participants', tab=tab, page=participants.prev_num) }}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% for page_num in participants.iter_pages(left_edge=1, right_edge=1, left_current=2,
+                    right_current=2) %}
+                    {% if page_num %}
+                    <li class="page-item {% if page_num == participants.page %}active{% endif %}">
+                        <a class="page-link"
+                            href="{{ url_for('virtual.pathful_participants', tab=tab, page=page_num) }}">
+                            {{ page_num }}
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                    {% endfor %}
+
+                    {% if participants.has_next %}
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="{{ url_for('virtual.pathful_participants', tab=tab, page=participants.next_num) }}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

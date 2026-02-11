@@ -1,0 +1,182 @@
+{#
+Magic Link Request Form Template
+=================================
+
+Form for teachers to request a magic link to access their progress data.
+
+Template Variables:
+- district: Dictionary containing district portal configuration
+- district_slug: The district slug for URL generation
+#}
+
+{% extends "base.html" %}
+
+{% block title %}Request Access - {{ district.display_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/district_portal.css') }}">
+<style>
+    .magic-link-container {
+        max-width: 500px;
+        margin: 3rem auto;
+        padding: 2rem;
+    }
+
+    .magic-link-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .magic-link-header {
+        background: linear-gradient(135deg, var(--delft-blue) 0%, var(--ucla-blue) 100%);
+        padding: 2rem;
+        text-align: center;
+    }
+
+    .magic-link-header h1 {
+        color: white;
+        margin: 0;
+        font-size: 1.75rem;
+    }
+
+    .magic-link-header p {
+        color: rgba(255, 255, 255, 0.8);
+        margin: 0.5rem 0 0;
+    }
+
+    .magic-link-body {
+        padding: 2rem;
+    }
+
+    .magic-link-form .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .magic-link-form label {
+        display: block;
+        font-weight: 600;
+        color: var(--delft-blue);
+        margin-bottom: 0.5rem;
+    }
+
+    .magic-link-form input[type="email"] {
+        width: 100%;
+        padding: 0.875rem 1rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.2s ease;
+    }
+
+    .magic-link-form input[type="email"]:focus {
+        outline: none;
+        border-color: var(--ucla-blue);
+    }
+
+    .magic-link-form .submit-btn {
+        width: 100%;
+        padding: 1rem;
+        background: linear-gradient(135deg, var(--delft-blue) 0%, var(--ucla-blue) 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .magic-link-form .submit-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(45, 90, 135, 0.4);
+    }
+
+    .magic-link-info {
+        background: #f0f9ff;
+        border-left: 4px solid var(--ucla-blue);
+        padding: 1rem;
+        margin-top: 1.5rem;
+        border-radius: 0 8px 8px 0;
+    }
+
+    .magic-link-info p {
+        margin: 0;
+        color: #1e3a5f;
+        font-size: 0.9rem;
+    }
+
+    .magic-link-info i {
+        color: var(--ucla-blue);
+        margin-right: 0.5rem;
+    }
+
+    .back-link {
+        display: block;
+        text-align: center;
+        margin-top: 1.5rem;
+        color: var(--ucla-blue);
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="magic-link-container">
+    <div class="magic-link-card">
+        <div class="magic-link-header">
+            <h1><i class="fas fa-envelope"></i> Request Access</h1>
+            <p>{{ district.display_name }}</p>
+        </div>
+
+        <div class="magic-link-body">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }}"
+                style="margin-bottom: 1rem; padding: 1rem; border-radius: 8px; background: {{ '#fee2e2' if category == 'error' else '#d1fae5' }}; color: {{ '#991b1b' if category == 'error' else '#065f46' }};">
+                {{ message }}
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <p style="color: #6b7280; margin-bottom: 1.5rem;">
+                Enter your school email address to receive a secure link to view your virtual session progress.
+            </p>
+
+            <form method="POST" class="magic-link-form">
+                <div class="form-group">
+                    <label for="email">
+                        <i class="fas fa-envelope"></i> Email Address
+                    </label>
+                    <input type="email" id="email" name="email" placeholder="your.name@school.edu" required
+                        autocomplete="email">
+                </div>
+
+                <button type="submit" class="submit-btn">
+                    <i class="fas fa-paper-plane"></i> Send Me a Link
+                </button>
+            </form>
+
+            <div class="magic-link-info">
+                <p>
+                    <i class="fas fa-info-circle"></i>
+                    We'll send you a secure link that expires in 48 hours.
+                    No password required!
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <a href="{{ url_for('district.portal_landing', slug=district_slug) }}" class="back-link">
+        <i class="fas fa-arrow-left"></i> Back to {{ district.short_name or district_slug|upper }} Portal
+    </a>
+</div>
+{% endblock %}

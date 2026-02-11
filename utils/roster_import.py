@@ -22,18 +22,22 @@ def validate_import_data(df):
     Validate the import dataframe.
 
     Returns:
-        tuple: (validated_data, errors)
+        tuple: (validated_data, errors, warnings)
+        - validated_data: List of valid teacher dictionaries
+        - errors: List of critical errors that prevent import
+        - warnings: List of warnings (like skipped duplicates)
     """
     required_columns = ["Building", "Name", "Email"]
     errors = []
+    warnings = []
 
     # Check needed columns
     missing_cols = [col for col in required_columns if col not in df.columns]
     if missing_cols:
-        return None, [f"Missing required columns: {', '.join(missing_cols)}"]
+        return None, [f"Missing required columns: {', '.join(missing_cols)}"], []
 
     validated_rows = []
-    emails_seen = set()
+    emails_seen = {}  # email -> first row number
 
     for index, row in df.iterrows():
         row_num = index + 2  # 1-indexed + header
@@ -54,11 +58,16 @@ def validate_import_data(df):
             )
             continue
 
-        if email.lower() in emails_seen:
-            errors.append(f"Row {row_num}: Duplicate email address '{email}'")
+        # Handle duplicates as warnings, not errors - skip the duplicate row
+        email_lower = email.lower()
+        if email_lower in emails_seen:
+            first_row = emails_seen[email_lower]
+            warnings.append(
+                f"Row {row_num}: Skipped duplicate email '{email}' (first seen on row {first_row})"
+            )
             continue
 
-        emails_seen.add(email.lower())
+        emails_seen[email_lower] = row_num
 
         validated_rows.append(
             {
@@ -70,7 +79,7 @@ def validate_import_data(df):
             }
         )
 
-    return validated_rows, errors
+    return validated_rows, errors, warnings
 
 
 def import_roster(

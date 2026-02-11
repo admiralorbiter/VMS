@@ -47,7 +47,7 @@ Template Dependencies:
 - bug_reports/list.html: Admin report listing template
 """
 
-from flask import Blueprint, jsonify, render_template, request, url_for
+from flask import Blueprint, jsonify, render_template, request
 from flask_login import current_user, login_required
 
 from models import db

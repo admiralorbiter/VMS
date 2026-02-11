@@ -30,9 +30,9 @@ Security Features:
 import os
 from datetime import datetime, timedelta, timezone
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
-from sqlalchemy import func, or_
+from sqlalchemy import or_
 
 from models import db
 from models.email import (
@@ -46,12 +46,10 @@ from routes.decorators import security_level_required
 from routes.utils import log_audit_action
 from utils.email import (
     create_delivery_attempt,
-    create_email_message,
     get_email_allowlist,
     is_email_delivery_enabled,
     is_production_environment,
     queue_message_for_delivery,
-    run_quality_checks,
 )
 
 email_bp = Blueprint("email", __name__)
@@ -439,9 +437,8 @@ def test_send():
 
     Only works if user's email is in allowlist (non-prod) or delivery is enabled (prod).
     """
-    import os
 
-    from utils.email import EmailQualityError, create_email_message, get_mailjet_client
+    from utils.email import EmailQualityError, create_email_message
 
     # Get template
     template_id = request.form.get("template_id", type=int)

@@ -72,18 +72,11 @@ Usage Examples:
 """
 
 import pandas as pd
-from sqlalchemy import Boolean, Date, Enum, ForeignKey, Integer, String
-from sqlalchemy.orm import relationship, validates
+from sqlalchemy import Boolean, ForeignKey, Integer, String
+from sqlalchemy.orm import validates
 
 from models import db
-from models.contact import (
-    Contact,
-    ContactTypeEnum,
-    Email,
-    GenderEnum,
-    Phone,
-    RaceEthnicityEnum,
-)
+from models.contact import Contact, ContactTypeEnum, Email, GenderEnum, Phone
 
 
 class Student(Contact):
@@ -330,10 +323,10 @@ class Student(Contact):
             tuple: (student_object, is_new_student, error_message)
         """
         try:
-            # Extract required fields
+            # Extract required fields (use (val or "") pattern for null-safety)
             sf_id = sf_data.get("Id")
-            first_name = sf_data.get("FirstName", "").strip()
-            last_name = sf_data.get("LastName", "").strip()
+            first_name = (sf_data.get("FirstName") or "").strip()
+            last_name = (sf_data.get("LastName") or "").strip()
 
             if not sf_id or not first_name or not last_name:
                 return (
@@ -353,27 +346,27 @@ class Student(Contact):
                 db_session.add(student)
                 is_new = True
 
-            # Update student fields
+            # Update student fields (use (val or "") pattern for null-safety)
             student.first_name = first_name
             student.last_name = last_name
-            student.middle_name = sf_data.get("MiddleName", "").strip() or None
+            student.middle_name = (sf_data.get("MiddleName") or "").strip() or None
             student.birthdate = (
                 pd.to_datetime(sf_data["Birthdate"]).date()
                 if sf_data.get("Birthdate")
                 else None
             )
             student.student_id = (
-                str(sf_data.get("Local_Student_ID__c", "")).strip() or None
-            )
+                sf_data.get("Local_Student_ID__c") or ""
+            ).strip() or None
             student.school_id = (
-                str(sf_data.get("npsp__Primary_Affiliation__c", "")).strip() or None
-            )
+                sf_data.get("npsp__Primary_Affiliation__c") or ""
+            ).strip() or None
             student.class_salesforce_id = (
-                str(sf_data.get("Class__c", "")).strip() or None
-            )
+                sf_data.get("Class__c") or ""
+            ).strip() or None
             student.legacy_grade = (
-                str(sf_data.get("Legacy_Grade__c", "")).strip() or None
-            )
+                sf_data.get("Legacy_Grade__c") or ""
+            ).strip() or None
             student.current_grade = (
                 int(sf_data.get("Current_Grade__c", 0))
                 if pd.notna(sf_data.get("Current_Grade__c"))
@@ -383,14 +376,18 @@ class Student(Contact):
             # Handle gender
             gender_value = sf_data.get("Gender__c")
             if gender_value:
-                gender_key = gender_value.lower().replace(" ", "_")
-                try:
-                    student.gender = GenderEnum[gender_key]
-                except KeyError:
-                    # Log invalid gender but don't fail the import
-                    print(
-                        f"Invalid gender value for {first_name} {last_name}: {gender_value}"
-                    )
+                # Map NA to prefer_not_to_say
+                if gender_value.upper() == "NA":
+                    student.gender = GenderEnum.prefer_not_to_say
+                else:
+                    gender_key = gender_value.lower().replace(" ", "_")
+                    try:
+                        student.gender = GenderEnum[gender_key]
+                    except KeyError:
+                        # Log invalid gender but don't fail the import
+                        print(
+                            f"Invalid gender value for {first_name} {last_name}: {gender_value}"
+                        )
 
             # Handle racial/ethnic background
             racial_ethnic = sf_data.get("Racial_Ethnic_Background__c")

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Pathful Import History{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="mb-3">
+                <i class="fas fa-history me-2"></i>Pathful Import History
+            </h1>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('virtual.pathful_import') }}" class="btn btn-primary">
+                    <i class="fas fa-file-import me-1"></i>New Import
+                </a>
+                <a href="{{ url_for('virtual.pathful_unmatched') }}" class="btn btn-outline-warning">
+                    <i class="fas fa-exclamation-triangle me-1"></i>View Unmatched
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">All Imports</h5>
+                </div>
+                <div class="card-body">
+                    {% if imports %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Started</th>
+                                    <th>Completed</th>
+                                    <th>Filename</th>
+                                    <th>Type</th>
+                                    <th>Total Rows</th>
+                                    <th>Processed</th>
+                                    <th>Skipped</th>
+                                    <th>Events Created</th>
+                                    <th>Events Updated</th>
+                                    <th>Teachers Matched</th>
+                                    <th>Volunteers Matched</th>
+                                    <th>Unmatched</th>
+                                    <th>Errors</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for imp in imports %}
+                                <tr>
+                                    <td>{{ imp.id }}</td>
+                                    <td>{{ imp.started_at.strftime('%Y-%m-%d %H:%M') if imp.started_at else 'N/A' }}
+                                    </td>
+                                    <td>
+                                        {% if imp.completed_at %}
+                                        {{ imp.completed_at.strftime('%H:%M:%S') }}
+                                        <span class="badge bg-success ms-1">Done</span>
+                                        {% else %}
+                                        <span class="badge bg-warning">In Progress</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ imp.filename }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ imp.import_type }}</span>
+                                    </td>
+                                    <td>{{ imp.total_rows or 0 }}</td>
+                                    <td>{{ imp.processed_rows or 0 }}</td>
+                                    <td>{{ imp.skipped_rows or 0 }}</td>
+                                    <td>
+                                        {% if imp.created_events > 0 %}
+                                        <span class="text-success fw-bold">+{{ imp.created_events }}</span>
+                                        {% else %}
+                                        <span class="text-muted">0</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if imp.updated_events > 0 %}
+                                        <span class="text-info">{{ imp.updated_events }}</span>
+                                        {% else %}
+                                        <span class="text-muted">0</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ imp.matched_teachers or 0 }}</td>
+                                    <td>{{ imp.matched_volunteers or 0 }}</td>
+                                    <td>
+                                        {% if imp.unmatched_count > 0 %}
+                                        <span class="badge bg-warning">{{ imp.unmatched_count }}</span>
+                                        {% else %}
+                                        <span class="text-muted">0</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if imp.error_count > 0 %}
+                                        <span class="badge bg-danger">{{ imp.error_count }}</span>
+                                        {% else %}
+                                        <span class="text-muted">0</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        No import history found. <a href="{{ url_for('virtual.pathful_import') }}">Start your first
+                            import</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

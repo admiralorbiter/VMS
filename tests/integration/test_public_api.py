@@ -67,26 +67,22 @@ class TestAPIAuthentication:
 
 
 class TestRateLimiting:
-    """Tests for FR-API-104: Rate Limiting."""
+    """Tests for FR-API-104: Rate Limiting (now using Flask-Limiter)."""
 
-    def test_rate_limit_function_exists(self):
-        """TC-970: Rate limit check function exists."""
-        from routes.api.public_events import check_rate_limit
+    def test_rate_limiter_exists(self):
+        """TC-970: Rate limiter is configured."""
+        from utils.rate_limiter import get_api_key_or_ip, limiter
 
-        assert check_rate_limit is not None
-        assert callable(check_rate_limit)
+        assert limiter is not None
+        assert get_api_key_or_ip is not None
+        assert callable(get_api_key_or_ip)
 
-    def test_rate_limit_key_generation(self):
-        """TC-970: Rate limit key is generated correctly."""
-        from routes.api.public_events import get_rate_limit_key
+    def test_rate_limit_import_from_public_events(self):
+        """TC-970: Public events uses centralized rate limiter."""
+        from routes.api.public_events import get_api_key_or_ip, limiter
 
-        key_minute = get_rate_limit_key("test-key", "minute")
-        key_hour = get_rate_limit_key("test-key", "hour")
-        key_day = get_rate_limit_key("test-key", "day")
-
-        assert "test-key:minute:" in key_minute
-        assert "test-key:hour:" in key_hour
-        assert "test-key:day:" in key_day
+        assert limiter is not None
+        assert get_api_key_or_ip is not None
 
     def test_exceeded_limit_error_code(self):
         """TC-971: Exceeded limit should return RATE_LIMIT_EXCEEDED code."""

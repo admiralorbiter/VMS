@@ -1,32 +1,32 @@
 {#
-  Event View Template
-  ==================
+Event View Template
+==================
 
-  This template displays detailed information about a single event with comprehensive
-  participation data and related information.
+This template displays detailed information about a single event with comprehensive
+participation data and related information.
 
-  Key Features:
-  - Comprehensive event information display
-  - Participation statistics and details
-  - Skills and requirements visualization
-  - People involved (volunteers, teachers, students)
-  - Responsive card-based layout
-  - Salesforce integration links
-  - Action buttons for editing and navigation
+Key Features:
+- Comprehensive event information display
+- Participation statistics and details
+- Skills and requirements visualization
+- People involved (volunteers, teachers, students)
+- Responsive card-based layout
+- Salesforce integration links
+- Action buttons for editing and navigation
 
-  Template Variables:
-  - event: Event object with all related data
-  - volunteer_count: Number of volunteers associated with event
-  - participation_stats: Dictionary of volunteer participation by status
-  - event_teachers: List of EventTeacher objects with teacher details
-  - student_participations: List of EventStudentParticipation objects
+Template Variables:
+- event: Event object with all related data
+- volunteer_count: Number of volunteers associated with event
+- participation_stats: Dictionary of volunteer participation by status
+- event_teachers: List of EventTeacher objects with teacher details
+- student_participations: List of EventStudentParticipation objects
 
-  Layout Sections:
-  1. Header: Event title, badges, and action buttons
-  2. Main Content Grid: Event details, participation, people, skills
-  3. Participation Details: Volunteer and student participation breakdown
+Layout Sections:
+1. Header: Event title, badges, and action buttons
+2. Main Content Grid: Event details, participation, people, skills
+3. Participation Details: Volunteer and student participation breakdown
 
-  Security: All links properly escaped and validated
+Security: All links properly escaped and validated
 #}
 
 {% extends "base.html" %}
@@ -46,15 +46,19 @@
             <div class="title-info">
                 <h1 class="event-title">{{ event.title }}</h1>
                 <div class="header-badges-actions">
-                    <span class="event-type-badge {{ event.type|replace('_', '-') }}">{{ event.type|replace('_', ' ')|title }}</span>
+                    <span class="event-type-badge {{ event.type|replace('_', '-') }}">{{ event.type|replace('_', '
+                        ')|title }}</span>
                     <span class="status-badge {{ event.status|lower }}">{{ event.status|title }}</span>
-                    <a href="{{ url_for('report.contact_report_detail', event_id=event.id) }}" class="action-btn contact-btn" title="View emergency contact list">
+                    <a href="{{ url_for('report.contact_report_detail', event_id=event.id) }}"
+                        class="action-btn contact-btn" title="View emergency contact list">
                         <i class="fa-solid fa-address-book"></i> Contact Report
                     </a>
-                    <a href="{{ url_for('report.recruitment_candidates', event_id=event.id) }}" class="action-btn" title="Find volunteer candidates for this event">
+                    <a href="{{ url_for('report.recruitment_candidates', event_id=event.id) }}" class="action-btn"
+                        title="Find volunteer candidates for this event">
                         <i class="fa-solid fa-user-check"></i> Find Candidates
                     </a>
-                    <a href="{{ url_for('events.export_event_excel', id=event.id) }}" class="action-btn export-btn" title="Export event data">
+                    <a href="{{ url_for('events.export_event_excel', id=event.id) }}" class="action-btn export-btn"
+                        title="Export event data">
                         <i class="fa-solid fa-download"></i> Export
                     </a>
                 </div>
@@ -84,7 +88,8 @@
                 <div class="info-main-col">
                     <div class="info-item highlight-bg">
                         <label><i class="fa-solid fa-calendar-plus"></i> Start Date</label>
-                        <p>{{ event.start_date.strftime('%m/%d/%Y at %I:%M %p') if event.start_date else 'Not set' }}</p>
+                        <p>{{ event.start_date.strftime('%m/%d/%Y at %I:%M %p') if event.start_date else 'Not set' }}
+                        </p>
                     </div>
                     <div class="info-item highlight-bg">
                         <label><i class="fa-solid fa-calendar-check"></i> End Date</label>
@@ -113,10 +118,13 @@
                         <p>
                             {{ event.location }}
                             {% if event.has_location %}
-                            <a href="https://www.google.com/maps/search/?api=1&query={{ event.location | urlencode }}" target="_blank" title="Open in Google Maps" class="map-link">
+                            <a href="https://www.google.com/maps/search/?api=1&query={{ event.location | urlencode }}"
+                                target="_blank" title="Open in Google Maps" class="map-link">
                                 <i class="fa-solid fa-map-marker-alt"></i>
                             </a>
-                            <button class="copy-btn" title="Copy address" onclick="navigator.clipboard.writeText('{{ event.location|e }}')"><i class="fa-solid fa-copy"></i></button>
+                            <button class="copy-btn" title="Copy address"
+                                onclick="navigator.clipboard.writeText('{{ event.location|e }}')"><i
+                                    class="fa-solid fa-copy"></i></button>
                             {% endif %}
                         </p>
                     </div>
@@ -128,10 +136,11 @@
                     {% endif %}
                     {% if event.districts %}
                     <div class="info-item">
-                        <label><i class="fa-solid fa-building"></i> District{% if event.districts|length > 1 %}s{% endif %}</label>
+                        <label><i class="fa-solid fa-building"></i> District{% if event.districts|length > 1 %}s{% endif
+                            %}</label>
                         <p>
                             {% for district in event.districts %}
-                                {{ district.name }}{% if not loop.last %}, {% endif %}
+                            {{ district.name }}{% if not loop.last %}, {% endif %}
                             {% endfor %}
                         </p>
                     </div>
@@ -144,10 +153,31 @@
                     {% endif %}
                 </div>
             </div>
+
+            {# Cancellation Info - Shown only for cancelled events (DEC-008) #}
+            {% if event.status.value == 'Cancelled' and event.cancellation_reason %}
+            <div
+                style="background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 12px 16px; margin-top: 15px; display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-ban" style="color: #dc2626;"></i>
+                    <span style="font-weight: 600; color: #991b1b;">{{ event.cancellation_reason.value }}</span>
+                </div>
+                {% if event.cancellation_notes %}
+                <div style="color: #7f1d1d; font-size: 0.9em;">{{ event.cancellation_notes }}</div>
+                {% endif %}
+                {% if event.cancellation_set_at %}
+                <div style="color: #9ca3af; font-size: 0.85em; margin-left: auto;">
+                    {{ event.cancellation_set_at.strftime('%m/%d/%Y') }}
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
         </div>
 
         {# Capacity & Participation Card - Statistics #}
-        <div class="event-card participation-info redesigned-participation-card" onclick="document.getElementById('participation-details').scrollIntoView({behavior: 'smooth'});" title="Click to view detailed participation">
+        <div class="event-card participation-info redesigned-participation-card"
+            onclick="document.getElementById('participation-details').scrollIntoView({behavior: 'smooth'});"
+            title="Click to view detailed participation">
             <div class="card-header">
                 <i class="fa-solid fa-users"></i>
                 <h2>Participation</h2>
@@ -157,24 +187,27 @@
                     <div class="stat-item" title="Number of registered students">
                         <div class="stat-icon"><i class="fa-solid fa-user-graduate"></i></div>
                         <div class="stat-number">{{ estimated_students }}</div>
-                        <div class="stat-label">Students{% if event.format.value == 'virtual' or event.type.value == 'virtual_session' %} (Est.){% endif %}</div>
+                        <div class="stat-label">Students{% if event.format.value == 'virtual' or event.type.value ==
+                            'virtual_session' %} (Est.){% endif %}</div>
                     </div>
                     <div class="stat-item" title="Number of volunteers involved">
                         <div class="stat-icon"><i class="fa-solid fa-hands-helping"></i></div>
                         <div class="stat-number">
-                            {% set total_volunteers = (event.volunteers|length) + (participation_stats.get('Attended', [])|length) + (participation_stats.get('Registered', [])|length) %}
+                            {% set total_volunteers = (event.volunteers|length) +
+                            (participation_stats.get('Attended',
+                            [])|length) + (participation_stats.get('Registered', [])|length) %}
                             {% set unique_volunteer_ids = [] %}
                             {% for volunteer in event.volunteers %}
-                                {% if volunteer.id not in unique_volunteer_ids %}
-                                    {% set _ = unique_volunteer_ids.append(volunteer.id) %}
-                                {% endif %}
+                            {% if volunteer.id not in unique_volunteer_ids %}
+                            {% set _ = unique_volunteer_ids.append(volunteer.id) %}
+                            {% endif %}
                             {% endfor %}
                             {% for status_volunteers in participation_stats.values() %}
-                                {% for participant in status_volunteers %}
-                                    {% if participant.volunteer and participant.volunteer.id not in unique_volunteer_ids %}
-                                        {% set _ = unique_volunteer_ids.append(participant.volunteer.id) %}
-                                    {% endif %}
-                                {% endfor %}
+                            {% for participant in status_volunteers %}
+                            {% if participant.volunteer and participant.volunteer.id not in unique_volunteer_ids %}
+                            {% set _ = unique_volunteer_ids.append(participant.volunteer.id) %}
+                            {% endif %}
+                            {% endfor %}
                             {% endfor %}
                             {{ unique_volunteer_ids|length }}
                         </div>
@@ -187,7 +220,9 @@
                         <span>{{ estimated_students }} / {{ event.available_slots }} Students</span>
                     </div>
                     <div class="progress-bar-outer">
-                        <div class="progress-bar-inner" style="width: {{ (estimated_students / event.available_slots * 100) | round(1) }}%"></div>
+                        <div class="progress-bar-inner"
+                            style="width: {{ (estimated_students / event.available_slots * 100) | round(1) }}%">
+                        </div>
                     </div>
                 </div>
                 {% endif %}
@@ -207,21 +242,65 @@
                     <span class="skill-tag">
                         {# Different icons based on skill category #}
                         {% if skill.name.startswith('Pathway:') %}
-                            <i class="fa-solid fa-road"></i>
+                        <i class="fa-solid fa-road"></i>
                         {% elif skill.name.startswith('Skill:') %}
-                            <i class="fa-solid fa-tools"></i>
+                        <i class="fa-solid fa-tools"></i>
                         {% elif skill.name.startswith('Career/College:') %}
-                            <i class="fa-solid fa-graduation-cap"></i>
+                        <i class="fa-solid fa-graduation-cap"></i>
                         {% elif skill.name.startswith('Core Skill:') %}
-                            <i class="fa-solid fa-cube"></i>
+                        <i class="fa-solid fa-cube"></i>
                         {% elif skill.name.startswith('Activity:') %}
-                            <i class="fa-solid fa-running"></i>
+                        <i class="fa-solid fa-running"></i>
                         {% else %}
-                            <i class="fa-solid fa-check"></i>
+                        <i class="fa-solid fa-check"></i>
                         {% endif %}
                         {{ skill.name }}
                     </span>
                     {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {# Pathful Integration Card - Shown for Pathful-imported events #}
+        {% if event.pathful_session_id %}
+        <div class="event-card pathful-info">
+            <div class="card-header">
+                <i class="fa-solid fa-link"></i>
+                <h2>Pathful Integration</h2>
+            </div>
+            <div class="card-content">
+                <div class="info-grid compact">
+                    <div class="info-item">
+                        <label><i class="fa-solid fa-fingerprint"></i> Session ID</label>
+                        <p>{{ event.pathful_session_id }}</p>
+                    </div>
+                    {% if event.import_source %}
+                    <div class="info-item">
+                        <label><i class="fa-solid fa-database"></i> Import Source</label>
+                        <p>{{ event.import_source|replace('_', ' ')|title }}</p>
+                    </div>
+                    {% endif %}
+                    {% if event.career_cluster %}
+                    <div class="info-item">
+                        <label><i class="fa-solid fa-briefcase"></i> Career Cluster</label>
+                        <p>{{ event.career_cluster }}</p>
+                    </div>
+                    {% endif %}
+                    {% if event.registered_student_count or event.attended_student_count %}
+                    <div class="info-item">
+                        <label><i class="fa-solid fa-users"></i> Student Attendance</label>
+                        <p>
+                            {% if event.attended_student_count %}
+                            <strong>{{ event.attended_student_count }}</strong> attended
+                            {% endif %}
+                            {% if event.registered_student_count %}
+                            {% if event.attended_student_count %} / {% endif %}
+                            {{ event.registered_student_count }} registered
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -263,83 +342,90 @@
             <button class="tab-btn active" id="volunteer-tab-btn" onclick="showTab('volunteer')">Volunteers</button>
             <button class="tab-btn" id="teacher-tab-btn" onclick="showTab('teacher')">Teachers</button>
             <button class="tab-btn" id="student-tab-btn" onclick="showTab('student')">Students</button>
-            <input type="text" id="participation-search" class="participation-search" placeholder="Search by name..." oninput="filterParticipationCards()">
+            <input type="text" id="participation-search" class="participation-search" placeholder="Search by name..."
+                oninput="filterParticipationCards()">
         </div>
 
         {# Volunteer Tab - Combined data from participation_stats and event.volunteers #}
         <div class="tab-content" id="volunteer-tab">
             {% set all_volunteer_ids = [] %}
             {% if participation_stats %}
-                {% for status, participants in participation_stats.items() %}
-                    {% if participants %}
-                    <div class="participation-group">
-                        <h4 class="group-title">
-                            {% if status == 'Attended' %}
-                                <span class="status-badge completed">Attended</span>
-                            {% elif status == 'No Show' %}
-                                <span class="status-badge cancelled">No Show</span>
-                            {% elif status == 'Cancelled' %}
-                                <span class="status-badge requested">Cancelled</span>
-                            {% else %}
-                                <span class="status-badge">{{ status }}</span>
+            {% for status, participants in participation_stats.items() %}
+            {% if participants %}
+            <div class="participation-group">
+                <h4 class="group-title">
+                    {% if status == 'Attended' %}
+                    <span class="status-badge completed">Attended</span>
+                    {% elif status == 'No Show' %}
+                    <span class="status-badge cancelled">No Show</span>
+                    {% elif status == 'Cancelled' %}
+                    <span class="status-badge requested">Cancelled</span>
+                    {% else %}
+                    <span class="status-badge">{{ status }}</span>
+                    {% endif %}
+                    ({{ participants|length }})
+                </h4>
+                <div class="participants-grid">
+                    {% for participation in participants %}
+                    {% if participation.volunteer %}
+                    {% set _ = all_volunteer_ids.append(participation.volunteer.id) %}
+                    <div class="participant-card volunteer-card"
+                        data-name="{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}">
+                        <div class="participant-info">
+                            <span class="participant-name">{{ participation.volunteer.first_name }} {{
+                                participation.volunteer.last_name }}</span>
+                            {% if participation.delivery_hours %}
+                            <span class="delivery-hours">{{ participation.delivery_hours }} hrs</span>
                             {% endif %}
-                            ({{ participants|length }})
-                        </h4>
-                        <div class="participants-grid">
-                            {% for participation in participants %}
-                            {% if participation.volunteer %}
-                                {% set _ = all_volunteer_ids.append(participation.volunteer.id) %}
-                                <div class="participant-card volunteer-card" data-name="{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}">
-                                    <div class="participant-info">
-                                        <span class="participant-name">{{ participation.volunteer.first_name }} {{ participation.volunteer.last_name }}</span>
-                                        {% if participation.delivery_hours %}
-                                        <span class="delivery-hours">{{ participation.delivery_hours }} hrs</span>
-                                        {% endif %}
-                                    </div>
-                                    <a href="{{ url_for('volunteers.view_volunteer', id=participation.volunteer.id) }}" class="view-btn" title="View volunteer details">
-                                        <i class="fa-solid fa-eye"></i>
-                                    </a>
-                                </div>
-                            {% endif %}
-                            {% endfor %}
                         </div>
+                        <a href="{{ url_for('volunteers.view_volunteer', id=participation.volunteer.id) }}"
+                            class="view-btn" title="View volunteer details">
+                            <i class="fa-solid fa-eye"></i>
+                        </a>
                     </div>
                     {% endif %}
-                {% endfor %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
             {% endif %}
 
             {# Add volunteers from event.volunteers that aren't in participation_stats #}
             {% if event.volunteers %}
-                {% set untracked_volunteers = [] %}
-                {% for volunteer in event.volunteers %}
-                    {% if volunteer.id not in all_volunteer_ids %}
-                        {% set _ = untracked_volunteers.append(volunteer) %}
-                    {% endif %}
-                {% endfor %}
+            {% set untracked_volunteers = [] %}
+            {% for volunteer in event.volunteers %}
+            {% if volunteer.id not in all_volunteer_ids %}
+            {% set _ = untracked_volunteers.append(volunteer) %}
+            {% endif %}
+            {% endfor %}
 
-                {% if untracked_volunteers %}
-                <div class="participation-group">
-                    <h4 class="group-title">
-                        <span class="status-badge">Assigned</span>
-                        ({{ untracked_volunteers|length }})
-                    </h4>
-                    <div class="participants-grid">
-                        {% for volunteer in untracked_volunteers %}
-                        <div class="participant-card volunteer-card" data-name="{{ volunteer.first_name }} {{ volunteer.last_name }}">
-                            <div class="participant-info">
-                                <span class="participant-name">{{ volunteer.first_name }} {{ volunteer.last_name }}</span>
-                                {% if volunteer.organizations %}
-                                    <span class="org-name">({{ volunteer.organizations[0].name }})</span>
-                                {% endif %}
-                            </div>
-                            <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.id) }}" class="view-btn" title="View volunteer details">
-                                <i class="fa-solid fa-eye"></i>
-                            </a>
+            {% if untracked_volunteers %}
+            <div class="participation-group">
+                <h4 class="group-title">
+                    <span class="status-badge">Assigned</span>
+                    ({{ untracked_volunteers|length }})
+                </h4>
+                <div class="participants-grid">
+                    {% for volunteer in untracked_volunteers %}
+                    <div class="participant-card volunteer-card"
+                        data-name="{{ volunteer.first_name }} {{ volunteer.last_name }}">
+                        <div class="participant-info">
+                            <span class="participant-name">{{ volunteer.first_name }} {{ volunteer.last_name
+                                }}</span>
+                            {% if volunteer.organizations %}
+                            <span class="org-name">({{ volunteer.organizations[0].name }})</span>
+                            {% endif %}
                         </div>
-                        {% endfor %}
+                        <a href="{{ url_for('volunteers.view_volunteer', id=volunteer.id) }}" class="view-btn"
+                            title="View volunteer details">
+                            <i class="fa-solid fa-eye"></i>
+                        </a>
                     </div>
+                    {% endfor %}
                 </div>
-                {% endif %}
+            </div>
+            {% endif %}
             {% endif %}
 
             {# Add text-based educators for virtual events #}
@@ -379,34 +465,40 @@
                 </h4>
                 <div class="participants-grid">
                     {% for event_teacher in event_teachers %}
-                    <div class="participant-card teacher-card" data-name="{{ event_teacher.teacher.first_name }} {{ event_teacher.teacher.last_name }}">
+                    <div class="participant-card teacher-card"
+                        data-name="{{ event_teacher.teacher.first_name }} {{ event_teacher.teacher.last_name }}">
                         <div class="participant-info">
                             <span class="participant-name">
                                 {{ event_teacher.teacher.first_name }} {{ event_teacher.teacher.last_name }}
                             </span>
                             <span class="teacher-status {{ event_teacher.status|lower }}">
                                 {% if event_teacher.is_simulcast %}
-                                    <i class="fa-solid fa-video"></i> Simulcast
+                                <i class="fa-solid fa-video"></i> Simulcast
                                 {% else %}
-                                    {{ event_teacher.status|title }}
+                                {{ event_teacher.status|title }}
                                 {% endif %}
                             </span>
                             {% if event_teacher.teacher.exclude_from_reports %}
-                                <span class="exclude-badge">Excluded from Reports</span>
+                            <span class="exclude-badge">Excluded from Reports</span>
                             {% endif %}
                         </div>
                         <div class="participant-actions">
-                            <a href="{{ url_for('attendance.view_details', type='teacher', id=event_teacher.teacher.id) }}" class="view-btn" title="View teacher details">
+                            <a href="{{ url_for('attendance.view_details', type='teacher', id=event_teacher.teacher.id) }}"
+                                class="view-btn" title="View teacher details">
                                 <i class="fa-solid fa-eye"></i>
                             </a>
                             {% if event_teacher.teacher.exclude_from_reports %}
-                                <button class="exclude-btn include-btn" onclick="toggleTeacherExclude({{ event_teacher.teacher.id }}, false)" title="Include in reports">
-                                    <i class="fa-solid fa-eye"></i>
-                                </button>
+                            <button class="exclude-btn include-btn"
+                                onclick="toggleTeacherExclude({{ event_teacher.teacher.id }}, false)"
+                                title="Include in reports">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
                             {% else %}
-                                <button class="exclude-btn" onclick="toggleTeacherExclude({{ event_teacher.teacher.id }}, true)" title="Exclude from reports">
-                                    <i class="fa-solid fa-eye-slash"></i>
-                                </button>
+                            <button class="exclude-btn"
+                                onclick="toggleTeacherExclude({{ event_teacher.teacher.id }}, true)"
+                                title="Exclude from reports">
+                                <i class="fa-solid fa-eye-slash"></i>
+                            </button>
                             {% endif %}
                         </div>
                     </div>
@@ -424,11 +516,14 @@
             <div class="participants-grid">
                 {% for participation in student_participations %}
                 {% if participation.student %}
-                <div class="participant-card student-card" data-name="{{ participation.student.first_name }} {{ participation.student.last_name }}">
+                <div class="participant-card student-card"
+                    data-name="{{ participation.student.first_name }} {{ participation.student.last_name }}">
                     <div class="participant-info">
-                        <span class="participant-name">{{ participation.student.first_name }} {{ participation.student.last_name }}</span>
+                        <span class="participant-name">{{ participation.student.first_name }} {{
+                            participation.student.last_name }}</span>
                         {% if participation.status %}
-                        <span class="participation-status {{ participation.status|lower|replace(' ', '-') }}">{{ participation.status }}</span>
+                        <span class="participation-status {{ participation.status|lower|replace(' ', '-') }}">{{
+                            participation.status }}</span>
                         {% endif %}
                     </div>
                 </div>
@@ -446,75 +541,75 @@
 {% block extra_js %}
 {{ super() }}
 <script>
-function toggleCollapse(sectionId) {
-    const content = document.getElementById(sectionId);
-    const toggle = document.getElementById(sectionId + '-toggle');
-    if (content.style.display === 'none') {
-        content.style.display = '';
-        if (toggle) toggle.textContent = '▼';
-    } else {
-        content.style.display = 'none';
-        if (toggle) toggle.textContent = '▲';
-    }
-}
-
-// Optionally collapse long sections by default
-window.addEventListener('DOMContentLoaded', function() {
-    ['desc-section', 'addl-section'].forEach(function(id) {
-        const content = document.getElementById(id);
-        if (content && content.textContent.length > 600) {
+    function toggleCollapse(sectionId) {
+        const content = document.getElementById(sectionId);
+        const toggle = document.getElementById(sectionId + '-toggle');
+        if (content.style.display === 'none') {
+            content.style.display = '';
+            if (toggle) toggle.textContent = '▼';
+        } else {
             content.style.display = 'none';
-            const toggle = document.getElementById(id + '-toggle');
             if (toggle) toggle.textContent = '▲';
         }
-    });
-});
+    }
 
-function showTab(tab) {
-    document.getElementById('volunteer-tab').style.display = (tab === 'volunteer') ? '' : 'none';
-    document.getElementById('teacher-tab').style.display = (tab === 'teacher') ? '' : 'none';
-    document.getElementById('student-tab').style.display = (tab === 'student') ? '' : 'none';
-    document.getElementById('volunteer-tab-btn').classList.toggle('active', tab === 'volunteer');
-    document.getElementById('teacher-tab-btn').classList.toggle('active', tab === 'teacher');
-    document.getElementById('student-tab-btn').classList.toggle('active', tab === 'student');
-    filterParticipationCards();
-}
-
-function filterParticipationCards() {
-    const search = document.getElementById('participation-search').value.toLowerCase();
-    ['volunteer-tab', 'teacher-tab', 'student-tab'].forEach(function(tabId) {
-        const tab = document.getElementById(tabId);
-        if (!tab) return;
-        tab.querySelectorAll('.participant-card').forEach(function(card) {
-            const name = card.getAttribute('data-name').toLowerCase();
-            card.style.display = name.includes(search) ? '' : 'none';
+    // Optionally collapse long sections by default
+    window.addEventListener('DOMContentLoaded', function () {
+        ['desc-section', 'addl-section'].forEach(function (id) {
+            const content = document.getElementById(id);
+            if (content && content.textContent.length > 600) {
+                content.style.display = 'none';
+                const toggle = document.getElementById(id + '-toggle');
+                if (toggle) toggle.textContent = '▲';
+            }
         });
     });
-}
 
-function toggleTeacherExclude(teacherId, exclude) {
-    fetch(`/attendance/toggle-teacher-exclude-reports/${teacherId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            exclude_from_reports: exclude
+    function showTab(tab) {
+        document.getElementById('volunteer-tab').style.display = (tab === 'volunteer') ? '' : 'none';
+        document.getElementById('teacher-tab').style.display = (tab === 'teacher') ? '' : 'none';
+        document.getElementById('student-tab').style.display = (tab === 'student') ? '' : 'none';
+        document.getElementById('volunteer-tab-btn').classList.toggle('active', tab === 'volunteer');
+        document.getElementById('teacher-tab-btn').classList.toggle('active', tab === 'teacher');
+        document.getElementById('student-tab-btn').classList.toggle('active', tab === 'student');
+        filterParticipationCards();
+    }
+
+    function filterParticipationCards() {
+        const search = document.getElementById('participation-search').value.toLowerCase();
+        ['volunteer-tab', 'teacher-tab', 'student-tab'].forEach(function (tabId) {
+            const tab = document.getElementById(tabId);
+            if (!tab) return;
+            tab.querySelectorAll('.participant-card').forEach(function (card) {
+                const name = card.getAttribute('data-name').toLowerCase();
+                card.style.display = name.includes(search) ? '' : 'none';
+            });
+        });
+    }
+
+    function toggleTeacherExclude(teacherId, exclude) {
+        fetch(`/attendance/toggle-teacher-exclude-reports/${teacherId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                exclude_from_reports: exclude
+            })
         })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Reload the page to show the updated status
-            window.location.reload();
-        } else {
-            alert('Error updating teacher status: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error updating teacher status. Please try again.');
-    });
-}
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reload the page to show the updated status
+                    window.location.reload();
+                } else {
+                    alert('Error updating teacher status: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating teacher status. Please try again.');
+            });
+    }
 </script>
 {% endblock %}

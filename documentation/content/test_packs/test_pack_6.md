@@ -2,9 +2,9 @@
 
 Exports + ad hoc queries + access control
 
-> [!INFO]
+> [!NOTE]
 > **Coverage**
-> [FR-REPORTING-401](requirements#fr-reporting-401)–[FR-REPORTING-406](requirements#fr-reporting-406) (Dashboards + exports), [FR-DISTRICT-521](requirements#fr-district-521)–[FR-DISTRICT-522](requirements#fr-district-522) (RBAC)
+> [FR-REPORTING-401](requirements-reporting#fr-reporting-401)–[FR-REPORTING-406](requirements-reporting#fr-reporting-406) (Dashboards + exports), [FR-DISTRICT-521](requirements-district#fr-district-521)–[FR-DISTRICT-522](requirements-district#fr-district-522) (RBAC)
 
 ---
 
@@ -83,5 +83,5 @@ Exports + ad hoc queries + access control
 
 ---
 
-*Last updated: January 2026*
+*Last updated: February 2026*
 *Version: 1.0*

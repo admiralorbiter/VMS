@@ -4,7 +4,7 @@ from datetime import datetime
 import pandas as pd
 from flask import Blueprint, render_template, request, send_file
 from flask_login import login_required
-from sqlalchemy import and_, extract, or_
+from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError
 
 from models import db

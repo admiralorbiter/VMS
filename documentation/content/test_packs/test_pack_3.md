@@ -2,9 +2,9 @@
 
 Polaris creation + Pathful import + historical data
 
-> [!INFO]
+> [!NOTE]
 > **Coverage**
-> [FR-VIRTUAL-201](requirements#fr-virtual-201)–[FR-VIRTUAL-206](requirements#fr-virtual-206) (Virtual events; note 205 removed), [FR-VIRTUAL-208](requirements#fr-virtual-208) (Local/non-local), [FR-VIRTUAL-204](requirements#fr-virtual-204) (Historical import), [FR-VIRTUAL-210](requirements#fr-virtual-210)–[FR-VIRTUAL-219](requirements#fr-virtual-219) (Presenter recruitment)
+> [FR-VIRTUAL-201](requirements-virtual#fr-virtual-201)–[FR-VIRTUAL-206](requirements-virtual#fr-virtual-206) (Virtual events; note 205 removed), [FR-VIRTUAL-208](requirements-virtual#fr-virtual-208) (Local/non-local), [FR-VIRTUAL-204](requirements-virtual#fr-virtual-204) (Historical import), [FR-VIRTUAL-210](requirements-virtual#fr-virtual-210)–[FR-VIRTUAL-219](requirements-virtual#fr-virtual-219) (Presenter recruitment)
 
 ---
 
@@ -40,19 +40,21 @@ Polaris creation + Pathful import + historical data
 
 ### C. Pathful Import
 
+> **Automation**: Core import logic is covered by integration tests in `tests/integration/test_pathful_import.py`
+
 | TC | Description | Expected | Type | Last Verified |
 |----|-------------|----------|------|---------------|
-| <a id="tc-250"></a>**TC-250** | Upcoming signup | Teacher becomes In Progress | Manual | TBD |
-| <a id="tc-251"></a>**TC-251** | Completed attendance | Teacher becomes Achieved | Manual | TBD |
-| <a id="tc-252"></a>**TC-252** | Idempotency | Re-import = no duplicates | Manual | TBD |
-| <a id="tc-253"></a>**TC-253** | Duplicate rows in file | Deduplicated | Manual | TBD |
-| <a id="tc-254"></a>**TC-254** | Status update | Upcoming → completed works | Manual | TBD |
-| <a id="tc-255"></a>**TC-255** | Missing columns | Clear failure message | Manual | TBD |
+| <a id="tc-250"></a>**TC-250** | Upcoming signup | Teacher becomes In Progress | Automated | 2026-01-30 |
+| <a id="tc-251"></a>**TC-251** | Completed attendance | Teacher becomes Achieved | Automated | 2026-01-30 |
+| <a id="tc-252"></a>**TC-252** | Idempotency | Re-import = no duplicates | Automated | 2026-01-30 |
+| <a id="tc-253"></a>**TC-253** | Duplicate rows in file | Deduplicated | Automated | 2026-01-30 |
+| <a id="tc-254"></a>**TC-254** | Status update | Upcoming → completed works | Automated | 2026-01-30 |
+| <a id="tc-255"></a>**TC-255** | Missing columns | Clear failure message | Automated | 2026-01-30 |
 | <a id="tc-256"></a>**TC-256** | Column rename | Alias mapping or clear error | Manual | TBD |
-| <a id="tc-257"></a>**TC-257** | Unknown teacher | Row flagged unmatched | Manual | TBD |
+| <a id="tc-257"></a>**TC-257** | Unknown teacher | Row flagged unmatched | Automated | 2026-01-30 |
 | <a id="tc-258"></a>**TC-258** | Unknown event | Row flagged | Manual | TBD |
-| <a id="tc-259"></a>**TC-259** | Attendance status mapping | Pathful status → Polaris status correct | Manual | TBD |
-| <a id="tc-260"></a>**TC-260** | Bulk import performance | Large files process within timeout | Manual | TBD |
+| <a id="tc-259"></a>**TC-259** | Attendance status mapping | Pathful status → Polaris status correct | Automated | 2026-01-30 |
+| <a id="tc-260"></a>**TC-260** | Bulk import performance | Large files process within timeout | Automated | 2026-01-30 |
 
 ### D. Historical Google Sheets
 
@@ -179,5 +181,5 @@ Polaris creation + Pathful import + historical data
 
 ---
 
-*Last updated: January 2026*
+*Last updated: February 2026*
 *Version: 1.1*

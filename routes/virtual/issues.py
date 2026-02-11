@@ -17,7 +17,7 @@ Main Endpoints:
 - GET /virtual/issues/api/teacher-sessions: Get teacher's sessions for selection
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from flask import jsonify, request
 from flask_login import current_user, login_required

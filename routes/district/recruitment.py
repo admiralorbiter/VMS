@@ -22,7 +22,6 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
-from sqlalchemy import func
 
 from models import db
 from models.district_participation import DistrictParticipation

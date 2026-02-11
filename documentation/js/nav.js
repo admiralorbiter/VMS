@@ -6,7 +6,7 @@
 // Configuration
 const CONFIG = {
     contentPath: '/docs/content/',
-    defaultPage: 'getting_started',
+    defaultPage: 'getting_started/index',
     fileExtension: '.md'
 };
 
@@ -14,13 +14,24 @@ const CONFIG = {
 // Only hashes in this list will trigger page loads; everything else is treated as an anchor
 const PAGE_MANIFEST = {
     // Getting Started
-    'getting-started': 'getting_started',
-    'purpose-scope': 'purpose_scope',
+    'getting-started': 'getting_started/index',
+    'purpose-scope': 'getting_started/purpose_scope',
+    'glossary': 'getting_started/glossary',
+    'roadmap': 'getting_started/roadmap',
     // Requirements
-    'requirements': 'requirements',
-    'user-stories': 'user_stories',
-    'use-cases': 'use_cases',
-    'non-functional-requirements': 'non_functional_requirements',
+    'requirements': 'requirements/index',
+    'requirements-in-person': 'requirements/in_person',
+    'requirements-virtual': 'requirements/virtual',
+    'requirements-recruitment': 'requirements/recruitment',
+    'requirements-reporting': 'requirements/reporting',
+    'requirements-district': 'requirements/district',
+    'requirements-student': 'requirements/student',
+    'requirements-email': 'requirements/email',
+    'requirements-data-operations': 'requirements/data_operations',
+    'requirements-district-suite': 'requirements/district_suite',
+    'user-stories': 'requirements/user_stories',
+    'use-cases': 'requirements/use_cases',
+    'non-functional-requirements': 'requirements/non_functional',
     // Testing
     'test-packs': 'test_packs/index',
     'test-pack-1': 'test_packs/test_pack_1',
@@ -36,12 +47,18 @@ const PAGE_MANIFEST = {
     'user-guide-in-person-events': 'user_guide/in_person_events',
     'user-guide-virtual-events': 'user_guide/virtual_events',
     'user-guide-volunteer-recruitment': 'user_guide/volunteer_recruitment',
+    'user-guide-recruitment-matching': 'user_guide/recruitment_matching',
     'user-guide-district-teacher-progress': 'user_guide/district_teacher_progress',
     'user-guide-student-management': 'user_guide/student_management',
     'user-guide-reporting': 'user_guide/reporting',
     'user-guide-email-system': 'user_guide/email_system',
     'user-guide-data-tracker': 'user_guide/data_tracker',
-    'import-playbook': 'import_playbook',
+    'user-guide-presenter-recruitment': 'user_guide/presenter_recruitment',
+    'user-guide-teacher-progress-matching': 'user_guide/teacher_progress_matching',
+    'user-guide-district-scoped-users': 'user_guide/district_scoped_users',
+    'user-guide-public-signup': 'user_guide/public_signup',
+    'user-guide-tenant-management': 'user_guide/tenant_management',
+    'user-guide-district-self-service': 'user_guide/district_self_service',
     // Reports
     'reports-index': 'reports/index',
     'reports-impact': 'reports/impact',
@@ -49,32 +66,38 @@ const PAGE_MANIFEST = {
     'reports-partner-match': 'reports/partner_match',
     'reports-ad-hoc': 'reports/ad_hoc',
     // Technical
-    'architecture': 'architecture',
-    'codebase-structure': 'codebase_structure',
-    'data-dictionary': 'data_dictionary',
-    'field-mappings': 'field_mappings',
-    'field-mappings': 'field_mappings',
-    'contracts': 'contracts',
-    'contract-a': 'contract_a',
-    'contract-b': 'contract_b',
-    'contract-c': 'contract_c',
-    'contract-d': 'contract_d',
-    'metrics-bible': 'metrics_bible',
-    'api-reference': 'api_reference',
-    'district-suite-phases': 'district_suite_phases',
+    'architecture': 'technical/architecture',
+    'codebase-structure': 'technical/codebase_structure',
+    'data-dictionary': 'technical/data_dictionary',
+    'field-mappings': 'technical/field_mappings',
+    'metrics-bible': 'technical/metrics_bible',
+    'adr': 'technical/adr',
+    'contracts': 'technical/contracts/index',
+    'contract-a': 'technical/contracts/contract_a',
+    'contract-b': 'technical/contracts/contract_b',
+    'contract-c': 'technical/contracts/contract_c',
+    'contract-d': 'technical/contracts/contract_d',
+    // Developer
+    'developer-guide': 'developer/index',
+    'cli-reference': 'developer/cli_reference',
+    'api-reference': 'developer/api_reference',
+    'dev-notes': 'developer/dev_notes',
+    'tech-debt': 'developer/tech_debt',
+    'refactor-checklist': 'developer/refactor_checklist',
     // Security
-    'rbac-matrix': 'rbac_matrix',
-    'privacy-data-handling': 'privacy_data_handling',
-    'audit-requirements': 'audit_requirements',
+    'rbac-matrix': 'security/rbac_matrix',
+    'privacy-data-handling': 'security/privacy_data_handling',
+    'audit-requirements': 'security/audit_requirements',
     // Operations
-    'deployment': 'deployment',
-    'monitoring': 'monitoring',
-    'smoke-tests': 'smoke_tests',
-    'daily-import-scripts': 'daily_import_scripts',
-    'runbook': 'runbook',
-    'user-guide-public-signup': 'user_guide/public_signup',
-    'user-guide-tenant-management': 'user_guide/tenant_management',
-    'user-guide-district-self-service': 'user_guide/district_self_service'
+    'deployment': 'operations/deployment',
+    'monitoring': 'operations/monitoring',
+    'smoke-tests': 'operations/smoke_tests',
+    'daily-import-scripts': 'operations/daily_import_scripts',
+    'import-playbook': 'operations/import_playbook',
+    'runbook': 'operations/runbook',
+    'cache-management': 'operations/cache_management',
+    // District Suite
+    'district-suite-phases': 'district_suite/phases'
 };
 
 // State - track current loaded page to distinguish page nav from anchor scrolling

@@ -116,6 +116,57 @@ All actions while in a tenant context are logged:
 
 ---
 
+## Teacher Roster Import
+
+### Importing Teacher Lists
+
+Tenant admins can import their district's teacher roster for progress tracking.
+
+1. Navigate to **Teachers** → **Import Roster**
+2. Choose import method:
+   - **CSV Upload** - Upload a local CSV file
+   - **Google Sheet** - Paste a Google Sheets URL
+3. Required columns: **Building** (school), **Name**, **Email**
+4. Optional columns: **Grade**
+5. Click **Import**
+
+**System will:**
+- Match schools to existing Building records
+- Create new teachers or update existing (by email)
+- Display import summary with counts
+
+### Import Troubleshooting
+
+| Issue | Resolution |
+|-------|------------|
+| "School not found" | Verify school name matches exactly, or add missing school |
+| Duplicate emails | System updates existing teacher record, no duplicates created |
+| Permission denied (Google Sheet) | Share sheet with service account or make public |
+
+---
+
+## Teacher Usage Dashboard
+
+### Viewing Session Counts
+
+Track how many virtual sessions each teacher has attended.
+
+1. Navigate to **Teachers** → **Usage Dashboard**
+2. View data grouped by building with:
+   - Teacher name
+   - Session count
+   - School name
+3. Use **Semester Filter** to view Fall or Spring only
+4. Click **Export Excel** for downloadable report
+
+### Understanding the Data
+
+- **Sessions Matched**: Teachers matched to Pathful import data by name
+- **Grouped by Building**: Aggregated totals per school
+- **Semester Filtering**: Fall (Aug-Dec), Spring (Jan-May)
+
+---
+
 ## API Key Management
 
 ### Viewing Tenant API Key
@@ -177,5 +228,5 @@ All actions while in a tenant context are logged:
 
 ---
 
-*Last updated: January 2026*
-*Version: 1.0*
+*Last updated: February 2026*
+*Version: 1.1*

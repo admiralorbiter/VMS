@@ -51,14 +51,12 @@ API Response Format:
 - Error: JSON with error message and HTTP status code
 """
 
-import json
 from datetime import datetime, timezone
 from functools import wraps
 
-from flask import Blueprint, current_app, jsonify, request
-from flask_login import current_user, login_required
+from flask import Blueprint, jsonify, request
 
-from models import User, db
+from models import User
 
 api_bp = Blueprint("api", __name__)
 

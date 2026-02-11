@@ -20,16 +20,12 @@ from flask import Blueprint, jsonify, render_template, request
 from flask_login import current_user, login_required
 from simple_salesforce.api import Salesforce
 from simple_salesforce.exceptions import SalesforceAuthenticationFailed
-from sqlalchemy.orm import aliased
 
 from config import Config
 from models import db
-from models.contact import ContactTypeEnum, Email, GenderEnum, Phone
-from models.event import EventTeacher
 from models.school_model import School
 from models.teacher import Teacher, TeacherStatus
 from routes.decorators import global_users_only
-from routes.utils import parse_date
 
 # Create Blueprint for teacher routes
 teachers_bp = Blueprint("teachers", __name__)
@@ -98,125 +94,6 @@ def list_teachers():
         total_teachers=teachers.total,
         per_page_options=[10, 25, 50, 100],
     )
-
-
-@teachers_bp.route("/teachers/import-from-salesforce", methods=["POST"])
-@login_required
-@global_users_only
-def import_teachers_from_salesforce():
-    """
-    Import teacher data from Salesforce.
-
-    This function:
-    1. Connects to Salesforce using configured credentials
-    2. Queries for teachers with specific criteria
-    3. Creates or updates teacher records in the local database
-    4. Handles associated contact information (emails, phones)
-
-    Returns:
-        JSON response with import results and any errors
-    """
-    try:
-        print("Starting teacher import from Salesforce...")
-        success_count = 0
-        error_count = 0
-        errors = []
-
-        # Connect to Salesforce using configured credentials
-        sf = Salesforce(
-            username=Config.SF_USERNAME,
-            password=Config.SF_PASSWORD,
-            security_token=Config.SF_SECURITY_TOKEN,
-            domain="login",
-        )
-
-        # Query for teachers with specific fields
-        teacher_query = """
-        SELECT Id, AccountId, FirstName, LastName, Email,
-               npsp__Primary_Affiliation__c, Department, Gender__c,
-               Phone, Last_Email_Message__c, Last_Mailchimp_Email_Date__c
-        FROM Contact
-        WHERE Contact_Type__c = 'Teacher'
-        """
-
-        # Execute query and get results
-        result = sf.query_all(teacher_query)
-        teacher_rows = result.get("records", [])
-
-        # Process each teacher record
-        for row in teacher_rows:
-            try:
-                # Use the Teacher model's import method
-                teacher, is_new, error = Teacher.import_from_salesforce(row, db.session)
-
-                if error:
-                    error_count += 1
-                    errors.append(error)
-                    continue
-
-                success_count += 1
-
-                # Save the teacher first to get the ID
-                try:
-                    db.session.commit()
-                except Exception as e:
-                    db.session.rollback()
-                    error_count += 1
-                    errors.append(
-                        f"Error saving teacher {teacher.first_name} {teacher.last_name}: {str(e)}"
-                    )
-                    continue
-
-                # Handle contact info using the teacher's method
-                try:
-                    success, error = teacher.update_contact_info(row, db.session)
-                    if not success:
-                        errors.append(error)
-                    else:
-                        db.session.commit()
-                except Exception as e:
-                    db.session.rollback()
-                    errors.append(
-                        f"Error saving contact info for teacher {teacher.first_name} {teacher.last_name}: {str(e)}"
-                    )
-
-            except Exception as e:
-                error_count += 1
-                errors.append(
-                    f"Error processing teacher {row.get('FirstName', '')} {row.get('LastName', '')}: {str(e)}"
-                )
-                continue
-
-        print(
-            f"Teacher import complete: {success_count} successes, {error_count} errors"
-        )
-        if errors:
-            print("Teacher import errors:")
-            for error in errors:
-                print(f"  - {error}")
-
-        return jsonify(
-            {
-                "success": True,
-                "message": f"Successfully processed {success_count} teachers with {error_count} errors",
-                "processed_count": success_count,
-                "error_count": error_count,
-                "errors": errors,
-            }
-        )
-
-    except SalesforceAuthenticationFailed:
-        print("Salesforce authentication failed")
-        return (
-            jsonify(
-                {"success": False, "message": "Failed to authenticate with Salesforce"}
-            ),
-            401,
-        )
-    except Exception as e:
-        db.session.rollback()
-        print(f"Teacher import failed with error: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @teachers_bp.route("/teachers/toggle-exclude-reports/<int:id>", methods=["POST"])

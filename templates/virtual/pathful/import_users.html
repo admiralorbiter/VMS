@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}Import User Report - Pathful{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1><i class="fas fa-user-upload text-primary me-2"></i>Import User Report</h1>
+            <p class="text-muted mb-0">Import user profile data from Pathful User Report exports</p>
+        </div>
+        <div>
+            <a href="{{ url_for('virtual.pathful_import') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Back to Import
+            </a>
+            <a href="{{ url_for('virtual.pathful_users') }}" class="btn btn-outline-primary">
+                <i class="fas fa-users me-1"></i> View Profiles
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Upload Card -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-upload me-2"></i>Upload User Report</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        <div class="mb-4">
+                            <label for="file" class="form-label fw-bold">Select User Report Excel File</label>
+                            <input type="file" class="form-control form-control-lg" id="file" name="file"
+                                accept=".xlsx,.xls" required>
+                            <div class="form-text">
+                                Supports .xlsx and .xls files. Expected filename:
+                                <code>User Report_reports_&lt;UUID&gt;.xlsx</code>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading"><i class="fas fa-info-circle me-1"></i>Required Columns</h6>
+                            <ul class="mb-0">
+                                <li><strong>UserAuthId</strong> - Unique Pathful user ID</li>
+                                <li><strong>SignUpRole</strong> - User role (Educator, Professional)</li>
+                                <li><strong>Name</strong> - User's full name</li>
+                            </ul>
+                        </div>
+
+                        <div class="alert alert-success">
+                            <h6 class="alert-heading"><i class="fas fa-magic me-1"></i>Auto-Linking</h6>
+                            <p class="mb-0">
+                                Profiles will automatically link to existing TeacherProgress and Volunteer records
+                                that were imported via Session Report (matching by Pathful User ID).
+                            </p>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-file-import me-2"></i>Import User Report
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Help Section -->
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-question-circle me-2"></i>How It Works</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>What Gets Imported</h6>
+                            <ul class="small">
+                                <li><strong>Educators</strong> - Teachers registered in Pathful</li>
+                                <li><strong>Professionals</strong> - Volunteers/speakers in Pathful</li>
+                                <li>Email addresses and contact info</li>
+                                <li>School and district information</li>
+                                <li>Job titles and skills</li>
+                                <li>Activity metrics (login counts, last session)</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>What Gets Skipped</h6>
+                            <ul class="small">
+                                <li><strong>Students</strong> - Not needed for tracking</li>
+                                <li><strong>Parents</strong> - Not needed for tracking</li>
+                                <li>Rows without valid UserAuthId</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Stats -->
+        <div class="col-lg-4">
+            <!-- Current Stats -->
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Profile Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <h2 class="mb-0">{{ total_profiles | default(0) }}</h2>
+                            <small class="text-muted">Total Profiles</small>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <h2 class="mb-0 text-success">{{ linked_count | default(0) }}</h2>
+                            <small class="text-muted">Linked</small>
+                        </div>
+                    </div>
+                    {% if total_profiles > 0 %}
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-success" role="progressbar"
+                            style="width: {{ (linked_count / total_profiles * 100) | round(1) }}%;">
+                        </div>
+                    </div>
+                    <small class="text-muted">{{ (linked_count / total_profiles * 100) | round(1) }}% linked to Polaris
+                        records</small>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Recent Imports -->
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent User Report Imports</h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if recent_imports %}
+                    <ul class="list-group list-group-flush">
+                        {% for log in recent_imports %}
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong class="small">{{ log.filename | truncate(25) }}</strong>
+                                    <br>
+                                    <small class="text-muted">
+                                        {{ log.started_at.strftime('%b %d, %Y %H:%M') if log.started_at else '-' }}
+                                    </small>
+                                </div>
+                                <div class="text-end">
+                                    {% if log.error_count > 0 %}
+                                    <span class="badge bg-danger">{{ log.error_count }} errors</span>
+                                    {% else %}
+                                    <span class="badge bg-success">{{ log.processed_rows }} processed</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <div class="p-3 text-center text-muted">
+                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                        <p class="mb-0">No User Report imports yet</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

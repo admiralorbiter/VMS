@@ -79,6 +79,8 @@
                                 Tenant Admin - Full access, can manage users
                                 {% elif role == 'coordinator' %}
                                 Coordinator - Manage events and volunteers
+                                {% elif role == 'virtual_admin' %}
+                                Virtual Admin - View & manage virtual sessions
                                 {% else %}
                                 User - Read-only dashboards and reports
                                 {% endif %}
@@ -88,6 +90,8 @@
                         <div class="form-text">
                             <strong>Admin:</strong> Full access to all tenant features including user management.<br>
                             <strong>Coordinator:</strong> Can manage events and volunteers, but not users.<br>
+                            <strong>Virtual Admin:</strong> View virtual session data, flag issues, manage session
+                            metadata.<br>
                             <strong>User:</strong> Read-only access to dashboards and reports.
                         </div>
                     </div>

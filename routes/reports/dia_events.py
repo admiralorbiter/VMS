@@ -38,7 +38,7 @@ Dependencies:
 
 from datetime import datetime, timedelta, timezone
 
-from flask import Blueprint, render_template, request
+from flask import render_template, request
 from flask_login import login_required
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import joinedload
@@ -47,7 +47,7 @@ from models import db
 from models.contact import Email
 from models.event import Event, EventType
 from models.reports import DIAEventsReportCache
-from models.volunteer import EventParticipation, Volunteer
+from models.volunteer import EventParticipation
 
 
 def _serialize_for_cache(filled_events: list[dict], unfilled_events: list) -> dict:
@@ -265,12 +265,12 @@ def _query_dia_events():
                 or_(
                     Event.volunteers_needed > 0,  # Events with explicit volunteer needs
                     # Events with "Voices Behind the Data" in title typically need volunteers
-                    Event.title.like('%Voices Behind the Data%'),
-                    # Events with "Data Ethics Speaker" in title typically need volunteers  
-                    Event.title.like('%Data Ethics Speaker%'),
+                    Event.title.like("%Voices Behind the Data%"),
+                    # Events with "Data Ethics Speaker" in title typically need volunteers
+                    Event.title.like("%Data Ethics Speaker%"),
                     # Events with "Project Mentors" in title typically need volunteers
-                    Event.title.like('%Project Mentors%'),
-                )
+                    Event.title.like("%Project Mentors%"),
+                ),
             )
         )
         .order_by(Event.start_date.asc())
@@ -312,22 +312,26 @@ def _query_dia_events():
 
                     # Get organization name from VolunteerOrganization relationship
                     organization_name = "N/A"
-                    
+
                     # First try to get organization from VolunteerOrganization relationship
                     from models.organization import VolunteerOrganization
+
                     vol_org = VolunteerOrganization.query.filter_by(
                         volunteer_id=volunteer.id, is_primary=True
                     ).first()
-                    
+
                     # If no primary organization, get any organization
                     if not vol_org:
                         vol_org = VolunteerOrganization.query.filter_by(
                             volunteer_id=volunteer.id
                         ).first()
-                    
+
                     if vol_org and vol_org.organization:
                         organization_name = vol_org.organization.name
-                    elif volunteer.organization_name and not volunteer.organization_name.startswith('00'):
+                    elif (
+                        volunteer.organization_name
+                        and not volunteer.organization_name.startswith("00")
+                    ):
                         # Only use organization_name if it doesn't look like a Salesforce ID
                         organization_name = volunteer.organization_name
 

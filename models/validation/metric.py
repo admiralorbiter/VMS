@@ -16,7 +16,6 @@ from sqlalchemy import (
     Numeric,
     String,
 )
-from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from models import db

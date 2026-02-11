@@ -67,22 +67,22 @@ from config import DevelopmentConfig, ProductionConfig
 from models import db
 from models.email import EmailTemplate
 from models.user import SecurityLevel, User
-from routes.events.pathway_events import sync_unaffiliated_events
-from routes.events.routes import (
+from routes.salesforce.event_import import (
     import_events_from_salesforce,
     sync_student_participants,
 )
-from routes.history.routes import import_history_from_salesforce
-from routes.management.management import import_classes, import_schools
-
-# Import route handlers
-from routes.organizations.routes import (
+from routes.salesforce.history_import import import_history_from_salesforce
+from routes.salesforce.organization_import import (
     import_affiliations_from_salesforce,
     import_organizations_from_salesforce,
 )
-from routes.students.routes import import_students_from_salesforce
-from routes.teachers.routes import import_teachers_from_salesforce
-from routes.volunteers.routes import (
+
+# Import route handlers from salesforce module
+from routes.salesforce.pathway_import import sync_unaffiliated_events
+from routes.salesforce.school_import import import_classes, import_schools
+from routes.salesforce.student_import import import_students_from_salesforce
+from routes.salesforce.teacher_import import import_teachers_from_salesforce
+from routes.salesforce.volunteer_import import (
     import_from_salesforce as import_volunteers_from_salesforce,
 )
 from utils.email import create_delivery_attempt, create_email_message
@@ -110,10 +110,10 @@ class ImportStep:
 class DailyImporter:
     """Main class for handling daily imports."""
 
-    def __init__(self, app: Flask, logger: logging.Logger):
+    def __init__(self, app: Flask, logger: logging.Logger, delta_sync: bool = True):
         self.app = app
         self.logger = logger
-        # Use the app's existing login_manager instead of creating a new one
+        self.delta_sync = delta_sync  # Enable delta sync by default
 
         # Define import sequence (matching admin.html order)
         self.import_steps = [
@@ -234,8 +234,14 @@ class DailyImporter:
                 with patch("flask_login.current_user", self.admin_user):
                     self.logger.info("Authenticated as admin user (mocked)")
 
-    def _run_with_auth(self, func, *args, **kwargs):
-        """Run a function with proper Flask-Login authentication."""
+    def _run_with_auth(self, func, use_delta: bool = None, *args, **kwargs):
+        """Run a function with proper Flask-Login authentication.
+
+        Args:
+            func: The function to run
+            use_delta: Override for delta sync behavior. If None, uses self.delta_sync
+            *args, **kwargs: Additional arguments passed to func
+        """
         with self.app.app_context():
             if not self.admin_user:
                 self.setup_admin_user()
@@ -248,12 +254,21 @@ class DailyImporter:
                 self.admin_user.scope_type = "global"
                 db.session.commit()
 
-            # Use Flask-Login's login_user() within request context
-            with self.app.test_request_context():
+            # Determine if we should use delta sync
+            should_use_delta = use_delta if use_delta is not None else self.delta_sync
+
+            # Build query string for delta sync
+            query_string = "delta=true" if should_use_delta else ""
+
+            # Use Flask-Login's login_user() within request context with delta args
+            with self.app.test_request_context(query_string=query_string):
                 from flask_login import login_user
 
                 # Properly log in the user using Flask-Login
                 login_user(self.admin_user)
+
+                if should_use_delta:
+                    self.logger.info("Running with DELTA SYNC enabled")
 
                 # Now current_user will work properly
                 return func(*args, **kwargs)
@@ -337,7 +352,7 @@ class DailyImporter:
 
         def _call_import():
             try:
-                from routes.organizations.routes import (
+                from routes.salesforce.organization_import import (
                     import_organizations_from_salesforce,
                 )
 
@@ -357,9 +372,9 @@ class DailyImporter:
 
         def _call_import():
             try:
-                from routes.volunteers.routes import import_volunteers_from_salesforce
+                from routes.salesforce.volunteer_import import import_from_salesforce
 
-                original_func = import_volunteers_from_salesforce.__wrapped__
+                original_func = import_from_salesforce.__wrapped__
                 result = original_func()
                 return self._parse_import_result(
                     result, "Volunteers imported successfully"
@@ -375,7 +390,7 @@ class DailyImporter:
 
         def _call_import():
             try:
-                from routes.organizations.routes import (
+                from routes.salesforce.organization_import import (
                     import_affiliations_from_salesforce,
                 )
 
@@ -395,7 +410,7 @@ class DailyImporter:
 
         def _call_import():
             try:
-                from routes.events.routes import import_events_from_salesforce
+                from routes.salesforce.event_import import import_events_from_salesforce
 
                 original_func = import_events_from_salesforce.__wrapped__
                 result = original_func()
@@ -411,7 +426,9 @@ class DailyImporter:
 
         def _call_import():
             try:
-                from routes.history.routes import import_history_from_salesforce
+                from routes.salesforce.history_import import (
+                    import_history_from_salesforce,
+                )
 
                 original_func = import_history_from_salesforce.__wrapped__
                 result = original_func()
@@ -429,7 +446,7 @@ class DailyImporter:
 
         def _call_import():
             try:
-                from routes.volunteers.routes import import_from_salesforce
+                from routes.salesforce.volunteer_import import import_from_salesforce
 
                 original_func = import_from_salesforce.__wrapped__
 
@@ -496,7 +513,7 @@ class DailyImporter:
 
         def _call_import():
             try:
-                from routes.organizations.routes import (
+                from routes.salesforce.organization_import import (
                     import_affiliations_from_salesforce,
                 )
 
@@ -560,7 +577,7 @@ class DailyImporter:
 
         def _call_import():
             try:
-                from routes.events.routes import import_events_from_salesforce
+                from routes.salesforce.event_import import import_events_from_salesforce
 
                 original_func = import_events_from_salesforce.__wrapped__
                 result = original_func()
@@ -619,7 +636,9 @@ class DailyImporter:
 
         def _call_import():
             try:
-                from routes.history.routes import import_history_from_salesforce
+                from routes.salesforce.history_import import (
+                    import_history_from_salesforce,
+                )
 
                 original_func = import_history_from_salesforce.__wrapped__
                 result = original_func()
@@ -678,7 +697,7 @@ class DailyImporter:
 
         def _call_import():
             try:
-                from routes.management.management import import_schools
+                from routes.salesforce.school_import import import_schools
 
                 original_func = import_schools.__wrapped__
                 result = original_func()
@@ -696,7 +715,7 @@ class DailyImporter:
 
         def _call_import():
             try:
-                from routes.management.management import import_classes
+                from routes.salesforce.school_import import import_classes
 
                 original_func = import_classes.__wrapped__
                 result = original_func()
@@ -710,16 +729,18 @@ class DailyImporter:
         return self._run_with_auth(_call_import)
 
     def ensure_email_template(self):
-        """Ensure the daily import summary email template exists."""
-        with self.app.app_context():
-            template_key = "daily_import_summary"
-            template = EmailTemplate.query.filter_by(purpose_key=template_key).first()
+        """Ensure the daily import summary email template exists.
 
-            if not template:
-                self.logger.info(f"Creating default email template: {template_key}")
-                subject = "Daily Import Report - {{date}} - {{status}}"
+        Note: This should be called within an existing app_context.
+        """
+        template_key = "daily_import_summary"
+        template = EmailTemplate.query.filter_by(purpose_key=template_key).first()
 
-                html_body = """
+        if not template:
+            self.logger.info(f"Creating default email template: {template_key}")
+            subject = "Daily Import Report - {{date}} - {{status}}"
+
+            html_body = """
 <!DOCTYPE html>
 <html>
 <head>
@@ -765,44 +786,44 @@ class DailyImporter:
     </div>
 </body>
 </html>
-                """
+            """
 
-                text_body = """
-                Daily Import Execution Report
-                =============================
-                Date: {{date}}
-                Status: {{status}}
-                Duration: {{duration}}
+            text_body = """
+            Daily Import Execution Report
+            =============================
+            Date: {{date}}
+            Status: {{status}}
+            Duration: {{duration}}
 
-                Import Steps:
-                -------------
-                {{steps_text_list}}
+            Import Steps:
+            -------------
+            {{steps_text_list}}
 
-                Generated by VMS Daily Import Script
-                """
+            Generated by VMS Daily Import Script
+            """
 
-                template = EmailTemplate(
-                    purpose_key=template_key,
-                    name="Daily Import Summary",
-                    subject_template=subject,
-                    html_template=html_body,
-                    text_template=text_body,
-                    description="Summary report for daily import execution",
-                    required_placeholders=[
-                        "date",
-                        "status",
-                        "duration",
-                        "status_style",
-                        "steps_rows",
-                        "steps_text_list",
-                    ],
-                    version=1,
-                    is_active=True,
-                )
-                db.session.add(template)
-                db.session.commit()
+            template = EmailTemplate(
+                purpose_key=template_key,
+                name="Daily Import Summary",
+                subject_template=subject,
+                html_template=html_body,
+                text_template=text_body,
+                description="Summary report for daily import execution",
+                required_placeholders=[
+                    "date",
+                    "status",
+                    "duration",
+                    "status_style",
+                    "steps_rows",
+                    "steps_text_list",
+                ],
+                version=1,
+                is_active=True,
+            )
+            db.session.add(template)
+            db.session.commit()
 
-            return template
+        return template
 
     def send_summary_email(
         self,
@@ -906,7 +927,9 @@ class DailyImporter:
 
         def _call_import():
             try:
-                from routes.teachers.routes import import_teachers_from_salesforce
+                from routes.salesforce.teacher_import import (
+                    import_teachers_from_salesforce,
+                )
 
                 original_func = import_teachers_from_salesforce.__wrapped__
                 result = original_func()
@@ -924,7 +947,7 @@ class DailyImporter:
 
         def _call_import():
             try:
-                from routes.events.routes import sync_student_participants
+                from routes.salesforce.event_import import sync_student_participants
 
                 original_func = sync_student_participants.__wrapped__
                 result = original_func()
@@ -944,7 +967,9 @@ class DailyImporter:
 
         def _call_import():
             try:
-                from routes.students.routes import import_students_from_salesforce
+                from routes.salesforce.student_import import (
+                    import_students_from_salesforce,
+                )
 
                 original_func = import_students_from_salesforce.__wrapped__
 
@@ -972,7 +997,7 @@ class DailyImporter:
 
         def _call_import():
             try:
-                from routes.events.pathway_events import sync_unaffiliated_events
+                from routes.salesforce.pathway_import import sync_unaffiliated_events
 
                 original_func = sync_unaffiliated_events.__wrapped__
                 result = original_func()
@@ -1376,6 +1401,20 @@ Examples:
         help="Sleep between student chunks in milliseconds",
     )
 
+    # Delta sync options
+    delta_group = parser.add_mutually_exclusive_group()
+    delta_group.add_argument(
+        "--delta",
+        action="store_true",
+        default=True,
+        help="Use delta sync - only import records modified since last sync (default)",
+    )
+    delta_group.add_argument(
+        "--full-sync",
+        action="store_true",
+        help="Force full sync - import all records regardless of last sync time",
+    )
+
     return parser.parse_args()
 
 
@@ -1414,8 +1453,14 @@ def main() -> int:
         # Create Flask app
         app = create_app()
 
+        # Determine delta sync mode (--full-sync disables delta)
+        use_delta_sync = not args.full_sync
+        logger.info(
+            f"Sync mode: {'DELTA (incremental)' if use_delta_sync else 'FULL (all records)'}"
+        )
+
         # Create importer
-        importer = DailyImporter(app, logger)
+        importer = DailyImporter(app, logger, delta_sync=use_delta_sync)
 
         # Determine which steps to run
         only_steps = None

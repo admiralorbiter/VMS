@@ -1,0 +1,398 @@
+{% extends "base.html" %}
+
+{% block title %}Data Flags Review{% endblock %}
+
+{% block extra_css %}
+<style>
+    .flags-container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .flags-header {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .flags-header h1 {
+        margin: 0 0 8px 0;
+        font-size: 2em;
+        font-weight: 700;
+    }
+
+    .flags-header p {
+        margin: 0;
+        opacity: 0.9;
+    }
+
+    .back-link {
+        color: white;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 15px;
+        font-weight: 500;
+    }
+
+    .back-link:hover {
+        color: #f0f0f0;
+        text-decoration: underline;
+    }
+
+    /* Stats Row */
+    .stats-row {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .stat-pill {
+        background: white;
+        border-radius: 10px;
+        padding: 18px 28px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+        flex: 1;
+    }
+
+    .stat-pill .stat-num {
+        display: block;
+        font-size: 2em;
+        font-weight: 700;
+    }
+
+    .stat-pill .stat-label {
+        color: #666;
+        font-size: 0.85em;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+    }
+
+    .stat-pill.open .stat-num { color: #dc3545; }
+    .stat-pill.missing .stat-num { color: #fd7e14; }
+    .stat-pill.not-tracked .stat-num { color: #6f42c1; }
+    .stat-pill.other .stat-num { color: #6c757d; }
+
+    /* Filters */
+    .filters-bar {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        align-items: end;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .filter-group label {
+        font-weight: 600;
+        font-size: 0.85em;
+        color: #555;
+    }
+
+    .filter-group select {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+
+    .filter-btn {
+        padding: 8px 18px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        background: #dc3545;
+        color: white;
+        align-self: flex-end;
+    }
+
+    .filter-btn:hover { background: #c82333; }
+
+    .reset-btn {
+        padding: 8px 18px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        background: #6c757d;
+        color: white;
+        text-decoration: none;
+        align-self: flex-end;
+    }
+
+    .reset-btn:hover { background: #5a6268; color: white; }
+
+    /* Flag Cards */
+    .flag-card {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        margin-bottom: 14px;
+        overflow: hidden;
+        border-left: 4px solid #dc3545;
+        transition: box-shadow 0.2s;
+    }
+
+    .flag-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+
+    .flag-card.type-missing_session { border-left-color: #fd7e14; }
+    .flag-card.type-not_tracked { border-left-color: #6f42c1; }
+    .flag-card.type-other { border-left-color: #6c757d; }
+
+    .flag-card-body {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 18px 24px;
+        gap: 20px;
+    }
+
+    .flag-info {
+        flex: 1;
+    }
+
+    .flag-teacher-name {
+        font-weight: 700;
+        font-size: 1.05em;
+        color: #333;
+        margin-bottom: 4px;
+    }
+
+    .flag-meta {
+        font-size: 0.85em;
+        color: #888;
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 4px;
+    }
+
+    .flag-meta span {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .flag-type-badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 0.78em;
+        font-weight: 600;
+        margin-right: 8px;
+    }
+
+    .flag-type-badge.missing_session { background: #fff3cd; color: #856404; }
+    .flag-type-badge.not_tracked { background: #e8daef; color: #6f42c1; }
+    .flag-type-badge.other { background: #e9ecef; color: #495057; }
+
+    .flag-details {
+        font-size: 0.9em;
+        color: #555;
+        margin-top: 4px;
+    }
+
+    .flag-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+    .resolve-btn {
+        background: #28a745;
+        color: white;
+        border: none;
+        padding: 8px 18px;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 0.85em;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .resolve-btn:hover { background: #218838; }
+
+    .no-flags {
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        color: #666;
+    }
+
+    .no-flags i {
+        font-size: 3em;
+        color: #28a745;
+        display: block;
+        margin-bottom: 16px;
+    }
+
+    @media (max-width: 768px) {
+        .stats-row { flex-direction: column; }
+        .flag-card-body { flex-direction: column; align-items: flex-start; }
+        .flag-actions { align-self: flex-end; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flags-container">
+    <div class="flags-header">
+        <a href="{{ url_for('management.admin') }}" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Admin Dashboard
+        </a>
+        <h1><i class="fas fa-flag"></i> Data Flags Review</h1>
+        <p>Review and resolve data issues reported by district virtual admins</p>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+        <div class="stat-pill open">
+            <span class="stat-num">{{ total_open }}</span>
+            <span class="stat-label">Open Flags</span>
+        </div>
+        <div class="stat-pill missing">
+            <span class="stat-num">{{ count_by_type.get('missing_session', 0) }}</span>
+            <span class="stat-label">Missing Session</span>
+        </div>
+        <div class="stat-pill not-tracked">
+            <span class="stat-num">{{ count_by_type.get('not_tracked', 0) }}</span>
+            <span class="stat-label">Shouldn't Be On List</span>
+        </div>
+        <div class="stat-pill other">
+            <span class="stat-num">{{ count_by_type.get('other', 0) }}</span>
+            <span class="stat-label">Other</span>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <form class="filters-bar" method="GET">
+        <div class="filter-group">
+            <label for="type_filter">Issue Type</label>
+            <select id="type_filter" name="type">
+                <option value="">All Types</option>
+                <option value="missing_session" {% if request.args.get('type') == 'missing_session' %}selected{% endif %}>Missing Session</option>
+                <option value="not_tracked" {% if request.args.get('type') == 'not_tracked' %}selected{% endif %}>Shouldn't Be On List</option>
+                <option value="other" {% if request.args.get('type') == 'other' %}selected{% endif %}>Other</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="status_filter">Status</label>
+            <select id="status_filter" name="status">
+                <option value="open" {% if request.args.get('status', 'open') == 'open' %}selected{% endif %}>Open</option>
+                <option value="resolved" {% if request.args.get('status') == 'resolved' %}selected{% endif %}>Resolved</option>
+                <option value="all" {% if request.args.get('status') == 'all' %}selected{% endif %}>All</option>
+            </select>
+        </div>
+        <button type="submit" class="filter-btn">Apply</button>
+        <a href="{{ url_for('management.data_flags') }}" class="reset-btn">Reset</a>
+    </form>
+
+    <!-- Flag List -->
+    {% if flags %}
+    {% for flag in flags %}
+    <div class="flag-card type-{{ flag.flag_type }}" id="flag-card-{{ flag.id }}">
+        <div class="flag-card-body">
+            <div class="flag-info">
+                <div class="flag-teacher-name">
+                    <span class="flag-type-badge {{ flag.flag_type }}">{{ flag.flag_type_display }}</span>
+                    {{ flag.teacher_progress.name }}
+                </div>
+                <div class="flag-meta">
+                    <span><i class="fas fa-school"></i> {{ flag.teacher_progress.building or 'Unknown' }}</span>
+                    <span><i class="fas fa-building"></i> {{ flag.teacher_progress.tenant.name if flag.teacher_progress.tenant else 'N/A' }}</span>
+                    <span><i class="fas fa-clock"></i> {{ flag.created_at.strftime('%b %d, %Y %I:%M %p') if flag.created_at else '' }}</span>
+                    {% if flag.creator %}
+                    <span><i class="fas fa-user"></i> {{ flag.creator.username }}</span>
+                    {% endif %}
+                </div>
+                {% if flag.details %}
+                <div class="flag-details">
+                    <i class="fas fa-info-circle"></i> {{ flag.details }}
+                </div>
+                {% endif %}
+                {% if flag.is_resolved %}
+                <div class="flag-details" style="color: #28a745;">
+                    <i class="fas fa-check-circle"></i> Resolved {{ flag.resolved_at.strftime('%b %d, %Y') if flag.resolved_at else '' }}
+                    {% if flag.resolver %} by {{ flag.resolver.username }}{% endif %}
+                    {% if flag.resolution_notes %} — {{ flag.resolution_notes }}{% endif %}
+                </div>
+                {% endif %}
+            </div>
+            <div class="flag-actions">
+                {% if not flag.is_resolved %}
+                <button class="resolve-btn" onclick="resolveFlag({{ flag.id }})">
+                    <i class="fas fa-check"></i> Resolve
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="no-flags">
+        <i class="fas fa-check-circle"></i>
+        <h3>No flags to review</h3>
+        <p>All clear! There are no {{ 'open ' if request.args.get('status', 'open') == 'open' else '' }}data issues to review.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    async function resolveFlag(flagId) {
+        const notes = prompt('Resolution notes (optional):');
+        if (notes === null) return; // cancelled
+
+        try {
+            const resp = await fetch(`/district/teacher-usage/flags/${flagId}/resolve`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notes: notes })
+            });
+            if (resp.ok) {
+                const card = document.getElementById('flag-card-' + flagId);
+                if (card) {
+                    card.style.opacity = '0.5';
+                    card.querySelector('.resolve-btn').remove();
+                    const info = card.querySelector('.flag-info');
+                    const resolved = document.createElement('div');
+                    resolved.className = 'flag-details';
+                    resolved.style.color = '#28a745';
+                    resolved.innerHTML = '<i class="fas fa-check-circle"></i> Resolved just now' +
+                        (notes ? ' — ' + notes : '');
+                    info.appendChild(resolved);
+                }
+                // Update stats
+                const openStat = document.querySelector('.stat-pill.open .stat-num');
+                if (openStat) {
+                    openStat.textContent = Math.max(0, parseInt(openStat.textContent) - 1);
+                }
+            } else {
+                alert('Failed to resolve flag.');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Network error.');
+        }
+    }
+</script>
+{% endblock %}

@@ -47,30 +47,18 @@ Author: VMS Development Team
 Last Updated: 2024
 """
 
-from datetime import date, datetime
+from datetime import datetime
 
-from sqlalchemy import (
-    Boolean,
-    Date,
-    DateTime,
-    Float,
-    ForeignKey,
-    Integer,
-    String,
-    Text,
-    or_,
-)
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import declared_attr, relationship, validates
 
 from models import db
 from models.contact import (
     Contact,
-    ContactTypeEnum,
     EducationEnum,
     Enum,
     FormEnum,
     LocalStatusEnum,
-    RaceEthnicityEnum,
     SkillSourceEnum,
 )
 from models.history import History
@@ -280,6 +268,11 @@ class Volunteer(Contact):
     status = db.Column(
         Enum(VolunteerStatus), default=VolunteerStatus.ACTIVE, index=True
     )
+
+    # Pathful integration (US-304, US-306)
+    pathful_user_id = db.Column(
+        String(100), nullable=True, index=True
+    )  # User Auth Id from Pathful exports for professional/presenter matching
 
     # Relationship definitions
     # Note: @declared_attr is used to define these relationships dynamically during class creation

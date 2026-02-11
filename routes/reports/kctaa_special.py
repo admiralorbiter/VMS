@@ -37,7 +37,7 @@ from pathlib import Path
 import pandas as pd
 from flask import Blueprint, current_app, render_template, request, send_file
 from flask_login import login_required
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, func
 
 from models import db
 from models.contact import Email

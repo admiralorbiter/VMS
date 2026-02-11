@@ -1,10 +1,9 @@
 import difflib
 import io
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 import openpyxl
 from flask import (
-    Blueprint,
     Response,
     flash,
     jsonify,
@@ -12,17 +11,16 @@ from flask import (
     redirect,
     render_template,
     request,
-    send_file,
     url_for,
 )
 from flask_login import current_user, login_required
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
-from sqlalchemy import extract, func, or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 
 from models import db
-from models.contact import Email, LocalStatusEnum
+from models.contact import LocalStatusEnum
 from models.district_model import District
 from models.event import Event, EventFormat, EventStatus, EventTeacher, EventType
 from models.google_sheet import GoogleSheet
@@ -34,142 +32,32 @@ from models.teacher_progress import TeacherProgress
 from models.teacher_progress_archive import TeacherProgressArchive
 from models.volunteer import EventParticipation, Volunteer
 from routes.decorators import district_scoped_required
+
+# Import shared helper functions from common module
+from routes.reports.common import (
+    generate_school_year_options,
+    get_current_virtual_year,
+    get_school_year_date_range,
+    get_semester_dates,
+    get_virtual_year_dates,
+    is_cache_valid,
+)
 from routes.utils import admin_required
 
 # Import blueprint from virtual routes
 from routes.virtual.routes import virtual_bp
 
-# --- Helper Functions for School Year ---
 
+# Alias for backward compatibility
+def get_school_year_dates(school_year: str) -> tuple:
+    """Alias for get_school_year_date_range for backward compatibility."""
+    return get_school_year_date_range(
+        school_year[:2] + school_year[-2:] if "-" in school_year else school_year
+    )
 
-def get_current_school_year() -> str:
-    """Determines the current school year string (e.g., '2024-2025')."""
-    today = date.today()
-    if today.month >= 6:  # School year starts in June
-        start_year = today.year
-    else:
-        start_year = today.year - 1
-    return f"{start_year}-{start_year + 1}"
-
-
-def get_school_year_dates(school_year: str) -> tuple[datetime, datetime]:
-    """Calculates the start and end dates for a given school year string."""
-    try:
-        start_year = int(school_year.split("-")[0])
-        end_year = start_year + 1
-        date_from = datetime(start_year, 6, 1, 0, 0, 0)
-        date_to = datetime(end_year, 5, 31, 23, 59, 59)
-        return date_from, date_to
-    except (ValueError, IndexError):
-        current_sy = get_current_school_year()
-        return get_school_year_dates(current_sy)
-
-
-def generate_school_year_options(start_cal_year=2018, end_cal_year=None) -> list[str]:
-    """Generates a list of school year strings for dropdowns."""
-    if end_cal_year is None:
-        end_cal_year = date.today().year + 1
-
-    school_years = []
-    for year in range(end_cal_year, start_cal_year - 1, -1):
-        school_years.append(f"{year}-{year + 1}")
-    return school_years
-
-
-def get_current_virtual_year() -> str:
-    """Determines the current virtual session year string (August 1st to July 31st)."""
-    today = date.today()
-    if today.month > 7 or (today.month == 7 and today.day == 31):  # After July 31st
-        start_year = today.year
-    else:
-        start_year = today.year - 1
-    return f"{start_year}-{start_year + 1}"
-
-
-def get_virtual_year_dates(virtual_year: str) -> tuple[datetime, datetime]:
-    """Calculates the start and end dates for a given virtual session year string (8/1 to 7/31)."""
-    try:
-        start_year = int(virtual_year.split("-")[0])
-        end_year = start_year + 1
-        date_from = datetime(start_year, 8, 1, 0, 0, 0)  # August 1st start
-        date_to = datetime(end_year, 7, 31, 23, 59, 59)  # July 31st end
-        return date_from, date_to
-    except (ValueError, IndexError):
-        current_vy = get_current_virtual_year()
-        return get_virtual_year_dates(current_vy)
-
-
-def get_semester_dates(
-    virtual_year: str, semester_type: str
-) -> tuple[datetime, datetime]:
-    """
-    Calculates start and end dates for specific semesters.
-
-    Args:
-        virtual_year: The virtual year string (e.g. "2024-2025")
-        semester_type: "Fall" or "Spring"
-
-    Returns:
-        tuple[datetime, datetime]: Start and end dates
-
-    Note:
-        Fall Semester: July 1 - Dec 31
-        Spring Semester: Jan 1 - Jun 30
-    """
-    try:
-        start_year = int(virtual_year.split("-")[0])
-        end_year = start_year + 1
-
-        if semester_type == "Fall":
-            # Fall is July 1 to Dec 31 of the start year
-            # Note: Virtual year technically starts Aug 1, but user requested 6/30 reset
-            # implying next semester starts 7/1.
-            return (
-                datetime(start_year, 7, 1, 0, 0, 0),
-                datetime(start_year, 12, 31, 23, 59, 59),
-            )
-        elif semester_type == "Spring":
-            # Spring is Jan 1 to June 30 of the end year
-            return (
-                datetime(end_year, 1, 1, 0, 0, 0),
-                datetime(end_year, 6, 30, 23, 59, 59),
-            )
-        return get_virtual_year_dates(virtual_year)
-    except (ValueError, IndexError):
-        return get_virtual_year_dates(virtual_year)
-
-
-# --- End Helper Functions ---
 
 # --- Cache Management Functions ---
-
-
-def is_cache_valid(cache_record, max_age_hours=24):
-    """
-    Check if a cache record is still valid based on age.
-
-    Args:
-        cache_record: The cache record to check
-        max_age_hours: Maximum age in hours before cache is considered stale
-
-    Returns:
-        bool: True if cache is valid, False otherwise
-    """
-    if not cache_record:
-        return False
-
-    from datetime import datetime, timedelta, timezone
-
-    # Convert to timezone-aware datetime if needed
-    if cache_record.last_updated.tzinfo is None:
-        last_updated = cache_record.last_updated.replace(tzinfo=timezone.utc)
-    else:
-        last_updated = cache_record.last_updated
-
-    now = datetime.now(timezone.utc)
-    max_age = timedelta(hours=max_age_hours)
-
-    return (now - last_updated) < max_age
+# Note: is_cache_valid is imported from routes.reports.common
 
 
 def get_virtual_session_cache(virtual_year, date_from=None, date_to=None):
@@ -2349,8 +2237,8 @@ def load_usage_routes():
             date_from = default_date_from
             date_to = default_date_to
 
-        # Check if admin wants to see all districts
-        show_all_districts = request.args.get("show_all_districts", "0") == "1"
+        # Check if admin wants to see all districts (default: YES for Pathful data)
+        show_all_districts = request.args.get("show_all_districts", "1") == "1"
 
         current_filters = {
             "year": selected_virtual_year,  # Updated variable name
@@ -2604,7 +2492,7 @@ def load_usage_routes():
                 )
 
                 return render_template(
-                    "virtual/virtual_usage.html",
+                    "virtual/usage/index.html",
                     session_data=session_data["paginated_data"],
                     filter_options=filter_options,
                     current_filters=current_filters,
@@ -2813,7 +2701,7 @@ def load_usage_routes():
         )
 
         return render_template(
-            "virtual/virtual_usage.html",
+            "virtual/usage/index.html",
             session_data=session_result["paginated_data"],
             filter_options=filter_options,
             current_filters=current_filters,
@@ -4070,7 +3958,7 @@ def load_usage_routes():
                     summary_stats = cached_data.summary_stats
 
                 return render_template(
-                    "virtual/virtual_usage_district.html",
+                    "virtual/usage/district.html",
                     district_name=district_name,
                     monthly_stats=monthly_stats,
                     current_filters=current_filters,
@@ -4127,7 +4015,7 @@ def load_usage_routes():
             last_refreshed = datetime.now(timezone.utc)
 
         return render_template(
-            "virtual/virtual_usage_district.html",
+            "virtual/usage/district.html",
             district_name=district_name,
             monthly_stats=monthly_stats,
             current_filters=current_filters,
@@ -5502,7 +5390,7 @@ def load_usage_routes():
         virtual_year_options = generate_school_year_options()
 
         return render_template(
-            "virtual/virtual_breakdown.html",
+            "virtual/usage/breakdown.html",
             monthly_breakdown=monthly_breakdown,
             ytd_totals=ytd_totals,
             running_count=running_count,
@@ -5515,197 +5403,6 @@ def load_usage_routes():
             virtual_year_options=virtual_year_options,
             months=months,
         )
-
-    @virtual_bp.route("/usage/google-sheets")
-    @login_required
-    def virtual_google_sheets():
-        """Manage Google Sheets for virtual district reports"""
-        virtual_year = request.args.get("year", get_current_virtual_year())
-
-        # Get all Google Sheets for virtual district reports for this year
-        sheets = (
-            GoogleSheet.query.filter_by(
-                academic_year=virtual_year, purpose="virtual_district_reports"
-            )
-            .order_by(GoogleSheet.sheet_name)
-            .all()
-        )
-
-        # Get only allowed districts for dropdown
-        allowed_district_names = {
-            "Hickman Mills School District",
-            "Grandview School District",
-            "Kansas City Kansas Public Schools",
-        }
-        districts = (
-            District.query.filter(District.name.in_(allowed_district_names))
-            .order_by(District.name)
-            .all()
-        )
-
-        return render_template(
-            "virtual/virtual_google_sheets.html",
-            sheets=sheets,
-            districts=districts,
-            virtual_year=virtual_year,
-            virtual_year_options=generate_school_year_options(),
-        )
-
-    @virtual_bp.route("/usage/google-sheets/create", methods=["POST"])
-    @login_required
-    def create_virtual_google_sheet():
-        """Create a new Google Sheet for virtual district reports"""
-        try:
-            virtual_year = request.form.get("virtual_year")
-            district_name = request.form.get("district_name")
-            sheet_id = request.form.get("sheet_id")
-            sheet_name = request.form.get("sheet_name")
-
-            if not all([virtual_year, district_name, sheet_id, sheet_name]):
-                flash("All fields are required.", "error")
-                return redirect(
-                    url_for("virtual.virtual_google_sheets", year=virtual_year)
-                )
-
-            # Check if sheet already exists for this district and year
-            existing_sheet = GoogleSheet.query.filter_by(
-                academic_year=virtual_year,
-                purpose="virtual_district_reports",
-                sheet_name=sheet_name,
-            ).first()
-
-            if existing_sheet:
-                flash(
-                    f"A Google Sheet with this name already exists for {virtual_year}.",
-                    "error",
-                )
-                return redirect(
-                    url_for("virtual.virtual_google_sheets", year=virtual_year)
-                )
-
-            # Create new Google Sheet record
-            new_sheet = GoogleSheet(
-                academic_year=virtual_year,
-                purpose="virtual_district_reports",
-                sheet_id=sheet_id,
-                sheet_name=sheet_name,
-                created_by=current_user.id,
-            )
-
-            db.session.add(new_sheet)
-            db.session.commit()
-
-            flash(
-                f'Google Sheet "{sheet_name}" created successfully for {district_name}.',
-                "success",
-            )
-            return redirect(url_for("virtual.virtual_google_sheets", year=virtual_year))
-
-        except Exception as e:
-            db.session.rollback()
-            flash(f"Error creating Google Sheet: {str(e)}", "error")
-            return redirect(url_for("virtual.virtual_google_sheets", year=virtual_year))
-
-    @virtual_bp.route("/usage/google-sheets/<int:sheet_id>/update", methods=["POST"])
-    @login_required
-    def update_virtual_google_sheet(sheet_id):
-        """Update an existing Google Sheet"""
-        try:
-            sheet = GoogleSheet.query.get_or_404(sheet_id)
-
-            sheet_url = request.form.get("sheet_id")
-            sheet_name = request.form.get("sheet_name")
-
-            if not all([sheet_url, sheet_name]):
-                flash("Sheet URL and name are required.", "error")
-                return redirect(
-                    url_for("virtual.virtual_google_sheets", year=sheet.academic_year)
-                )
-
-            sheet.update_sheet_id(sheet_url)
-            sheet.sheet_name = sheet_name
-
-            db.session.commit()
-
-            flash(f'Google Sheet "{sheet_name}" updated successfully.', "success")
-            return redirect(
-                url_for("virtual.virtual_google_sheets", year=sheet.academic_year)
-            )
-
-        except Exception as e:
-            db.session.rollback()
-            flash(f"Error updating Google Sheet: {str(e)}", "error")
-            return redirect(url_for("virtual.virtual_google_sheets"))
-
-    @virtual_bp.route("/usage/google-sheets/<int:sheet_id>/delete", methods=["POST"])
-    @login_required
-    def delete_virtual_google_sheet(sheet_id):
-        """Delete a Google Sheet"""
-        try:
-            sheet = GoogleSheet.query.get_or_404(sheet_id)
-            virtual_year = sheet.academic_year
-            sheet_name = sheet.sheet_name
-
-            db.session.delete(sheet)
-            db.session.commit()
-
-            flash(f'Google Sheet "{sheet_name}" deleted successfully.', "success")
-            return redirect(url_for("virtual.virtual_google_sheets", year=virtual_year))
-
-        except Exception as e:
-            db.session.rollback()
-            flash(f"Error deleting Google Sheet: {str(e)}", "error")
-            return redirect(url_for("virtual.virtual_google_sheets"))
-
-    @virtual_bp.route("/usage/google-sheets/<int:sheet_id>/view")
-    @login_required
-    def view_virtual_google_sheet(sheet_id):
-        """Redirect to the Google Sheet"""
-        sheet = GoogleSheet.query.get_or_404(sheet_id)
-
-        if not sheet.decrypted_sheet_id:
-            flash("Google Sheet URL not available.", "error")
-            return redirect(
-                url_for("virtual.virtual_google_sheets", year=sheet.academic_year)
-            )
-
-        # Create Google Sheets URL
-        google_sheets_url = (
-            f"https://docs.google.com/spreadsheets/d/{sheet.decrypted_sheet_id}/edit"
-        )
-
-        return redirect(google_sheets_url)
-
-    @virtual_bp.route("/usage/district/<district_name>/google-sheet")
-    @login_required
-    @district_scoped_required
-    def get_district_google_sheet(district_name):
-        """Get Google Sheet for a specific district and year"""
-        virtual_year = request.args.get("year", get_current_virtual_year())
-
-        # Look for a sheet that matches this district in the name
-        sheet = GoogleSheet.query.filter(
-            GoogleSheet.academic_year == virtual_year,
-            GoogleSheet.purpose == "virtual_district_reports",
-            GoogleSheet.sheet_name.ilike(f"%{district_name}%"),
-        ).first()
-
-        if sheet:
-            return redirect(
-                url_for("virtual.view_virtual_google_sheet", sheet_id=sheet.id)
-            )
-        else:
-            flash(
-                f"No Google Sheet found for {district_name} in {virtual_year}.",
-                "warning",
-            )
-            return redirect(
-                url_for(
-                    "virtual.virtual_usage_district",
-                    district_name=district_name,
-                    year=virtual_year,
-                )
-            )
 
     @virtual_bp.route("/usage/usage/district/<district_name>/teachers")
     @login_required
@@ -5777,7 +5474,7 @@ def load_usage_routes():
         virtual_year_options = generate_school_year_options()
 
         return render_template(
-            "virtual/virtual_teacher_breakdown.html",
+            "virtual/teacher_progress/breakdown.html",
             district_name=district_name,
             teacher_school_breakdown=teacher_school_breakdown,
             current_filters=current_filters,
@@ -6046,7 +5743,7 @@ def load_usage_routes():
         )
 
         return render_template(
-            "virtual/virtual_teacher_progress.html",
+            "virtual/teacher_progress/index.html",
             district_name=district_name,
             teacher_progress_data=teacher_progress_data,
             current_filters=current_filters,
@@ -6246,7 +5943,7 @@ def load_usage_routes():
         ]
 
         return render_template(
-            "virtual/virtual_teacher_progress_google_sheets.html",
+            "virtual/deprecated/teacher_progress_google_sheets.html",
             sheets=filtered_sheets,
             district_name=district_name,
             districts=districts,  # Pass districts to template
@@ -6882,7 +6579,7 @@ def load_usage_routes():
         }
 
         return render_template(
-            "virtual/virtual_recruitment.html",
+            "virtual/recruitment.html",
             events=event_data,
             filter_options=filter_options,
             current_filters=current_filters,
@@ -6963,7 +6660,7 @@ def load_usage_routes():
         unmatched_entries = total_entries - matched_entries
 
         return render_template(
-            "virtual/virtual_teacher_progress_matching.html",
+            "virtual/teacher_progress/matching.html",
             district_name=district_name,
             teacher_progress_entries=teacher_progress_entries,
             teachers=teachers,
@@ -7297,9 +6994,8 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
     Returns:
         Dictionary with teacher progress data grouped by school
     """
-    from datetime import datetime, timezone
 
-    from models import Event, EventTeacher, School, Teacher, TeacherProgress
+    from models import Event, TeacherProgress
     from models.event import EventStatus, EventType
 
     # Get all teachers from the progress tracking table for this virtual year
