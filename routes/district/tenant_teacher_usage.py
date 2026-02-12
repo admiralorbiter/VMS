@@ -51,11 +51,12 @@ def virtual_admin_required(f):
             flash("This feature is only available for district users.", "error")
             return redirect(url_for("index"))
 
-        # Must be Virtual Admin or Tenant Admin
+        # All tenant roles can access teacher usage dashboard
         allowed_roles = [
             TenantRole.VIRTUAL_ADMIN,
             TenantRole.ADMIN,
             TenantRole.COORDINATOR,
+            TenantRole.USER,
         ]
         if current_user.tenant_role not in allowed_roles:
             flash("You don't have permission to access this page.", "error")

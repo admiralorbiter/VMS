@@ -96,18 +96,9 @@ Dependencies:
           <a class="nav-link" href="/logout">Logout</a>
         </li>
         {% elif current_user.tenant_id %}
-        {# Tenant User Navigation (FR-TENANT-112) #}
+        {# Simplified Tenant User Navigation #}
         <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('district.list_events') }}">Events</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('district.virtual_sessions') }}">Virtual</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('district.list_volunteers') }}">Volunteers</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('district.recruitment_dashboard') }}">Recruitment</a>
+          <a class="nav-link" href="{{ url_for('teacher_usage.index') }}">Teacher Progress</a>
         </li>
         <li class="nav-item">
           <a class="nav-link" href="{{ url_for('district.settings') }}">Settings</a>

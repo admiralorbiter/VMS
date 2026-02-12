@@ -105,6 +105,10 @@ def login():
                 except (json.JSONDecodeError, TypeError, IndexError):
                     pass  # Fall through to normal redirect
 
+            # Redirect tenant users to teacher usage dashboard
+            if user.tenant_id:
+                return redirect(url_for("teacher_usage.index"))
+
             return redirect(url_for("index"))  # Regular users go to main page
         else:
             flash("Invalid username/email or password.", "danger")
