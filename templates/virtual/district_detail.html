@@ -35,26 +35,55 @@
 
     <!-- Summary Stats -->
     <div
-        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px;">
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 28px;">
         <div
-            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 12px; color: white; box-shadow: 0 4px 15px rgba(102,126,234,0.3);">
-            <div style="font-size: 2.2em; font-weight: bold;">{{ total_sessions }}</div>
-            <div style="opacity: 0.9; font-size: 0.85em; margin-top: 2px;">Total Sessions</div>
+            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 18px; border-radius: 12px; color: white; box-shadow: 0 4px 15px rgba(102,126,234,0.3);">
+            <div style="font-size: 2em; font-weight: bold;">{{ total_sessions }}</div>
+            <div style="opacity: 0.9; font-size: 0.8em; margin-top: 2px;">Sessions</div>
         </div>
         <div
-            style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 20px; border-radius: 12px; color: white; box-shadow: 0 4px 15px rgba(17,153,142,0.3);">
-            <div style="font-size: 2.2em; font-weight: bold;">{{ total_students }}</div>
-            <div style="opacity: 0.9; font-size: 0.85em; margin-top: 2px;">Total Students</div>
+            style="background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); padding: 18px; border-radius: 12px; color: white; box-shadow: 0 4px 15px rgba(118,75,162,0.3);">
+            <div style="font-size: 2em; font-weight: bold;">{{ total_experiences }}</div>
+            <div style="opacity: 0.9; font-size: 0.8em; margin-top: 2px;">Experiences</div>
         </div>
         <div
-            style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 20px; border-radius: 12px; color: white; box-shadow: 0 4px 15px rgba(245,87,108,0.3);">
-            <div style="font-size: 2.2em; font-weight: bold;">{{ total_schools }}</div>
-            <div style="opacity: 0.9; font-size: 0.85em; margin-top: 2px;">Schools</div>
+            style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 18px; border-radius: 12px; color: white; box-shadow: 0 4px 15px rgba(17,153,142,0.3);">
+            <div style="font-size: 2em; font-weight: bold;">{{ total_students }}</div>
+            <div style="opacity: 0.9; font-size: 0.8em; margin-top: 2px;">Students</div>
         </div>
         <div
-            style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); padding: 20px; border-radius: 12px; color: white; box-shadow: 0 4px 15px rgba(250,112,154,0.3);">
-            <div style="font-size: 2.2em; font-weight: bold;">{{ total_teachers }}</div>
-            <div style="opacity: 0.9; font-size: 0.85em; margin-top: 2px;">Teachers</div>
+            style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 18px; border-radius: 12px; color: white; box-shadow: 0 4px 15px rgba(245,87,108,0.3);">
+            <div style="font-size: 2em; font-weight: bold;">{{ total_schools }}</div>
+            <div style="opacity: 0.9; font-size: 0.8em; margin-top: 2px;">Schools</div>
+        </div>
+        <div
+            style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); padding: 18px; border-radius: 12px; color: white; box-shadow: 0 4px 15px rgba(250,112,154,0.3);">
+            <div style="font-size: 2em; font-weight: bold;">{{ total_teachers }}</div>
+            <div style="opacity: 0.9; font-size: 0.8em; margin-top: 2px;">Educators</div>
+        </div>
+        <div
+            style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 18px; border-radius: 12px; color: white; box-shadow: 0 4px 15px rgba(79,172,254,0.3);">
+            <div style="font-size: 2em; font-weight: bold;">{{ total_organizations }}</div>
+            <div style="opacity: 0.9; font-size: 0.8em; margin-top: 2px;">Organizations</div>
+        </div>
+        <div
+            style="background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%); padding: 18px; border-radius: 12px; color: white; box-shadow: 0 4px 15px rgba(161,140,209,0.3);">
+            <div style="font-size: 2em; font-weight: bold;">{{ total_volunteers }}</div>
+            <div style="opacity: 0.9; font-size: 0.8em; margin-top: 2px;">Professionals</div>
+        </div>
+        <div
+            style="background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); padding: 18px; border-radius: 12px; color: #5a3e2b; box-shadow: 0 4px 15px rgba(252,182,159,0.3);">
+            <div style="font-size: 2em; font-weight: bold;">{{ local_volunteers }}
+                <span style="font-size: 0.5em; font-weight: 400;">({{ local_pct }}%)</span>
+            </div>
+            <div style="opacity: 0.8; font-size: 0.8em; margin-top: 2px;">Local Professionals</div>
+        </div>
+        <div
+            style="background: linear-gradient(135deg, #c3cfe2 0%, #f5f7fa 100%); padding: 18px; border-radius: 12px; color: #2c3e50; box-shadow: 0 4px 15px rgba(195,207,226,0.3);">
+            <div style="font-size: 2em; font-weight: bold;">{{ poc_volunteers }}
+                <span style="font-size: 0.5em; font-weight: 400;">({{ poc_pct }}%)</span>
+            </div>
+            <div style="opacity: 0.8; font-size: 0.8em; margin-top: 2px;">Professionals of Color</div>
         </div>
     </div>
 
@@ -81,8 +110,8 @@
     </div>
     {% endif %}
 
-    <!-- Two-Column Layout: Schools & Teachers -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+    <!-- Three-Column Layout: Schools, Educators, Professionals -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px;">
 
         <!-- Schools Table -->
         <div style="background: white; border-radius: 12px; box-shadow: 0 2px 15px rgba(0,0,0,0.08); overflow: hidden;">
@@ -111,15 +140,13 @@
                         <td style="padding: 10px 16px; color: #333;">{{ school.name }}</td>
                         <td style="padding: 10px 16px; text-align: center;">
                             <span
-                                style="background: #e3f2fd; color: #1976d2; padding: 3px 10px; border-radius: 20px; font-weight: 600; font-size: 0.85em;">
-                                {{ school.sessions }}
-                            </span>
+                                style="background: #e3f2fd; color: #1976d2; padding: 3px 10px; border-radius: 20px; font-weight: 600; font-size: 0.85em;">{{
+                                school.sessions }}</span>
                         </td>
                         <td style="padding: 10px 16px; text-align: center;">
                             <span
-                                style="background: #e8f5e9; color: #388e3c; padding: 3px 10px; border-radius: 20px; font-weight: 600; font-size: 0.85em;">
-                                {{ school.students }}
-                            </span>
+                                style="background: #e8f5e9; color: #388e3c; padding: 3px 10px; border-radius: 20px; font-weight: 600; font-size: 0.85em;">{{
+                                school.students }}</span>
                         </td>
                     </tr>
                     {% endfor %}
@@ -132,11 +159,11 @@
             {% endif %}
         </div>
 
-        <!-- Teachers Table -->
+        <!-- Educators Table -->
         <div style="background: white; border-radius: 12px; box-shadow: 0 2px 15px rgba(0,0,0,0.08); overflow: hidden;">
             <div
                 style="background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; padding: 14px 20px; font-weight: 600; font-size: 1.05em;">
-                <i class="fas fa-chalkboard-teacher"></i> Teachers ({{ teachers|length }})
+                <i class="fas fa-chalkboard-teacher"></i> Educators ({{ teachers|length }})
             </div>
             {% if teachers %}
             <table style="width: 100%; border-collapse: collapse;">
@@ -144,7 +171,7 @@
                     <tr style="background: #f8f9fa;">
                         <th
                             style="padding: 10px 16px; text-align: left; font-weight: 600; color: #555; font-size: 0.85em;">
-                            Teacher Name</th>
+                            Educator Name</th>
                         <th
                             style="padding: 10px 16px; text-align: center; font-weight: 600; color: #555; font-size: 0.85em;">
                             Sessions</th>
@@ -153,14 +180,11 @@
                 <tbody>
                     {% for teacher in teachers %}
                     <tr style="border-bottom: 1px solid #eef2f7;">
-                        <td style="padding: 10px 16px; color: #333; font-weight: 500;">
-                            {{ teacher.name }}
-                        </td>
+                        <td style="padding: 10px 16px; color: #333; font-weight: 500;">{{ teacher.name }}</td>
                         <td style="padding: 10px 16px; text-align: center;">
                             <span
-                                style="background: #e3f2fd; color: #1976d2; padding: 3px 10px; border-radius: 20px; font-weight: 600; font-size: 0.85em;">
-                                {{ teacher.sessions }}
-                            </span>
+                                style="background: #e3f2fd; color: #1976d2; padding: 3px 10px; border-radius: 20px; font-weight: 600; font-size: 0.85em;">{{
+                                teacher.sessions }}</span>
                         </td>
                     </tr>
                     {% endfor %}
@@ -168,7 +192,44 @@
             </table>
             {% else %}
             <div style="padding: 30px; text-align: center; color: #999;">
-                <i class="fas fa-info-circle"></i> No linked teacher data available
+                <i class="fas fa-info-circle"></i> No educator data available
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Professionals Table -->
+        <div style="background: white; border-radius: 12px; box-shadow: 0 2px 15px rgba(0,0,0,0.08); overflow: hidden;">
+            <div
+                style="background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; padding: 14px 20px; font-weight: 600; font-size: 1.05em;">
+                <i class="fas fa-user-tie"></i> Professionals ({{ volunteers_list|length }})
+            </div>
+            {% if volunteers_list %}
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f8f9fa;">
+                        <th
+                            style="padding: 10px 16px; text-align: left; font-weight: 600; color: #555; font-size: 0.85em;">
+                            Name</th>
+                        <th
+                            style="padding: 10px 16px; text-align: left; font-weight: 600; color: #555; font-size: 0.85em;">
+                            Organization</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for vol in volunteers_list %}
+                    <tr style="border-bottom: 1px solid #eef2f7;">
+                        <td style="padding: 10px 16px; font-weight: 500;">
+                            <a href="{{ url_for('volunteers.view_volunteer', id=vol.id) }}"
+                                style="color: #2980b9; text-decoration: none;">{{ vol.name }}</a>
+                        </td>
+                        <td style="padding: 10px 16px; color: #666; font-size: 0.9em;">{{ vol.org or '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div style="padding: 30px; text-align: center; color: #999;">
+                <i class="fas fa-info-circle"></i> No professional data available
             </div>
             {% endif %}
         </div>

@@ -2061,6 +2061,21 @@ def load_pathful_routes():
 
         # Summary stats
         total_sessions = Event.query.filter(*base_filter).count()
+        # Count experiences (total educator-session participations)
+        educator_rows = (
+            db.session.query(Event.educators)
+            .filter(*base_filter, Event.educators.isnot(None), Event.educators != "")
+            .all()
+        )
+        total_experiences = 0
+        unique_educator_names = set()
+        for (educators_str,) in educator_rows:
+            for name in educators_str.split("; "):
+                name = name.strip()
+                if name:
+                    total_experiences += 1
+                    unique_educator_names.add(name)
+        unique_classes = len(unique_educator_names)
         total_students = (
             db.session.query(func.coalesce(func.sum(Event.registered_student_count), 0))
             .filter(*base_filter)
@@ -2142,13 +2157,72 @@ def load_pathful_routes():
         )
         statuses = {(s[0].value if s[0] else "Unknown"): s[1] for s in status_breakdown}
 
+        # Unique volunteers who participated in this district's sessions
+        from models.contact import LocalStatusEnum
+        from models.event import event_volunteers
+        from models.volunteer import Volunteer
+
+        volunteer_query = (
+            db.session.query(Volunteer)
+            .join(event_volunteers, event_volunteers.c.volunteer_id == Volunteer.id)
+            .join(Event, Event.id == event_volunteers.c.event_id)
+            .filter(*base_filter)
+            .distinct()
+            .all()
+        )
+
+        total_volunteers = len(volunteer_query)
+        local_volunteers = sum(
+            1 for v in volunteer_query if v.local_status == LocalStatusEnum.local
+        )
+        poc_volunteers = sum(1 for v in volunteer_query if v.is_people_of_color)
+        local_pct = (
+            round((local_volunteers / total_volunteers * 100), 1)
+            if total_volunteers > 0
+            else 0
+        )
+        poc_pct = (
+            round((poc_volunteers / total_volunteers * 100), 1)
+            if total_volunteers > 0
+            else 0
+        )
+
+        # Build volunteers list with org info, and collect unique org names
+        org_names = set()
+        volunteers_list = []
+        for v in volunteer_query:
+            # Get org names from the many-to-many relationship
+            vol_orgs = [org.name for org in v.organizations if org.name]
+            for org_name in vol_orgs:
+                org_names.add(org_name)
+            volunteers_list.append(
+                {
+                    "id": v.id,
+                    "name": f"{v.first_name or ''} {v.last_name or ''}".strip(),
+                    "org": ", ".join(vol_orgs) if vol_orgs else "",
+                    "is_local": v.local_status == LocalStatusEnum.local,
+                    "is_poc": v.is_people_of_color,
+                }
+            )
+        volunteers_list.sort(key=lambda x: x["name"])
+        total_organizations = len(org_names)
+
         return render_template(
             "virtual/district_detail.html",
             district_name=district_name,
             total_sessions=total_sessions,
+            unique_classes=unique_classes,
+            total_experiences=total_experiences,
             total_students=int(total_students),
             total_schools=len(schools),
             total_teachers=len(teachers),
+            total_volunteers=total_volunteers,
+            local_volunteers=local_volunteers,
+            local_pct=local_pct,
+            poc_volunteers=poc_volunteers,
+            poc_pct=poc_pct,
+            total_organizations=total_organizations,
+            volunteers_list=volunteers_list,
             schools=schools,
             teachers=teachers,
             statuses=statuses,
