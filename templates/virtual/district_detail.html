@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}{{ district_name }} - Virtual Sessions{% endblock %}
+
+{% block extra_css %}
+<style>
+    main {
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div
+    style="padding: 20px 30px; background: linear-gradient(180deg, #e8f4f8 0%, #f5f7fa 100%); min-height: calc(100vh - 60px);">
+
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <a href="{{ url_for('virtual.virtual_sessions') }}"
+                style="color: #3498db; text-decoration: none; font-size: 1.4em;" title="Back to All Sessions">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <h1 style="color: #2c3e50; margin: 0; font-size: 1.8em;">{{ district_name }}</h1>
+            <span
+                style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 5px 14px; border-radius: 20px; font-size: 0.75em; font-weight: 600;">
+                District Detail
+            </span>
+        </div>
+        <div style="color: #888; font-size: 0.9em;">
+            <i class="fas fa-calendar-alt"></i> {{ date_from }} to {{ date_to }}
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px;">
+        <div
+            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 12px; color: white; box-shadow: 0 4px 15px rgba(102,126,234,0.3);">
+            <div style="font-size: 2.2em; font-weight: bold;">{{ total_sessions }}</div>
+            <div style="opacity: 0.9; font-size: 0.85em; margin-top: 2px;">Total Sessions</div>
+        </div>
+        <div
+            style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 20px; border-radius: 12px; color: white; box-shadow: 0 4px 15px rgba(17,153,142,0.3);">
+            <div style="font-size: 2.2em; font-weight: bold;">{{ total_students }}</div>
+            <div style="opacity: 0.9; font-size: 0.85em; margin-top: 2px;">Total Students</div>
+        </div>
+        <div
+            style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 20px; border-radius: 12px; color: white; box-shadow: 0 4px 15px rgba(245,87,108,0.3);">
+            <div style="font-size: 2.2em; font-weight: bold;">{{ total_schools }}</div>
+            <div style="opacity: 0.9; font-size: 0.85em; margin-top: 2px;">Schools</div>
+        </div>
+        <div
+            style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); padding: 20px; border-radius: 12px; color: white; box-shadow: 0 4px 15px rgba(250,112,154,0.3);">
+            <div style="font-size: 2.2em; font-weight: bold;">{{ total_teachers }}</div>
+            <div style="opacity: 0.9; font-size: 0.85em; margin-top: 2px;">Teachers</div>
+        </div>
+    </div>
+
+    <!-- Status Breakdown -->
+    {% if statuses %}
+    <div style="margin-bottom: 28px;">
+        <h3 style="color: #2c3e50; margin-bottom: 12px; font-size: 1.1em;">
+            <i class="fas fa-chart-pie" style="color: #667eea;"></i> Status Breakdown
+        </h3>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            {% set status_colors = {'Completed': '#27ae60', 'Confirmed': '#3498db', 'Published': '#9b59b6',
+            'Cancelled': '#e74c3c', 'Draft': '#95a5a6', 'Unknown': '#bdc3c7'} %}
+            {% for status, count in statuses.items() %}
+            <div
+                style="background: white; border-left: 4px solid {{ status_colors.get(status, '#95a5a6') }}; padding: 10px 18px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); display: flex; align-items: center; gap: 10px;">
+                <span
+                    style="background: {{ status_colors.get(status, '#95a5a6') }}; color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.8em; font-weight: 500;">
+                    {{ status }}
+                </span>
+                <span style="font-weight: 700; color: #2c3e50; font-size: 1.1em;">{{ count }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Two-Column Layout: Schools & Teachers -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+
+        <!-- Schools Table -->
+        <div style="background: white; border-radius: 12px; box-shadow: 0 2px 15px rgba(0,0,0,0.08); overflow: hidden;">
+            <div
+                style="background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; padding: 14px 20px; font-weight: 600; font-size: 1.05em;">
+                <i class="fas fa-school"></i> Schools ({{ schools|length }})
+            </div>
+            {% if schools %}
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f8f9fa;">
+                        <th
+                            style="padding: 10px 16px; text-align: left; font-weight: 600; color: #555; font-size: 0.85em;">
+                            School Name</th>
+                        <th
+                            style="padding: 10px 16px; text-align: center; font-weight: 600; color: #555; font-size: 0.85em;">
+                            Sessions</th>
+                        <th
+                            style="padding: 10px 16px; text-align: center; font-weight: 600; color: #555; font-size: 0.85em;">
+                            Students</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for school in schools %}
+                    <tr style="border-bottom: 1px solid #eef2f7;">
+                        <td style="padding: 10px 16px; color: #333;">{{ school.name }}</td>
+                        <td style="padding: 10px 16px; text-align: center;">
+                            <span
+                                style="background: #e3f2fd; color: #1976d2; padding: 3px 10px; border-radius: 20px; font-weight: 600; font-size: 0.85em;">
+                                {{ school.sessions }}
+                            </span>
+                        </td>
+                        <td style="padding: 10px 16px; text-align: center;">
+                            <span
+                                style="background: #e8f5e9; color: #388e3c; padding: 3px 10px; border-radius: 20px; font-weight: 600; font-size: 0.85em;">
+                                {{ school.students }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div style="padding: 30px; text-align: center; color: #999;">
+                <i class="fas fa-info-circle"></i> No school data available
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Teachers Table -->
+        <div style="background: white; border-radius: 12px; box-shadow: 0 2px 15px rgba(0,0,0,0.08); overflow: hidden;">
+            <div
+                style="background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; padding: 14px 20px; font-weight: 600; font-size: 1.05em;">
+                <i class="fas fa-chalkboard-teacher"></i> Teachers ({{ teachers|length }})
+            </div>
+            {% if teachers %}
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f8f9fa;">
+                        <th
+                            style="padding: 10px 16px; text-align: left; font-weight: 600; color: #555; font-size: 0.85em;">
+                            Teacher Name</th>
+                        <th
+                            style="padding: 10px 16px; text-align: center; font-weight: 600; color: #555; font-size: 0.85em;">
+                            Sessions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for teacher in teachers %}
+                    <tr style="border-bottom: 1px solid #eef2f7;">
+                        <td style="padding: 10px 16px; color: #333; font-weight: 500;">
+                            {{ teacher.name }}
+                        </td>
+                        <td style="padding: 10px 16px; text-align: center;">
+                            <span
+                                style="background: #e3f2fd; color: #1976d2; padding: 3px 10px; border-radius: 20px; font-weight: 600; font-size: 0.85em;">
+                                {{ teacher.sessions }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div style="padding: 30px; text-align: center; color: #999;">
+                <i class="fas fa-info-circle"></i> No linked teacher data available
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+{% endblock %}

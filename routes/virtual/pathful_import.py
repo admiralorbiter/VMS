@@ -1949,6 +1949,31 @@ def load_pathful_routes():
         )
         districts = [d[0] for d in districts]
 
+        # Per-district stats for the district strip (admin only)
+        district_stats = []
+        if current_user.is_admin:
+            district_stats_raw = (
+                db.session.query(
+                    Event.district_partner,
+                    func.count(Event.id),
+                    func.coalesce(func.sum(Event.registered_student_count), 0),
+                )
+                .filter(
+                    Event.type == EventType.VIRTUAL_SESSION,
+                    Event.district_partner.isnot(None),
+                    Event.district_partner != "",
+                    Event.start_date >= date_from,
+                    Event.start_date <= date_to,
+                )
+                .group_by(Event.district_partner)
+                .order_by(func.count(Event.id).desc())
+                .all()
+            )
+            district_stats = [
+                {"name": row[0], "sessions": row[1], "students": int(row[2])}
+                for row in district_stats_raw
+            ]
+
         # Pass active tenants for admin Teacher Progress dropdown
         tenants = []
         if current_user.is_admin:
@@ -1959,6 +1984,7 @@ def load_pathful_routes():
             sessions=pagination,
             career_clusters=career_clusters,
             districts=districts,
+            district_stats=district_stats,
             total_sessions=total_sessions,
             total_students=total_students,
             tenants=tenants,
@@ -1975,6 +2001,159 @@ def load_pathful_routes():
             # Phase D-3: Tenant context for UI adjustments
             is_tenant_user=is_tenant,
             user_district=user_district,
+        )
+
+    # =========================================================================
+    # District Detail View
+    # =========================================================================
+
+    @virtual_bp.route("/sessions/district/<path:district_name>")
+    @login_required
+    @admin_required
+    def virtual_sessions_district_detail(district_name):
+        """
+        District detail view showing sessions, teachers, and schools
+        for a specific district.
+        """
+        from urllib.parse import unquote
+
+        district_name = unquote(district_name)
+
+        # Date range (same logic as main sessions view)
+        today = datetime.now()
+        if today.month >= 8:
+            default_start = datetime(today.year, 8, 1)
+            default_end = datetime(today.year + 1, 7, 31, 23, 59, 59)
+        else:
+            default_start = datetime(today.year - 1, 8, 1)
+            default_end = datetime(today.year, 7, 31, 23, 59, 59)
+
+        date_from_str = request.args.get("date_from")
+        date_to_str = request.args.get("date_to")
+
+        try:
+            date_from = (
+                datetime.strptime(date_from_str, "%Y-%m-%d")
+                if date_from_str
+                else default_start
+            )
+        except ValueError:
+            date_from = default_start
+
+        try:
+            date_to = (
+                datetime.strptime(date_to_str, "%Y-%m-%d").replace(
+                    hour=23, minute=59, second=59
+                )
+                if date_to_str
+                else default_end
+            )
+        except ValueError:
+            date_to = default_end
+
+        # Base filter for this district
+        base_filter = [
+            Event.type == EventType.VIRTUAL_SESSION,
+            Event.district_partner == district_name,
+            Event.start_date >= date_from,
+            Event.start_date <= date_to,
+        ]
+
+        # Summary stats
+        total_sessions = Event.query.filter(*base_filter).count()
+        total_students = (
+            db.session.query(func.coalesce(func.sum(Event.registered_student_count), 0))
+            .filter(*base_filter)
+            .scalar()
+        )
+
+        # Unique schools
+        from models.school_model import School
+
+        schools_query = (
+            db.session.query(
+                School.name,
+                func.count(Event.id).label("session_count"),
+                func.coalesce(func.sum(Event.registered_student_count), 0).label(
+                    "student_count"
+                ),
+            )
+            .join(Event, Event.school == School.id)
+            .filter(*base_filter)
+            .group_by(School.name)
+            .order_by(func.count(Event.id).desc())
+            .all()
+        )
+        schools = [
+            {"name": s[0], "sessions": s[1], "students": int(s[2])}
+            for s in schools_query
+        ]
+
+        # Also count schools from location field (fallback for unlinked)
+        location_schools = (
+            db.session.query(
+                Event.location,
+                func.count(Event.id),
+                func.coalesce(func.sum(Event.registered_student_count), 0),
+            )
+            .filter(
+                *base_filter,
+                Event.school.is_(None),
+                Event.location.isnot(None),
+                Event.location != "",
+            )
+            .group_by(Event.location)
+            .order_by(func.count(Event.id).desc())
+            .all()
+        )
+        for s in location_schools:
+            schools.append({"name": s[0], "sessions": s[1], "students": int(s[2])})
+
+        # Unique teachers (from educators text field, semicolon-separated)
+        educator_events = (
+            db.session.query(Event.educators)
+            .filter(*base_filter, Event.educators.isnot(None), Event.educators != "")
+            .all()
+        )
+        teacher_counts = {}
+        for (educators_str,) in educator_events:
+            for name in educators_str.split("; "):
+                name = name.strip()
+                if name:
+                    teacher_counts[name] = teacher_counts.get(name, 0) + 1
+        teachers = sorted(
+            [
+                {"name": name, "sessions": count}
+                for name, count in teacher_counts.items()
+            ],
+            key=lambda t: t["sessions"],
+            reverse=True,
+        )
+
+        # Status breakdown
+        status_breakdown = (
+            db.session.query(
+                Event.status,
+                func.count(Event.id),
+            )
+            .filter(*base_filter)
+            .group_by(Event.status)
+            .all()
+        )
+        statuses = {(s[0].value if s[0] else "Unknown"): s[1] for s in status_breakdown}
+
+        return render_template(
+            "virtual/district_detail.html",
+            district_name=district_name,
+            total_sessions=total_sessions,
+            total_students=int(total_students),
+            total_schools=len(schools),
+            total_teachers=len(teachers),
+            schools=schools,
+            teachers=teachers,
+            statuses=statuses,
+            date_from=date_from.strftime("%Y-%m-%d"),
+            date_to=date_to.strftime("%Y-%m-%d"),
         )
 
     # =========================================================================
