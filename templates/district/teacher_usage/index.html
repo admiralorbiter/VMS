@@ -681,9 +681,15 @@
 {% block content %}
 <div class="teacher-usage-container">
     <div class="district-header">
+        {% if admin_tenant_id is defined and admin_tenant_id %}
+        <a href="{{ url_for('virtual.virtual_sessions') }}" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Virtual Sessions
+        </a>
+        {% else %}
         <a href="{{ url_for('district.virtual_sessions') }}" class="back-link">
             <i class="fas fa-arrow-left"></i> Back to Virtual Sessions
         </a>
+        {% endif %}
         <h1 class="district-title">{{ district_name }}</h1>
         <p class="district-subtitle">Teacher Usage Dashboard - {{ academic_year }} - {{ 'Fall' if semester == 'fall'
             else 'Spring' }} Semester</p>
@@ -692,6 +698,9 @@
     <!-- Filters -->
     <div class="filters-section">
         <form class="filters-form" method="GET">
+            {% if admin_tenant_id is defined and admin_tenant_id %}
+            <input type="hidden" name="tenant_id" value="{{ admin_tenant_id }}">
+            {% endif %}
             <div class="filter-group">
                 <label for="year">Academic Year:</label>
                 <select id="year" name="year">
@@ -710,9 +719,9 @@
                 </select>
             </div>
             <button type="submit" class="filter-btn">Apply</button>
-            <a href="{{ url_for('teacher_usage.index') }}" class="reset-btn">Reset</a>
+            <a href="{{ url_for('teacher_usage.index', tenant_id=admin_tenant_id) if admin_tenant_id is defined and admin_tenant_id else url_for('teacher_usage.index') }}" class="reset-btn">Reset</a>
             {% if teacher_progress_data %}
-            <a href="{{ url_for('teacher_usage.export_excel', year=academic_year, semester=semester) }}"
+            <a href="{{ url_for('teacher_usage.export_excel', year=academic_year, semester=semester, tenant_id=admin_tenant_id) if admin_tenant_id is defined and admin_tenant_id else url_for('teacher_usage.export_excel', year=academic_year, semester=semester) }}"
                 class="export-btn">
                 <i class="fas fa-file-excel"></i> Export to Excel
             </a>
@@ -845,7 +854,7 @@
                             <span class="flag-badge">{{ teacher.open_flags_count }}</span>
                             {% endif %}
                         </button>
-                        <a href="{{ url_for('teacher_usage.teacher_detail', teacher_progress_id=teacher.id) }}"
+                        <a href="{{ url_for('teacher_usage.teacher_detail', teacher_progress_id=teacher.id, tenant_id=admin_tenant_id) if admin_tenant_id is defined and admin_tenant_id else url_for('teacher_usage.teacher_detail', teacher_progress_id=teacher.id) }}"
                             class="teacher-name-link" title="View session details">
                             {{ teacher.name }}
                         </a>

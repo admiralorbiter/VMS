@@ -52,6 +52,7 @@ from models.pathful_import import (
 )
 from models.school_model import School
 from models.teacher_progress import TeacherProgress
+from models.tenant import Tenant
 from models.user import TenantRole
 from models.volunteer import Volunteer
 from services.scoping import (
@@ -1948,6 +1949,11 @@ def load_pathful_routes():
         )
         districts = [d[0] for d in districts]
 
+        # Pass active tenants for admin Teacher Progress dropdown
+        tenants = []
+        if current_user.is_admin:
+            tenants = Tenant.query.filter_by(is_active=True).order_by(Tenant.name).all()
+
         return render_template(
             "virtual/sessions.html",
             sessions=pagination,
@@ -1955,6 +1961,7 @@ def load_pathful_routes():
             districts=districts,
             total_sessions=total_sessions,
             total_students=total_students,
+            tenants=tenants,
             filters={
                 "date_from": date_from.strftime("%Y-%m-%d"),
                 "date_to": date_to.strftime("%Y-%m-%d"),

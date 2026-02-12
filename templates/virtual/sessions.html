@@ -26,7 +26,21 @@
             {% endif %}
         </div>
         {% if current_user.is_admin %}
-        <div style="display: flex; gap: 10px;">
+        <div style="display: flex; gap: 10px; align-items: center;">
+            {% if tenants is defined and tenants %}
+            <div style="position: relative; display: inline-flex; align-items: center;">
+                <select id="teacherProgressTenant"
+                    onchange="if(this.value) window.location.href='{{ url_for('teacher_usage.index') }}?tenant_id=' + this.value;"
+                    style="appearance: none; -webkit-appearance: none; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 10px 40px 10px 20px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(40,167,69,0.3); font-size: 0.9em;">
+                    <option value="" style="background: white; color: #333;">📊 Teacher Progress</option>
+                    {% for tenant in tenants %}
+                    <option value="{{ tenant.id }}" style="background: white; color: #333;">{{ tenant.name }}</option>
+                    {% endfor %}
+                </select>
+                <i class="fas fa-chevron-down"
+                    style="position: absolute; right: 14px; color: white; pointer-events: none; font-size: 0.8em;"></i>
+            </div>
+            {% endif %}
             <a href="{{ url_for('virtual.flag_queue') }}"
                 style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; box-shadow: 0 2px 8px rgba(231,76,60,0.3);">
                 🚩 Flags

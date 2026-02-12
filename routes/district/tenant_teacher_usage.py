@@ -70,11 +70,12 @@ def virtual_admin_required(f):
 # services.academic_year_service
 
 
-def get_tenant_district_name():
-    """Get district name for current user's tenant."""
-    if not current_user.tenant_id:
+def get_tenant_district_name(tenant_id=None):
+    """Get district name for a tenant (defaults to current user's tenant)."""
+    tid = tenant_id or current_user.tenant_id
+    if not tid:
         return None
-    tenant = Tenant.query.get(current_user.tenant_id)
+    tenant = Tenant.query.get(tid)
     return tenant.name if tenant else None
 
 
@@ -250,13 +251,24 @@ def index():
     """Main teacher usage/progress dashboard."""
     academic_year = request.args.get("year", get_current_academic_year())
     semester = request.args.get("semester", get_current_semester())
-    tenant_id = current_user.tenant_id
-    district_name = get_tenant_district_name()
 
-    # For global admins without tenant, show message
+    # Admin users can specify a tenant via query param
+    admin_tenant_id = request.args.get("tenant_id", type=int)
+    if current_user.is_admin and admin_tenant_id:
+        tenant_id = admin_tenant_id
+        tenant = Tenant.query.get(tenant_id)
+        if not tenant:
+            flash("Tenant not found.", "error")
+            return redirect(url_for("virtual.virtual_sessions"))
+        district_name = tenant.district.name if tenant.district else tenant.name
+    else:
+        tenant_id = current_user.tenant_id
+        district_name = get_tenant_district_name()
+
+    # For global admins without tenant, redirect to sessions page
     if not tenant_id:
         flash("Please select a tenant to view teacher usage.", "warning")
-        return redirect(url_for("main.index"))
+        return redirect(url_for("virtual.virtual_sessions"))
 
     # Get available years
     years = (
@@ -287,6 +299,7 @@ def index():
         year_options=year_options,
         semester=semester,
         teacher_progress_data=teacher_progress_data,
+        admin_tenant_id=admin_tenant_id,
     )
 
 
@@ -307,12 +320,24 @@ def export_excel():
 
     academic_year = request.args.get("year", get_current_academic_year())
     semester = request.args.get("semester", get_current_semester())
-    tenant_id = current_user.tenant_id
-    district_name = get_tenant_district_name() or "District"
+
+    # Admin users can specify a tenant via query param
+    admin_tenant_id = request.args.get("tenant_id", type=int)
+    if current_user.is_admin and admin_tenant_id:
+        tenant_id = admin_tenant_id
+        tenant = Tenant.query.get(tenant_id)
+        district_name = (
+            tenant.district.name
+            if tenant and tenant.district
+            else tenant.name if tenant else "District"
+        )
+    else:
+        tenant_id = current_user.tenant_id
+        district_name = get_tenant_district_name() or "District"
 
     if not tenant_id:
         flash("No tenant assigned.", "error")
-        return redirect(url_for("main.index"))
+        return redirect(url_for("virtual.virtual_sessions"))
 
     # Calculate semester date range using shared service
     date_from, date_to = get_semester_dates(academic_year, semester)
@@ -387,10 +412,18 @@ def teacher_detail(teacher_progress_id):
     )
 
     tp = TeacherProgress.query.get_or_404(teacher_progress_id)
-    district_name = get_tenant_district_name() or "Your District"
+
+    # Admin users can specify a tenant via query param
+    admin_tenant_id = request.args.get("tenant_id", type=int)
+    if current_user.is_admin and admin_tenant_id:
+        effective_tenant_id = admin_tenant_id
+    else:
+        effective_tenant_id = current_user.tenant_id
+
+    district_name = get_tenant_district_name(effective_tenant_id) or "Your District"
 
     # Resolve the tenant's linked district name (same as compute_teacher_progress)
-    tenant = Tenant.query.get(current_user.tenant_id)
+    tenant = Tenant.query.get(effective_tenant_id)
     linked_district = None
     if tenant:
         if tenant.district:
