@@ -31,6 +31,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app import create_app
 from models import db
+from models.volunteer import Skill
 
 
 class SyntheticDataGenerator:
@@ -99,6 +100,43 @@ class SyntheticDataGenerator:
             return self.size_presets[self.size].get(model_name, 10)
         return 10
     
+    def generate_skills(self):
+        """Generate Skill records."""
+        count = self.get_count('skill')
+        print(f"  Creating {count} skills...")
+        
+        skill_names = [
+            "Python Programming", "JavaScript", "Project Management", "Marketing",
+            "Financial Analysis", "Data Science", "Public Speaking", "Leadership",
+            "Graphic Design", "Sales", "Teaching", "Mentoring", "Event Planning",
+            "Software Engineering", "Database Administration", "Web Development",
+            "Mobile Development", "Cloud Computing", "Cybersecurity", "Machine Learning"
+        ]
+        
+        created = 0
+        for i in range(count):
+            try:
+                # Use predefined names or generate new ones
+                if i < len(skill_names):
+                    name = skill_names[i]
+                else:
+                    name = f"{self.fake.job()} Skills"
+                
+                # Check if skill already exists
+                existing = Skill.query.filter_by(name=name).first()
+                if existing:
+                    continue
+                
+                skill = Skill(name=name)
+                db.session.add(skill)
+                created += 1
+            except Exception as e:
+                print(f"    ⚠️  Error creating skill {i}: {e}")
+        
+        db.session.commit()
+        print(f"    ✅ Created {created} skills")
+        return Skill.query.all()
+    
     def generate(self):
         """Main generation method."""
         print(f"🌱 Starting synthetic data generation")
@@ -110,7 +148,12 @@ class SyntheticDataGenerator:
         app = create_app()
         with app.app_context():
             try:
-                # TODO: Implement model generation
+                # Generate independent models first
+                skills = self.generate_skills()
+                
+                # TODO: Add more model generation
+                
+                print()
                 print("✅ Generation complete!")
             except Exception as e:
                 print(f"❌ Error during generation: {e}")
@@ -200,8 +243,21 @@ def main():
         app = create_app()
         with app.app_context():
             print("Clearing existing data...")
-            # TODO: Implement data clearing
-            print("✅ Data cleared")
+            try:
+                # Delete in reverse dependency order
+                from models.volunteer import VolunteerSkill
+                from models.organization import VolunteerOrganization
+                
+                VolunteerSkill.query.delete()
+                VolunteerOrganization.query.delete()
+                Skill.query.delete()
+                
+                db.session.commit()
+                print("✅ Data cleared")
+            except Exception as e:
+                print(f"❌ Error clearing data: {e}")
+                db.session.rollback()
+                return
     
     # Generate data
     generator.generate()
