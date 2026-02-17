@@ -479,30 +479,16 @@ class SyntheticDataGenerator:
                     print(f"    [WARNING] Skipping volunteer {i}: Invalid name generated")
                     continue
                 
-                contact = Contact(
+                # Create Volunteer directly (inherits from Contact, so creates both)
+                volunteer = Volunteer(
                     first_name=first_name,
                     last_name=last_name,
-                    type="volunteer",  # Set polymorphic type
                     gender=random.choice(list(GenderEnum)),
                     birthdate=self.fake.date_of_birth(minimum_age=22, maximum_age=65),
                     education_level=random.choice(list(EducationEnum)),
                     race_ethnicity=random.choice(list(RaceEthnicityEnum)) if self.mode == 'demo' or random.random() > 0.2 else None,
                     age_group=random.choice(list(AgeGroupEnum)),
-                    salesforce_individual_id=self.fake.lexify(text='?' * 18).upper() if random.random() > 0.1 else None
-                )
-                db.session.add(contact)
-                db.session.flush()  # Get the ID
-                
-                # Verify contact was created properly
-                if not contact.id or not contact.first_name or not contact.last_name:
-                    print(f"    [WARNING] Skipping volunteer {i}: Contact creation failed")
-                    db.session.rollback()
-                    db.session.expire_all()
-                    continue
-                
-                # Create Volunteer
-                volunteer = Volunteer(
-                    id=contact.id,
+                    salesforce_individual_id=self.fake.lexify(text='?' * 18).upper() if random.random() > 0.1 else None,
                     organization_name=random.choice(organizations).name if organizations and random.random() > 0.2 else self.fake.company(),
                     title=random.choice(titles),
                     department=self.fake.word().title() if self.mode == 'demo' or random.random() > 0.3 else None,
@@ -516,10 +502,11 @@ class SyntheticDataGenerator:
                     interests=self.fake.text(max_nb_chars=200) if self.mode == 'demo' or random.random() > 0.3 else None
                 )
                 db.session.add(volunteer)
+                db.session.flush()  # Get the ID
                 
                 # Add email
                 email = Email(
-                    contact_id=contact.id,
+                    contact_id=volunteer.id,
                     email=self.fake.email(),
                     type=ContactTypeEnum.personal,
                     primary=True
@@ -529,7 +516,7 @@ class SyntheticDataGenerator:
                 # Add phone (80% chance)
                 if random.random() > 0.2:
                     phone = Phone(
-                        contact_id=contact.id,
+                        contact_id=volunteer.id,
                         number=self.fake.phone_number()[:20],  # Limit length
                         type=ContactTypeEnum.personal,
                         primary=True
@@ -573,30 +560,15 @@ class SyntheticDataGenerator:
                     print(f"    [WARNING] Skipping teacher {i}: Invalid name generated")
                     continue
                 
-                # Create Contact base first
-                contact = Contact(
+                # Create Teacher directly (inherits from Contact)
+                school = random.choice(schools)
+                teacher = Teacher(
                     first_name=first_name,
                     last_name=last_name,
-                    type="teacher",  # Set polymorphic type
                     gender=random.choice(list(GenderEnum)),
                     birthdate=self.fake.date_of_birth(minimum_age=25, maximum_age=60),
                     education_level=random.choice(list(EducationEnum)),
-                    salesforce_individual_id=self.fake.lexify(text='?' * 18).upper() if random.random() > 0.1 else None
-                )
-                db.session.add(contact)
-                db.session.flush()
-                
-                # Verify contact was created properly
-                if not contact.id or not contact.first_name or not contact.last_name:
-                    print(f"    [WARNING] Skipping teacher {i}: Contact creation failed")
-                    db.session.rollback()
-                    db.session.expire_all()
-                    continue
-                
-                # Create Teacher
-                school = random.choice(schools)
-                teacher = Teacher(
-                    id=contact.id,
+                    salesforce_individual_id=self.fake.lexify(text='?' * 18).upper() if random.random() > 0.1 else None,
                     department=random.choice(departments),
                     school_id=school.id,
                     status=random.choice(list(TeacherStatus)),
@@ -604,10 +576,11 @@ class SyntheticDataGenerator:
                     connector_active=random.choice([True, False]) if random.random() < 0.3 else False
                 )
                 db.session.add(teacher)
+                db.session.flush()
                 
                 # Add email
                 email = Email(
-                    contact_id=contact.id,
+                    contact_id=teacher.id,
                     email=self.fake.email(),
                     type=ContactTypeEnum.professional,
                     primary=True
@@ -649,26 +622,7 @@ class SyntheticDataGenerator:
                     print(f"    [WARNING] Skipping student {i}: Invalid name generated")
                     continue
                 
-                # Create Contact base first
-                contact = Contact(
-                    first_name=first_name,
-                    last_name=last_name,
-                    type="student",  # Set polymorphic type
-                    gender=random.choice(list(GenderEnum)),
-                    birthdate=self.fake.date_of_birth(minimum_age=6, maximum_age=18),
-                    salesforce_individual_id=self.fake.lexify(text='?' * 18).upper() if random.random() > 0.1 else None
-                )
-                db.session.add(contact)
-                db.session.flush()
-                
-                # Verify contact was created properly
-                if not contact.id or not contact.first_name or not contact.last_name:
-                    print(f"    [WARNING] Skipping student {i}: Contact creation failed")
-                    db.session.rollback()
-                    db.session.expire_all()
-                    continue
-                
-                # Create Student
+                # Create Student directly (inherits from Contact)
                 school = random.choice(schools)
                 grade = random.randint(0, 12)
                 
@@ -679,7 +633,11 @@ class SyntheticDataGenerator:
                     class_salesforce_id = class_obj.salesforce_id
                 
                 student = Student(
-                    id=contact.id,
+                    first_name=first_name,
+                    last_name=last_name,
+                    gender=random.choice(list(GenderEnum)),
+                    birthdate=self.fake.date_of_birth(minimum_age=6, maximum_age=18),
+                    salesforce_individual_id=self.fake.lexify(text='?' * 18).upper() if random.random() > 0.1 else None,
                     current_grade=grade,
                     student_id=f"STU{self.fake.random_number(digits=6)}",
                     school_id=school.id,
@@ -693,11 +651,12 @@ class SyntheticDataGenerator:
                     active=True
                 )
                 db.session.add(student)
+                db.session.flush()
                 
                 # Add email (70% chance for students)
                 if random.random() < 0.7:
                     email = Email(
-                        contact_id=contact.id,
+                        contact_id=student.id,
                         email=self.fake.email(),
                         type=ContactTypeEnum.personal,
                         primary=True
