@@ -488,7 +488,7 @@ class SyntheticDataGenerator:
                     education_level=random.choice(list(EducationEnum)),
                     race_ethnicity=random.choice(list(RaceEthnicityEnum)) if self.mode == 'demo' or random.random() > 0.2 else None,
                     age_group=random.choice(list(AgeGroupEnum)),
-                    salesforce_individual_id=self.fake.lexify(text='?' * 18).upper() if random.random() > 0.1 else None,
+                    salesforce_individual_id=None,  # Don't set to avoid UNIQUE constraint issues
                     organization_name=random.choice(organizations).name if organizations and random.random() > 0.2 else self.fake.company(),
                     title=random.choice(titles),
                     department=self.fake.word().title() if self.mode == 'demo' or random.random() > 0.3 else None,
@@ -568,7 +568,7 @@ class SyntheticDataGenerator:
                     gender=random.choice(list(GenderEnum)),
                     birthdate=self.fake.date_of_birth(minimum_age=25, maximum_age=60),
                     education_level=random.choice(list(EducationEnum)),
-                    salesforce_individual_id=self.fake.lexify(text='?' * 18).upper() if random.random() > 0.1 else None,
+                    salesforce_individual_id=None,  # Don't set to avoid UNIQUE constraint issues
                     department=random.choice(departments),
                     school_id=school.id,
                     status=random.choice(list(TeacherStatus)),
@@ -637,7 +637,7 @@ class SyntheticDataGenerator:
                     last_name=last_name,
                     gender=random.choice(list(GenderEnum)),
                     birthdate=self.fake.date_of_birth(minimum_age=6, maximum_age=18),
-                    salesforce_individual_id=self.fake.lexify(text='?' * 18).upper() if random.random() > 0.1 else None,
+                    salesforce_individual_id=None,  # Don't set to avoid UNIQUE constraint issues
                     current_grade=grade,
                     student_id=f"STU{self.fake.random_number(digits=6)}",
                     school_id=school.id,
@@ -739,6 +739,8 @@ class SyntheticDataGenerator:
                     event_kwargs['session_id'] = self.fake.uuid4()
                 if hasattr(Event, 'session_host') and event_type == EventType.VIRTUAL_SESSION:
                     event_kwargs['session_host'] = "PREPKC"
+                if hasattr(Event, 'career_cluster') and random.random() > 0.5:
+                    event_kwargs['career_cluster'] = random.choice(["STEM", "Arts", "Business", "Healthcare", "Trades"])
                 
                 event = Event(**event_kwargs)
                 
