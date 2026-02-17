@@ -72,5 +72,33 @@ with app.app_context():
         print(f'[WARNING] Error adding cancellation_notes: {e}')
         db.session.rollback()
     
+    # Check and add cancellation_set_by to event table
+    try:
+        existing_columns = [c['name'] for c in inspector.get_columns('event')]
+        
+        if 'cancellation_set_by' not in existing_columns:
+            db.session.execute(text('ALTER TABLE event ADD COLUMN cancellation_set_by INTEGER'))
+            db.session.commit()
+            print('[OK] Added cancellation_set_by column to event table')
+        else:
+            print('[INFO] cancellation_set_by column already exists in event table')
+    except Exception as e:
+        print(f'[WARNING] Error adding cancellation_set_by: {e}')
+        db.session.rollback()
+    
+    # Check and add cancellation_set_at to event table
+    try:
+        existing_columns = [c['name'] for c in inspector.get_columns('event')]
+        
+        if 'cancellation_set_at' not in existing_columns:
+            db.session.execute(text('ALTER TABLE event ADD COLUMN cancellation_set_at DATETIME'))
+            db.session.commit()
+            print('[OK] Added cancellation_set_at column to event table')
+        else:
+            print('[INFO] cancellation_set_at column already exists in event table')
+    except Exception as e:
+        print(f'[WARNING] Error adding cancellation_set_at: {e}')
+        db.session.rollback()
+    
     print('[OK] Database schema fix complete!')
 
