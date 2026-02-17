@@ -159,10 +159,10 @@ class SyntheticDataGenerator:
                 db.session.add(skill)
                 created += 1
             except Exception as e:
-                print(f"    ⚠️  Error creating skill {i}: {e}")
+                print(f"    [!] Error creating skill {i}: {e}")
         
         db.session.commit()
-        print(f"    ✅ Created {created} skills")
+        print(f"    [*] Created {created} skills")
         return Skill.query.all()
     
     def generate_districts(self):
@@ -205,10 +205,10 @@ class SyntheticDataGenerator:
                 db.session.add(district)
                 created += 1
             except Exception as e:
-                print(f"    ⚠️  Error creating district {i}: {e}")
+                print(f"    [WARNING] Error creating district {i}: {e}")
         
         db.session.commit()
-        print(f"    ✅ Created {created} districts")
+        print(f"    [*] Created {created} districts")
         return District.query.all()
     
     def generate_organizations(self):
@@ -245,16 +245,16 @@ class SyntheticDataGenerator:
                 db.session.add(org)
                 created += 1
             except Exception as e:
-                print(f"    ⚠️  Error creating organization {i}: {e}")
+                print(f"    [WARNING] Error creating organization {i}: {e}")
         
         db.session.commit()
-        print(f"    ✅ Created {created} organizations")
+        print(f"    [*] Created {created} organizations")
         return Organization.query.all()
     
     def generate_schools(self, districts):
         """Generate School records (depends on districts)."""
         if not districts:
-            print("    ⚠️  No districts available, skipping schools")
+            print("    [!] No districts available, skipping schools")
             return []
         
         count = self.get_count('school')
@@ -290,16 +290,16 @@ class SyntheticDataGenerator:
                 db.session.add(school)
                 created += 1
             except Exception as e:
-                print(f"    ⚠️  Error creating school {i}: {e}")
+                print(f"    [WARNING] Error creating school {i}: {e}")
         
         db.session.commit()
-        print(f"    ✅ Created {created} schools")
+        print(f"    [*] Created {created} schools")
         return School.query.all()
     
     def generate_classes(self, schools):
         """Generate Class records (depends on schools)."""
         if not schools:
-            print("    ⚠️  No schools available, skipping classes")
+            print("    [!] No schools available, skipping classes")
             return []
         
         count = self.get_count('class')
@@ -350,10 +350,10 @@ class SyntheticDataGenerator:
                 db.session.add(class_obj)
                 created += 1
             except Exception as e:
-                print(f"    ⚠️  Error creating class {i}: {e}")
+                print(f"    [WARNING] Error creating class {i}: {e}")
         
         db.session.commit()
-        print(f"    ✅ Created {created} classes")
+        print(f"    [*] Created {created} classes")
         return Class.query.all()
     
     def generate_tenants(self):
@@ -378,15 +378,15 @@ class SyntheticDataGenerator:
                 tenant = Tenant(
                     name=name,
                     slug=slug,
-                    active=True
+                    is_active=True
                 )
                 db.session.add(tenant)
                 created += 1
             except Exception as e:
-                print(f"    ⚠️  Error creating tenant {i}: {e}")
+                print(f"    [WARNING] Error creating tenant {i}: {e}")
         
         db.session.commit()
-        print(f"    ✅ Created {created} tenants")
+        print(f"    [*] Created {created} tenants")
         return Tenant.query.all()
     
     def generate_users(self, tenants=None):
@@ -431,24 +431,34 @@ class SyntheticDataGenerator:
                     tenant_id = tenant.id
                     tenant_role = random.choice(tenant_roles)
                 
-                user = User(
-                    username=username,
-                    email=email,
-                    password_hash=generate_password_hash("testpass123"),  # Default test password
-                    first_name=self.fake.first_name(),
-                    last_name=self.fake.last_name(),
-                    security_level=security_level,
-                    tenant_id=tenant_id,
-                    tenant_role=tenant_role
-                )
+                # Build user dict, only include tenant_role if database supports it
+                user_data = {
+                    'username': username,
+                    'email': email,
+                    'password_hash': generate_password_hash("testpass123"),  # Default test password
+                    'first_name': self.fake.first_name(),
+                    'last_name': self.fake.last_name(),
+                    'security_level': security_level,
+                    'tenant_id': tenant_id,
+                }
+                # Only add tenant_role if tenant_id is set (and database supports it)
+                if tenant_id and tenant_role:
+                    user_data['tenant_role'] = tenant_role
+                
+                user = User(**user_data)
                 db.session.add(user)
                 created += 1
             except Exception as e:
-                print(f"    ⚠️  Error creating user {i}: {e}")
+                print(f"    [WARNING] Error creating user {i}: {e}")
         
         db.session.commit()
-        print(f"    ✅ Created {created} users")
-        return User.query.all()
+        print(f"    [*] Created {created} users")
+        # Return empty list if query fails (database schema mismatch)
+        try:
+            return User.query.all()
+        except Exception as e:
+            print(f"    [WARNING] Could not query users (schema mismatch): {e}")
+            return []
     
     def generate_volunteers(self, organizations, skills):
         """Generate Volunteer records (polymorphic Contact)."""
@@ -461,10 +471,18 @@ class SyntheticDataGenerator:
         created = 0
         for i in range(count):
             try:
+                # Generate names first to ensure they're not None
+                first_name = self.fake.first_name()
+                last_name = self.fake.last_name()
+                
+                if not first_name or not last_name:
+                    print(f"    [WARNING] Skipping volunteer {i}: Invalid name generated")
+                    continue
+                
                 # Create Contact base first
                 contact = Contact(
-                    first_name=self.fake.first_name(),
-                    last_name=self.fake.last_name(),
+                    first_name=first_name,
+                    last_name=last_name,
                     gender=random.choice(list(GenderEnum)),
                     birthdate=self.fake.date_of_birth(minimum_age=22, maximum_age=65),
                     education_level=random.choice(list(EducationEnum)),
@@ -513,18 +531,19 @@ class SyntheticDataGenerator:
                 
                 created += 1
             except Exception as e:
-                print(f"    ⚠️  Error creating volunteer {i}: {e}")
+                print(f"    [WARNING] Error creating volunteer {i}: {e}")
                 db.session.rollback()
+                db.session.expire_all()  # Clear all cached objects
                 continue
         
         db.session.commit()
-        print(f"    ✅ Created {created} volunteers")
+        print(f"    [*] Created {created} volunteers")
         return Volunteer.query.all()
     
     def generate_teachers(self, schools):
         """Generate Teacher records (polymorphic Contact)."""
         if not schools:
-            print("    ⚠️  No schools available, skipping teachers")
+            print("    [!] No schools available, skipping teachers")
             return []
         
         count = self.get_count('teacher')
@@ -570,18 +589,18 @@ class SyntheticDataGenerator:
                 
                 created += 1
             except Exception as e:
-                print(f"    ⚠️  Error creating teacher {i}: {e}")
+                print(f"    [WARNING] Error creating teacher {i}: {e}")
                 db.session.rollback()
                 continue
         
         db.session.commit()
-        print(f"    ✅ Created {created} teachers")
+        print(f"    [*] Created {created} teachers")
         return Teacher.query.all()
     
     def generate_students(self, schools, teachers, classes):
         """Generate Student records (polymorphic Contact)."""
         if not schools:
-            print("    ⚠️  No schools available, skipping students")
+            print("    [!] No schools available, skipping students")
             return []
         
         count = self.get_count('student')
@@ -639,12 +658,12 @@ class SyntheticDataGenerator:
                 
                 created += 1
             except Exception as e:
-                print(f"    ⚠️  Error creating student {i}: {e}")
+                print(f"    [WARNING] Error creating student {i}: {e}")
                 db.session.rollback()
                 continue
         
         db.session.commit()
-        print(f"    ✅ Created {created} students")
+        print(f"    [*] Created {created} students")
         return Student.query.all()
     
     def generate_events(self, districts, schools, teachers, volunteers):
@@ -653,7 +672,7 @@ class SyntheticDataGenerator:
         print(f"  Creating {count} events...")
         
         if not schools:
-            print("    ⚠️  No schools available, skipping events")
+            print("    [!] No schools available, skipping events")
             return []
         
         # Get all enum values
@@ -737,12 +756,12 @@ class SyntheticDataGenerator:
                 
                 created += 1
             except Exception as e:
-                print(f"    ⚠️  Error creating event {i}: {e}")
+                print(f"    [WARNING] Error creating event {i}: {e}")
                 db.session.rollback()
                 continue
         
         db.session.commit()
-        print(f"    ✅ Created {created} events")
+        print(f"    [*] Created {created} events")
         return Event.query.all()
     
     def generate_volunteer_skills(self, volunteers, skills):
@@ -777,11 +796,11 @@ class SyntheticDataGenerator:
                             db.session.add(volunteer_skill)
                             created += 1
             except Exception as e:
-                print(f"    ⚠️  Error creating volunteer-skill relationship: {e}")
+                print(f"    [WARNING] Error creating volunteer-skill relationship: {e}")
                 continue
         
         db.session.commit()
-        print(f"    ✅ Created {created} volunteer-skill relationships")
+        print(f"    [*] Created {created} volunteer-skill relationships")
     
     def generate_volunteer_organizations(self, volunteers, organizations):
         """Generate VolunteerOrganization relationships (many-to-many)."""
@@ -817,11 +836,11 @@ class SyntheticDataGenerator:
                             db.session.add(vol_org)
                             created += 1
             except Exception as e:
-                print(f"    ⚠️  Error creating volunteer-organization relationship: {e}")
+                print(f"    [WARNING] Error creating volunteer-organization relationship: {e}")
                 continue
         
         db.session.commit()
-        print(f"    ✅ Created {created} volunteer-organization relationships")
+        print(f"    [*] Created {created} volunteer-organization relationships")
     
     def generate_event_participations(self, volunteers, events):
         """Generate EventParticipation records."""
@@ -874,11 +893,11 @@ class SyntheticDataGenerator:
                             db.session.add(participation)
                             created += 1
             except Exception as e:
-                print(f"    ⚠️  Error creating event participation: {e}")
+                print(f"    [WARNING] Error creating event participation: {e}")
                 continue
         
         db.session.commit()
-        print(f"    ✅ Created {created} event participations")
+        print(f"    [*] Created {created} event participations")
     
     def generate_engagements(self, volunteers):
         """Generate Engagement records."""
@@ -904,11 +923,11 @@ class SyntheticDataGenerator:
                 db.session.add(engagement)
                 created += 1
             except Exception as e:
-                print(f"    ⚠️  Error creating engagement {i}: {e}")
+                print(f"    [WARNING] Error creating engagement {i}: {e}")
                 continue
         
         db.session.commit()
-        print(f"    ✅ Created {created} engagements")
+        print(f"    [*] Created {created} engagements")
     
     def generate_history_records(self, volunteers, events, users):
         """Generate History records."""
@@ -945,11 +964,11 @@ class SyntheticDataGenerator:
                 db.session.add(history)
                 created += 1
             except Exception as e:
-                print(f"    ⚠️  Error creating history record {i}: {e}")
+                print(f"    [WARNING] Error creating history record {i}: {e}")
                 continue
         
         db.session.commit()
-        print(f"    ✅ Created {created} history records")
+        print(f"    [*] Created {created} history records")
     
     def generate_event_attendance_details(self, events):
         """Generate EventAttendanceDetail records (one-to-one with events)."""
@@ -999,17 +1018,17 @@ class SyntheticDataGenerator:
                     db.session.add(detail)
                     created += 1
             except Exception as e:
-                print(f"    ⚠️  Error creating attendance detail: {e}")
+                print(f"    [WARNING] Error creating attendance detail: {e}")
                 continue
         
         db.session.commit()
-        print(f"    ✅ Created {created} event attendance details")
+        print(f"    [*] Created {created} event attendance details")
     
     def print_summary(self):
         """Print summary of generated data."""
         print()
         print("=" * 60)
-        print("📊 GENERATION SUMMARY")
+        print("[*] GENERATION SUMMARY")
         print("=" * 60)
         
         try:
@@ -1045,14 +1064,14 @@ class SyntheticDataGenerator:
                 print(f"  {model:25}: {count:4}")
             
             print("=" * 60)
-            print("✅ Generation complete!")
+            print("[*] Generation complete!")
             
         except Exception as e:
-            print(f"⚠️  Error generating summary: {e}")
+            print(f"[!] Error generating summary: {e}")
     
     def generate(self):
         """Main generation method."""
-        print(f"🌱 Starting synthetic data generation")
+        print(f"[*] Starting synthetic data generation")
         print(f"   Seed: {self.seed}")
         print(f"   Size: {self.size}")
         print(f"   Mode: {self.mode}")
@@ -1093,7 +1112,7 @@ class SyntheticDataGenerator:
                 # Print summary
                 self.print_summary()
             except Exception as e:
-                print(f"❌ Error during generation: {e}")
+                print(f"[!] Error during generation: {e}")
                 db.session.rollback()
                 raise
 
@@ -1172,7 +1191,7 @@ def main():
     
     # Handle reset
     if args.reset:
-        confirm = input("⚠️  This will delete existing data. Type 'yes' to confirm: ")
+        confirm = input("[!] This will delete existing data. Type 'yes' to confirm: ")
         if confirm.lower() != 'yes':
             print("Cancelled.")
             return
@@ -1208,9 +1227,9 @@ def main():
                 Skill.query.delete()
                 
                 db.session.commit()
-                print("✅ Data cleared")
+                print("[*] Data cleared")
             except Exception as e:
-                print(f"❌ Error clearing data: {e}")
+                print(f"[!] Error clearing data: {e}")
                 db.session.rollback()
                 return
     
