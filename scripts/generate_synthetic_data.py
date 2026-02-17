@@ -736,9 +736,17 @@ class SyntheticDataGenerator:
                 if event_status == EventStatus.CANCELLED:
                     if self.mode == 'edge' and random.random() < 0.3:
                         # Edge case: cancelled without reason
-                        event.cancellation_reason = None
+                        if hasattr(Event, 'cancellation_reason'):
+                            event.cancellation_reason = None
                     else:
-                        event.cancellation_reason = random.choice(cancellation_reasons)
+                        if hasattr(Event, 'cancellation_reason'):
+                            event.cancellation_reason = random.choice(cancellation_reasons)
+                        if hasattr(Event, 'cancellation_notes') and random.random() > 0.5:
+                            event.cancellation_notes = self.fake.text(max_nb_chars=100)
+                        if hasattr(Event, 'cancellation_set_at'):
+                            event.cancellation_set_at = self.fake.date_time_between(start_date=start_date - timedelta(days=30), end_date=start_date, tzinfo=timezone.utc)
+                        if hasattr(Event, 'cancellation_set_by') and User.query.first():
+                            event.cancellation_set_by = random.choice(User.query.all()).id
                 
                 db.session.add(event)
                 db.session.flush()
