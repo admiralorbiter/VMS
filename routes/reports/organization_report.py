@@ -343,7 +343,11 @@ def load_routes(bp):
         order = request.args.get("order", "desc")
 
         # Get date range for the school year
-        start_date, end_date = get_school_year_date_range(school_year)
+        if school_year == "all_time":
+            start_date = None
+            end_date = None
+        else:
+            start_date, end_date = get_school_year_date_range(school_year)
 
         # Query organization participation through EventParticipation
         org_stats = (
@@ -361,13 +365,16 @@ def load_routes(bp):
             .join(EventParticipation, Volunteer.id == EventParticipation.volunteer_id)
             .join(Event, EventParticipation.event_id == Event.id)
             .filter(
-                Event.start_date >= start_date,
-                Event.start_date <= end_date,
                 EventParticipation.status.in_(
                     ["Attended", "Completed", "Successfully Completed"]
                 ),
             )
         )
+        if start_date and end_date:
+            org_stats = org_stats.filter(
+                Event.start_date >= start_date,
+                Event.start_date <= end_date,
+            )
 
         # Apply host filter if specified
         if host_filter == "prepkc":
@@ -455,7 +462,13 @@ def load_routes(bp):
         worksheet.write(summary_row + 4, 1, total_volunteers)
         worksheet.write(summary_row + 5, 0, "School Year")
         worksheet.write(
-            summary_row + 5, 1, f"{school_year[:2]}-{school_year[2:]} School Year"
+            summary_row + 5,
+            1,
+            (
+                "All Time"
+                if school_year == "all_time"
+                else f"{school_year[:2]}-{school_year[2:]} School Year"
+            ),
         )
         worksheet.write(summary_row + 6, 0, "Filter")
         worksheet.write(
@@ -469,7 +482,12 @@ def load_routes(bp):
 
         # Create filename
         filter_suffix = "_PREPKC" if host_filter == "prepkc" else ""
-        filename = f"Organization_Report_{school_year[:2]}-{school_year[2:]}{filter_suffix}.xlsx"
+        year_label = (
+            "All_Time"
+            if school_year == "all_time"
+            else f"{school_year[:2]}-{school_year[2:]}"
+        )
+        filename = f"Organization_Report_{year_label}{filter_suffix}.xlsx"
 
         return send_file(
             output,
@@ -490,7 +508,11 @@ def load_routes(bp):
         order_evt = request.args.get("order_evt", "asc")
 
         # Get date range for the school year
-        start_date, end_date = get_school_year_date_range(school_year)
+        if school_year == "all_time":
+            start_date = None
+            end_date = None
+        else:
+            start_date, end_date = get_school_year_date_range(school_year)
 
         # Get organization details
         organization = Organization.query.get_or_404(org_id)
@@ -510,16 +532,18 @@ def load_routes(bp):
             .join(Event, EventParticipation.event_id == Event.id)
             .filter(
                 VolunteerOrganization.organization_id == org_id,
-                Event.start_date >= start_date,
-                Event.start_date <= end_date,
                 EventParticipation.status.in_(
                     ["Attended", "Completed", "Successfully Completed"]
                 ),
                 Volunteer.exclude_from_reports == False,
             )
-            .group_by(Volunteer.id)
-            .all()
         )
+        if start_date and end_date:
+            volunteer_stats = volunteer_stats.filter(
+                Event.start_date >= start_date,
+                Event.start_date <= end_date,
+            )
+        volunteer_stats = volunteer_stats.group_by(Volunteer.id).all()
 
         # Format volunteer data
         volunteers_data = [
@@ -561,17 +585,19 @@ def load_routes(bp):
             )
             .filter(
                 VolunteerOrganization.organization_id == org_id,
-                Event.start_date >= start_date,
-                Event.start_date <= end_date,
                 Event.type != EventType.VIRTUAL_SESSION,
                 EventParticipation.status.in_(
                     ["Attended", "Completed", "Successfully Completed"]
                 ),
                 Volunteer.exclude_from_reports == False,
             )
-            .group_by(Event.id)
-            .all()
         )
+        if start_date and end_date:
+            in_person_events = in_person_events.filter(
+                Event.start_date >= start_date,
+                Event.start_date <= end_date,
+            )
+        in_person_events = in_person_events.group_by(Event.id).all()
 
         # Get detailed in-person events with volunteer names
         detailed_inperson_events = (
@@ -589,19 +615,21 @@ def load_routes(bp):
             )
             .filter(
                 VolunteerOrganization.organization_id == org_id,
-                Event.start_date >= start_date,
-                Event.start_date <= end_date,
                 Event.type != EventType.VIRTUAL_SESSION,
                 EventParticipation.status.in_(
                     ["Attended", "Completed", "Successfully Completed"]
                 ),
                 Volunteer.exclude_from_reports == False,
             )
-            .order_by(
-                Event.start_date, Event.title, Volunteer.last_name, Volunteer.first_name
-            )
-            .all()
         )
+        if start_date and end_date:
+            detailed_inperson_events = detailed_inperson_events.filter(
+                Event.start_date >= start_date,
+                Event.start_date <= end_date,
+            )
+        detailed_inperson_events = detailed_inperson_events.order_by(
+            Event.start_date, Event.title, Volunteer.last_name, Volunteer.first_name
+        ).all()
 
         # Group in-person events by event with volunteer names
         inperson_events_by_event = {}
@@ -718,17 +746,19 @@ def load_routes(bp):
             .outerjoin(EventTeacher, Event.id == EventTeacher.event_id)
             .filter(
                 VolunteerOrganization.organization_id == org_id,
-                Event.start_date >= start_date,
-                Event.start_date <= end_date,
                 Event.type == EventType.VIRTUAL_SESSION,
                 EventParticipation.status.in_(
                     ["Attended", "Completed", "Successfully Completed", "Simulcast"]
                 ),
                 Volunteer.exclude_from_reports == False,
             )
-            .group_by(Event.id)
-            .all()
         )
+        if start_date and end_date:
+            virtual_events = virtual_events.filter(
+                Event.start_date >= start_date,
+                Event.start_date <= end_date,
+            )
+        virtual_events = virtual_events.group_by(Event.id).all()
 
         # Get detailed virtual events with volunteer names and teacher details
         TeacherAlias = aliased(Teacher, flat=True)
@@ -757,8 +787,6 @@ def load_routes(bp):
             .outerjoin(DistrictAlias, SchoolAlias.district_id == DistrictAlias.id)
             .filter(
                 VolunteerOrganization.organization_id == org_id,
-                Event.start_date >= start_date,
-                Event.start_date <= end_date,
                 Event.type == EventType.VIRTUAL_SESSION,
                 EventParticipation.status.in_(
                     ["Attended", "Completed", "Successfully Completed", "Simulcast"]
@@ -770,11 +798,15 @@ def load_routes(bp):
                     == False,  # Teacher is not excluded
                 ),
             )
-            .order_by(
-                Event.start_date, Event.title, Volunteer.last_name, Volunteer.first_name
-            )
-            .all()
         )
+        if start_date and end_date:
+            detailed_virtual_events = detailed_virtual_events.filter(
+                Event.start_date >= start_date,
+                Event.start_date <= end_date,
+            )
+        detailed_virtual_events = detailed_virtual_events.order_by(
+            Event.start_date, Event.title, Volunteer.last_name, Volunteer.first_name
+        ).all()
 
         # Group virtual events by event with volunteer names and teacher details
         virtual_events_by_event = {}
@@ -882,8 +914,6 @@ def load_routes(bp):
             )
             .filter(
                 VolunteerOrganization.organization_id == org_id,
-                Event.start_date >= start_date,
-                Event.start_date <= end_date,
                 db.or_(
                     # Event-level cancellation
                     Event.status == EventStatus.CANCELLED,
@@ -903,9 +933,13 @@ def load_routes(bp):
                 ),
                 Volunteer.exclude_from_reports == False,
             )
-            .group_by(Event.id)
-            .all()
         )
+        if start_date and end_date:
+            cancelled_events = cancelled_events.filter(
+                Event.start_date >= start_date,
+                Event.start_date <= end_date,
+            )
+        cancelled_events = cancelled_events.group_by(Event.id).all()
 
         cancelled_events_data = [
             {
@@ -965,7 +999,11 @@ def load_routes(bp):
             ],
             "Value": [
                 organization.name,
-                f"{school_year[:2]}-{school_year[2:]} School Year",
+                (
+                    "All Time"
+                    if school_year == "all_time"
+                    else f"{school_year[:2]}-{school_year[2:]} School Year"
+                ),
                 total_sessions,
                 total_hours,
                 total_volunteers,
@@ -1092,7 +1130,12 @@ def load_routes(bp):
         output.seek(0)
 
         # Create filename
-        filename = f"Organization_Detail_{organization.name.replace(' ', '_')}_{school_year[:2]}-{school_year[2:]}.xlsx"
+        year_label = (
+            "All_Time"
+            if school_year == "all_time"
+            else f"{school_year[:2]}-{school_year[2:]}"
+        )
+        filename = f"Organization_Detail_{organization.name.replace(' ', '_')}_{year_label}.xlsx"
 
         return send_file(
             output,
