@@ -716,21 +716,31 @@ class SyntheticDataGenerator:
                 end_date = start_date + timedelta(hours=random.randint(1, 8))
                 
                 # Generate event
-                event = Event(
-                    title=self.fake.sentence(nb_words=4).title().rstrip('.'),
-                    description=self.fake.text(max_nb_chars=500) if self.mode == 'demo' or random.random() > 0.2 else None,
-                    type=event_type,
-                    format=event_format,
-                    status=event_status,
-                    start_date=start_date,
-                    end_date=end_date,
-                    location=self.fake.address() if event_format == EventFormat.IN_PERSON else "Virtual",
-                    school=school.id,
-                    volunteers_needed=random.randint(1, 10) if self.mode == 'demo' else (random.randint(0, 50) if random.random() > 0.1 else None),
-                    available_slots=random.randint(10, 50) if self.mode == 'demo' else (random.randint(0, 200) if random.random() > 0.1 else None),
-                    salesforce_id=self.fake.lexify(text='?' * 18).upper() if random.random() > 0.1 else None,
-                    import_source=random.choice(["seed_data", "manual", "salesforce", "pathful_direct"]) if random.random() > 0.1 else None
-                )
+                event_kwargs = {
+                    "title": self.fake.sentence(nb_words=4).title().rstrip('.'),
+                    "description": self.fake.text(max_nb_chars=500) if self.mode == 'demo' or random.random() > 0.2 else None,
+                    "type": event_type,
+                    "format": event_format,
+                    "status": event_status,
+                    "start_date": start_date,
+                    "end_date": end_date,
+                    "location": self.fake.address() if event_format == EventFormat.IN_PERSON else "Virtual",
+                    "school": school.id,
+                    "volunteers_needed": random.randint(1, 10) if self.mode == 'demo' else (random.randint(0, 50) if random.random() > 0.1 else None),
+                    "available_slots": random.randint(10, 50) if self.mode == 'demo' else (random.randint(0, 200) if random.random() > 0.1 else None),
+                    "salesforce_id": self.fake.lexify(text='?' * 18).upper() if random.random() > 0.1 else None,
+                    "import_source": random.choice(["seed_data", "manual", "salesforce", "pathful_direct"]) if random.random() > 0.1 else None
+                }
+                
+                # Conditionally add fields that may not exist in schema
+                if hasattr(Event, 'pathful_session_id') and event_type == EventType.VIRTUAL_SESSION and random.random() > 0.5:
+                    event_kwargs['pathful_session_id'] = self.fake.uuid4()
+                if hasattr(Event, 'session_id') and event_type == EventType.VIRTUAL_SESSION and random.random() > 0.5:
+                    event_kwargs['session_id'] = self.fake.uuid4()
+                if hasattr(Event, 'session_host') and event_type == EventType.VIRTUAL_SESSION:
+                    event_kwargs['session_host'] = "PREPKC"
+                
+                event = Event(**event_kwargs)
                 
                 # Add cancellation reason if cancelled
                 if event_status == EventStatus.CANCELLED:
