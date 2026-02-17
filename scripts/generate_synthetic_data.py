@@ -31,13 +31,21 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app import create_app
 from models import db
-from models.volunteer import Skill
+from models.volunteer import Skill, Volunteer, VolunteerStatus
 from models.district_model import District
 from models.organization import Organization
 from models.school_model import School
 from models.user import User, SecurityLevel, TenantRole
 from models.tenant import Tenant
+from models.contact import (
+    Contact, ContactTypeEnum, Email, Phone, Address,
+    GenderEnum, EducationEnum, LocalStatusEnum, RaceEthnicityEnum,
+    AgeGroupEnum, SalutationEnum
+)
+from models.teacher import Teacher, TeacherStatus
+from models.student import Student
 from werkzeug.security import generate_password_hash
+from datetime import datetime, timedelta, date
 
 
 class SyntheticDataGenerator:
@@ -368,6 +376,196 @@ class SyntheticDataGenerator:
         print(f"    ✅ Created {created} users")
         return User.query.all()
     
+    def generate_volunteers(self, organizations, skills):
+        """Generate Volunteer records (polymorphic Contact)."""
+        count = self.get_count('volunteer')
+        print(f"  Creating {count} volunteers...")
+        
+        industries = ["Technology", "Healthcare", "Finance", "Education", "Manufacturing", "Retail", "Legal", "Engineering"]
+        titles = ["Software Engineer", "Manager", "Analyst", "Director", "Specialist", "Coordinator", "Consultant", "Executive"]
+        
+        created = 0
+        for i in range(count):
+            try:
+                # Create Contact base first
+                contact = Contact(
+                    first_name=self.fake.first_name(),
+                    last_name=self.fake.last_name(),
+                    gender=random.choice(list(GenderEnum)),
+                    birthdate=self.fake.date_of_birth(minimum_age=22, maximum_age=65),
+                    education_level=random.choice(list(EducationEnum)),
+                    race_ethnicity=random.choice(list(RaceEthnicityEnum)) if self.mode == 'demo' or random.random() > 0.2 else None,
+                    age_group=random.choice(list(AgeGroupEnum)),
+                    salesforce_individual_id=self.fake.lexify(text='?' * 18).upper() if random.random() > 0.1 else None
+                )
+                db.session.add(contact)
+                db.session.flush()  # Get the ID
+                
+                # Create Volunteer
+                volunteer = Volunteer(
+                    id=contact.id,
+                    organization_name=random.choice(organizations).name if organizations and random.random() > 0.2 else self.fake.company(),
+                    title=random.choice(titles),
+                    department=self.fake.word().title() if self.mode == 'demo' or random.random() > 0.3 else None,
+                    industry=random.choice(industries),
+                    education=random.choice(list(EducationEnum)) if random.random() > 0.1 else None,
+                    local_status=random.choice(list(LocalStatusEnum)),
+                    status=random.choice(list(VolunteerStatus)),
+                    first_volunteer_date=self.fake.date_between(start_date='-2y', end_date='today') if random.random() > 0.1 else None,
+                    last_volunteer_date=self.fake.date_between(start_date='-6m', end_date='today') if random.random() > 0.1 else None,
+                    times_volunteered=random.randint(0, 50) if self.mode == 'demo' else (random.randint(0, 200) if random.random() > 0.1 else 0),
+                    interests=self.fake.text(max_nb_chars=200) if self.mode == 'demo' or random.random() > 0.3 else None
+                )
+                db.session.add(volunteer)
+                
+                # Add email
+                email = Email(
+                    contact_id=contact.id,
+                    email=self.fake.email(),
+                    type=ContactTypeEnum.personal,
+                    primary=True
+                )
+                db.session.add(email)
+                
+                # Add phone (80% chance)
+                if random.random() > 0.2:
+                    phone = Phone(
+                        contact_id=contact.id,
+                        number=self.fake.phone_number()[:20],  # Limit length
+                        type=ContactTypeEnum.personal,
+                        primary=True
+                    )
+                    db.session.add(phone)
+                
+                created += 1
+            except Exception as e:
+                print(f"    ⚠️  Error creating volunteer {i}: {e}")
+                db.session.rollback()
+                continue
+        
+        db.session.commit()
+        print(f"    ✅ Created {created} volunteers")
+        return Volunteer.query.all()
+    
+    def generate_teachers(self, schools):
+        """Generate Teacher records (polymorphic Contact)."""
+        if not schools:
+            print("    ⚠️  No schools available, skipping teachers")
+            return []
+        
+        count = self.get_count('teacher')
+        print(f"  Creating {count} teachers...")
+        
+        departments = ["Mathematics", "Science", "English", "History", "Art", "Physical Education", "Technology", "Counseling"]
+        
+        created = 0
+        for i in range(count):
+            try:
+                # Create Contact base first
+                contact = Contact(
+                    first_name=self.fake.first_name(),
+                    last_name=self.fake.last_name(),
+                    gender=random.choice(list(GenderEnum)),
+                    birthdate=self.fake.date_of_birth(minimum_age=25, maximum_age=60),
+                    education_level=random.choice(list(EducationEnum)),
+                    salesforce_individual_id=self.fake.lexify(text='?' * 18).upper() if random.random() > 0.1 else None
+                )
+                db.session.add(contact)
+                db.session.flush()
+                
+                # Create Teacher
+                school = random.choice(schools)
+                teacher = Teacher(
+                    id=contact.id,
+                    department=random.choice(departments),
+                    school_id=school.id,
+                    status=random.choice(list(TeacherStatus)),
+                    connector_role=random.choice(["Mentor", "Speaker", "Advisor"]) if random.random() < 0.3 else None,
+                    connector_active=random.choice([True, False]) if random.random() < 0.3 else False
+                )
+                db.session.add(teacher)
+                
+                # Add email
+                email = Email(
+                    contact_id=contact.id,
+                    email=self.fake.email(),
+                    type=ContactTypeEnum.professional,
+                    primary=True
+                )
+                db.session.add(email)
+                
+                created += 1
+            except Exception as e:
+                print(f"    ⚠️  Error creating teacher {i}: {e}")
+                db.session.rollback()
+                continue
+        
+        db.session.commit()
+        print(f"    ✅ Created {created} teachers")
+        return Teacher.query.all()
+    
+    def generate_students(self, schools, teachers):
+        """Generate Student records (polymorphic Contact)."""
+        if not schools:
+            print("    ⚠️  No schools available, skipping students")
+            return []
+        
+        count = self.get_count('student')
+        print(f"  Creating {count} students...")
+        
+        created = 0
+        for i in range(count):
+            try:
+                # Create Contact base first
+                contact = Contact(
+                    first_name=self.fake.first_name(),
+                    last_name=self.fake.last_name(),
+                    gender=random.choice(list(GenderEnum)),
+                    birthdate=self.fake.date_of_birth(minimum_age=6, maximum_age=18),
+                    salesforce_individual_id=self.fake.lexify(text='?' * 18).upper() if random.random() > 0.1 else None
+                )
+                db.session.add(contact)
+                db.session.flush()
+                
+                # Create Student
+                school = random.choice(schools)
+                grade = random.randint(0, 12)
+                
+                student = Student(
+                    id=contact.id,
+                    current_grade=grade,
+                    student_id=f"STU{self.fake.random_number(digits=6)}",
+                    school_id=school.id,
+                    teacher_id=random.choice(teachers).id if teachers and random.random() > 0.3 else None,
+                    racial_ethnic=random.choice(["White", "Black or African American", "Hispanic or Latino", "Asian", "Native American", "Other"]) if self.mode == 'demo' or random.random() > 0.2 else None,
+                    school_code=self.fake.lexify(text='???').upper(),
+                    ell_language=random.choice(["Spanish", "French", "Arabic", None]),
+                    gifted=random.choice([True, False]) if random.random() > 0.1 else None,
+                    lunch_status=random.choice(["Free", "Reduced", "Paid"]) if self.mode == 'demo' or random.random() > 0.2 else None,
+                    active=True
+                )
+                db.session.add(student)
+                
+                # Add email (70% chance for students)
+                if random.random() < 0.7:
+                    email = Email(
+                        contact_id=contact.id,
+                        email=self.fake.email(),
+                        type=ContactTypeEnum.personal,
+                        primary=True
+                    )
+                    db.session.add(email)
+                
+                created += 1
+            except Exception as e:
+                print(f"    ⚠️  Error creating student {i}: {e}")
+                db.session.rollback()
+                continue
+        
+        db.session.commit()
+        print(f"    ✅ Created {created} students")
+        return Student.query.all()
+    
     def generate(self):
         """Main generation method."""
         print(f"🌱 Starting synthetic data generation")
@@ -388,6 +586,11 @@ class SyntheticDataGenerator:
                 # Generate dependent models
                 schools = self.generate_schools(districts)
                 users = self.generate_users(tenants)
+                
+                # Generate Contact hierarchy (polymorphic)
+                volunteers = self.generate_volunteers(organizations, skills)
+                teachers = self.generate_teachers(schools)
+                students = self.generate_students(schools, teachers)
                 
                 # TODO: Add more model generation
                 
