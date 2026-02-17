@@ -479,11 +479,6 @@ class SyntheticDataGenerator:
                     print(f"    [WARNING] Skipping volunteer {i}: Invalid name generated")
                     continue
                 
-                # Create Contact base first - ensure names are valid
-                if not first_name or not last_name:
-                    print(f"    [WARNING] Skipping volunteer {i}: Invalid name generated")
-                    continue
-                
                 contact = Contact(
                     first_name=first_name,
                     last_name=last_name,
@@ -546,7 +541,11 @@ class SyntheticDataGenerator:
             except Exception as e:
                 print(f"    [WARNING] Error creating volunteer {i}: {e}")
                 db.session.rollback()
-                db.session.expire_all()  # Clear all cached objects
+                # Explicitly remove any Contact objects from session
+                for obj in list(db.session):
+                    if isinstance(obj, Contact):
+                        db.session.expunge(obj)
+                db.session.expire_all()
                 continue
         print(f"    [*] Created {created} volunteers")
         return Volunteer.query.all()
@@ -619,6 +618,10 @@ class SyntheticDataGenerator:
             except Exception as e:
                 print(f"    [WARNING] Error creating teacher {i}: {e}")
                 db.session.rollback()
+                # Explicitly remove any Contact objects from session
+                for obj in list(db.session):
+                    if isinstance(obj, Contact):
+                        db.session.expunge(obj)
                 db.session.expire_all()
                 continue
         print(f"    [*] Created {created} teachers")
@@ -704,6 +707,10 @@ class SyntheticDataGenerator:
             except Exception as e:
                 print(f"    [WARNING] Error creating student {i}: {e}")
                 db.session.rollback()
+                # Explicitly remove any Contact objects from session
+                for obj in list(db.session):
+                    if isinstance(obj, Contact):
+                        db.session.expunge(obj)
                 db.session.expire_all()
                 continue
         print(f"    [*] Created {created} students")

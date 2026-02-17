@@ -30,6 +30,20 @@ with app.app_context():
         print(f'[WARNING] Error adding tenant_role: {e}')
         db.session.rollback()
     
+    # Check and add is_active to users table
+    try:
+        existing_columns = [c['name'] for c in inspector.get_columns('users')]
+        
+        if 'is_active' not in existing_columns:
+            db.session.execute(text('ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1'))
+            db.session.commit()
+            print('[OK] Added is_active column to users table')
+        else:
+            print('[INFO] is_active column already exists in users table')
+    except Exception as e:
+        print(f'[WARNING] Error adding is_active: {e}')
+        db.session.rollback()
+    
     # Check and add pathful_user_id to volunteer table
     try:
         existing_columns = [c['name'] for c in inspector.get_columns('volunteer')]
@@ -42,6 +56,20 @@ with app.app_context():
             print('[INFO] pathful_user_id column already exists in volunteer table')
     except Exception as e:
         print(f'[WARNING] Error adding pathful_user_id: {e}')
+        db.session.rollback()
+    
+    # Check and add cancellation_notes to event table
+    try:
+        existing_columns = [c['name'] for c in inspector.get_columns('event')]
+        
+        if 'cancellation_notes' not in existing_columns:
+            db.session.execute(text('ALTER TABLE event ADD COLUMN cancellation_notes TEXT'))
+            db.session.commit()
+            print('[OK] Added cancellation_notes column to event table')
+        else:
+            print('[INFO] cancellation_notes column already exists in event table')
+    except Exception as e:
+        print(f'[WARNING] Error adding cancellation_notes: {e}')
         db.session.rollback()
     
     print('[OK] Database schema fix complete!')
