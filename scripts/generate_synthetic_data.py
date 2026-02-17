@@ -743,6 +743,46 @@ class SyntheticDataGenerator:
         db.session.commit()
         print(f"    ✅ Created {created} volunteer-organization relationships")
     
+    def print_summary(self):
+        """Print summary of generated data."""
+        print()
+        print("=" * 60)
+        print("📊 GENERATION SUMMARY")
+        print("=" * 60)
+        
+        try:
+            counts = {
+                "Skills": Skill.query.count(),
+                "Districts": District.query.count(),
+                "Organizations": Organization.query.count(),
+                "Schools": School.query.count(),
+                "Tenants": Tenant.query.count() if Tenant.query.count() > 0 else None,
+                "Users": User.query.count(),
+                "Volunteers": Volunteer.query.count(),
+                "Teachers": Teacher.query.count(),
+                "Students": Student.query.count(),
+                "Events": Event.query.count(),
+                "VolunteerSkills": VolunteerSkill.query.count(),
+                "VolunteerOrganizations": VolunteerOrganization.query.count(),
+            }
+            
+            # Remove None values
+            counts = {k: v for k, v in counts.items() if v is not None}
+            
+            print(f"Seed: {self.seed}")
+            print(f"Size: {self.size}")
+            print(f"Mode: {self.mode}")
+            print()
+            print("Records created:")
+            for model, count in sorted(counts.items()):
+                print(f"  {model:25}: {count:4}")
+            
+            print("=" * 60)
+            print("✅ Generation complete!")
+            
+        except Exception as e:
+            print(f"⚠️  Error generating summary: {e}")
+    
     def generate(self):
         """Main generation method."""
         print(f"🌱 Starting synthetic data generation")
@@ -776,8 +816,8 @@ class SyntheticDataGenerator:
                 self.generate_volunteer_skills(volunteers, skills)
                 self.generate_volunteer_organizations(volunteers, organizations)
                 
-                print()
-                print("✅ Generation complete!")
+                # Print summary
+                self.print_summary()
             except Exception as e:
                 print(f"❌ Error during generation: {e}")
                 db.session.rollback()
