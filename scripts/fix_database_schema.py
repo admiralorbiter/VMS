@@ -100,5 +100,19 @@ with app.app_context():
         print(f'[WARNING] Error adding cancellation_set_at: {e}')
         db.session.rollback()
     
+    # Check and add pathful_session_id to event table
+    try:
+        existing_columns = [c['name'] for c in inspector.get_columns('event')]
+        
+        if 'pathful_session_id' not in existing_columns:
+            db.session.execute(text('ALTER TABLE event ADD COLUMN pathful_session_id VARCHAR(100)'))
+            db.session.commit()
+            print('[OK] Added pathful_session_id column to event table')
+        else:
+            print('[INFO] pathful_session_id column already exists in event table')
+    except Exception as e:
+        print(f'[WARNING] Error adding pathful_session_id: {e}')
+        db.session.rollback()
+    
     print('[OK] Database schema fix complete!')
 
