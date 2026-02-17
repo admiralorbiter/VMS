@@ -479,7 +479,11 @@ class SyntheticDataGenerator:
                     print(f"    [WARNING] Skipping volunteer {i}: Invalid name generated")
                     continue
                 
-                # Create Contact base first
+                # Create Contact base first - ensure names are valid
+                if not first_name or not last_name:
+                    print(f"    [WARNING] Skipping volunteer {i}: Invalid name generated")
+                    continue
+                
                 contact = Contact(
                     first_name=first_name,
                     last_name=last_name,
@@ -492,6 +496,13 @@ class SyntheticDataGenerator:
                 )
                 db.session.add(contact)
                 db.session.flush()  # Get the ID
+                
+                # Verify contact was created properly
+                if not contact.id or not contact.first_name or not contact.last_name:
+                    print(f"    [WARNING] Skipping volunteer {i}: Contact creation failed")
+                    db.session.rollback()
+                    db.session.expire_all()
+                    continue
                 
                 # Create Volunteer
                 volunteer = Volunteer(
@@ -554,10 +565,18 @@ class SyntheticDataGenerator:
         created = 0
         for i in range(count):
             try:
+                # Generate names first to ensure they're not None
+                first_name = self.fake.first_name()
+                last_name = self.fake.last_name()
+                
+                if not first_name or not last_name:
+                    print(f"    [WARNING] Skipping teacher {i}: Invalid name generated")
+                    continue
+                
                 # Create Contact base first
                 contact = Contact(
-                    first_name=self.fake.first_name(),
-                    last_name=self.fake.last_name(),
+                    first_name=first_name,
+                    last_name=last_name,
                     gender=random.choice(list(GenderEnum)),
                     birthdate=self.fake.date_of_birth(minimum_age=25, maximum_age=60),
                     education_level=random.choice(list(EducationEnum)),
@@ -565,6 +584,13 @@ class SyntheticDataGenerator:
                 )
                 db.session.add(contact)
                 db.session.flush()
+                
+                # Verify contact was created properly
+                if not contact.id or not contact.first_name or not contact.last_name:
+                    print(f"    [WARNING] Skipping teacher {i}: Contact creation failed")
+                    db.session.rollback()
+                    db.session.expire_all()
+                    continue
                 
                 # Create Teacher
                 school = random.choice(schools)
@@ -587,13 +613,14 @@ class SyntheticDataGenerator:
                 )
                 db.session.add(email)
                 
+                # Commit immediately to avoid session state issues
+                db.session.commit()
                 created += 1
             except Exception as e:
                 print(f"    [WARNING] Error creating teacher {i}: {e}")
                 db.session.rollback()
+                db.session.expire_all()
                 continue
-        
-        db.session.commit()
         print(f"    [*] Created {created} teachers")
         return Teacher.query.all()
     
@@ -609,16 +636,31 @@ class SyntheticDataGenerator:
         created = 0
         for i in range(count):
             try:
+                # Generate names first to ensure they're not None
+                first_name = self.fake.first_name()
+                last_name = self.fake.last_name()
+                
+                if not first_name or not last_name:
+                    print(f"    [WARNING] Skipping student {i}: Invalid name generated")
+                    continue
+                
                 # Create Contact base first
                 contact = Contact(
-                    first_name=self.fake.first_name(),
-                    last_name=self.fake.last_name(),
+                    first_name=first_name,
+                    last_name=last_name,
                     gender=random.choice(list(GenderEnum)),
                     birthdate=self.fake.date_of_birth(minimum_age=6, maximum_age=18),
                     salesforce_individual_id=self.fake.lexify(text='?' * 18).upper() if random.random() > 0.1 else None
                 )
                 db.session.add(contact)
                 db.session.flush()
+                
+                # Verify contact was created properly
+                if not contact.id or not contact.first_name or not contact.last_name:
+                    print(f"    [WARNING] Skipping student {i}: Contact creation failed")
+                    db.session.rollback()
+                    db.session.expire_all()
+                    continue
                 
                 # Create Student
                 school = random.choice(schools)
@@ -656,13 +698,14 @@ class SyntheticDataGenerator:
                     )
                     db.session.add(email)
                 
+                # Commit immediately to avoid session state issues
+                db.session.commit()
                 created += 1
             except Exception as e:
                 print(f"    [WARNING] Error creating student {i}: {e}")
                 db.session.rollback()
+                db.session.expire_all()
                 continue
-        
-        db.session.commit()
         print(f"    [*] Created {created} students")
         return Student.query.all()
     
@@ -714,7 +757,8 @@ class SyntheticDataGenerator:
                     end_date=end_date,
                     location=self.fake.address() if event_format == EventFormat.IN_PERSON else "Virtual",
                     school=school.id,
-                    capacity=random.randint(10, 100) if self.mode == 'demo' else (random.randint(1, 500) if random.random() > 0.1 else None),
+                    volunteers_needed=random.randint(1, 10) if self.mode == 'demo' else (random.randint(0, 50) if random.random() > 0.1 else None),
+                    available_slots=random.randint(10, 50) if self.mode == 'demo' else (random.randint(0, 200) if random.random() > 0.1 else None),
                     salesforce_id=self.fake.lexify(text='?' * 18).upper() if random.random() > 0.1 else None,
                     import_source=random.choice(["seed_data", "manual", "salesforce", "pathful_direct"]) if random.random() > 0.1 else None
                 )
