@@ -88,26 +88,35 @@ class SyntheticDataGenerator:
             'small': {
                 'district': 2,
                 'school': 5,
+                'class': 10,
                 'teacher': 10,
                 'volunteer': 15,
                 'student': 20,
                 'event': 10,
+                'engagement': 20,
+                'history': 15,
             },
             'medium': {
                 'district': 5,
                 'school': 15,
+                'class': 30,
                 'teacher': 30,
                 'volunteer': 50,
                 'student': 100,
                 'event': 30,
+                'engagement': 50,
+                'history': 40,
             },
             'large': {
                 'district': 10,
                 'school': 50,
+                'class': 100,
                 'teacher': 100,
                 'volunteer': 200,
                 'student': 500,
                 'event': 100,
+                'engagement': 200,
+                'history': 150,
             }
         }
     
@@ -813,6 +822,188 @@ class SyntheticDataGenerator:
         
         db.session.commit()
         print(f"    ✅ Created {created} volunteer-organization relationships")
+    
+    def generate_event_participations(self, volunteers, events):
+        """Generate EventParticipation records."""
+        if not volunteers or not events:
+            return
+        
+        print(f"  Creating event participations...")
+        
+        participation_statuses = ["Attended", "Completed", "Successfully Completed", "No-Show", "Cancelled"]
+        participant_types = ["Volunteer", "Presenter"]
+        
+        created = 0
+        # Create participations for some volunteer-event pairs
+        for event in events:
+            try:
+                # Each event gets 1-5 volunteer participations
+                num_participations = random.randint(1, 5) if self.mode == 'demo' else (
+                    random.randint(0, 10) if random.random() > 0.1 else 0  # Edge: some with many, some with none
+                )
+                
+                if num_participations > 0:
+                    event_volunteers = random.sample(volunteers, min(num_participations, len(volunteers)))
+                    for volunteer in event_volunteers:
+                        # Check if participation already exists
+                        existing = EventParticipation.query.filter_by(
+                            volunteer_id=volunteer.id,
+                            event_id=event.id
+                        ).first()
+                        if not existing:
+                            status = random.choice(participation_statuses)
+                            
+                            # Calculate delivery hours based on event duration
+                            delivery_hours = None
+                            if event.start_date and event.end_date:
+                                duration_hours = (event.end_date - event.start_date).total_seconds() / 3600
+                                if status in ["Attended", "Completed", "Successfully Completed"]:
+                                    delivery_hours = max(0.5, duration_hours)
+                            
+                            participation = EventParticipation(
+                                volunteer_id=volunteer.id,
+                                event_id=event.id,
+                                status=status,
+                                delivery_hours=delivery_hours,
+                                salesforce_id=self.fake.lexify(text='?' * 18).upper() if random.random() > 0.1 else None,
+                                age_group=random.choice(["18-25", "26-35", "36-45", "46-55", "56-65"]) if random.random() > 0.2 else None,
+                                email=self.fake.email(),
+                                title=volunteer.title if volunteer.title else random.choice(["Software Engineer", "Manager", "Analyst"]),
+                                participant_type=random.choice(participant_types) if event.format == EventFormat.VIRTUAL else "Volunteer"
+                            )
+                            db.session.add(participation)
+                            created += 1
+            except Exception as e:
+                print(f"    ⚠️  Error creating event participation: {e}")
+                continue
+        
+        db.session.commit()
+        print(f"    ✅ Created {created} event participations")
+    
+    def generate_engagements(self, volunteers):
+        """Generate Engagement records."""
+        if not volunteers:
+            return
+        
+        count = self.get_count('engagement')
+        print(f"  Creating {count} engagements...")
+        
+        engagement_types = ["Phone Call", "Email", "Training", "Orientation", "Meeting", "Event Planning", "Follow-up"]
+        
+        created = 0
+        for i in range(count):
+            try:
+                volunteer = random.choice(volunteers)
+                
+                engagement = Engagement(
+                    volunteer_id=volunteer.id,
+                    engagement_date=self.fake.date_between(start_date='-6m', end_date='today'),
+                    engagement_type=random.choice(engagement_types),
+                    notes=self.fake.text(max_nb_chars=200) if self.mode == 'demo' or random.random() > 0.3 else None
+                )
+                db.session.add(engagement)
+                created += 1
+            except Exception as e:
+                print(f"    ⚠️  Error creating engagement {i}: {e}")
+                continue
+        
+        db.session.commit()
+        print(f"    ✅ Created {created} engagements")
+    
+    def generate_history_records(self, volunteers, events, users):
+        """Generate History records."""
+        if not volunteers:
+            return
+        
+        count = self.get_count('history')
+        print(f"  Creating {count} history records...")
+        
+        history_types = ["note", "activity", "status_change", "system", "other"]
+        activity_types = ["Phone Call", "Email", "Meeting", "Status Update", "Note Added", "System Update"]
+        actions = ["created", "updated", "contacted", "status_changed", "note_added"]
+        
+        created = 0
+        for i in range(count):
+            try:
+                volunteer = random.choice(volunteers)
+                event = random.choice(events) if events and random.random() < 0.3 else None
+                user = random.choice(users) if users else None
+                
+                history = History(
+                    contact_id=volunteer.id,
+                    event_id=event.id if event else None,
+                    action=random.choice(actions),
+                    summary=self.fake.sentence(nb_words=6),
+                    description=self.fake.text(max_nb_chars=300) if self.mode == 'demo' or random.random() > 0.2 else None,
+                    activity_type=random.choice(activity_types),
+                    activity_date=self.fake.date_time_between(start_date='-6m', end_date='now', tzinfo=timezone.utc),
+                    activity_status=random.choice(["completed", "pending", "in_progress"]) if random.random() > 0.1 else None,
+                    history_type=random.choice(history_types),
+                    created_by_id=user.id if user else None,
+                    is_deleted=False
+                )
+                db.session.add(history)
+                created += 1
+            except Exception as e:
+                print(f"    ⚠️  Error creating history record {i}: {e}")
+                continue
+        
+        db.session.commit()
+        print(f"    ✅ Created {created} history records")
+    
+    def generate_event_attendance_details(self, events):
+        """Generate EventAttendanceDetail records (one-to-one with events)."""
+        if not events:
+            return
+        
+        print(f"  Creating event attendance details...")
+        
+        created = 0
+        # Create attendance details for some events (60% in demo, variable in edge)
+        for event in events:
+            try:
+                # Check if attendance detail already exists
+                existing = EventAttendanceDetail.query.filter_by(event_id=event.id).first()
+                if existing:
+                    continue
+                
+                # Create attendance detail for some events
+                if self.mode == 'demo':
+                    should_create = random.random() < 0.6  # 60% of events
+                else:
+                    should_create = random.random() < 0.8  # 80% in edge mode
+                
+                if should_create:
+                    # Calculate realistic values
+                    num_volunteers = len(event.volunteers) if event.volunteers else random.randint(1, 5)
+                    total_students = random.randint(10, 50) if self.mode == 'demo' else (
+                        random.randint(1, 200) if random.random() > 0.1 else None  # Edge: some with extreme values
+                    )
+                    
+                    students_per_volunteer = None
+                    if total_students and num_volunteers > 0:
+                        students_per_volunteer = total_students // num_volunteers
+                    
+                    detail = EventAttendanceDetail(
+                        event_id=event.id,
+                        num_classrooms=random.randint(1, 5) if self.mode == 'demo' or random.random() > 0.2 else None,
+                        rotations=random.randint(1, 4) if self.mode == 'demo' or random.random() > 0.2 else None,
+                        students_per_volunteer=students_per_volunteer,
+                        total_students=total_students,
+                        attendance_in_sf=random.choice([True, False]),
+                        pathway=random.choice(["STEM", "Arts", "Business", "Healthcare", None]) if self.mode == 'demo' or random.random() > 0.2 else None,
+                        groups_rotations=self.fake.text(max_nb_chars=100) if self.mode == 'demo' or random.random() > 0.3 else None,
+                        is_stem=random.choice([True, False]) if random.random() > 0.1 else None,
+                        attendance_link=self.fake.url() if random.random() < 0.3 else None
+                    )
+                    db.session.add(detail)
+                    created += 1
+            except Exception as e:
+                print(f"    ⚠️  Error creating attendance detail: {e}")
+                continue
+        
+        db.session.commit()
+        print(f"    ✅ Created {created} event attendance details")
     
     def print_summary(self):
         """Print summary of generated data."""
