@@ -482,6 +482,7 @@ class SyntheticDataGenerator:
                 contact = Contact(
                     first_name=first_name,
                     last_name=last_name,
+                    type="volunteer",  # Set polymorphic type
                     gender=random.choice(list(GenderEnum)),
                     birthdate=self.fake.date_of_birth(minimum_age=22, maximum_age=65),
                     education_level=random.choice(list(EducationEnum)),
@@ -576,6 +577,7 @@ class SyntheticDataGenerator:
                 contact = Contact(
                     first_name=first_name,
                     last_name=last_name,
+                    type="teacher",  # Set polymorphic type
                     gender=random.choice(list(GenderEnum)),
                     birthdate=self.fake.date_of_birth(minimum_age=25, maximum_age=60),
                     education_level=random.choice(list(EducationEnum)),
@@ -651,6 +653,7 @@ class SyntheticDataGenerator:
                 contact = Contact(
                     first_name=first_name,
                     last_name=last_name,
+                    type="student",  # Set polymorphic type
                     gender=random.choice(list(GenderEnum)),
                     birthdate=self.fake.date_of_birth(minimum_age=6, maximum_age=18),
                     salesforce_individual_id=self.fake.lexify(text='?' * 18).upper() if random.random() > 0.1 else None
