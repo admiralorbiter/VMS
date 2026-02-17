@@ -529,14 +529,14 @@ class SyntheticDataGenerator:
                     )
                     db.session.add(phone)
                 
+                # Commit immediately to avoid session state issues
+                db.session.commit()
                 created += 1
             except Exception as e:
                 print(f"    [WARNING] Error creating volunteer {i}: {e}")
                 db.session.rollback()
                 db.session.expire_all()  # Clear all cached objects
                 continue
-        
-        db.session.commit()
         print(f"    [*] Created {created} volunteers")
         return Volunteer.query.all()
     
