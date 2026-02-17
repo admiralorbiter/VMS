@@ -44,8 +44,9 @@ from models.contact import (
 )
 from models.teacher import Teacher, TeacherStatus
 from models.student import Student
+from models.event import Event, EventType, EventStatus, EventFormat, CancellationReason, EventTeacher
 from werkzeug.security import generate_password_hash
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
 
 
 class SyntheticDataGenerator:
@@ -566,6 +567,104 @@ class SyntheticDataGenerator:
         print(f"    ✅ Created {created} students")
         return Student.query.all()
     
+    def generate_events(self, districts, schools, teachers, volunteers):
+        """Generate Event records with all EventType and EventStatus values."""
+        count = self.get_count('event')
+        print(f"  Creating {count} events...")
+        
+        if not schools:
+            print("    ⚠️  No schools available, skipping events")
+            return []
+        
+        # Get all enum values
+        event_types = list(EventType)
+        event_statuses = list(EventStatus)
+        event_formats = list(EventFormat)
+        cancellation_reasons = list(CancellationReason)
+        
+        created = 0
+        for i in range(count):
+            try:
+                school = random.choice(schools)
+                event_type = random.choice(event_types)
+                event_format = random.choice(event_formats)
+                event_status = random.choice(event_statuses)
+                
+                # Generate realistic dates based on status
+                now = datetime.now(timezone.utc)
+                if event_status in [EventStatus.COMPLETED, EventStatus.CANCELLED]:
+                    # Past events
+                    start_date = self.fake.date_time_between(start_date='-1y', end_date='-1d', tzinfo=timezone.utc)
+                elif event_status == EventStatus.DRAFT:
+                    # Can be past or future
+                    start_date = self.fake.date_time_between(start_date='-6m', end_date='+6m', tzinfo=timezone.utc)
+                else:
+                    # Future events
+                    start_date = self.fake.date_time_between(start_date='now', end_date='+6m', tzinfo=timezone.utc)
+                
+                end_date = start_date + timedelta(hours=random.randint(1, 8))
+                
+                # Generate event
+                event = Event(
+                    title=self.fake.sentence(nb_words=4).title().rstrip('.'),
+                    description=self.fake.text(max_nb_chars=500) if self.mode == 'demo' or random.random() > 0.2 else None,
+                    type=event_type,
+                    format=event_format,
+                    status=event_status,
+                    start_date=start_date,
+                    end_date=end_date,
+                    location=self.fake.address() if event_format == EventFormat.IN_PERSON else "Virtual",
+                    school=school.id,
+                    capacity=random.randint(10, 100) if self.mode == 'demo' else (random.randint(1, 500) if random.random() > 0.1 else None),
+                    salesforce_id=self.fake.lexify(text='?' * 18).upper() if random.random() > 0.1 else None,
+                    import_source=random.choice(["seed_data", "manual", "salesforce", "pathful_direct"]) if random.random() > 0.1 else None
+                )
+                
+                # Add cancellation reason if cancelled
+                if event_status == EventStatus.CANCELLED:
+                    if self.mode == 'edge' and random.random() < 0.3:
+                        # Edge case: cancelled without reason
+                        event.cancellation_reason = None
+                    else:
+                        event.cancellation_reason = random.choice(cancellation_reasons)
+                
+                db.session.add(event)
+                db.session.flush()
+                
+                # Add teacher registration (70% of events have teachers)
+                if teachers and random.random() < 0.7:
+                    teacher = random.choice(teachers)
+                    event_teacher = EventTeacher(
+                        event_id=event.id,
+                        teacher_id=teacher.id,
+                        status=random.choice(["confirmed", "pending", "cancelled"])
+                    )
+                    db.session.add(event_teacher)
+                
+                # Add district associations (50% of events)
+                if districts and random.random() < 0.5:
+                    num_districts = random.randint(1, min(2, len(districts)))
+                    event_districts = random.sample(districts, num_districts)
+                    for district in event_districts:
+                        event.districts.append(district)
+                
+                # Add volunteer associations (60% of events)
+                if volunteers and random.random() < 0.6:
+                    num_volunteers = random.randint(1, min(5, len(volunteers)))
+                    event_volunteers = random.sample(volunteers, num_volunteers)
+                    for volunteer in event_volunteers:
+                        event.volunteers.append(volunteer)
+                
+                created += 1
+            except Exception as e:
+                print(f"    ⚠️  Error creating event {i}: {e}")
+                db.session.rollback()
+                continue
+        
+        db.session.commit()
+        print(f"    ✅ Created {created} events")
+        return Event.query.all()
+    
     def generate(self):
         """Main generation method."""
         print(f"🌱 Starting synthetic data generation")
@@ -592,7 +691,10 @@ class SyntheticDataGenerator:
                 teachers = self.generate_teachers(schools)
                 students = self.generate_students(schools, teachers)
                 
-                # TODO: Add more model generation
+                # Generate Events
+                events = self.generate_events(districts, schools, teachers, volunteers)
+                
+                # TODO: Add relationships (many-to-many)
                 
                 print()
                 print("✅ Generation complete!")
