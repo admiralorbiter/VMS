@@ -1181,12 +1181,30 @@ def main():
         with app.app_context():
             print("Clearing existing data...")
             try:
-                # Delete in reverse dependency order
+                # Delete in reverse dependency order (children first, then parents)
                 from models.volunteer import VolunteerSkill
                 from models.organization import VolunteerOrganization
                 
+                # Delete relationship tables first
+                EventAttendanceDetail.query.delete()
+                EventParticipation.query.delete()
+                History.query.delete()
+                Engagement.query.delete()
                 VolunteerSkill.query.delete()
                 VolunteerOrganization.query.delete()
+                EventTeacher.query.delete()
+                
+                # Delete main entities
+                Event.query.delete()
+                Student.query.delete()
+                Teacher.query.delete()
+                Volunteer.query.delete()
+                Contact.query.delete()  # Parent of Volunteer/Teacher/Student
+                Class.query.delete()
+                School.query.delete()
+                User.query.delete()
+                Organization.query.delete()
+                District.query.delete()
                 Skill.query.delete()
                 
                 db.session.commit()
