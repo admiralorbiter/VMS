@@ -35,6 +35,9 @@ from models.volunteer import Skill
 from models.district_model import District
 from models.organization import Organization
 from models.school_model import School
+from models.user import User, SecurityLevel, TenantRole
+from models.tenant import Tenant
+from werkzeug.security import generate_password_hash
 
 
 class SyntheticDataGenerator:
@@ -271,6 +274,100 @@ class SyntheticDataGenerator:
         print(f"    ✅ Created {created} schools")
         return School.query.all()
     
+    def generate_tenants(self):
+        """Generate Tenant records."""
+        count = self.get_count('tenant')
+        if count == 0:
+            return []
+        
+        print(f"  Creating {count} tenants...")
+        
+        created = 0
+        for i in range(count):
+            try:
+                name = f"{self.fake.city()} School District" if i == 0 else f"{self.fake.company()} District"
+                slug = name.lower().replace(" ", "-").replace("'", "")[:50]
+                
+                # Check if tenant already exists
+                existing = Tenant.query.filter_by(slug=slug).first()
+                if existing:
+                    continue
+                
+                tenant = Tenant(
+                    name=name,
+                    slug=slug,
+                    active=True
+                )
+                db.session.add(tenant)
+                created += 1
+            except Exception as e:
+                print(f"    ⚠️  Error creating tenant {i}: {e}")
+        
+        db.session.commit()
+        print(f"    ✅ Created {created} tenants")
+        return Tenant.query.all()
+    
+    def generate_users(self, tenants=None):
+        """Generate User records with all SecurityLevel and TenantRole values."""
+        count = self.get_count('user')
+        print(f"  Creating {count} users...")
+        
+        # Distribution: 1 admin, 2 managers, 3 supervisors, rest users
+        security_levels = [
+            SecurityLevel.ADMIN,
+            SecurityLevel.MANAGER, SecurityLevel.MANAGER,
+            SecurityLevel.SUPERVISOR, SecurityLevel.SUPERVISOR, SecurityLevel.SUPERVISOR,
+        ]
+        
+        tenant_roles = [TenantRole.ADMIN, TenantRole.COORDINATOR, TenantRole.VIRTUAL_ADMIN, TenantRole.USER]
+        
+        created = 0
+        for i in range(count):
+            try:
+                # Assign security level
+                if i < len(security_levels):
+                    security_level = security_levels[i]
+                else:
+                    security_level = SecurityLevel.USER
+                
+                # Generate unique username and email
+                username = f"{self.fake.user_name()}{i}{random.randint(100, 999)}"
+                email = f"{self.fake.email()}"
+                
+                # Check if user already exists
+                existing = User.query.filter(
+                    (User.username == username) | (User.email == email)
+                ).first()
+                if existing:
+                    continue
+                
+                # Assign tenant and role (some users are tenant-scoped)
+                tenant_id = None
+                tenant_role = None
+                if tenants and random.random() < 0.3:  # 30% are tenant-scoped
+                    tenant = random.choice(tenants)
+                    tenant_id = tenant.id
+                    tenant_role = random.choice(tenant_roles)
+                
+                user = User(
+                    username=username,
+                    email=email,
+                    password_hash=generate_password_hash("testpass123"),  # Default test password
+                    first_name=self.fake.first_name(),
+                    last_name=self.fake.last_name(),
+                    security_level=security_level,
+                    tenant_id=tenant_id,
+                    tenant_role=tenant_role
+                )
+                db.session.add(user)
+                created += 1
+            except Exception as e:
+                print(f"    ⚠️  Error creating user {i}: {e}")
+        
+        db.session.commit()
+        print(f"    ✅ Created {created} users")
+        return User.query.all()
+    
     def generate(self):
         """Main generation method."""
         print(f"🌱 Starting synthetic data generation")
@@ -286,9 +383,11 @@ class SyntheticDataGenerator:
                 skills = self.generate_skills()
                 districts = self.generate_districts()
                 organizations = self.generate_organizations()
+                tenants = self.generate_tenants()
                 
                 # Generate dependent models
                 schools = self.generate_schools(districts)
+                users = self.generate_users(tenants)
                 
                 # TODO: Add more model generation
                 
