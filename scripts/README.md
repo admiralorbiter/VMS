@@ -65,6 +65,13 @@ Salesforce data validation tools:
 - **`run_validation.bat`** - Windows batch wrapper for validation commands
 - **`run_validation.sh`** - Unix/Linux/Mac shell wrapper for validation commands
 
+### **Synthetic Data Generation** (`generate_synthetic_data.py`)
+Generate realistic synthetic data for testing and demos:
+- **`generate_synthetic_data.py`** - Main synthetic data generator script
+  - Creates test data matching all SQLAlchemy models and relationships
+  - Supports deterministic generation, size presets, and edge case modes
+  - Uses SQLAlchemy ORM to ensure model defaults and validators run
+
 ### **Other Directories**
 - **`performance/`** - Performance testing and profiling
 - **`sql/`** - SQL scripts and migrations
@@ -107,6 +114,145 @@ scripts\validation\run_validation.bat test          # Windows
 # Or directly
 python scripts/validation/run_validation.py --help
 ```
+
+### **Synthetic Data Generation**
+```bash
+# Generate medium-sized demo dataset
+python scripts/generate_synthetic_data.py --size medium --mode demo
+
+# Generate large dataset with specific seed (deterministic)
+python scripts/generate_synthetic_data.py --seed 123 --size large --mode demo
+
+# Generate edge case dataset (boundary conditions, NULLs, etc.)
+python scripts/generate_synthetic_data.py --size medium --mode edge
+
+# Custom counts per model
+python scripts/generate_synthetic_data.py --counts volunteer=200 event=100 school=50
+
+# Clear existing data and regenerate
+python scripts/generate_synthetic_data.py --reset --size small --mode demo
+```
+
+## 📊 **Synthetic Data Generator**
+
+The `generate_synthetic_data.py` script creates realistic synthetic data for testing and demos, matching all SQLAlchemy models and relationships in the system.
+
+### **How to Run**
+
+Run from the project root directory:
+
+```bash
+python scripts/generate_synthetic_data.py [options]
+```
+
+### **Options/Flags**
+
+| Flag | Description | Example |
+|------|-------------|---------|
+| `--seed SEED` | Random seed for deterministic generation (default: random) | `--seed 123` |
+| `--size SIZE` | Dataset size preset: `small`, `medium`, or `large` (default: `medium`) | `--size large` |
+| `--mode MODE` | Generation mode: `demo` (happy path) or `edge` (boundary conditions) | `--mode edge` |
+| `--counts MODEL=N` | Custom counts per model (can be used multiple times) | `--counts volunteer=200 event=100` |
+| `--reset` | Clear existing data before generating (USE WITH CAUTION) | `--reset` |
+
+### **Examples**
+
+```bash
+# Generate medium-sized demo dataset (happy path, realistic data)
+python scripts/generate_synthetic_data.py --size medium --mode demo
+
+# Generate large dataset with specific seed (deterministic - same seed = same data)
+python scripts/generate_synthetic_data.py --seed 123 --size large --mode demo
+
+# Generate edge case dataset (boundary conditions, NULLs, max-length strings, etc.)
+python scripts/generate_synthetic_data.py --size medium --mode edge
+
+# Custom counts per model
+python scripts/generate_synthetic_data.py --counts volunteer=200 event=100 school=50
+
+# Clear existing data and regenerate
+python scripts/generate_synthetic_data.py --reset --size small --mode demo
+
+# Combine options
+python scripts/generate_synthetic_data.py --seed 42 --size large --mode edge --counts volunteer=500
+```
+
+### **What Data is Created**
+
+The generator creates data for the following models (currently implemented):
+
+**Independent Models:**
+- **Skill** - Professional skills (Python, JavaScript, etc.)
+- **District** - School districts (Kansas City Public Schools, etc.)
+- **Organization** - Companies and organizations
+- **School** - Schools assigned to districts
+
+**Size Presets:**
+
+| Size | Districts | Schools | Teachers | Volunteers | Students | Events |
+|------|-----------|---------|----------|------------|----------|--------|
+| `small` | 2 | 5 | 10 | 15 | 20 | 10 |
+| `medium` | 5 | 15 | 30 | 50 | 100 | 30 |
+| `large` | 10 | 50 | 100 | 200 | 500 | 100 |
+
+**Note:** Additional models (User, Volunteer, Teacher, Student, Event, etc.) are being added incrementally. See the script for current coverage.
+
+### **How to Reset/Clean**
+
+**Option 1: Use `--reset` flag (Recommended)**
+```bash
+python scripts/generate_synthetic_data.py --reset --size small --mode demo
+```
+This will prompt for confirmation before clearing data.
+
+**Option 2: Manual database reset**
+If you need to completely reset the database:
+```bash
+# Delete the database file (SQLite)
+rm instance/vms.db  # Unix/Linux/Mac
+del instance\vms.db  # Windows
+
+# Then run migrations to recreate
+flask db upgrade
+```
+
+**Option 3: Clear specific tables**
+You can manually clear specific tables using SQL or the Flask shell:
+```python
+from app import create_app
+from models import db
+from models.volunteer import Skill
+from models.district_model import District
+
+app = create_app()
+with app.app_context():
+    Skill.query.delete()
+    District.query.delete()
+    # ... delete other models
+    db.session.commit()
+```
+
+### **Features**
+
+- ✅ **Deterministic Generation**: Same seed produces identical data
+- ✅ **Size Presets**: Quick setup with small/medium/large datasets
+- ✅ **Mode Switching**: Demo mode (clean data) vs Edge mode (boundary conditions)
+- ✅ **Custom Counts**: Override presets with specific model counts
+- ✅ **SQLAlchemy ORM**: Uses model classes so defaults and validators run
+- ✅ **Flask App Context**: Proper Flask application context for database operations
+- ✅ **Idempotent**: Can run multiple times (skips existing records)
+
+### **Implementation Status**
+
+**Completed:**
+- Foundation (CLI, app context, seed handling)
+- Skill, District, Organization, School models
+
+**In Progress:**
+- User, Volunteer, Teacher, Student models
+- Event system
+- Relationships (many-to-many)
+- Edge case mode enhancements
 
 ## 📝 **Notes**
 
