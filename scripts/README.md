@@ -270,7 +270,12 @@ with app.app_context():
 ```bash
 python scripts/fix_database_schema.py
 ```
-This will add missing columns like `tenant_role`, `pathful_user_id`, etc.
+This will add missing columns like `tenant_role`, `pathful_user_id`, `is_active`, etc.
+
+**Known Limitations:**
+- Some edge case features (max-length strings, unicode, date boundaries) are not fully implemented
+- JSON export feature (`--export`) is not implemented
+- Admin/internal models (BugReport, AuditLog, etc.) are not generated (not needed for demos)
 
 ## 📝 **Notes**
 
