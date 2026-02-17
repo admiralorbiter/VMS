@@ -45,6 +45,10 @@ from models.contact import (
 from models.teacher import Teacher, TeacherStatus
 from models.student import Student
 from models.event import Event, EventType, EventStatus, EventFormat, CancellationReason, EventTeacher
+from models.class_model import Class
+from models.volunteer import Engagement, EventParticipation
+from models.history import History, HistoryType
+from models.attendance import EventAttendanceDetail
 from werkzeug.security import generate_password_hash
 from datetime import datetime, timedelta, date, timezone
 
@@ -283,6 +287,66 @@ class SyntheticDataGenerator:
         print(f"    ✅ Created {created} schools")
         return School.query.all()
     
+    def generate_classes(self, schools):
+        """Generate Class records (depends on schools)."""
+        if not schools:
+            print("    ⚠️  No schools available, skipping classes")
+            return []
+        
+        count = self.get_count('class')
+        print(f"  Creating {count} classes...")
+        
+        # Generate current academic year (starts in August)
+        now = datetime.now()
+        if now.month >= 8:
+            current_year = now.year
+        else:
+            current_year = now.year - 1
+        
+        class_names = [
+            "Algebra I", "Geometry", "Biology", "Chemistry", "Physics",
+            "English 9", "English 10", "English 11", "English 12",
+            "World History", "US History", "Government", "Economics",
+            "Art I", "Art II", "Band", "Choir", "PE", "Health"
+        ]
+        
+        created = 0
+        for i in range(count):
+            try:
+                school = random.choice(schools)
+                
+                # Generate Salesforce ID (18 characters)
+                salesforce_id = self.fake.lexify(text='?' * 18).upper()
+                
+                # Check if class already exists
+                existing = Class.query.filter_by(salesforce_id=salesforce_id).first()
+                if existing:
+                    continue
+                
+                # Use predefined names or generate
+                if i < len(class_names):
+                    name = class_names[i]
+                else:
+                    name = f"{self.fake.word().title()} {random.randint(1, 4)}"
+                
+                # Class year can be current or previous
+                class_year = current_year if random.random() > 0.2 else (current_year - 1)
+                
+                class_obj = Class(
+                    salesforce_id=salesforce_id,
+                    name=name,
+                    school_salesforce_id=school.id,
+                    class_year=class_year
+                )
+                db.session.add(class_obj)
+                created += 1
+            except Exception as e:
+                print(f"    ⚠️  Error creating class {i}: {e}")
+        
+        db.session.commit()
+        print(f"    ✅ Created {created} classes")
+        return Class.query.all()
+    
     def generate_tenants(self):
         """Generate Tenant records."""
         count = self.get_count('tenant')
@@ -505,7 +569,7 @@ class SyntheticDataGenerator:
         print(f"    ✅ Created {created} teachers")
         return Teacher.query.all()
     
-    def generate_students(self, schools, teachers):
+    def generate_students(self, schools, teachers, classes):
         """Generate Student records (polymorphic Contact)."""
         if not schools:
             print("    ⚠️  No schools available, skipping students")
@@ -532,11 +596,18 @@ class SyntheticDataGenerator:
                 school = random.choice(schools)
                 grade = random.randint(0, 12)
                 
+                # Assign class (70% of students have a class)
+                class_salesforce_id = None
+                if classes and random.random() < 0.7:
+                    class_obj = random.choice(classes)
+                    class_salesforce_id = class_obj.salesforce_id
+                
                 student = Student(
                     id=contact.id,
                     current_grade=grade,
                     student_id=f"STU{self.fake.random_number(digits=6)}",
                     school_id=school.id,
+                    class_salesforce_id=class_salesforce_id,
                     teacher_id=random.choice(teachers).id if teachers and random.random() > 0.3 else None,
                     racial_ethnic=random.choice(["White", "Black or African American", "Hispanic or Latino", "Asian", "Native American", "Other"]) if self.mode == 'demo' or random.random() > 0.2 else None,
                     school_code=self.fake.lexify(text='???').upper(),
@@ -802,12 +873,13 @@ class SyntheticDataGenerator:
                 
                 # Generate dependent models
                 schools = self.generate_schools(districts)
+                classes = self.generate_classes(schools)
                 users = self.generate_users(tenants)
                 
                 # Generate Contact hierarchy (polymorphic)
                 volunteers = self.generate_volunteers(organizations, skills)
                 teachers = self.generate_teachers(schools)
-                students = self.generate_students(schools, teachers)
+                students = self.generate_students(schools, teachers, classes)
                 
                 # Generate Events
                 events = self.generate_events(districts, schools, teachers, volunteers)
