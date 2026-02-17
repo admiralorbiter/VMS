@@ -31,9 +31,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app import create_app
 from models import db
-from models.volunteer import Skill, Volunteer, VolunteerStatus
+from models.volunteer import Skill, Volunteer, VolunteerStatus, VolunteerSkill
 from models.district_model import District
-from models.organization import Organization
+from models.organization import Organization, VolunteerOrganization
 from models.school_model import School
 from models.user import User, SecurityLevel, TenantRole
 from models.tenant import Tenant
@@ -665,6 +665,84 @@ class SyntheticDataGenerator:
         print(f"    ✅ Created {created} events")
         return Event.query.all()
     
+    def generate_volunteer_skills(self, volunteers, skills):
+        """Generate VolunteerSkill relationships (many-to-many)."""
+        if not volunteers or not skills:
+            return
+        
+        print(f"  Creating volunteer-skill relationships...")
+        
+        created = 0
+        for volunteer in volunteers:
+            try:
+                # Each volunteer gets 2-5 skills
+                num_skills = random.randint(2, 5) if self.mode == 'demo' else (
+                    random.randint(0, 10) if random.random() > 0.1 else 0  # Edge: some with many, some with none
+                )
+                
+                if num_skills > 0:
+                    volunteer_skills = random.sample(skills, min(num_skills, len(skills)))
+                    for skill in volunteer_skills:
+                        # Check if relationship already exists
+                        existing = VolunteerSkill.query.filter_by(
+                            volunteer_id=volunteer.id,
+                            skill_id=skill.id
+                        ).first()
+                        if not existing:
+                            volunteer_skill = VolunteerSkill(
+                                volunteer_id=volunteer.id,
+                                skill_id=skill.id,
+                                source=random.choice(["user_selected", "admin_selected"])
+                            )
+                            db.session.add(volunteer_skill)
+                            created += 1
+            except Exception as e:
+                print(f"    ⚠️  Error creating volunteer-skill relationship: {e}")
+                continue
+        
+        db.session.commit()
+        print(f"    ✅ Created {created} volunteer-skill relationships")
+    
+    def generate_volunteer_organizations(self, volunteers, organizations):
+        """Generate VolunteerOrganization relationships (many-to-many)."""
+        if not volunteers or not organizations:
+            return
+        
+        print(f"  Creating volunteer-organization relationships...")
+        
+        titles = ["Software Engineer", "Manager", "Analyst", "Director", "Specialist"]
+        created = 0
+        for volunteer in volunteers:
+            try:
+                # Each volunteer gets 1-3 organization associations
+                num_orgs = random.randint(1, 3) if self.mode == 'demo' else (
+                    random.randint(0, 5) if random.random() > 0.1 else 0  # Edge: some with many, some with none
+                )
+                
+                if num_orgs > 0:
+                    volunteer_orgs = random.sample(organizations, min(num_orgs, len(organizations)))
+                    for i, org in enumerate(volunteer_orgs):
+                        # Check if relationship already exists
+                        existing = VolunteerOrganization.query.filter_by(
+                            volunteer_id=volunteer.id,
+                            organization_id=org.id
+                        ).first()
+                        if not existing:
+                            vol_org = VolunteerOrganization(
+                                volunteer_id=volunteer.id,
+                                organization_id=org.id,
+                                role=random.choice(titles),
+                                is_primary=(i == 0)  # First one is primary
+                            )
+                            db.session.add(vol_org)
+                            created += 1
+            except Exception as e:
+                print(f"    ⚠️  Error creating volunteer-organization relationship: {e}")
+                continue
+        
+        db.session.commit()
+        print(f"    ✅ Created {created} volunteer-organization relationships")
+    
     def generate(self):
         """Main generation method."""
         print(f"🌱 Starting synthetic data generation")
@@ -694,7 +772,9 @@ class SyntheticDataGenerator:
                 # Generate Events
                 events = self.generate_events(districts, schools, teachers, volunteers)
                 
-                # TODO: Add relationships (many-to-many)
+                # Generate many-to-many relationships
+                self.generate_volunteer_skills(volunteers, skills)
+                self.generate_volunteer_organizations(volunteers, organizations)
                 
                 print()
                 print("✅ Generation complete!")
