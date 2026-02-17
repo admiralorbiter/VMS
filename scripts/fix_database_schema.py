@@ -114,5 +114,117 @@ with app.app_context():
         print(f'[WARNING] Error adding pathful_session_id: {e}')
         db.session.rollback()
     
+    # Check and add career_cluster to event table
+    try:
+        existing_columns = [c['name'] for c in inspector.get_columns('event')]
+        
+        if 'career_cluster' not in existing_columns:
+            db.session.execute(text('ALTER TABLE event ADD COLUMN career_cluster VARCHAR(255)'))
+            db.session.commit()
+            print('[OK] Added career_cluster column to event table')
+        else:
+            print('[INFO] career_cluster column already exists in event table')
+    except Exception as e:
+        print(f'[WARNING] Error adding career_cluster: {e}')
+        db.session.rollback()
+    
+    # Check and add import_source to event table
+    try:
+        existing_columns = [c['name'] for c in inspector.get_columns('event')]
+        
+        if 'import_source' not in existing_columns:
+            db.session.execute(text('ALTER TABLE event ADD COLUMN import_source VARCHAR(50)'))
+            db.session.commit()
+            print('[OK] Added import_source column to event table')
+        else:
+            print('[INFO] import_source column already exists in event table')
+    except Exception as e:
+        print(f'[WARNING] Error adding import_source: {e}')
+        db.session.rollback()
+    
+    # Check and add registered_student_count to event table
+    try:
+        existing_columns = [c['name'] for c in inspector.get_columns('event')]
+        
+        if 'registered_student_count' not in existing_columns:
+            db.session.execute(text('ALTER TABLE event ADD COLUMN registered_student_count INTEGER DEFAULT 0'))
+            db.session.commit()
+            print('[OK] Added registered_student_count column to event table')
+        else:
+            print('[INFO] registered_student_count column already exists in event table')
+    except Exception as e:
+        print(f'[WARNING] Error adding registered_student_count: {e}')
+        db.session.rollback()
+    
+    # Check and add attended_student_count to event table
+    try:
+        existing_columns = [c['name'] for c in inspector.get_columns('event')]
+        
+        if 'attended_student_count' not in existing_columns:
+            db.session.execute(text('ALTER TABLE event ADD COLUMN attended_student_count INTEGER DEFAULT 0'))
+            db.session.commit()
+            print('[OK] Added attended_student_count column to event table')
+        else:
+            print('[INFO] attended_student_count column already exists in event table')
+    except Exception as e:
+        print(f'[WARNING] Error adding attended_student_count: {e}')
+        db.session.rollback()
+    
+    # Check and add educators to event table
+    try:
+        existing_columns = [c['name'] for c in inspector.get_columns('event')]
+        
+        if 'educators' not in existing_columns:
+            db.session.execute(text('ALTER TABLE event ADD COLUMN educators TEXT'))
+            db.session.commit()
+            print('[OK] Added educators column to event table')
+        else:
+            print('[INFO] educators column already exists in event table')
+    except Exception as e:
+        print(f'[WARNING] Error adding educators: {e}')
+        db.session.rollback()
+    
+    # Check and add educator_ids to event table
+    try:
+        existing_columns = [c['name'] for c in inspector.get_columns('event')]
+        
+        if 'educator_ids' not in existing_columns:
+            db.session.execute(text('ALTER TABLE event ADD COLUMN educator_ids TEXT'))
+            db.session.commit()
+            print('[OK] Added educator_ids column to event table')
+        else:
+            print('[INFO] educator_ids column already exists in event table')
+    except Exception as e:
+        print(f'[WARNING] Error adding educator_ids: {e}')
+        db.session.rollback()
+    
+    # Check and add professionals to event table
+    try:
+        existing_columns = [c['name'] for c in inspector.get_columns('event')]
+        
+        if 'professionals' not in existing_columns:
+            db.session.execute(text('ALTER TABLE event ADD COLUMN professionals TEXT'))
+            db.session.commit()
+            print('[OK] Added professionals column to event table')
+        else:
+            print('[INFO] professionals column already exists in event table')
+    except Exception as e:
+        print(f'[WARNING] Error adding professionals: {e}')
+        db.session.rollback()
+    
+    # Check and add professional_ids to event table
+    try:
+        existing_columns = [c['name'] for c in inspector.get_columns('event')]
+        
+        if 'professional_ids' not in existing_columns:
+            db.session.execute(text('ALTER TABLE event ADD COLUMN professional_ids TEXT'))
+            db.session.commit()
+            print('[OK] Added professional_ids column to event table')
+        else:
+            print('[INFO] professional_ids column already exists in event table')
+    except Exception as e:
+        print(f'[WARNING] Error adding professional_ids: {e}')
+        db.session.rollback()
+    
     print('[OK] Database schema fix complete!')
 
