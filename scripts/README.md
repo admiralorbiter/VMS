@@ -179,23 +179,37 @@ python scripts/generate_synthetic_data.py --seed 42 --size large --mode edge --c
 
 ### **What Data is Created**
 
-The generator creates data for the following models (currently implemented):
+The generator creates data for **core models** used in main user-facing features:
 
-**Independent Models:**
-- **Skill** - Professional skills (Python, JavaScript, etc.)
-- **District** - School districts (Kansas City Public Schools, etc.)
+**Core Models (17 total):**
+- **Skill** - Professional skills
+- **District** - School districts
 - **Organization** - Companies and organizations
 - **School** - Schools assigned to districts
+- **Class** - Academic classes/cohorts
+- **Tenant** - Multi-tenant platform configuration
+- **User** - User accounts with authentication
+- **Volunteer** - Volunteer profiles (inherits from Contact)
+- **Teacher** - Teacher profiles (inherits from Contact)
+- **Student** - Student records (inherits from Contact)
+- **Event** - Events and sessions
+- **EventTeacher** - Teacher-event associations
+- **EventParticipation** - Volunteer participation in events
+- **EventAttendanceDetail** - Detailed attendance tracking
+- **VolunteerSkill** - Volunteer-skill relationships
+- **VolunteerOrganization** - Volunteer-organization relationships
+- **Engagement** - Volunteer engagement activities
+- **History** - Activity history and notes
 
 **Size Presets:**
 
-| Size | Districts | Schools | Teachers | Volunteers | Students | Events |
-|------|-----------|---------|----------|------------|----------|--------|
-| `small` | 2 | 5 | 10 | 15 | 20 | 10 |
-| `medium` | 5 | 15 | 30 | 50 | 100 | 30 |
-| `large` | 10 | 50 | 100 | 200 | 500 | 100 |
+| Size | Districts | Schools | Classes | Teachers | Volunteers | Students | Events | Engagements | History |
+|------|-----------|---------|---------|----------|------------|----------|--------|-------------|---------|
+| `small` | 2 | 5 | 10 | 10 | 15 | 20 | 10 | 20 | 15 |
+| `medium` | 5 | 15 | 30 | 30 | 50 | 100 | 30 | 50 | 40 |
+| `large` | 10 | 50 | 100 | 100 | 200 | 500 | 100 | 200 | 150 |
 
-**Note:** Additional models (User, Volunteer, Teacher, Student, Event, etc.) are being added incrementally. See the script for current coverage.
+**Note:** This covers core user-facing features. Admin/internal models (BugReport, AuditLog, SyncLog, etc.) are not included as they're not needed for demos.
 
 ### **How to Reset/Clean**
 
@@ -216,7 +230,7 @@ del instance\vms.db  # Windows
 flask db upgrade
 ```
 
-**Option 3: Clear specific tables**
+**Option 4: Clear specific tables**
 You can manually clear specific tables using SQL or the Flask shell:
 ```python
 from app import create_app
@@ -245,14 +259,18 @@ with app.app_context():
 ### **Implementation Status**
 
 **Completed:**
-- Foundation (CLI, app context, seed handling)
-- Skill, District, Organization, School models
+- ✅ Foundation (CLI, app context, seed handling)
+- ✅ Core models (17 models covering main user flows)
+- ✅ Relationships (many-to-many, one-to-many)
+- ✅ Enum/status value coverage
+- ✅ Summary output
+- ✅ Reset functionality
 
-**In Progress:**
-- User, Volunteer, Teacher, Student models
-- Event system
-- Relationships (many-to-many)
-- Edge case mode enhancements
+**Note:** Database schema must be up-to-date. If you encounter missing column errors, run:
+```bash
+python scripts/fix_database_schema.py
+```
+This will add missing columns like `tenant_role`, `pathful_user_id`, etc.
 
 ## 📝 **Notes**
 
