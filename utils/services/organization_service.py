@@ -29,7 +29,7 @@ from sqlalchemy.orm import aliased
 
 from models import db
 from models.district_model import District
-from models.event import Event, EventStatus, EventTeacher, EventType
+from models.event import Event, EventStatus, EventTeacher, EventType, event_volunteers
 from models.organization import Organization, VolunteerOrganization
 from models.reports import OrganizationDetailCache, OrganizationSummaryCache
 from models.school_model import School
@@ -301,7 +301,12 @@ class OrganizationService:
     def _get_virtual_events(
         self, org_id: int, start_date: Optional[datetime], end_date: Optional[datetime]
     ) -> List[Dict]:
-        """Get virtual event data with classroom details."""
+        """Get virtual event data with classroom details.
+
+        Virtual sessions from Pathful imports link volunteers via the
+        event_volunteers M2M table (not EventParticipation), so we join
+        through that table instead.
+        """
         TeacherAlias = aliased(Teacher, flat=True)
         SchoolAlias = aliased(School, flat=True)
         DistrictAlias = aliased(District, flat=True)
@@ -310,14 +315,13 @@ class OrganizationService:
             db.session.query(
                 Event,
                 Volunteer,
-                EventParticipation.status,
                 EventTeacher,
                 TeacherAlias,
                 SchoolAlias,
                 DistrictAlias,
             )
-            .join(EventParticipation, Event.id == EventParticipation.event_id)
-            .join(Volunteer, EventParticipation.volunteer_id == Volunteer.id)
+            .join(event_volunteers, Event.id == event_volunteers.c.event_id)
+            .join(Volunteer, event_volunteers.c.volunteer_id == Volunteer.id)
             .join(
                 VolunteerOrganization,
                 Volunteer.id == VolunteerOrganization.volunteer_id,
@@ -329,11 +333,12 @@ class OrganizationService:
             .filter(
                 VolunteerOrganization.organization_id == org_id,
                 Event.type == EventType.VIRTUAL_SESSION,
-                db.or_(
-                    EventParticipation.status.in_(
-                        ["Attended", "Completed", "Successfully Completed", "Simulcast"]
-                    ),
-                    Event.status == EventStatus.CONFIRMED,
+                Event.status.in_(
+                    [
+                        EventStatus.COMPLETED,
+                        EventStatus.CONFIRMED,
+                        EventStatus.SIMULCAST,
+                    ]
                 ),
                 Volunteer.exclude_from_reports == False,
                 db.or_(
@@ -356,7 +361,6 @@ class OrganizationService:
         for (
             event,
             volunteer,
-            status,
             event_teacher,
             teacher,
             school,
@@ -374,7 +378,7 @@ class OrganizationService:
             events_by_event[event_key]["volunteers"].append(
                 {
                     "name": f"{volunteer.first_name} {volunteer.last_name}",
-                    "status": status,
+                    "status": event.status.value if event.status else "Unknown",
                 }
             )
 
