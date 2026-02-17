@@ -827,6 +827,7 @@ class SyntheticDataGenerator:
                 "Districts": District.query.count(),
                 "Organizations": Organization.query.count(),
                 "Schools": School.query.count(),
+                "Classes": Class.query.count(),
                 "Tenants": Tenant.query.count() if Tenant.query.count() > 0 else None,
                 "Users": User.query.count(),
                 "Volunteers": Volunteer.query.count(),
@@ -835,6 +836,10 @@ class SyntheticDataGenerator:
                 "Events": Event.query.count(),
                 "VolunteerSkills": VolunteerSkill.query.count(),
                 "VolunteerOrganizations": VolunteerOrganization.query.count(),
+                "EventParticipations": EventParticipation.query.count(),
+                "Engagements": Engagement.query.count(),
+                "History": History.query.count(),
+                "EventAttendanceDetails": EventAttendanceDetail.query.count(),
             }
             
             # Remove None values
@@ -887,6 +892,12 @@ class SyntheticDataGenerator:
                 # Generate many-to-many relationships
                 self.generate_volunteer_skills(volunteers, skills)
                 self.generate_volunteer_organizations(volunteers, organizations)
+                
+                # Generate participation and activity tracking
+                self.generate_event_participations(volunteers, events)
+                self.generate_engagements(volunteers)
+                self.generate_history_records(volunteers, events, users)
+                self.generate_event_attendance_details(events)
                 
                 # Print summary
                 self.print_summary()
