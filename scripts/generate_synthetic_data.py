@@ -34,6 +34,7 @@ from models import db
 from models.volunteer import Skill
 from models.district_model import District
 from models.organization import Organization
+from models.school_model import School
 
 
 class SyntheticDataGenerator:
@@ -225,6 +226,51 @@ class SyntheticDataGenerator:
         print(f"    ✅ Created {created} organizations")
         return Organization.query.all()
     
+    def generate_schools(self, districts):
+        """Generate School records (depends on districts)."""
+        if not districts:
+            print("    ⚠️  No districts available, skipping schools")
+            return []
+        
+        count = self.get_count('school')
+        print(f"  Creating {count} schools...")
+        
+        school_levels = ["Elementary", "Middle", "High"]
+        
+        created = 0
+        for i in range(count):
+            try:
+                # Pick a random district
+                district = random.choice(districts)
+                level = random.choice(school_levels)
+                
+                # Generate Salesforce ID (18 characters)
+                school_id = self.fake.lexify(text='?' * 18).upper()
+                
+                # Check if school already exists
+                existing = School.query.get(school_id)
+                if existing:
+                    continue
+                
+                name = f"{self.fake.company()} {level} School"
+                
+                school = School(
+                    id=school_id,
+                    name=name,
+                    district_id=district.id,
+                    level=level,
+                    school_code=self.fake.lexify(text='???').upper(),
+                    normalized_name=name.lower().replace(" ", "_")
+                )
+                db.session.add(school)
+                created += 1
+            except Exception as e:
+                print(f"    ⚠️  Error creating school {i}: {e}")
+        
+        db.session.commit()
+        print(f"    ✅ Created {created} schools")
+        return School.query.all()
+    
     def generate(self):
         """Main generation method."""
         print(f"🌱 Starting synthetic data generation")
@@ -240,6 +286,9 @@ class SyntheticDataGenerator:
                 skills = self.generate_skills()
                 districts = self.generate_districts()
                 organizations = self.generate_organizations()
+                
+                # Generate dependent models
+                schools = self.generate_schools(districts)
                 
                 # TODO: Add more model generation
                 
