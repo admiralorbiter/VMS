@@ -32,6 +32,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from app import create_app
 from models import db
 from models.volunteer import Skill
+from models.district_model import District
+from models.organization import Organization
 
 
 class SyntheticDataGenerator:
@@ -137,6 +139,92 @@ class SyntheticDataGenerator:
         print(f"    ✅ Created {created} skills")
         return Skill.query.all()
     
+    def generate_districts(self):
+        """Generate District records."""
+        count = self.get_count('district')
+        print(f"  Creating {count} districts...")
+        
+        # Predefined district names for realism
+        district_names = [
+            "Kansas City Public Schools", "Shawnee Mission School District",
+            "Blue Valley School District", "Olathe School District",
+            "Hickman Mills School District", "Grandview School District",
+            "Kansas City Kansas Public Schools", "North Kansas City Schools",
+            "Raytown School District", "Independence School District"
+        ]
+        
+        created = 0
+        for i in range(count):
+            try:
+                if i < len(district_names):
+                    name = district_names[i]
+                    code = ''.join(word[0] for word in name.split()[:4]).upper()[:4]
+                else:
+                    name = f"{self.fake.city()} School District"
+                    code = self.fake.lexify(text='????').upper()
+                
+                # Generate Salesforce ID (18 characters)
+                salesforce_id = self.fake.lexify(text='?' * 18).upper()
+                
+                # Check if district already exists
+                existing = District.query.filter_by(name=name).first()
+                if existing:
+                    continue
+                
+                district = District(
+                    name=name,
+                    district_code=code,
+                    salesforce_id=salesforce_id
+                )
+                db.session.add(district)
+                created += 1
+            except Exception as e:
+                print(f"    ⚠️  Error creating district {i}: {e}")
+        
+        db.session.commit()
+        print(f"    ✅ Created {created} districts")
+        return District.query.all()
+    
+    def generate_organizations(self):
+        """Generate Organization records."""
+        count = self.get_count('organization')
+        print(f"  Creating {count} organizations...")
+        
+        org_types = ["Business", "Non-profit", "Educational", "Government", "Healthcare", "Technology"]
+        
+        created = 0
+        for i in range(count):
+            try:
+                # Generate Salesforce ID (18 characters)
+                salesforce_id = self.fake.lexify(text='?' * 18).upper()
+                
+                # Check if organization already exists
+                existing = Organization.query.filter_by(salesforce_id=salesforce_id).first()
+                if existing:
+                    continue
+                
+                org = Organization(
+                    name=self.fake.company(),
+                    type=random.choice(org_types) if self.mode == 'demo' else (
+                        random.choice(org_types) if random.random() > 0.1 else None  # 10% NULL in edge mode
+                    ),
+                    description=self.fake.text(max_nb_chars=200) if self.mode == 'demo' or random.random() > 0.2 else None,
+                    salesforce_id=salesforce_id,
+                    billing_street=self.fake.street_address(),
+                    billing_city=self.fake.city(),
+                    billing_state=self.fake.state_abbr(),
+                    billing_postal_code=self.fake.postcode(),
+                    billing_country="USA"
+                )
+                db.session.add(org)
+                created += 1
+            except Exception as e:
+                print(f"    ⚠️  Error creating organization {i}: {e}")
+        
+        db.session.commit()
+        print(f"    ✅ Created {created} organizations")
+        return Organization.query.all()
+    
     def generate(self):
         """Main generation method."""
         print(f"🌱 Starting synthetic data generation")
@@ -150,6 +238,8 @@ class SyntheticDataGenerator:
             try:
                 # Generate independent models first
                 skills = self.generate_skills()
+                districts = self.generate_districts()
+                organizations = self.generate_organizations()
                 
                 # TODO: Add more model generation
                 
