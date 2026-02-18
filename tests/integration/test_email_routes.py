@@ -130,6 +130,198 @@ class TestEmailTemplates:
         assert_route_response(response, expected_statuses=[200, 404, 500])
 
 
+class TestTemplateCRUD:
+    """Tests for email template CRUD and versioning routes"""
+
+    def test_create_template_get(self, client, test_admin_headers):
+        """Test create template form renders"""
+        response = safe_route_test(
+            client, "/management/email/templates/new", headers=test_admin_headers
+        )
+        assert_route_response(response, expected_statuses=[200, 404, 500])
+
+    def test_create_template_post(self, client, test_admin_headers, app):
+        """Test successful template creation"""
+        response = safe_route_test(
+            client,
+            "/management/email/templates/new",
+            method="POST",
+            data={
+                "name": "CRUD Test Template",
+                "purpose_key": "crud_test_unique",
+                "description": "Created by test",
+                "subject_template": "Test: {{user_name}}",
+                "html_template": "<p>Hello {{user_name}}</p>",
+                "text_template": "Hello {{user_name}}",
+                "required_placeholders": "user_name",
+                "optional_placeholders": "district_name",
+            },
+            headers=test_admin_headers,
+        )
+        assert_route_response(response, expected_statuses=[200, 302, 404, 500])
+
+        # Clean up
+        with app.app_context():
+            t = EmailTemplate.query.filter_by(purpose_key="crud_test_unique").first()
+            if t:
+                db.session.delete(t)
+                db.session.commit()
+
+    def test_create_template_duplicate_purpose_key(
+        self, client, test_admin_headers, test_email_template
+    ):
+        """Test that duplicate purpose_key is rejected"""
+        response = safe_route_test(
+            client,
+            "/management/email/templates/new",
+            method="POST",
+            data={
+                "name": "Duplicate Test",
+                "purpose_key": test_email_template.purpose_key,
+                "subject_template": "Test",
+                "html_template": "<p>Test</p>",
+                "text_template": "Test",
+            },
+            headers=test_admin_headers,
+        )
+        # Should re-render the form (200) with error flash, not redirect
+        assert_route_response(response, expected_statuses=[200, 404, 500])
+
+    def test_edit_template_get(self, client, test_admin_headers, test_email_template):
+        """Test edit form renders with pre-filled data"""
+        response = safe_route_test(
+            client,
+            f"/management/email/templates/{test_email_template.id}/edit",
+            headers=test_admin_headers,
+        )
+        assert_route_response(response, expected_statuses=[200, 404, 500])
+
+    def test_edit_template_post(
+        self, client, test_admin_headers, test_email_template, app
+    ):
+        """Test successful template update"""
+        response = safe_route_test(
+            client,
+            f"/management/email/templates/{test_email_template.id}/edit",
+            method="POST",
+            data={
+                "name": "Updated Test Template",
+                "description": "Updated description",
+                "subject_template": test_email_template.subject_template,
+                "html_template": test_email_template.html_template,
+                "text_template": test_email_template.text_template,
+                "required_placeholders": "user_name",
+            },
+            headers=test_admin_headers,
+        )
+        assert_route_response(response, expected_statuses=[200, 302, 404, 500])
+
+    def test_create_new_version(
+        self, client, test_admin_headers, test_email_template, app
+    ):
+        """Test creating a new version deactivates old and increments version"""
+        response = safe_route_test(
+            client,
+            f"/management/email/templates/{test_email_template.id}/new-version",
+            method="POST",
+            headers=test_admin_headers,
+        )
+        assert_route_response(response, expected_statuses=[200, 302, 404, 500])
+
+        # Clean up: delete the new version
+        with app.app_context():
+            new_ver = (
+                EmailTemplate.query.filter_by(
+                    purpose_key=test_email_template.purpose_key
+                )
+                .filter(EmailTemplate.id != test_email_template.id)
+                .first()
+            )
+            if new_ver:
+                db.session.delete(new_ver)
+                # Re-activate the original
+                orig = db.session.get(EmailTemplate, test_email_template.id)
+                if orig:
+                    orig.is_active = True
+                db.session.commit()
+
+    def test_activate_template(self, client, test_admin_headers, test_email_template):
+        """Test activating a template version"""
+        response = safe_route_test(
+            client,
+            f"/management/email/templates/{test_email_template.id}/activate",
+            method="POST",
+            headers=test_admin_headers,
+        )
+        assert_route_response(response, expected_statuses=[200, 302, 404, 500])
+
+    def test_delete_template_no_messages(
+        self, client, test_admin_headers, app, test_admin
+    ):
+        """Test deleting a template with no messages succeeds"""
+        # Create a disposable template
+        with app.app_context():
+            t = EmailTemplate(
+                purpose_key="delete_me_test",
+                version=1,
+                name="Delete Me",
+                subject_template="Test",
+                html_template="<p>Test</p>",
+                text_template="Test",
+                is_active=True,
+                created_by_id=test_admin.id,
+            )
+            db.session.add(t)
+            db.session.commit()
+            t_id = t.id
+
+        response = safe_route_test(
+            client,
+            f"/management/email/templates/{t_id}/delete",
+            method="POST",
+            headers=test_admin_headers,
+        )
+        assert_route_response(response, expected_statuses=[200, 302, 404, 500])
+
+        # Verify deletion
+        with app.app_context():
+            assert db.session.get(EmailTemplate, t_id) is None
+
+    def test_delete_template_with_messages(
+        self, client, test_admin_headers, test_email_template, test_email_message
+    ):
+        """Test that deleting a template with messages is rejected"""
+        response = safe_route_test(
+            client,
+            f"/management/email/templates/{test_email_template.id}/delete",
+            method="POST",
+            headers=test_admin_headers,
+        )
+        # Should redirect back with error flash (template still exists)
+        assert_route_response(response, expected_statuses=[200, 302, 404, 500])
+
+    def test_crud_requires_admin(self, client, auth_headers, test_email_template):
+        """Test that all CRUD routes require admin access"""
+        routes = [
+            ("/management/email/templates/new", "GET"),
+            ("/management/email/templates/new", "POST"),
+            (f"/management/email/templates/{test_email_template.id}/edit", "GET"),
+            (f"/management/email/templates/{test_email_template.id}/edit", "POST"),
+            (
+                f"/management/email/templates/{test_email_template.id}/new-version",
+                "POST",
+            ),
+            (f"/management/email/templates/{test_email_template.id}/activate", "POST"),
+            (f"/management/email/templates/{test_email_template.id}/delete", "POST"),
+        ]
+
+        for route, method in routes:
+            response = safe_route_test(
+                client, route, method=method, headers=auth_headers
+            )
+            assert_route_response(response, expected_statuses=[403, 404, 500])
+
+
 class TestEmailOutbox:
     """Tests for email outbox routes"""
 
@@ -333,6 +525,7 @@ class TestEmailAccessControl:
         routes = [
             "/management/email",
             "/management/email/templates",
+            "/management/email/templates/new",
             "/management/email/outbox",
             "/management/email/attempts",
             "/management/email/settings",

@@ -724,13 +724,18 @@ Each story follows: **As [role], I want [capability], So that [benefit]**. Accep
 
 **As** internal staff (Admin), **I want** to create and manage email templates in the admin panel, **So that** we can send consistent, branded communications to volunteers and stakeholders.
 
-**Related Requirements:** *Email system features documented in guides*
+**Related Requirements:** [FR-EMAIL-801–807](requirements-email#fr-email-801) (CRUD), [FR-EMAIL-810–815](requirements-email#fr-email-810) (Versioning), [FR-EMAIL-820–822](requirements-email#fr-email-820) (Preview & Placeholders)
 
 **User Guide:** [Email System](user_guide/email_system)
 
 **Acceptance Criteria:**
 
 - Given I access the email templates section, when I create a new template, then it is saved with a purpose key and version.
+- Given I try to create a template with an existing purpose key, then the system rejects it and directs me to create a new version instead.
+- Given I edit an existing template, then I can update the name, description, subject, HTML body, and text body but not the purpose key or version.
+- Given a template exists, when I click "Create New Version", then the system copies it into a new version with the next version number and deactivates the previous version.
+- Given multiple versions exist for a purpose key, when I activate an old version, then all other versions for that key are deactivated.
+- Given a template version has been used to send messages, then I cannot delete it.
 - Given a template exists, when I preview it with sample context, then it renders correctly with placeholders filled.
 - Given I update a template, then the system validates that required placeholders are present and both HTML and text versions exist.
 

@@ -166,9 +166,11 @@ This section provides a comprehensive view of the relationships between Function
 
 | Functional Requirement | Related User Stories | Notes |
 |------------------------|---------------------|-------|
-| FR-EMAIL-801 | [US-801](user-stories#us-801) | Template management |
-| FR-EMAIL-802 | [US-802](user-stories#us-802) | Delivery monitoring |
-| FR-EMAIL-803 | [US-803](user-stories#us-803) | Admin email sending |
+| FR-EMAIL-801–807 | [US-801](user-stories#us-801) | Template CRUD |
+| FR-EMAIL-810–815 | [US-801](user-stories#us-801) | Template versioning |
+| FR-EMAIL-820–822 | [US-801](user-stories#us-801) | Preview & placeholders |
+| FR-EMAIL-830–833 | [US-802](user-stories#us-802) | Delivery monitoring |
+| FR-EMAIL-840–842 | [US-803](user-stories#us-803) | Admin email sending |
 
 ### District Suite
 

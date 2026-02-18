@@ -135,7 +135,8 @@ def email_template_detail(template_id):
     """
     Display email template detail with preview.
 
-    Shows template content, version info, and allows preview with sample context.
+    Shows template content, version info, version history, and allows preview
+    with sample context.
     """
     template = EmailTemplate.query.get_or_404(template_id)
 
@@ -148,9 +149,376 @@ def email_template_detail(template_id):
         "magic_url": "https://example.com/sign-in?token=abc123",
     }
 
-    return render_template(
-        "email/template_detail.html", template=template, sample_context=sample_context
+    # Version history for this purpose_key
+    version_history = (
+        EmailTemplate.query.filter_by(purpose_key=template.purpose_key)
+        .order_by(EmailTemplate.version.desc())
+        .all()
     )
+
+    # Check if this template has messages (affects delete eligibility)
+    message_count = EmailMessage.query.filter_by(template_id=template_id).count()
+
+    return render_template(
+        "email/template_detail.html",
+        template=template,
+        sample_context=sample_context,
+        version_history=version_history,
+        message_count=message_count,
+    )
+
+
+import re
+
+
+def _auto_generate_template_content(html_template, text_template):
+    """Auto-generate the missing template format from the provided one.
+
+    If only HTML is provided, strip tags to create plain text.
+    If only plain text is provided, wrap in <p> tags to create HTML.
+    """
+    if html_template and not text_template:
+        # Strip HTML tags to generate plain text
+        text = re.sub(r"<br\s*/?>", "\n", html_template)
+        text = re.sub(r"</p>\s*<p[^>]*>", "\n\n", text)
+        text = re.sub(r"<[^>]+>", "", text)
+        text = re.sub(r"&nbsp;", " ", text)
+        text = re.sub(r"&amp;", "&", text)
+        text = re.sub(r"&lt;", "<", text)
+        text = re.sub(r"&gt;", ">", text)
+        text_template = text.strip()
+    elif text_template and not html_template:
+        # Wrap plain text lines in <p> tags
+        lines = text_template.split("\n")
+        html_parts = []
+        for line in lines:
+            line = line.strip()
+            if line:
+                html_parts.append(f"<p>{line}</p>")
+            else:
+                html_parts.append("")
+        html_template = "\n".join(html_parts).strip()
+    return html_template, text_template
+
+
+@email_bp.route("/management/email/templates/new", methods=["GET", "POST"])
+@login_required
+@security_level_required(3)  # ADMIN only
+def create_template():
+    """
+    Create a new email template.
+
+    GET: Display empty template form.
+    POST: Validate and create template with version 1.
+    """
+    if request.method == "GET":
+        return render_template(
+            "email/template_form.html", template=None, edit_mode=False
+        )
+
+    # POST: Create template
+    name = request.form.get("name", "").strip()
+    purpose_key = request.form.get("purpose_key", "").strip()
+    description = request.form.get("description", "").strip()
+    subject_template = request.form.get("subject_template", "").strip()
+    html_template = request.form.get("html_template", "").strip()
+    text_template = request.form.get("text_template", "").strip()
+    required_placeholders_raw = request.form.get("required_placeholders", "").strip()
+    optional_placeholders_raw = request.form.get("optional_placeholders", "").strip()
+
+    # Validate required fields
+    errors = []
+    if not name:
+        errors.append("Name is required.")
+    if not purpose_key:
+        errors.append("Purpose key is required.")
+    if not subject_template:
+        errors.append("Subject template is required.")
+    if not html_template and not text_template:
+        errors.append(
+            "At least one of HTML template or plain-text template is required."
+        )
+
+    # Check purpose_key uniqueness
+    if purpose_key:
+        existing = EmailTemplate.query.filter_by(purpose_key=purpose_key).first()
+        if existing:
+            errors.append(
+                f'Purpose key "{purpose_key}" already exists. '
+                f'Use the existing template\'s "Create New Version" action instead.'
+            )
+
+    if errors:
+        for error in errors:
+            flash(error, "error")
+        return render_template(
+            "email/template_form.html",
+            template=None,
+            edit_mode=False,
+            form_data=request.form,
+        )
+
+    # Parse placeholders
+    required_placeholders = (
+        [p.strip() for p in required_placeholders_raw.split(",") if p.strip()]
+        if required_placeholders_raw
+        else None
+    )
+    optional_placeholders = (
+        [p.strip() for p in optional_placeholders_raw.split(",") if p.strip()]
+        if optional_placeholders_raw
+        else None
+    )
+
+    # Auto-generate missing format
+    html_template, text_template = _auto_generate_template_content(
+        html_template, text_template
+    )
+
+    template = EmailTemplate(
+        purpose_key=purpose_key,
+        version=1,
+        name=name,
+        description=description or None,
+        subject_template=subject_template,
+        html_template=html_template,
+        text_template=text_template,
+        required_placeholders=required_placeholders,
+        optional_placeholders=optional_placeholders,
+        is_active=True,
+        created_by_id=current_user.id,
+    )
+    db.session.add(template)
+    db.session.commit()
+
+    log_audit_action(
+        action="create_email_template",
+        resource_type="email_template",
+        resource_id=str(template.id),
+        metadata={"purpose_key": purpose_key, "version": 1},
+    )
+    flash(f'Template "{name}" created successfully.', "success")
+    return redirect(url_for("email.email_template_detail", template_id=template.id))
+
+
+@email_bp.route(
+    "/management/email/templates/<int:template_id>/edit", methods=["GET", "POST"]
+)
+@login_required
+@security_level_required(3)  # ADMIN only
+def edit_template(template_id):
+    """
+    Edit an existing email template.
+
+    GET: Display pre-filled form (purpose_key is read-only).
+    POST: Validate and update template fields.
+    """
+    template = EmailTemplate.query.get_or_404(template_id)
+
+    if request.method == "GET":
+        return render_template(
+            "email/template_form.html", template=template, edit_mode=True
+        )
+
+    # POST: Update template
+    name = request.form.get("name", "").strip()
+    description = request.form.get("description", "").strip()
+    subject_template = request.form.get("subject_template", "").strip()
+    html_template = request.form.get("html_template", "").strip()
+    text_template = request.form.get("text_template", "").strip()
+    required_placeholders_raw = request.form.get("required_placeholders", "").strip()
+    optional_placeholders_raw = request.form.get("optional_placeholders", "").strip()
+
+    # Validate required fields
+    errors = []
+    if not name:
+        errors.append("Name is required.")
+    if not subject_template:
+        errors.append("Subject template is required.")
+    if not html_template and not text_template:
+        errors.append(
+            "At least one of HTML template or plain-text template is required."
+        )
+
+    if errors:
+        for error in errors:
+            flash(error, "error")
+        return render_template(
+            "email/template_form.html",
+            template=template,
+            edit_mode=True,
+            form_data=request.form,
+        )
+
+    # Parse placeholders
+    required_placeholders = (
+        [p.strip() for p in required_placeholders_raw.split(",") if p.strip()]
+        if required_placeholders_raw
+        else None
+    )
+    optional_placeholders = (
+        [p.strip() for p in optional_placeholders_raw.split(",") if p.strip()]
+        if optional_placeholders_raw
+        else None
+    )
+
+    # Auto-generate missing format
+    html_template, text_template = _auto_generate_template_content(
+        html_template, text_template
+    )
+
+    template.name = name
+    template.description = description or None
+    template.subject_template = subject_template
+    template.html_template = html_template
+    template.text_template = text_template
+    template.required_placeholders = required_placeholders
+    template.optional_placeholders = optional_placeholders
+    db.session.commit()
+
+    log_audit_action(
+        action="edit_email_template",
+        resource_type="email_template",
+        resource_id=str(template.id),
+        metadata={"purpose_key": template.purpose_key, "version": template.version},
+    )
+    flash(f'Template "{template.name}" updated successfully.', "success")
+    return redirect(url_for("email.email_template_detail", template_id=template.id))
+
+
+@email_bp.route(
+    "/management/email/templates/<int:template_id>/new-version", methods=["POST"]
+)
+@login_required
+@security_level_required(3)  # ADMIN only
+def create_template_version(template_id):
+    """
+    Create a new version of a template.
+
+    Copies the current template content into a new record with version incremented.
+    Deactivates all other versions for the same purpose_key.
+    """
+    source = EmailTemplate.query.get_or_404(template_id)
+
+    # Get the highest version number for this purpose_key
+    max_version = (
+        db.session.query(db.func.max(EmailTemplate.version))
+        .filter_by(purpose_key=source.purpose_key)
+        .scalar()
+        or 0
+    )
+    new_version = max_version + 1
+
+    # Deactivate all existing versions for this purpose_key
+    EmailTemplate.query.filter_by(purpose_key=source.purpose_key).update(
+        {"is_active": False}
+    )
+
+    # Create new version
+    new_template = EmailTemplate(
+        purpose_key=source.purpose_key,
+        version=new_version,
+        name=source.name,
+        description=source.description,
+        subject_template=source.subject_template,
+        html_template=source.html_template,
+        text_template=source.text_template,
+        required_placeholders=source.required_placeholders,
+        optional_placeholders=source.optional_placeholders,
+        is_active=True,
+        created_by_id=current_user.id,
+    )
+    db.session.add(new_template)
+    db.session.commit()
+
+    log_audit_action(
+        action="create_email_template_version",
+        resource_type="email_template",
+        resource_id=str(new_template.id),
+        metadata={
+            "purpose_key": source.purpose_key,
+            "from_version": source.version,
+            "new_version": new_version,
+        },
+    )
+    flash(
+        f'New version {new_version} of "{source.purpose_key}" created successfully.',
+        "success",
+    )
+    return redirect(url_for("email.email_template_detail", template_id=new_template.id))
+
+
+@email_bp.route(
+    "/management/email/templates/<int:template_id>/activate", methods=["POST"]
+)
+@login_required
+@security_level_required(3)  # ADMIN only
+def activate_template(template_id):
+    """
+    Activate a template version.
+
+    Deactivates all other versions with the same purpose_key and activates this one.
+    """
+    template = EmailTemplate.query.get_or_404(template_id)
+
+    # Deactivate all versions for this purpose_key
+    EmailTemplate.query.filter_by(purpose_key=template.purpose_key).update(
+        {"is_active": False}
+    )
+
+    # Activate this version
+    template.is_active = True
+    db.session.commit()
+
+    log_audit_action(
+        action="activate_email_template",
+        resource_type="email_template",
+        resource_id=str(template.id),
+        metadata={"purpose_key": template.purpose_key, "version": template.version},
+    )
+    flash(
+        f'Version {template.version} of "{template.purpose_key}" is now active.',
+        "success",
+    )
+    return redirect(url_for("email.email_template_detail", template_id=template.id))
+
+
+@email_bp.route(
+    "/management/email/templates/<int:template_id>/delete", methods=["POST"]
+)
+@login_required
+@security_level_required(3)  # ADMIN only
+def delete_template(template_id):
+    """
+    Delete a template version.
+
+    Only allowed if the template has no associated EmailMessage records.
+    """
+    template = EmailTemplate.query.get_or_404(template_id)
+
+    # Check for associated messages
+    message_count = EmailMessage.query.filter_by(template_id=template_id).count()
+    if message_count > 0:
+        flash(
+            f"Cannot delete this template — it has {message_count} associated message(s). "
+            f"You can deactivate it instead.",
+            "error",
+        )
+        return redirect(url_for("email.email_template_detail", template_id=template_id))
+
+    purpose_key = template.purpose_key
+    version = template.version
+    db.session.delete(template)
+    db.session.commit()
+
+    log_audit_action(
+        action="delete_email_template",
+        resource_type="email_template",
+        resource_id=str(template_id),
+        metadata={"purpose_key": purpose_key, "version": version},
+    )
+    flash(f'Template "{purpose_key}" v{version} deleted.', "success")
+    return redirect(url_for("email.email_templates"))
 
 
 @email_bp.route("/management/email/outbox")
