@@ -92,6 +92,19 @@
         background: #dc3545;
     }
 
+    .progress-summary-card .progress-fill.in_planning {
+        background: #17a2b8;
+    }
+
+    .status-badge.status-in-planning {
+        background: #d1ecf1;
+        color: #0c5460;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 0.85em;
+        font-weight: 600;
+    }
+
     .progress-summary-card .progress-text {
         font-weight: 700;
         font-size: 1.1em;
@@ -560,14 +573,18 @@
                         {% endif %}
                     </div>
                     <div class="session-status">
+                        {% if session.status in ['Confirmed', 'Published', 'Requested', 'Draft'] %}
+                        <span class="status-badge status-in-planning">In Planning</span>
+                        {% else %}
                         <span class="status-badge status-{{ session.status }}">{{ session.status }}</span>
+                        {% endif %}
                         {% if session.attendance_status %}
                         <span class="attendance-badge">{{ session.attendance_status }}</span>
                         {% endif %}
                     </div>
                     <div class="override-actions">
                         <button class="btn-override btn-override-remove"
-                            onclick="openRemoveModal({{ session.id }}, '{{ session.title|e }}')"
+                            onclick="openRemoveModal({{ session.id }}, '{{ session.title|e }}', {{ session.override_id|default(0) }})"
                             title="Remove this teacher from this session">
                             <i class="fas fa-times"></i> Remove
                         </button>
@@ -656,7 +673,9 @@
         searchSessions('');
     }
 
-    function openRemoveModal(eventId, sessionTitle) {
+    let removeOverrideId = null;
+    function openRemoveModal(eventId, sessionTitle, overrideId) {
+        removeOverrideId = overrideId || null;
         document.getElementById('removeModal').classList.add('active');
         document.getElementById('removeEventId').value = eventId;
         document.getElementById('removeReason').value = '';
@@ -694,7 +713,7 @@
         <div class="session-search-item ${s.id === selectedEventId ? 'selected' : ''}"
              onclick="selectSession(${s.id}, this)">
             <div class="session-search-title">${escapeHtml(s.title)}</div>
-            <div class="session-search-meta">${s.date_display} ${s.series ? '· ' + escapeHtml(s.series) : ''}</div>
+            <div class="session-search-meta">${s.date_display} · <em>${s.status || 'Unknown'}</em> ${s.series ? '· ' + escapeHtml(s.series) : ''}</div>
         </div>
     `).join('');
         container.style.display = 'block';
@@ -770,15 +789,26 @@
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Removing...';
 
         try {
-            const resp = await fetch(OVERRIDE_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'remove',
-                    event_id: parseInt(eventId),
-                    reason: reason,
-                }),
-            });
+            let resp;
+            if (removeOverrideId) {
+                // Reverse the existing add-override
+                resp = await fetch('/district/teacher-usage/overrides/' + removeOverrideId + '/reverse', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason: reason }),
+                });
+            } else {
+                // Create a new remove override
+                resp = await fetch(OVERRIDE_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'remove',
+                        event_id: parseInt(eventId),
+                        reason: reason,
+                    }),
+                });
+            }
             const data = await resp.json();
             if (resp.ok) {
                 showToast('Session removed successfully!', 'success');

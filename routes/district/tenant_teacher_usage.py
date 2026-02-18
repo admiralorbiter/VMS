@@ -174,6 +174,33 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
         planned_events, teacher_alias_map, planned_progress_map
     )
 
+    # Count "in planning" sessions: confirmed/published/requested but in the
+    # past (date has passed without being marked completed in Salesforce).
+    in_planning_statuses = [
+        EventStatus.CONFIRMED,
+        EventStatus.PUBLISHED,
+        EventStatus.REQUESTED,
+    ]
+    in_planning_query = Event.query.filter(
+        Event.type == EventType.VIRTUAL_SESSION,
+        Event.status.in_(in_planning_statuses),
+        Event.start_date < now,
+    )
+    if district_name:
+        in_planning_query = in_planning_query.filter(
+            Event.district_partner == district_name
+        )
+    if date_from:
+        in_planning_query = in_planning_query.filter(Event.start_date >= date_from)
+    if date_to:
+        in_planning_query = in_planning_query.filter(Event.start_date <= date_to)
+    in_planning_events = in_planning_query.all()
+
+    in_planning_map = {t.id: 0 for t in teachers}
+    in_planning_map = count_sessions_for_teachers(
+        in_planning_events, teacher_alias_map, in_planning_map
+    )
+
     # Aggregate by building
     building_data = {}
 
@@ -195,9 +222,10 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
         # Get matched session count
         completed = teacher_progress_map[teacher.id]
         planned = planned_progress_map[teacher.id]
+        in_planning = in_planning_map[teacher.id]
         target = teacher.target_sessions or 1
 
-        # Determine status (consider both completed and planned sessions)
+        # Determine status (consider completed, planned, and in-planning sessions)
         if completed >= target:
             status_class = "achieved"
             status_text = "Goal Achieved"
@@ -205,6 +233,10 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
         elif completed > 0 or planned > 0:
             status_class = "in_progress"
             status_text = "In Progress"
+            bd["goals_in_progress"] += 1
+        elif in_planning > 0:
+            status_class = "in_planning"
+            status_text = "In Planning"
             bd["goals_in_progress"] += 1
         else:
             status_class = "not_started"
@@ -552,15 +584,18 @@ def teacher_detail(teacher_progress_id):
                         "is_simulcast": False,
                         "attendance_status": "",
                         "is_override": True,
+                        "override_id": ov.id,
                         "override_reason": ov.reason,
                     }
                 )
 
     # Tag override sessions in existing list
-    override_add_event_ids = {ov.event_id for ov in add_overrides}
+    override_add_map = {ov.event_id: ov.id for ov in add_overrides}
     for session in past_sessions:
         if "is_override" not in session:
-            session["is_override"] = session["id"] in override_add_event_ids
+            session["is_override"] = session["id"] in override_add_map
+            if session["is_override"]:
+                session["override_id"] = override_add_map[session["id"]]
 
     # Sort: past desc, upcoming asc
     past_sessions.sort(
@@ -683,14 +718,21 @@ def create_override(teacher_progress_id):
     if not reason:
         return jsonify({"error": "A reason is required for attendance overrides."}), 400
 
-    # Verify event exists and is a completed virtual session
+    # Verify event exists and is a valid virtual session
     event = Event.query.get(event_id)
     if not event:
         return jsonify({"error": "Event not found."}), 404
     if event.type != EventType.VIRTUAL_SESSION:
         return jsonify({"error": "Event is not a virtual session."}), 400
-    if event.status != EventStatus.COMPLETED:
-        return jsonify({"error": "Event is not completed."}), 400
+    allowed_statuses = [
+        EventStatus.COMPLETED,
+        EventStatus.CONFIRMED,
+        EventStatus.PUBLISHED,
+        EventStatus.REQUESTED,
+        EventStatus.DRAFT,
+    ]
+    if event.status not in allowed_statuses:
+        return jsonify({"error": "Event status does not allow overrides."}), 400
 
     # Check for duplicate active override
     existing = AttendanceOverride.query.filter_by(
@@ -819,14 +861,16 @@ def reverse_override(override_id):
 @login_required
 @virtual_admin_required
 def search_sessions():
-    """Search completed virtual sessions for the add-to-session modal.
+    """Search virtual sessions for the add-to-session modal.
 
-    Query params: q (search term), limit (default 20)
+    Scoped to the current semester. Shows all sessions by default;
+    optionally filtered by title/series search query.
+    Query params: q (search term), limit (default 50)
     """
     from models.event import Event, EventStatus, EventType
 
     query_str = request.args.get("q", "").strip()
-    limit = min(int(request.args.get("limit", 20)), 50)
+    limit = min(int(request.args.get("limit", 50)), 100)
 
     # Get tenant's district
     tenant = Tenant.query.get(current_user.tenant_id)
@@ -837,17 +881,34 @@ def search_sessions():
         else:
             linked_district = tenant.get_setting("linked_district_name")
 
-    # Base query: completed virtual sessions in this district
+    # Scope to current semester
+    academic_year = get_current_academic_year()
+    semester = get_current_semester()
+    date_from, date_to = get_semester_dates(academic_year, semester)
+
+    # Base query: virtual sessions in this district for current semester
     sessions_query = Event.query.filter(
         Event.type == EventType.VIRTUAL_SESSION,
-        Event.status == EventStatus.COMPLETED,
+        Event.status.in_(
+            [
+                EventStatus.COMPLETED,
+                EventStatus.CONFIRMED,
+                EventStatus.PUBLISHED,
+                EventStatus.REQUESTED,
+                EventStatus.DRAFT,
+            ]
+        ),
     )
     if linked_district:
         sessions_query = sessions_query.filter(
             Event.district_partner == linked_district
         )
+    if date_from:
+        sessions_query = sessions_query.filter(Event.start_date >= date_from)
+    if date_to:
+        sessions_query = sessions_query.filter(Event.start_date <= date_to)
 
-    # Apply search filter if provided
+    # Apply optional search filter
     if query_str:
         search_pattern = f"%{query_str}%"
         sessions_query = sessions_query.filter(
@@ -857,7 +918,22 @@ def search_sessions():
             )
         )
 
-    sessions = sessions_query.order_by(Event.start_date.desc()).limit(limit).all()
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc)
+    all_sessions = sessions_query.all()
+
+    # Sort by proximity to current date (closest first)
+    def proximity_key(event):
+        if event.start_date:
+            sd = event.start_date
+            if sd.tzinfo is None:
+                sd = sd.replace(tzinfo=timezone.utc)
+            return abs((sd - now).total_seconds())
+        return float("inf")
+
+    all_sessions.sort(key=proximity_key)
+    sessions = all_sessions[:limit]
 
     results = []
     for event in sessions:
@@ -871,6 +947,7 @@ def search_sessions():
                     start_date.strftime("%B %d, %Y") if start_date else "Unknown"
                 ),
                 "series": event.series or "",
+                "status": event.status.value if event.status else "Unknown",
             }
         )
 
