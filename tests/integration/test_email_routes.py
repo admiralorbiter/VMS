@@ -517,6 +517,148 @@ class TestEmailSettings:
             db.session.commit()
 
 
+class TestEmailQualityAssurance:
+    """Tests for email quality assurance pipeline (FR-EMAIL-860–863)"""
+
+    def test_recipient_validation_rejects_invalid_email(self, app, test_admin):
+        """FR-EMAIL-860: Validate recipient email addresses before queuing"""
+        with app.app_context():
+            from utils.email import validate_recipients
+
+            valid, excluded = validate_recipients(
+                ["good@example.com", "not-an-email", "", "also@valid.org"]
+            )
+            assert "good@example.com" in valid
+            assert "also@valid.org" in valid
+            assert len(excluded) >= 1
+            # The invalid entries should be excluded with reasons
+            excluded_emails = [e["email"] for e in excluded]
+            assert "not-an-email" in excluded_emails
+
+    def test_placeholder_validation_catches_missing(
+        self, app, test_email_template, test_admin
+    ):
+        """FR-EMAIL-861: Validate required placeholders before sending"""
+        with app.app_context():
+            from utils.email import EmailQualityError, create_email_message
+
+            # Template requires 'user_name' — provide empty context
+            with pytest.raises(EmailQualityError, match="missing placeholders"):
+                create_email_message(
+                    template=test_email_template,
+                    recipients=["test@example.com"],
+                    context={},  # Missing required 'user_name'
+                    created_by_id=test_admin.id,
+                    status=EmailMessageStatus.DRAFT,
+                )
+
+    def test_template_rendering_validation(self, app, test_email_template, test_admin):
+        """FR-EMAIL-862: Template rendering validation before queuing"""
+        with app.app_context():
+            from utils.email import create_email_message
+
+            # Provide all required placeholders — should succeed
+            message = create_email_message(
+                template=test_email_template,
+                recipients=["test@example.com"],
+                context={"user_name": "Integration Test User"},
+                created_by_id=test_admin.id,
+                status=EmailMessageStatus.DRAFT,
+            )
+            assert message.id is not None
+            assert message.subject == "Test: Integration Test User"
+            assert "Integration Test User" in message.html_body
+            assert message.quality_score is not None
+            assert message.quality_score > 0
+
+            # Clean up
+            db.session.delete(message)
+            db.session.commit()
+
+    @patch("utils.email.send_email_via_mailjet")
+    def test_bug_report_created_on_delivery_failure(
+        self, mock_send, app, test_email_template, test_admin
+    ):
+        """FR-EMAIL-863: Auto-generate BugReport on delivery failure"""
+        with app.app_context():
+            from models.bug_report import BugReport
+            from utils.email import create_delivery_attempt, create_email_message
+
+            # Count existing bug reports
+            initial_count = BugReport.query.count()
+
+            # Create a message
+            message = create_email_message(
+                template=test_email_template,
+                recipients=["test@example.com"],
+                context={"user_name": "Bug Report Test"},
+                created_by_id=test_admin.id,
+                status=EmailMessageStatus.QUEUED,
+            )
+            db.session.commit()
+
+            # Mock Mailjet to fail
+            mock_send.return_value = (
+                False,
+                "Connection refused",
+                {"error": "mocked failure"},
+            )
+
+            attempt = create_delivery_attempt(message, is_dry_run=False)
+
+            assert attempt.status == DeliveryAttemptStatus.FAILED
+            assert message.status == EmailMessageStatus.FAILED
+
+            # Verify a BugReport was created
+            new_count = BugReport.query.count()
+            assert (
+                new_count > initial_count
+            ), "BugReport should be auto-created on delivery failure"
+
+            # Check the bug report content
+            latest_bug = BugReport.query.order_by(BugReport.id.desc()).first()
+            assert "EMAIL_DELIVERY_FAILED" in latest_bug.description
+            assert str(message.id) in latest_bug.description
+
+            # Clean up
+            db.session.delete(latest_bug)
+            db.session.delete(attempt)
+            db.session.delete(message)
+            db.session.commit()
+
+    @patch("utils.email.send_email_via_mailjet")
+    def test_dry_run_skips_actual_delivery(
+        self, mock_send, app, test_email_template, test_admin
+    ):
+        """FR-EMAIL-854: Dry-run validates without actual delivery"""
+        with app.app_context():
+            from utils.email import create_delivery_attempt, create_email_message
+
+            message = create_email_message(
+                template=test_email_template,
+                recipients=["test@example.com"],
+                context={"user_name": "Dry Run Test"},
+                created_by_id=test_admin.id,
+                status=EmailMessageStatus.DRAFT,
+            )
+            db.session.commit()
+
+            # Mock Mailjet to return success for dry-run
+            mock_send.return_value = (True, None, {"status": "dry_run"})
+
+            attempt = create_delivery_attempt(message, is_dry_run=True)
+
+            assert attempt.status == DeliveryAttemptStatus.DRY_RUN
+            assert attempt.is_dry_run is True
+            # Message should NOT be marked as SENT
+            assert message.status != EmailMessageStatus.SENT
+
+            # Clean up
+            db.session.delete(attempt)
+            db.session.delete(message)
+            db.session.commit()
+
+
 class TestEmailAccessControl:
     """Tests for email route access control"""
 

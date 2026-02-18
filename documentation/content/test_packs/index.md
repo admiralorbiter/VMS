@@ -17,12 +17,13 @@ Comprehensive test cases for all major workflows
 | [Test Pack 7](#test-pack-7-data-integrity--operations) | Sync + imports + data ops | TC-160–222, TC-901–913 |
 | [Test Pack 8](#test-pack-8-tenant-management) | District Suite CRUD | TC-801–1135 |
 | [Test Pack 9](#test-pack-9-bug-reporting) | Bug report submission + admin mgmt | TC-1300–1315 |
+| [Test Pack 10](#test-pack-10-email-system) | Email templates + delivery + QA | TC-1400–1463 |
 
 ---
 
 ## Overview
 
-This documentation contains **9 test packs** that verify ~191 functional requirements are met across the entire VMS system. Each test pack focuses on specific workflows and includes detailed test cases with expected outcomes.
+This documentation contains **10 test packs** that verify ~226 functional requirements are met across the entire VMS system. Each test pack focuses on specific workflows and includes detailed test cases with expected outcomes.
 
 ```mermaid
 graph LR
@@ -36,9 +37,10 @@ graph LR
         TP7[TP7: Data Ops]
         TP8[TP8: Tenants]
         TP9[TP9: Bug Reports]
+        TP10[TP10: Email]
     end
 
-    FR[📝 Functional Requirements] --> TP1 & TP2 & TP3 & TP4 & TP5 & TP6 & TP7 & TP8 & TP9
+    FR[📝 Functional Requirements] --> TP1 & TP2 & TP3 & TP4 & TP5 & TP6 & TP7 & TP8 & TP9 & TP10
 ```
 
 ---
@@ -56,6 +58,7 @@ graph LR
 | [Test Pack 7](test-pack-7) | Data Integrity & Operations | Duplicates + Sync + Admin Safety + Imports | [FR-DATA-901](requirements-data-operations#fr-data-901)–[FR-OPS-907](requirements-data-operations#fr-ops-907) |
 | [Test Pack 8](test-pack-8) | Tenant Management | District Suite tenant CRUD + configuration | [FR-TENANT-101](requirements-district-suite#fr-tenant-101)–[FR-API-108](requirements-district-suite#fr-api-108) |
 | [Test Pack 9](test-pack-9) | Bug Reporting | Bug report submission + admin management + system integration | [FR-BUG-001](requirements-bug-reporting#fr-bug-001)–[FR-BUG-013](requirements-bug-reporting#fr-bug-013) |
+| [Test Pack 10](test-pack-10) | Email System | Email templates + delivery pipeline + safety gates + QA | [FR-EMAIL-801](requirements-email#fr-email-801)–[FR-EMAIL-872](requirements-email#fr-email-872) |
 
 [↑ Back to Navigation](#quick-navigation)
 
@@ -219,6 +222,28 @@ graph LR
 
 ---
 
+### Test Pack 10: Email System
+
+**Focus:** Email templates + delivery pipeline + safety gates + quality assurance
+
+**Coverage:**
+- [FR-EMAIL-801](requirements-email#fr-email-801)–[FR-EMAIL-807](requirements-email#fr-email-807) (Template CRUD)
+- [FR-EMAIL-810](requirements-email#fr-email-810)–[FR-EMAIL-815](requirements-email#fr-email-815) (Versioning)
+- [FR-EMAIL-820](requirements-email#fr-email-820)–[FR-EMAIL-822](requirements-email#fr-email-822) (Preview & Placeholders)
+- [FR-EMAIL-830](requirements-email#fr-email-830)–[FR-EMAIL-833](requirements-email#fr-email-833) (Delivery Monitoring)
+- [FR-EMAIL-840](requirements-email#fr-email-840)–[FR-EMAIL-842](requirements-email#fr-email-842) (Admin Sending)
+- [FR-EMAIL-850](requirements-email#fr-email-850)–[FR-EMAIL-854](requirements-email#fr-email-854) (Safety Gates)
+- [FR-EMAIL-860](requirements-email#fr-email-860)–[FR-EMAIL-863](requirements-email#fr-email-863) (Quality Assurance)
+- [FR-EMAIL-870](requirements-email#fr-email-870)–[FR-EMAIL-872](requirements-email#fr-email-872) (Infrastructure)
+
+**Test Cases:** TC-1400 through TC-1463
+
+[View Full Test Pack →](test-pack-10)
+
+[↑ Back to Navigation](#quick-navigation)
+
+---
+
 ## Traceability
 
 Each test case (TC-xxx) is linked to one or more functional requirements (FR-xxx). This bidirectional linking ensures:
@@ -245,6 +270,7 @@ Test cases are organized by test pack:
 | TC-801–TC-1135 | Test Pack 8 (Tenant Management) |
 | TC-901–TC-913, TC-160–TC-222 | Test Pack 7 (Data Integrity & Ops) |
 | TC-1300–TC-1315 | Test Pack 9 (Bug Reporting) |
+| TC-1400–TC-1463 | Test Pack 10 (Email System) |
 
 ---
 
@@ -259,4 +285,4 @@ Test cases are organized by test pack:
 
 ---
 
-*Last updated: February 2026 · Version 2.0*
+*Last updated: February 2026 · Version 2.1*
