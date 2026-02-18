@@ -97,7 +97,7 @@ MJ_APIKEY_PRIVATE=your_private_key
 EMAIL_DELIVERY_ENABLED=true  # Only set true in production
 
 # Sender information
-MAIL_FROM=noreply@example.com
+MAIL_FROM=no-reply@ineedhelp.pro
 MAIL_FROM_NAME="VMS System"
 
 # Non-production allowlist (comma-separated)

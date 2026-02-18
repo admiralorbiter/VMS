@@ -154,7 +154,7 @@ SF_SECURITY_TOKEN=your-salesforce-security-token
 ```bash
 MJ_APIKEY_PUBLIC=your-mailjet-public-key
 MJ_APIKEY_PRIVATE=your-mailjet-private-key
-MAIL_FROM=your-email@domain.com
+MAIL_FROM=no-reply@ineedhelp.pro
 EMAIL_DELIVERY_ENABLED=true
 EMAIL_ALLOWLIST=email1@domain.com,email2@domain.com
 ```

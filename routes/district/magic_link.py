@@ -500,7 +500,7 @@ def _send_magic_link_email(
             "Messages": [
                 {
                     "From": {
-                        "Email": os.environ.get("MAIL_FROM", "noreply@prepkc.org"),
+                        "Email": os.environ.get("MAIL_FROM", "no-reply@ineedhelp.pro"),
                         "Name": "PrepKC Virtual Sessions",
                     },
                     "To": [{"Email": email, "Name": teacher_name}],
