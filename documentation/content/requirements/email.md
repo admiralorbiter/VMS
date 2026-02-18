@@ -16,6 +16,7 @@
 | [Safety Gates](#safety-gates) | Environment-based delivery controls |
 | [Quality Assurance](#quality-assurance) | Validation and checks |
 | [Infrastructure](#infrastructure) | Provider integration |
+| [Compose & Send](#compose--send) | Compose to arbitrary recipients |
 
 ---
 
@@ -120,6 +121,22 @@
 
 ---
 
+## Compose & Send
+
+> [!NOTE]
+> The compose feature allows admins to send emails to arbitrary recipients using existing templates.
+
+| ID | Requirement | Test Coverage | Related Stories |
+|----|-------------|---------------|-----------------|
+| <a id="fr-email-880"></a>**FR-EMAIL-880** | The admin panel shall provide a **Compose Email** page at `/management/email/compose` with a template dropdown, recipient textarea, and dynamic placeholder fields. | [TC-1470](test-packs/test-pack-10#tc-1470) | [US-803](user-stories#us-803) |
+| <a id="fr-email-881"></a>**FR-EMAIL-881** | The compose form shall allow saving a composed email as a **Draft** for later review and sending. | [TC-1471](test-packs/test-pack-10#tc-1471) | [US-803](user-stories#us-803) |
+| <a id="fr-email-882"></a>**FR-EMAIL-882** | The compose form shall allow immediate **Queue & Send** with optional dry-run mode for validation without delivery. | [TC-1472](test-packs/test-pack-10#tc-1472) | [US-803](user-stories#us-803) |
+| <a id="fr-email-883"></a>**FR-EMAIL-883** | Submitting a compose form without recipients shall be rejected with a clear error message. | [TC-1473](test-packs/test-pack-10#tc-1473) | [US-803](user-stories#us-803) |
+| <a id="fr-email-884"></a>**FR-EMAIL-884** | Submitting a compose form with missing **required placeholders** shall be rejected with a validation error before message creation. | [TC-1474](test-packs/test-pack-10#tc-1474) | [US-803](user-stories#us-803) |
+| <a id="fr-email-885"></a>**FR-EMAIL-885** | The system shall provide a JSON API at `/management/email/templates/<id>/placeholders` to dynamically load required and optional placeholder fields for a selected template. | [TC-1475](test-packs/test-pack-10#tc-1475) | [US-803](user-stories#us-803) |
+
+---
+
 ## Related Documentation
 
 - [Requirements Overview](requirements) — Summary and traceability matrix
@@ -128,4 +145,4 @@
 
 ---
 
-*Last updated: February 2026 · Version 2.0*
+*Last updated: February 2026 · Version 2.1*

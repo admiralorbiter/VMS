@@ -30,7 +30,7 @@ Security Features:
 import os
 from datetime import datetime, timedelta, timezone
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import or_
 
@@ -950,3 +950,196 @@ def test_send():
             )
 
     return redirect(url_for("email.email_settings"))
+
+
+@email_bp.route("/management/email/templates/<int:template_id>/placeholders")
+@login_required
+@security_level_required(3)
+def template_placeholders(template_id):
+    """
+    Return template placeholder info as JSON.
+
+    Used by the compose page to dynamically render placeholder input fields.
+    """
+    template = EmailTemplate.query.get_or_404(template_id)
+    return jsonify(
+        {
+            "required": template.required_placeholders or [],
+            "optional": template.optional_placeholders or [],
+            "subject": template.subject_template or "",
+            "purpose_key": template.purpose_key,
+        }
+    )
+
+
+@email_bp.route("/management/email/compose", methods=["GET", "POST"])
+@login_required
+@security_level_required(3)  # ADMIN only
+def compose():
+    """
+    Compose and send an email to arbitrary recipients.
+
+    GET: Display compose form with template selection, recipient input,
+         and dynamic placeholder fields.
+    POST: Validate inputs, create email message, and optionally send.
+    """
+    from utils.email import EmailQualityError, create_email_message
+
+    # Get active templates for dropdown
+    templates = (
+        EmailTemplate.query.filter_by(is_active=True)
+        .order_by(EmailTemplate.purpose_key)
+        .all()
+    )
+
+    is_prod = is_production_environment()
+    allowlist = get_email_allowlist() if not is_prod else []
+
+    if request.method == "GET":
+        return render_template(
+            "email/compose.html",
+            templates=templates,
+            is_production=is_prod,
+            allowlist=allowlist,
+        )
+
+    # --- POST handling ---
+    template_id = request.form.get("template_id", type=int)
+    if not template_id:
+        flash("Please select a template", "error")
+        return render_template(
+            "email/compose.html",
+            templates=templates,
+            is_production=is_prod,
+            allowlist=allowlist,
+        )
+
+    template = EmailTemplate.query.get_or_404(template_id)
+
+    # Parse recipients from textarea (one per line or comma-separated)
+    raw_recipients = request.form.get("recipients", "").strip()
+    if not raw_recipients:
+        flash("Please enter at least one recipient email address", "error")
+        return render_template(
+            "email/compose.html",
+            templates=templates,
+            is_production=is_prod,
+            allowlist=allowlist,
+        )
+
+    # Split by newlines and commas, strip whitespace, remove empties
+    recipients = []
+    for line in raw_recipients.replace(",", "\n").split("\n"):
+        email = line.strip()
+        if email:
+            recipients.append(email)
+
+    if not recipients:
+        flash("No valid recipient addresses found", "error")
+        return render_template(
+            "email/compose.html",
+            templates=templates,
+            is_production=is_prod,
+            allowlist=allowlist,
+        )
+
+    # Build context from placeholder form fields
+    context = {}
+    if template.required_placeholders:
+        for placeholder in template.required_placeholders:
+            value = request.form.get(f"placeholder_{placeholder}", "").strip()
+            if not value:
+                flash(
+                    f"Required placeholder '{placeholder}' is missing a value", "error"
+                )
+                return render_template(
+                    "email/compose.html",
+                    templates=templates,
+                    is_production=is_prod,
+                    allowlist=allowlist,
+                )
+            context[placeholder] = value
+
+    if template.optional_placeholders:
+        for placeholder in template.optional_placeholders:
+            value = request.form.get(f"placeholder_{placeholder}", "").strip()
+            if value:
+                context[placeholder] = value
+            else:
+                # Provide a sensible default for optional placeholders
+                context[placeholder] = f"[{placeholder.replace('_', ' ').title()}]"
+
+    # Determine action
+    is_dry_run = request.form.get("dry_run", "false").lower() == "true"
+    action = request.form.get("action", "draft")  # "draft" or "send"
+
+    initial_status = EmailMessageStatus.DRAFT
+    if action == "send":
+        initial_status = EmailMessageStatus.QUEUED
+
+    try:
+        message = create_email_message(
+            template=template,
+            recipients=recipients,
+            context=context,
+            created_by_id=current_user.id,
+            status=initial_status,
+        )
+        db.session.commit()
+
+        log_audit_action(
+            action="compose_email",
+            resource_type="email_message",
+            resource_id=str(message.id),
+            metadata={
+                "recipient_count": len(recipients),
+                "template": template.purpose_key,
+                "action": action,
+                "dry_run": is_dry_run,
+            },
+        )
+
+        if action == "send":
+            # Send immediately
+            attempt = create_delivery_attempt(message, is_dry_run=is_dry_run)
+
+            if is_dry_run:
+                flash(
+                    f"Dry-run completed for {message.recipient_count} recipient(s). "
+                    f"Message #{message.id} saved to outbox.",
+                    "info",
+                )
+            elif attempt.status == DeliveryAttemptStatus.SUCCESS:
+                flash(
+                    f"Email sent to {message.recipient_count} recipient(s)! "
+                    f"Message #{message.id} is in the outbox.",
+                    "success",
+                )
+            else:
+                flash(
+                    f"Delivery failed: {attempt.error_message or 'Unknown error'}. "
+                    f"Message #{message.id} saved to outbox.",
+                    "error",
+                )
+        else:
+            flash(
+                f"Email saved as draft with {message.recipient_count} recipient(s). "
+                f"Message #{message.id} — review and send from the outbox.",
+                "success",
+            )
+
+        return redirect(url_for("email.email_message_detail", message_id=message.id))
+
+    except EmailQualityError as e:
+        db.session.rollback()
+        flash(f"Quality check failed: {str(e)}", "error")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error composing email: {str(e)}", "error")
+
+    return render_template(
+        "email/compose.html",
+        templates=templates,
+        is_production=is_prod,
+        allowlist=allowlist,
+    )

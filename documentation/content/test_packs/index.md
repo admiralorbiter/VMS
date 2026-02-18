@@ -17,7 +17,7 @@ Comprehensive test cases for all major workflows
 | [Test Pack 7](#test-pack-7-data-integrity--operations) | Sync + imports + data ops | TC-160–222, TC-901–913 |
 | [Test Pack 8](#test-pack-8-tenant-management) | District Suite CRUD | TC-801–1135 |
 | [Test Pack 9](#test-pack-9-bug-reporting) | Bug report submission + admin mgmt | TC-1300–1315 |
-| [Test Pack 10](#test-pack-10-email-system) | Email templates + delivery + QA | TC-1400–1463 |
+| [Test Pack 10](#test-pack-10-email-system) | Email templates + delivery + QA + compose | TC-1400–1475 |
 
 ---
 

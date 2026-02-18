@@ -4,7 +4,7 @@ Admin email template management + delivery pipeline + safety gates + quality ass
 
 > [!NOTE]
 > **Coverage**
-> [FR-EMAIL-801](requirements-email#fr-email-801)–[FR-EMAIL-807](requirements-email#fr-email-807) (Template CRUD), [FR-EMAIL-810](requirements-email#fr-email-810)–[FR-EMAIL-815](requirements-email#fr-email-815) (Versioning), [FR-EMAIL-820](requirements-email#fr-email-820)–[FR-EMAIL-822](requirements-email#fr-email-822) (Preview & Placeholders), [FR-EMAIL-830](requirements-email#fr-email-830)–[FR-EMAIL-833](requirements-email#fr-email-833) (Delivery Monitoring), [FR-EMAIL-840](requirements-email#fr-email-840)–[FR-EMAIL-842](requirements-email#fr-email-842) (Admin Sending), [FR-EMAIL-850](requirements-email#fr-email-850)–[FR-EMAIL-854](requirements-email#fr-email-854) (Safety Gates), [FR-EMAIL-860](requirements-email#fr-email-860)–[FR-EMAIL-863](requirements-email#fr-email-863) (Quality Assurance), [FR-EMAIL-870](requirements-email#fr-email-870)–[FR-EMAIL-872](requirements-email#fr-email-872) (Infrastructure)
+> [FR-EMAIL-801](requirements-email#fr-email-801)–[FR-EMAIL-807](requirements-email#fr-email-807) (Template CRUD), [FR-EMAIL-810](requirements-email#fr-email-810)–[FR-EMAIL-815](requirements-email#fr-email-815) (Versioning), [FR-EMAIL-820](requirements-email#fr-email-820)–[FR-EMAIL-822](requirements-email#fr-email-822) (Preview & Placeholders), [FR-EMAIL-830](requirements-email#fr-email-830)–[FR-EMAIL-833](requirements-email#fr-email-833) (Delivery Monitoring), [FR-EMAIL-840](requirements-email#fr-email-840)–[FR-EMAIL-842](requirements-email#fr-email-842) (Admin Sending), [FR-EMAIL-850](requirements-email#fr-email-850)–[FR-EMAIL-854](requirements-email#fr-email-854) (Safety Gates), [FR-EMAIL-860](requirements-email#fr-email-860)–[FR-EMAIL-863](requirements-email#fr-email-863) (Quality Assurance), [FR-EMAIL-870](requirements-email#fr-email-870)–[FR-EMAIL-872](requirements-email#fr-email-872) (Infrastructure), [FR-EMAIL-880](requirements-email#fr-email-880)–[FR-EMAIL-885](requirements-email#fr-email-885) (Compose & Send)
 
 ---
 
@@ -105,6 +105,17 @@ Admin email template management + delivery pipeline + safety gates + quality ass
 | <a id="tc-1462"></a>**TC-1462** | Delivery enabled/disabled environment check | Correct boolean returned based on EMAIL_DELIVERY_ENABLED env var | Automated | 2026-02 |
 | <a id="tc-1463"></a>**TC-1463** | Production environment detection | Correct boolean returned based on FLASK_ENV env var | Automated | 2026-02 |
 
+### I. Compose & Send
+
+| TC | Description | Expected | Type | Last Verified |
+|----|-------------|----------|------|---------------|
+| <a id="tc-1470"></a>**TC-1470** | Admin accesses Compose page (GET /management/email/compose) | 200 with template dropdown, recipients textarea, placeholder section | Automated | 2026-02 |
+| <a id="tc-1471"></a>**TC-1471** | Compose POST with valid data and action=draft | Message created as DRAFT with correct recipients | Automated | 2026-02 |
+| <a id="tc-1472"></a>**TC-1472** | Compose POST with action=send and dry_run=true | Message queued and dry-run attempt created without real delivery | Automated | 2026-02 |
+| <a id="tc-1473"></a>**TC-1473** | Compose POST with empty recipients | Rejected with error message about missing recipients | Automated | 2026-02 |
+| <a id="tc-1474"></a>**TC-1474** | Compose POST missing required placeholder | Rejected with error identifying the missing placeholder | Automated | 2026-02 |
+| <a id="tc-1475"></a>**TC-1475** | GET /management/email/templates/<id>/placeholders | JSON with required, optional arrays and subject | Automated | 2026-02 |
+
 ---
 
 ## Automated Test Mapping
@@ -119,8 +130,9 @@ Admin email template management + delivery pipeline + safety gates + quality ass
 | TC-1440–1444 | `TestSafetyGates` | `tests/unit/utils/test_email_utils.py` |
 | TC-1450–1456 | `TestEmailValidation`, `TestTemplateRendering`, `TestEmailQualityAssurance` | `tests/unit/utils/test_email_utils.py`, `tests/integration/test_email_routes.py` |
 | TC-1460–1463 | `TestEmailRealSending`, `TestEnvironmentFunctions` | `tests/integration/test_email_routes.py`, `tests/unit/utils/test_email_utils.py` |
+| TC-1470–1475 | `TestComposeEmail` | `tests/integration/test_email_routes.py` |
 
 ---
 
 *Last updated: February 2026*
-*Version: 1.0*
+*Version: 1.1*

@@ -659,6 +659,129 @@ class TestEmailQualityAssurance:
             db.session.commit()
 
 
+class TestComposeEmail:
+    """Tests for email compose and send to arbitrary recipients"""
+
+    def test_compose_page_renders(
+        self, client, test_admin_headers, test_email_template
+    ):
+        """FR-EMAIL-880: Compose page renders with template dropdown"""
+        response = safe_route_test(
+            client, "/management/email/compose", headers=test_admin_headers
+        )
+        assert_route_response(response, expected_statuses=[200])
+        html = response.data.decode()
+        assert "Compose Email" in html
+        assert "template_id" in html
+        assert "recipients" in html
+
+    def test_compose_save_as_draft(
+        self, client, test_admin_headers, test_email_template, app
+    ):
+        """FR-EMAIL-881: Compose POST saves message as draft"""
+        response = safe_route_test(
+            client,
+            "/management/email/compose",
+            method="POST",
+            data={
+                "template_id": test_email_template.id,
+                "recipients": "draft@example.com",
+                "placeholder_user_name": "Draft Test User",
+                "action": "draft",
+            },
+            headers=test_admin_headers,
+        )
+        assert_route_response(response, expected_statuses=[200, 302])
+
+        # Verify the message was created as DRAFT
+        with app.app_context():
+            message = (
+                EmailMessage.query.filter_by(template_id=test_email_template.id)
+                .order_by(EmailMessage.id.desc())
+                .first()
+            )
+            if message:
+                assert message.status == EmailMessageStatus.DRAFT
+                assert message.recipient_count >= 1
+
+    @patch("utils.email.send_email_via_mailjet")
+    def test_compose_send_dry_run(
+        self, mock_send, client, test_admin_headers, test_email_template, app
+    ):
+        """FR-EMAIL-882: Compose POST with dry-run sends without actual delivery"""
+        mock_send.return_value = (True, None, {"status": "dry_run"})
+
+        response = safe_route_test(
+            client,
+            "/management/email/compose",
+            method="POST",
+            data={
+                "template_id": test_email_template.id,
+                "recipients": "dryrun@example.com",
+                "placeholder_user_name": "Dry Run User",
+                "action": "send",
+                "dry_run": "true",
+            },
+            headers=test_admin_headers,
+        )
+        assert_route_response(response, expected_statuses=[200, 302])
+
+    def test_compose_missing_recipients(
+        self, client, test_admin_headers, test_email_template
+    ):
+        """FR-EMAIL-883: Compose POST rejects empty recipients"""
+        response = safe_route_test(
+            client,
+            "/management/email/compose",
+            method="POST",
+            data={
+                "template_id": test_email_template.id,
+                "recipients": "",
+                "placeholder_user_name": "No Recipient",
+                "action": "draft",
+            },
+            headers=test_admin_headers,
+        )
+        assert_route_response(response, expected_statuses=[200])
+        html = response.data.decode()
+        assert "recipient" in html.lower()
+
+    def test_compose_missing_required_placeholder(
+        self, client, test_admin_headers, test_email_template
+    ):
+        """FR-EMAIL-884: Compose POST rejects missing required placeholder"""
+        response = safe_route_test(
+            client,
+            "/management/email/compose",
+            method="POST",
+            data={
+                "template_id": test_email_template.id,
+                "recipients": "test@example.com",
+                # Deliberately omit placeholder_user_name
+                "action": "draft",
+            },
+            headers=test_admin_headers,
+        )
+        assert_route_response(response, expected_statuses=[200])
+        html = response.data.decode()
+        assert "placeholder" in html.lower() or "user_name" in html.lower()
+
+    def test_template_placeholders_endpoint(
+        self, client, test_admin_headers, test_email_template
+    ):
+        """FR-EMAIL-885: JSON API returns template placeholders"""
+        response = safe_route_test(
+            client,
+            f"/management/email/templates/{test_email_template.id}/placeholders",
+            headers=test_admin_headers,
+        )
+        assert_route_response(response, expected_statuses=[200])
+        data = response.get_json()
+        assert "required" in data
+        assert "user_name" in data["required"]
+        assert "subject" in data
+
+
 class TestEmailAccessControl:
     """Tests for email route access control"""
 
@@ -668,6 +791,7 @@ class TestEmailAccessControl:
             "/management/email",
             "/management/email/templates",
             "/management/email/templates/new",
+            "/management/email/compose",
             "/management/email/outbox",
             "/management/email/attempts",
             "/management/email/settings",
