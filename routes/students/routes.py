@@ -79,7 +79,7 @@ def view_student_details(id):
         primary_address = student.addresses.filter_by(primary=True).first()
 
         return render_template(
-            "students/view_details.html",
+            "students/view.html",
             student=student,
             primary_email=primary_email,
             primary_phone=primary_phone,

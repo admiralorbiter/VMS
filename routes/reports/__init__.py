@@ -17,6 +17,7 @@ from routes.reports.kctaa_special import load_routes as load_kctaa_special_route
 from routes.reports.organization_report import (
     load_routes as load_organization_report_routes,
 )
+from routes.reports.pathway_students import load_routes as load_pathway_students_routes
 from routes.reports.recent_volunteers import (
     load_routes as load_recent_volunteers_routes,
 )
@@ -41,3 +42,4 @@ load_volunteers_by_event_routes(report_bp)
 load_recent_volunteers_routes(report_bp)
 load_dia_events_routes(report_bp)
 load_kctaa_special_routes(report_bp)
+load_pathway_students_routes(report_bp)
