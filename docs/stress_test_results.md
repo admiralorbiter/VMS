@@ -157,6 +157,42 @@ All 6,941 failures: 429 Too Many Requests (rate limiting) across the same endpoi
 
 At 50 users for 5 minutes, every request was rate-limited (429). RPS ~24.9 (about 2× Run 3). Reported response times (median 4 ms, max 26 ms) reflect the 429 response. Ramp complete (5 → 10 → 25 → 50 users): rate limiter caps traffic from a single IP at all levels; no server overload observed.
 
+### Soak Run (10 users, 1 hr)
+
+- **Scenario:** 10 users, spawn rate 1, 1 hour. Mixed GETs to /, /volunteers, /events, /teachers, /students, /organizations.
+- **Tool:** Locust with web UI; host http://127.0.0.1:5050.
+
+#### Results
+
+| Metric | Value |
+|--------|--------|
+| Total requests | 17,399 |
+| RPS | ~5.2 |
+| Failure rate | ~99% (17,201 failures) |
+| Cause of failures | 429 Too Many Requests (rate limiting) |
+| Median response (reported) | 5 ms |
+| 99%ile response | 10 ms (aggregated); max 180 ms (single outlier) |
+
+#### Per-endpoint (Locust Statistics)
+
+| Type | Name | # Requests | # Fails | Median (ms) | 90%ile (ms) | 99%ile (ms) | Avg (ms) | Min (ms) | Max (ms) |
+|------|------|------------|---------|-------------|-------------|-------------|----------|----------|----------|
+| GET | / | 5,158 | 5,060 | 4 | 6 | 8 | 5 | 2 | 180 |
+| GET | /events | 3,106 | 3,084 | 5 | 6 | 10 | 5 | 3 | 159 |
+| GET | /organizations | 2,057 | 2,041 | 5 | 6 | 10 | 5 | 3 | 162 |
+| GET | /students | 2,012 | 1,988 | 5 | 6 | 10 | 5 | 3 | 132 |
+| GET | /teachers | 2,058 | 2,041 | 5 | 6 | 10 | 5 | 3 | 48 |
+| GET | /volunteers | 3,008 | 2,987 | 5 | 6 | 10 | 5 | 3 | 137 |
+| **Aggregated** | | **17,399** | **17,201** | **5** | **6** | **10** | **5** | **2** | **180** |
+
+#### Failures
+
+17,201 failures: 429 Too Many Requests (rate limiting) across the same endpoints. ~198 requests succeeded.
+
+#### Conclusion
+
+Sustained load for 1 hour at 10 users. RPS stable at ~5.2; ~99% of requests rate-limited (429). One response reached 180 ms (outlier); median remained 5 ms. No app crash or observable degradation over time.
+
 *(Add more runs above or below using the same format.)*
 
 ---
@@ -173,5 +209,14 @@ At 50 users for 5 minutes, every request was rate-limited (429). RPS ~24.9 (abou
 | **Why** | Rate limiter (e.g. Flask-Limiter) applied per IP; Locust traffic comes from one IP. |
 | **Severity** | Low (by design). |
 | **Repro** | 1) Start app: `python app.py`. 2) Start Locust: `locust -f locustfile.py --host=http://127.0.0.1:5050`. 3) Open http://localhost:8089, set users (e.g. 5), spawn rate 1, Start swarming. 4) Check Failures tab for 429. |
+
+**Log snippet (app terminal):**
+```
+[2026-02-24 02:30:12,359] WARNING in rate_limiter: Rate limit exceeded: 127.0.0.1 - /login
+127.0.0.1 - - [24/Feb/2026 02:30:12] "GET /login?next=/events HTTP/1.1" 429 -
+127.0.0.1 - - [24/Feb/2026 02:30:12] "GET /organizations HTTP/1.1" 302 -
+[2026-02-24 02:30:13,194] WARNING in rate_limiter: Rate limit exceeded: 127.0.0.1 - /
+127.0.0.1 - - [24/Feb/2026 02:30:13] "GET / HTTP/1.1" 429 -
+```
 
 *(Add more findings below as you discover 5xxs, timeouts, or other issues.)*
