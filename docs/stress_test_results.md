@@ -193,6 +193,42 @@ At 50 users for 5 minutes, every request was rate-limited (429). RPS ~24.9 (abou
 
 Sustained load for 1 hour at 10 users. RPS stable at ~5.2; ~99% of requests rate-limited (429). One response reached 180 ms (outlier); median remained 5 ms. No app crash or observable degradation over time.
 
+### Staging Run (10 users, 5 min)
+
+- **Scenario:** 10 users, spawn rate 1, 5 minutes. Target: **staging** (https://romulus-jlane.pythonanywhere.com). Mixed GETs to /, /volunteers, /events, /teachers, /students, /organizations.
+- **Tool:** Locust with web UI; host https://romulus-jlane.pythonanywhere.com.
+
+#### Results
+
+| Metric | Value |
+|--------|--------|
+| Total requests | 1,512 |
+| RPS | ~4.8 |
+| Failure rate | ~87% (1,312 failures) |
+| Cause of failures | Mostly 429 (rate limiting); 2× 502 Bad Gateway (see F-2) |
+| Median response (reported) | 93 ms |
+| 99%ile response | 300 ms (aggregated); max 19,430 ms (outlier) |
+
+#### Per-endpoint (Locust Statistics)
+
+| Type | Name | # Requests | # Fails | Median (ms) | 90%ile (ms) | 99%ile (ms) | Avg (ms) | Min (ms) | Max (ms) |
+|------|------|------------|---------|-------------|-------------|-------------|----------|----------|----------|
+| GET | / | 431 | 331 | 74 | 140 | 270 | 217 | 39 | 18,180 |
+| GET | /events | 303 | 271 | 93 | 160 | 260 | 257 | 45 | 19,430 |
+| GET | /organizations | 159 | 143 | 120 | 220 | 260 | 133 | 48 | 269 |
+| GET | /students | 185 | 170 | 110 | 210 | 330 | 128 | 46 | 619 |
+| GET | /teachers | 183 | 167 | 110 | 230 | 11,000 | 248 | 44 | 11,439 |
+| GET | /volunteers | 251 | 230 | 100 | 190 | 280 | 173 | 46 | 14,388 |
+| **Aggregated** | | **1,512** | **1,312** | **93** | **190** | **300** | **202** | **39** | **19,430** |
+
+#### Failures
+
+1,310× 429 Too Many Requests; 1× 502 on /students, 1× 502 on /teachers (see F-2).
+
+#### Conclusion
+
+Staging under same load (10 users, 5 min) shows much higher latency than local (median 93 ms vs ~5 ms) and large outliers (max 19+ s). Same 429 rate-limiting pattern; in addition, 2× 502 Bad Gateway under load. Staging environment (e.g. proxy, worker limits) may be the cause.
+
 *(Add more runs above or below using the same format.)*
 
 ---
@@ -218,5 +254,16 @@ Sustained load for 1 hour at 10 users. RPS stable at ~5.2; ~99% of requests rate
 [2026-02-24 02:30:13,194] WARNING in rate_limiter: Rate limit exceeded: 127.0.0.1 - /
 127.0.0.1 - - [24/Feb/2026 02:30:13] "GET / HTTP/1.1" 429 -
 ```
+
+### F-2: 502 Bad Gateway on staging under load
+
+| Field | Value |
+|-------|--------|
+| **What** | Two requests returned HTTP 502 Bad Gateway (1× GET /students, 1× GET /teachers). |
+| **When** | Locust against staging, 10 users, spawn rate 1, 5 minutes. |
+| **Where** | Staging only: https://romulus-jlane.pythonanywhere.com. Endpoints: /students, /teachers. |
+| **Why** | Suspected: staging proxy or worker timeout/overload under load (e.g. PythonAnywhere limits). |
+| **Severity** | Medium (staging; may indicate risk under production load). |
+| **Repro** | 1) Locust: `locust -f locustfile.py --host=https://romulus-jlane.pythonanywhere.com`. 2) Open http://localhost:8089, set 10 users, spawn rate 1, Start swarming, run 5 min. 3) Check Failures tab for 502. |
 
 *(Add more findings below as you discover 5xxs, timeouts, or other issues.)*
