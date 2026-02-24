@@ -154,6 +154,7 @@ python scripts/generate_synthetic_data.py [options]
 | `--mode MODE` | Generation mode: `demo` (happy path) or `edge` (boundary conditions) | `--mode edge` |
 | `--counts MODEL=N` | Custom counts per model (can be used multiple times) | `--counts volunteer=200 event=100` |
 | `--reset` | Clear existing data before generating (USE WITH CAUTION) | `--reset` |
+| `--export [PATH]` | Export generated IDs to JSON for automated tests (default: `synthetic_data_ids.json`) | `--export` or `--export my_ids.json` |
 
 ### **Examples**
 
@@ -175,6 +176,10 @@ python scripts/generate_synthetic_data.py --reset --size small --mode demo
 
 # Combine options
 python scripts/generate_synthetic_data.py --seed 42 --size large --mode edge --counts volunteer=500
+
+# Export generated IDs to JSON (for automated tests)
+python scripts/generate_synthetic_data.py --size small --mode demo --export
+python scripts/generate_synthetic_data.py --seed 99 --export my_test_ids.json
 ```
 
 ### **What Data is Created**
@@ -255,6 +260,9 @@ with app.app_context():
 - ✅ **SQLAlchemy ORM**: Uses model classes so defaults and validators run
 - ✅ **Flask App Context**: Proper Flask application context for database operations
 - ✅ **Idempotent**: Can run multiple times (skips existing records)
+- ✅ **Batch commits**: Commits every 50 records for better performance
+- ✅ **Edge cases (edge mode)**: Max-length strings, unicode names, near-duplicate values, date boundaries (leap day, end-of-month, very old), stress records (0 vs many related rows), inactive/archived states (Tenant, User, Volunteer, Teacher, Student, History)
+- ✅ **Export IDs**: `--export` writes a JSON summary of generated entity IDs for automated tests
 
 ### **Implementation Status**
 
@@ -265,6 +273,9 @@ with app.app_context():
 - ✅ Enum/status value coverage
 - ✅ Summary output
 - ✅ Reset functionality
+- ✅ Batch commits (BATCH_SIZE=50)
+- ✅ Edge case coverage in edge mode
+- ✅ `--export` JSON ID summary
 
 **Note:** Database schema must be up-to-date. If you encounter missing column errors, run:
 ```bash
@@ -273,8 +284,6 @@ python scripts/fix_database_schema.py
 This will add missing columns like `tenant_role`, `pathful_user_id`, `is_active`, etc.
 
 **Known Limitations:**
-- Some edge case features (max-length strings, unicode, date boundaries) are not fully implemented
-- JSON export feature (`--export`) is not implemented
 - Admin/internal models (BugReport, AuditLog, etc.) are not generated (not needed for demos)
 
 ## 📝 **Notes**

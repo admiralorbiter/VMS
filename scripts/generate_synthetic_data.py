@@ -14,6 +14,7 @@ Options:
     --mode MODE           Generation mode: demo (happy path) or edge (boundary conditions)
     --counts MODEL=N      Custom counts per model (e.g., --counts volunteer=100 event=50)
     --reset               Clear existing data before generating (USE WITH CAUTION)
+    --export [PATH]       Export generated IDs to JSON (default: synthetic_data_ids.json)
 
 Examples:
     python scripts/generate_synthetic_data.py --size small --mode demo
@@ -51,6 +52,10 @@ from models.history import History, HistoryType
 from models.attendance import EventAttendanceDetail
 from werkzeug.security import generate_password_hash
 from datetime import datetime, timedelta, date, timezone
+import json
+
+# Commit every N records for performance (batch commits)
+BATCH_SIZE = 50
 
 
 class SyntheticDataGenerator:
@@ -70,7 +75,8 @@ class SyntheticDataGenerator:
         self.size = size
         self.mode = mode
         self.counts = counts or {}
-        
+        self._generated = {}  # Populated after generate() for --export
+
         # Set random seeds for deterministic generation
         random.seed(self.seed)
         
@@ -127,7 +133,37 @@ class SyntheticDataGenerator:
         if self.size in self.size_presets:
             return self.size_presets[self.size].get(model_name, 10)
         return 10
-    
+
+    # --- Edge case helpers (used when mode == 'edge') ---
+    def _edge_string_max(self, max_len, base="x"):
+        """Return a string at or near max length for stress testing."""
+        return (base * (max_len // len(base) + 1))[:max_len]
+
+    def _edge_unicode_name(self):
+        """Return a name with safe unicode (no emoji, for Windows compatibility)."""
+        return random.choice([
+            "Jose", "José", "Naomi", "Naïve", "Zurich", "Zürich",
+            "Angel", "Ángel", "Muller", "Müller", "Francois", "François",
+        ])
+
+    def _edge_boundary_dates(self):
+        """Return a boundary date: leap day, end-of-month, very old, or recent."""
+        return random.choice([
+            date(2024, 2, 29),   # leap day
+            date(2023, 1, 31),  # end of month
+            date(2023, 3, 31),
+            date(1920, 6, 15), # very old
+            date(2000, 12, 31), # year boundary
+        ])
+
+    def _edge_datetime_boundary(self, tz=timezone.utc):
+        """Return a datetime at a boundary (leap day, end-of-month, etc.)."""
+        return random.choice([
+            datetime(2024, 2, 29, 10, 0, 0, tzinfo=tz),
+            datetime(2023, 1, 31, 23, 59, 0, tzinfo=tz),
+            datetime(2000, 12, 31, 12, 0, 0, tzinfo=tz),
+        ])
+
     def generate_skills(self):
         """Generate Skill records."""
         count = self.get_count('skill')
@@ -158,9 +194,10 @@ class SyntheticDataGenerator:
                 skill = Skill(name=name)
                 db.session.add(skill)
                 created += 1
+                if created % BATCH_SIZE == 0:
+                    db.session.commit()
             except Exception as e:
                 print(f"    [!] Error creating skill {i}: {e}")
-        
         db.session.commit()
         print(f"    [*] Created {created} skills")
         return Skill.query.all()
@@ -204,9 +241,10 @@ class SyntheticDataGenerator:
                 )
                 db.session.add(district)
                 created += 1
+                if created % BATCH_SIZE == 0:
+                    db.session.commit()
             except Exception as e:
                 print(f"    [WARNING] Error creating district {i}: {e}")
-        
         db.session.commit()
         print(f"    [*] Created {created} districts")
         return District.query.all()
@@ -228,9 +266,15 @@ class SyntheticDataGenerator:
                 existing = Organization.query.filter_by(salesforce_id=salesforce_id).first()
                 if existing:
                     continue
-                
+
+                # Edge: max-length or unicode name
+                if self.mode == 'edge' and random.random() < 0.15:
+                    org_name = self._edge_string_max(255, "Org") if random.random() < 0.5 else self._edge_unicode_name() + " " + self.fake.company()
+                else:
+                    org_name = self.fake.company()
+
                 org = Organization(
-                    name=self.fake.company(),
+                    name=org_name[:255],
                     type=random.choice(org_types) if self.mode == 'demo' else (
                         random.choice(org_types) if random.random() > 0.1 else None  # 10% NULL in edge mode
                     ),
@@ -244,9 +288,10 @@ class SyntheticDataGenerator:
                 )
                 db.session.add(org)
                 created += 1
+                if created % BATCH_SIZE == 0:
+                    db.session.commit()
             except Exception as e:
                 print(f"    [WARNING] Error creating organization {i}: {e}")
-        
         db.session.commit()
         print(f"    [*] Created {created} organizations")
         return Organization.query.all()
@@ -289,9 +334,10 @@ class SyntheticDataGenerator:
                 )
                 db.session.add(school)
                 created += 1
+                if created % BATCH_SIZE == 0:
+                    db.session.commit()
             except Exception as e:
                 print(f"    [WARNING] Error creating school {i}: {e}")
-        
         db.session.commit()
         print(f"    [*] Created {created} schools")
         return School.query.all()
@@ -349,9 +395,10 @@ class SyntheticDataGenerator:
                 )
                 db.session.add(class_obj)
                 created += 1
+                if created % BATCH_SIZE == 0:
+                    db.session.commit()
             except Exception as e:
                 print(f"    [WARNING] Error creating class {i}: {e}")
-        
         db.session.commit()
         print(f"    [*] Created {created} classes")
         return Class.query.all()
@@ -375,16 +422,14 @@ class SyntheticDataGenerator:
                 if existing:
                     continue
                 
-                tenant = Tenant(
-                    name=name,
-                    slug=slug,
-                    is_active=True
-                )
+                is_active = random.choice([True, False]) if self.mode == 'edge' and random.random() < 0.2 else True
+                tenant = Tenant(name=name, slug=slug, is_active=is_active)
                 db.session.add(tenant)
                 created += 1
+                if created % BATCH_SIZE == 0:
+                    db.session.commit()
             except Exception as e:
                 print(f"    [WARNING] Error creating tenant {i}: {e}")
-        
         db.session.commit()
         print(f"    [*] Created {created} tenants")
         return Tenant.query.all()
@@ -412,10 +457,15 @@ class SyntheticDataGenerator:
                 else:
                     security_level = SecurityLevel.USER
                 
-                # Generate unique username and email
-                username = f"{self.fake.user_name()}{i}{random.randint(100, 999)}"
-                email = f"{self.fake.email()}"
-                
+                # Generate unique username and email (edge: near-duplicates in edge mode)
+                if self.mode == 'edge' and i > 0 and random.random() < 0.1:
+                    base = self.fake.user_name()
+                    username = f"{base}{i}"
+                    email = f"{base}+{i}@synthetic.test"
+                else:
+                    username = f"{self.fake.user_name()}{i}{random.randint(100, 999)}"
+                    email = f"{self.fake.email()}"
+
                 # Check if user already exists
                 existing = User.query.filter(
                     (User.username == username) | (User.email == email)
@@ -431,26 +481,36 @@ class SyntheticDataGenerator:
                     tenant_id = tenant.id
                     tenant_role = random.choice(tenant_roles)
                 
+                # Edge: max-length or unicode names
+                if self.mode == 'edge' and random.random() < 0.12:
+                    first_name = self._edge_string_max(64, "F") if random.random() < 0.5 else self._edge_unicode_name()
+                    last_name = self._edge_string_max(64, "L") if random.random() < 0.5 else self.fake.last_name()
+                else:
+                    first_name = self.fake.first_name()
+                    last_name = self.fake.last_name()
+
                 # Build user dict, only include tenant_role if database supports it
                 user_data = {
                     'username': username,
                     'email': email,
                     'password_hash': generate_password_hash("testpass123"),  # Default test password
-                    'first_name': self.fake.first_name(),
-                    'last_name': self.fake.last_name(),
+                    'first_name': first_name,
+                    'last_name': last_name,
                     'security_level': security_level,
                     'tenant_id': tenant_id,
                 }
-                # Only add tenant_role if tenant_id is set (and database supports it)
                 if tenant_id and tenant_role:
                     user_data['tenant_role'] = tenant_role
-                
+                if hasattr(User, 'is_active') and self.mode == 'edge' and random.random() < 0.15:
+                    user_data['is_active'] = False
+
                 user = User(**user_data)
                 db.session.add(user)
                 created += 1
+                if created % BATCH_SIZE == 0:
+                    db.session.commit()
             except Exception as e:
                 print(f"    [WARNING] Error creating user {i}: {e}")
-        
         db.session.commit()
         print(f"    [*] Created {created} users")
         # Return empty list if query fails (database schema mismatch)
@@ -471,20 +531,42 @@ class SyntheticDataGenerator:
         created = 0
         for i in range(count):
             try:
-                # Generate names first to ensure they're not None
-                first_name = self.fake.first_name()
-                last_name = self.fake.last_name()
-                
+                # Generate names (edge: unicode, max-length, or near-duplicate)
+                if self.mode == 'edge' and random.random() < 0.12:
+                    if random.random() < 0.33:
+                        first_name = self._edge_unicode_name()
+                        last_name = self.fake.last_name()
+                    elif random.random() < 0.5:
+                        first_name = self._edge_string_max(50, "A")[:50]
+                        last_name = self._edge_string_max(50, "B")[:50]
+                    else:
+                        first_name = "John" if i % 2 == 0 else "Jon"
+                        last_name = "Smith"
+                else:
+                    first_name = self.fake.first_name()
+                    last_name = self.fake.last_name()
+
                 if not first_name or not last_name:
                     print(f"    [WARNING] Skipping volunteer {i}: Invalid name generated")
                     continue
-                
+
+                # Edge: boundary dates for birthdate / first_volunteer_date
+                if self.mode == 'edge' and random.random() < 0.1:
+                    birthdate = self._edge_boundary_dates()
+                else:
+                    birthdate = self.fake.date_of_birth(minimum_age=22, maximum_age=65)
+
+                # Edge: include inactive/on_hold status
+                status = random.choice(list(VolunteerStatus))
+                if self.mode == 'demo':
+                    status = random.choice([VolunteerStatus.ACTIVE, VolunteerStatus.ACTIVE, VolunteerStatus.NONE, VolunteerStatus.ON_HOLD, VolunteerStatus.INACTIVE])
+
                 # Create Volunteer directly (inherits from Contact, so creates both)
                 volunteer = Volunteer(
-                    first_name=first_name,
-                    last_name=last_name,
+                    first_name=first_name[:50],
+                    last_name=last_name[:50],
                     gender=random.choice(list(GenderEnum)),
-                    birthdate=self.fake.date_of_birth(minimum_age=22, maximum_age=65),
+                    birthdate=birthdate,
                     education_level=random.choice(list(EducationEnum)),
                     race_ethnicity=random.choice(list(RaceEthnicityEnum)) if self.mode == 'demo' or random.random() > 0.2 else None,
                     age_group=random.choice(list(AgeGroupEnum)),
@@ -495,8 +577,8 @@ class SyntheticDataGenerator:
                     industry=random.choice(industries),
                     education=random.choice(list(EducationEnum)) if random.random() > 0.1 else None,
                     local_status=random.choice(list(LocalStatusEnum)),
-                    status=random.choice(list(VolunteerStatus)),
-                    first_volunteer_date=self.fake.date_between(start_date='-2y', end_date='today') if random.random() > 0.1 else None,
+                    status=status,
+                    first_volunteer_date=self._edge_boundary_dates() if self.mode == 'edge' and random.random() < 0.08 else (self.fake.date_between(start_date='-2y', end_date='today') if random.random() > 0.1 else None),
                     last_volunteer_date=self.fake.date_between(start_date='-6m', end_date='today') if random.random() > 0.1 else None,
                     times_volunteered=random.randint(0, 50) if self.mode == 'demo' else (random.randint(0, 200) if random.random() > 0.1 else 0),
                     interests=self.fake.text(max_nb_chars=200) if self.mode == 'demo' or random.random() > 0.3 else None
@@ -522,19 +604,19 @@ class SyntheticDataGenerator:
                         primary=True
                     )
                     db.session.add(phone)
-                
-                # Commit immediately to avoid session state issues
-                db.session.commit()
+
                 created += 1
+                if created % BATCH_SIZE == 0:
+                    db.session.commit()
             except Exception as e:
                 print(f"    [WARNING] Error creating volunteer {i}: {e}")
                 db.session.rollback()
-                # Explicitly remove any Contact objects from session
                 for obj in list(db.session):
                     if isinstance(obj, Contact):
                         db.session.expunge(obj)
                 db.session.expire_all()
                 continue
+        db.session.commit()
         print(f"    [*] Created {created} volunteers")
         return Volunteer.query.all()
     
@@ -552,26 +634,34 @@ class SyntheticDataGenerator:
         created = 0
         for i in range(count):
             try:
-                # Generate names first to ensure they're not None
-                first_name = self.fake.first_name()
-                last_name = self.fake.last_name()
-                
+                if self.mode == 'edge' and random.random() < 0.1:
+                    first_name = self._edge_unicode_name()
+                    last_name = self.fake.last_name()
+                else:
+                    first_name = self.fake.first_name()
+                    last_name = self.fake.last_name()
+
                 if not first_name or not last_name:
                     print(f"    [WARNING] Skipping teacher {i}: Invalid name generated")
                     continue
-                
-                # Create Teacher directly (inherits from Contact)
+
+                teacher_status = random.choice(list(TeacherStatus))
+                if self.mode == 'demo':
+                    teacher_status = random.choice([TeacherStatus.ACTIVE, TeacherStatus.ACTIVE, TeacherStatus.INACTIVE])
+
                 school = random.choice(schools)
+                birthdate = self._edge_boundary_dates() if self.mode == 'edge' and random.random() < 0.08 else self.fake.date_of_birth(minimum_age=25, maximum_age=60)
+
                 teacher = Teacher(
-                    first_name=first_name,
-                    last_name=last_name,
+                    first_name=first_name[:50],
+                    last_name=last_name[:50],
                     gender=random.choice(list(GenderEnum)),
-                    birthdate=self.fake.date_of_birth(minimum_age=25, maximum_age=60),
+                    birthdate=birthdate,
                     education_level=random.choice(list(EducationEnum)),
-                    salesforce_individual_id=None,  # Don't set to avoid UNIQUE constraint issues
+                    salesforce_individual_id=None,
                     department=random.choice(departments),
                     school_id=school.id,
-                    status=random.choice(list(TeacherStatus)),
+                    status=teacher_status,
                     connector_role=random.choice(["Mentor", "Speaker", "Advisor"]) if random.random() < 0.3 else None,
                     connector_active=random.choice([True, False]) if random.random() < 0.3 else False
                 )
@@ -586,19 +676,19 @@ class SyntheticDataGenerator:
                     primary=True
                 )
                 db.session.add(email)
-                
-                # Commit immediately to avoid session state issues
-                db.session.commit()
+
                 created += 1
+                if created % BATCH_SIZE == 0:
+                    db.session.commit()
             except Exception as e:
                 print(f"    [WARNING] Error creating teacher {i}: {e}")
                 db.session.rollback()
-                # Explicitly remove any Contact objects from session
                 for obj in list(db.session):
                     if isinstance(obj, Contact):
                         db.session.expunge(obj)
                 db.session.expire_all()
                 continue
+        db.session.commit()
         print(f"    [*] Created {created} teachers")
         return Teacher.query.all()
     
@@ -614,17 +704,21 @@ class SyntheticDataGenerator:
         created = 0
         for i in range(count):
             try:
-                # Generate names first to ensure they're not None
-                first_name = self.fake.first_name()
-                last_name = self.fake.last_name()
-                
+                if self.mode == 'edge' and random.random() < 0.08:
+                    first_name = self._edge_unicode_name()
+                    last_name = self.fake.last_name()
+                else:
+                    first_name = self.fake.first_name()
+                    last_name = self.fake.last_name()
+
                 if not first_name or not last_name:
                     print(f"    [WARNING] Skipping student {i}: Invalid name generated")
                     continue
-                
-                # Create Student directly (inherits from Contact)
+
                 school = random.choice(schools)
                 grade = random.randint(0, 12)
+                is_student_active = random.choice([True, False]) if self.mode == 'edge' and random.random() < 0.15 else True
+                birthdate = self._edge_boundary_dates() if self.mode == 'edge' and random.random() < 0.06 else self.fake.date_of_birth(minimum_age=6, maximum_age=18)
                 
                 # Assign class (70% of students have a class)
                 class_salesforce_id = None
@@ -633,11 +727,11 @@ class SyntheticDataGenerator:
                     class_salesforce_id = class_obj.salesforce_id
                 
                 student = Student(
-                    first_name=first_name,
-                    last_name=last_name,
+                    first_name=first_name[:50],
+                    last_name=last_name[:50],
                     gender=random.choice(list(GenderEnum)),
-                    birthdate=self.fake.date_of_birth(minimum_age=6, maximum_age=18),
-                    salesforce_individual_id=None,  # Don't set to avoid UNIQUE constraint issues
+                    birthdate=birthdate,
+                    salesforce_individual_id=None,
                     current_grade=grade,
                     student_id=f"STU{self.fake.random_number(digits=6)}",
                     school_id=school.id,
@@ -648,7 +742,7 @@ class SyntheticDataGenerator:
                     ell_language=random.choice(["Spanish", "French", "Arabic", None]),
                     gifted=random.choice([True, False]) if random.random() > 0.1 else None,
                     lunch_status=random.choice(["Free", "Reduced", "Paid"]) if self.mode == 'demo' or random.random() > 0.2 else None,
-                    active=True
+                    active=is_student_active
                 )
                 db.session.add(student)
                 db.session.flush()
@@ -662,19 +756,19 @@ class SyntheticDataGenerator:
                         primary=True
                     )
                     db.session.add(email)
-                
-                # Commit immediately to avoid session state issues
-                db.session.commit()
+
                 created += 1
+                if created % BATCH_SIZE == 0:
+                    db.session.commit()
             except Exception as e:
                 print(f"    [WARNING] Error creating student {i}: {e}")
                 db.session.rollback()
-                # Explicitly remove any Contact objects from session
                 for obj in list(db.session):
                     if isinstance(obj, Contact):
                         db.session.expunge(obj)
                 db.session.expire_all()
                 continue
+        db.session.commit()
         print(f"    [*] Created {created} students")
         return Student.query.all()
     
@@ -701,23 +795,24 @@ class SyntheticDataGenerator:
                 event_format = random.choice(event_formats)
                 event_status = random.choice(event_statuses)
                 
-                # Generate realistic dates based on status
-                now = datetime.now(timezone.utc)
-                if event_status in [EventStatus.COMPLETED, EventStatus.CANCELLED]:
-                    # Past events
-                    start_date = self.fake.date_time_between(start_date='-1y', end_date='-1d', tzinfo=timezone.utc)
-                elif event_status == EventStatus.DRAFT:
-                    # Can be past or future
-                    start_date = self.fake.date_time_between(start_date='-6m', end_date='+6m', tzinfo=timezone.utc)
+                # Generate realistic dates based on status (edge: sometimes use boundary dates)
+                tz = timezone.utc
+                if self.mode == 'edge' and random.random() < 0.06:
+                    start_date = self._edge_datetime_boundary(tz)
+                    end_date = start_date + timedelta(hours=2)
                 else:
-                    # Future events
-                    start_date = self.fake.date_time_between(start_date='now', end_date='+6m', tzinfo=timezone.utc)
-                
-                end_date = start_date + timedelta(hours=random.randint(1, 8))
-                
-                # Generate event
+                    if event_status in [EventStatus.COMPLETED, EventStatus.CANCELLED]:
+                        start_date = self.fake.date_time_between(start_date='-1y', end_date='-1d', tzinfo=tz)
+                    elif event_status == EventStatus.DRAFT:
+                        start_date = self.fake.date_time_between(start_date='-6m', end_date='+6m', tzinfo=tz)
+                    else:
+                        start_date = self.fake.date_time_between(start_date='now', end_date='+6m', tzinfo=tz)
+                    end_date = start_date + timedelta(hours=random.randint(1, 8))
+
+                title = self._edge_string_max(255, "Event ")[:255] if self.mode == 'edge' and random.random() < 0.08 else self.fake.sentence(nb_words=4).title().rstrip('.')
+
                 event_kwargs = {
-                    "title": self.fake.sentence(nb_words=4).title().rstrip('.'),
+                    "title": title,
                     "description": self.fake.text(max_nb_chars=500) if self.mode == 'demo' or random.random() > 0.2 else None,
                     "type": event_type,
                     "format": event_format,
@@ -786,13 +881,14 @@ class SyntheticDataGenerator:
                     event_volunteers = random.sample(volunteers, num_volunteers)
                     for volunteer in event_volunteers:
                         event.volunteers.append(volunteer)
-                
+
                 created += 1
+                if created % BATCH_SIZE == 0:
+                    db.session.commit()
             except Exception as e:
                 print(f"    [WARNING] Error creating event {i}: {e}")
                 db.session.rollback()
                 continue
-        
         db.session.commit()
         print(f"    [*] Created {created} events")
         return Event.query.all()
@@ -828,10 +924,11 @@ class SyntheticDataGenerator:
                             )
                             db.session.add(volunteer_skill)
                             created += 1
+                            if created % BATCH_SIZE == 0:
+                                db.session.commit()
             except Exception as e:
                 print(f"    [WARNING] Error creating volunteer-skill relationship: {e}")
                 continue
-        
         db.session.commit()
         print(f"    [*] Created {created} volunteer-skill relationships")
     
@@ -868,10 +965,11 @@ class SyntheticDataGenerator:
                             )
                             db.session.add(vol_org)
                             created += 1
+                            if created % BATCH_SIZE == 0:
+                                db.session.commit()
             except Exception as e:
                 print(f"    [WARNING] Error creating volunteer-organization relationship: {e}")
                 continue
-        
         db.session.commit()
         print(f"    [*] Created {created} volunteer-organization relationships")
     
@@ -925,10 +1023,11 @@ class SyntheticDataGenerator:
                             )
                             db.session.add(participation)
                             created += 1
+                            if created % BATCH_SIZE == 0:
+                                db.session.commit()
             except Exception as e:
                 print(f"    [WARNING] Error creating event participation: {e}")
                 continue
-        
         db.session.commit()
         print(f"    [*] Created {created} event participations")
     
@@ -955,10 +1054,11 @@ class SyntheticDataGenerator:
                 )
                 db.session.add(engagement)
                 created += 1
+                if created % BATCH_SIZE == 0:
+                    db.session.commit()
             except Exception as e:
                 print(f"    [WARNING] Error creating engagement {i}: {e}")
                 continue
-        
         db.session.commit()
         print(f"    [*] Created {created} engagements")
     
@@ -981,6 +1081,7 @@ class SyntheticDataGenerator:
                 event = random.choice(events) if events and random.random() < 0.3 else None
                 user = random.choice(users) if users else None
                 
+                is_deleted = random.choice([True, False]) if self.mode == 'edge' and random.random() < 0.15 else False
                 history = History(
                     contact_id=volunteer.id,
                     event_id=event.id if event else None,
@@ -992,14 +1093,15 @@ class SyntheticDataGenerator:
                     activity_status=random.choice(["completed", "pending", "in_progress"]) if random.random() > 0.1 else None,
                     history_type=random.choice(history_types),
                     created_by_id=user.id if user else None,
-                    is_deleted=False
+                    is_deleted=is_deleted
                 )
                 db.session.add(history)
                 created += 1
+                if created % BATCH_SIZE == 0:
+                    db.session.commit()
             except Exception as e:
                 print(f"    [WARNING] Error creating history record {i}: {e}")
                 continue
-        
         db.session.commit()
         print(f"    [*] Created {created} history records")
     
@@ -1050,10 +1152,11 @@ class SyntheticDataGenerator:
                     )
                     db.session.add(detail)
                     created += 1
+                    if created % BATCH_SIZE == 0:
+                        db.session.commit()
             except Exception as e:
                 print(f"    [WARNING] Error creating attendance detail: {e}")
                 continue
-        
         db.session.commit()
         print(f"    [*] Created {created} event attendance details")
     
@@ -1101,7 +1204,43 @@ class SyntheticDataGenerator:
             
         except Exception as e:
             print(f"[!] Error generating summary: {e}")
-    
+
+    def export_ids(self, path):
+        """Write a JSON summary of generated entity IDs for automated tests."""
+        if not self._generated:
+            print("[WARNING] No generated data to export. Run generate() first.")
+            return
+        out = {
+            "seed": self.seed,
+            "size": self.size,
+            "mode": self.mode,
+        }
+        id_keys = [
+            ("skill_ids", "skills"),
+            ("district_ids", "districts"),
+            ("organization_ids", "organizations"),
+            ("tenant_ids", "tenants"),
+            ("school_ids", "schools"),
+            ("class_ids", "classes"),
+            ("user_ids", "users"),
+            ("volunteer_ids", "volunteers"),
+            ("teacher_ids", "teachers"),
+            ("student_ids", "students"),
+            ("event_ids", "events"),
+        ]
+        for key, attr in id_keys:
+            lst = self._generated.get(attr)
+            if lst is not None:
+                try:
+                    out[key] = [x.id for x in lst]
+                except Exception:
+                    pass
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(out, f, indent=2)
+        print(f"[*] Exported IDs to {path}")
+
     def generate(self):
         """Main generation method."""
         print(f"[*] Starting synthetic data generation")
@@ -1141,8 +1280,20 @@ class SyntheticDataGenerator:
                 self.generate_engagements(volunteers)
                 self.generate_history_records(volunteers, events, users)
                 self.generate_event_attendance_details(events)
-                
-                # Print summary
+
+                self._generated = {
+                    "skills": skills,
+                    "districts": districts,
+                    "organizations": organizations,
+                    "tenants": tenants,
+                    "schools": schools,
+                    "classes": classes,
+                    "users": users,
+                    "volunteers": volunteers,
+                    "teachers": teachers,
+                    "students": students,
+                    "events": events,
+                }
                 self.print_summary()
             except Exception as e:
                 print(f"[!] Error during generation: {e}")
@@ -1190,7 +1341,16 @@ def parse_args():
         action='store_true',
         help='Clear existing data before generating (USE WITH CAUTION)'
     )
-    
+
+    parser.add_argument(
+        '--export',
+        nargs='?',
+        const='synthetic_data_ids.json',
+        default=None,
+        metavar='PATH',
+        help='Export generated IDs to JSON (default: synthetic_data_ids.json)'
+    )
+
     return parser.parse_args()
 
 
@@ -1266,8 +1426,10 @@ def main():
                 db.session.rollback()
                 return
     
-    # Generate data
     generator.generate()
+
+    if args.export:
+        generator.export_ids(args.export)
 
 
 if __name__ == '__main__':
