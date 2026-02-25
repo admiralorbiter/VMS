@@ -726,7 +726,11 @@
             <button type="submit" class="filter-btn">Apply</button>
             <a href="{{ url_for('teacher_usage.index', tenant_id=admin_tenant_id) if admin_tenant_id is defined and admin_tenant_id else url_for('teacher_usage.index') }}"
                 class="reset-btn">Reset</a>
-            {% if teacher_progress_data %}
+            <a href="{{ url_for('teacher_import.index', tenant_id=admin_tenant_id, year=academic_year) if admin_tenant_id is defined and admin_tenant_id else url_for('teacher_import.index', year=academic_year) }}"
+                class="export-btn" style="background: #467599;">
+                <i class="fas fa-file-import"></i> Import / Manage Teachers
+            </a>
+                        {% if teacher_progress_data %}
             <a href="{{ url_for('teacher_usage.export_excel', year=academic_year, semester=semester, tenant_id=admin_tenant_id) if admin_tenant_id is defined and admin_tenant_id else url_for('teacher_usage.export_excel', year=academic_year, semester=semester) }}"
                 class="export-btn">
                 <i class="fas fa-file-excel"></i> Export to Excel

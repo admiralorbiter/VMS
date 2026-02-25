@@ -117,9 +117,16 @@ def import_roster(
 
     try:
         # 2. Get existing records for this district/year
-        existing_records = TeacherProgress.query.filter_by(
-            academic_year=academic_year, district_name=district_name
-        ).all()
+        # Use tenant_id when available (preferred); fall back to district_name
+        # for legacy non-tenant imports.
+        if tenant_id:
+            existing_records = TeacherProgress.query.filter_by(
+                academic_year=academic_year, tenant_id=tenant_id
+            ).all()
+        else:
+            existing_records = TeacherProgress.query.filter_by(
+                academic_year=academic_year, district_name=district_name
+            ).all()
 
         # Map email -> record for quick lookup
         existing_map = {r.email.lower(): r for r in existing_records}

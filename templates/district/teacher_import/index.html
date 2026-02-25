@@ -454,6 +454,7 @@
         </div>
         <div class="section-body">
             <form method="GET" class="year-selector">
+                {% if admin_tenant_id %}<input type="hidden" name="tenant_id" value="{{ admin_tenant_id }}">{% endif %}
                 <label for="year">Academic Year:</label>
                 <select name="year" id="year" onchange="this.form.submit()">
                     {% for year in available_years %}
@@ -509,6 +510,8 @@
                     id="csv-form">
                     <input type="hidden" name="import_type" value="csv">
                     <input type="hidden" name="academic_year" value="{{ academic_year }}">
+                    {% if admin_tenant_id %}<input type="hidden" name="tenant_id" value="{{ admin_tenant_id }}">{% endif
+                    %}
 
                     <div class="form-group">
                         <label>Select CSV File</label>
@@ -540,6 +543,8 @@
                 <form method="POST" action="{{ url_for('teacher_import.do_import') }}" id="google-form">
                     <input type="hidden" name="import_type" value="google_sheet">
                     <input type="hidden" name="academic_year" value="{{ academic_year }}">
+                    {% if admin_tenant_id %}<input type="hidden" name="tenant_id" value="{{ admin_tenant_id }}">{% endif
+                    %}
 
                     <div class="form-group">
                         <label for="sheet_url">Google Sheet URL</label>
@@ -562,6 +567,8 @@
 
                 <form method="POST" action="{{ url_for('teacher_import.add_single_teacher') }}" id="manual-form">
                     <input type="hidden" name="academic_year" value="{{ academic_year }}">
+                    {% if admin_tenant_id %}<input type="hidden" name="tenant_id" value="{{ admin_tenant_id }}">{% endif
+                    %}
 
                     <div class="form-group">
                         <label for="building">Building / School <span style="color: #dc3545;">*</span></label>

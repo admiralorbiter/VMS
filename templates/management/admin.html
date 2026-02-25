@@ -253,6 +253,22 @@ Key Features:
             </a>
         </div>
     </div>
+    {# Teacher Import Management #}
+    <div class="card admin-card mt-4">
+        <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="card-title mb-1">
+                    <i class="fas fa-file-import text-success me-2"></i>Teacher Import
+                </h5>
+                <p class="text-muted mb-0 small">
+                    Import and manage district teacher rosters for virtual session tracking
+                </p>
+            </div>
+            <a href="{{ url_for('teacher_import.index', tenant_id=1) }}" class="btn btn-success">
+                <i class="fas fa-file-import me-2"></i> Import Teachers
+            </a>
+        </div>
+    </div>
     {# Data Flags Review #}
     <div class="card admin-card mt-4">
         <div class="card-body d-flex justify-content-between align-items-center">

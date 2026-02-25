@@ -77,14 +77,25 @@ def get_current_academic_year():
         return f"{today.year - 1}-{today.year}"
 
 
-def get_tenant_district_name():
-    """Get the district name for the current user's tenant."""
-    if not current_user.tenant_id:
+def _resolve_tenant_id():
+    """Resolve effective tenant_id, checking query/form params for global admins."""
+    admin_tenant_id = request.args.get("tenant_id", type=int) or request.form.get(
+        "tenant_id", type=int
+    )
+    if current_user.is_admin and admin_tenant_id:
+        return admin_tenant_id
+    return current_user.tenant_id
+
+
+def get_tenant_district_name(tenant_id=None):
+    """Get the district name for a tenant (defaults to current user's tenant)."""
+    tid = tenant_id or current_user.tenant_id
+    if not tid:
         return None
 
     from models.tenant import Tenant
 
-    tenant = Tenant.query.get(current_user.tenant_id)
+    tenant = Tenant.query.get(tid)
     if not tenant:
         return None
 
@@ -100,8 +111,12 @@ def get_tenant_district_name():
 def index():
     """Main teacher import page."""
     academic_year = request.args.get("year", get_current_academic_year())
-    tenant_id = current_user.tenant_id
-    district_name = get_tenant_district_name()
+    tenant_id = _resolve_tenant_id()
+    district_name = get_tenant_district_name(tenant_id)
+
+    if not tenant_id:
+        flash("Please select a tenant to manage teacher imports.", "warning")
+        return redirect(url_for("virtual.virtual_sessions"))
 
     # Get available years (current and next)
     current_year = get_current_academic_year()
@@ -129,10 +144,10 @@ def index():
 
     # Get schools for the tenant's district (for dropdown)
     schools = []
-    if current_user.tenant_id:
+    if tenant_id:
         from models.tenant import Tenant
 
-        tenant = Tenant.query.get(current_user.tenant_id)
+        tenant = Tenant.query.get(tenant_id)
         if tenant and tenant.district:
             schools = [s.name for s in tenant.district.schools.order_by("name").all()]
 
@@ -148,6 +163,7 @@ def index():
         teachers=teachers,
         schools=schools,
         grade_options=grade_options,
+        admin_tenant_id=tenant_id if current_user.is_admin else None,
     )
 
 
@@ -228,8 +244,8 @@ def do_import():
     """
     import_type = request.form.get("import_type", "csv")
     academic_year = request.form.get("academic_year", get_current_academic_year())
-    tenant_id = current_user.tenant_id
-    district_name = get_tenant_district_name()
+    tenant_id = _resolve_tenant_id()
+    district_name = get_tenant_district_name(tenant_id)
 
     # Debug logging
     current_app.logger.info(
@@ -382,8 +398,12 @@ def download_template():
 def add_single_teacher():
     """Add a single teacher via manual form entry."""
     academic_year = request.form.get("academic_year", get_current_academic_year())
-    tenant_id = current_user.tenant_id
-    district_name = get_tenant_district_name()
+    tenant_id = _resolve_tenant_id()
+    district_name = get_tenant_district_name(tenant_id)
+
+    if not tenant_id:
+        flash("Cannot add teacher without a tenant context.", "error")
+        return redirect(url_for("teacher_import.index"))
 
     # Get form fields
     building = request.form.get("building", "").strip()
