@@ -176,12 +176,28 @@ Rows invalid: F
  Teachers created: A
  Teachers updated: B
  Rows skipped: C
+ Teacher linking: X TeacherProgress records linked, Y Teacher school_ids set
  ```
 
- **Note:** Import replaces all TeacherProgress records for the academic year. Previous data is deleted before importing new data.
+ **Automatic Teacher Linking (Post-Import):**
+
+ After the upsert step, the import automatically runs `_link_progress_to_teachers()` which:
+
+ 1. **Matches by name** — For each TeacherProgress without a `teacher_id`, splits the name into first/last and finds a matching Teacher record (case-insensitive).
+ 2. **Links records** — Sets `TeacherProgress.teacher_id` to the matched `Teacher.id`.
+ 3. **Sets school** — If the Teacher has no `school_id`, fuzzy-matches the `building` name to the School table and sets it.
+
+ School name matching strategy (in `_find_school_by_building_name()`):
+ - Exact case-insensitive → Substring ("Claude Huyck" → "Claude Huyck Elementary") → Word-by-word fallback ("TA Edison" → "THOMAS A EDISON ELEMENTARY")
+ - 3 buildings (Douglass, Grant, JFK) have no School record and are skipped.
+
+ **Note:** Import uses upsert (merge) strategy — existing records are updated, new ones are added, removed ones are soft-deleted.
 
  **Implementation:**
- - Route: `routes/virtual/usage.py` `/usage/district/<district_name>/teacher-progress/google-sheets/<int:sheet_id>/import`
+ - Route: `routes/district/tenant_teacher_import.py`
+ - Service: `services/teacher_import_service.py` `TeacherImportService`
+ - Import logic: `utils/roster_import.py` `import_roster()`
+ - Teacher linking: `utils/roster_import.py` `_link_progress_to_teachers()`
  - Model: `models/teacher_progress.py` `TeacherProgress`
  - Reference: [Field Mappings - Teacher Roster Import](field_mappings#4-teacher-roster-import)
 

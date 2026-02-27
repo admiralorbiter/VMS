@@ -9,12 +9,123 @@ Implements merge/upsert strategy instead of destructive replacement.
 from datetime import datetime, timezone
 
 import pandas as pd
+from flask import current_app
 from sqlalchemy import func
 
 from models import db
 from models.roster_import_log import RosterImportLog
+from models.school_model import School
 from models.teacher import Teacher
 from models.teacher_progress import TeacherProgress
+
+
+def _find_school_by_building_name(building_name):
+    """
+    Fuzzy-match a building short name (e.g. 'TA Edison') to a School record.
+
+    Matching strategy:
+     1. Exact case-insensitive match
+     2. Substring match (building name contained in school name)
+     3. Word-by-word match (each word with len>2 searched individually)
+
+    Returns:
+        School object or None
+    """
+    if not building_name or not building_name.strip():
+        return None
+
+    b = building_name.strip()
+
+    # 1. Exact match
+    school = School.query.filter(func.upper(School.name) == b.upper()).first()
+    if school:
+        return school
+
+    # 2. Substring match (building name IN school name)
+    school = School.query.filter(School.name.ilike(f"%{b}%")).first()
+    if school:
+        return school
+
+    # 3. Word-by-word fallback — search the longest word (skip abbreviations)
+    words = [w for w in b.split() if len(w) > 2]
+    if words:
+        # Sort by length descending so we match on the most distinctive word first
+        words.sort(key=len, reverse=True)
+        for word in words:
+            school = School.query.filter(School.name.ilike(f"%{word}%")).first()
+            if school:
+                return school
+
+    return None
+
+
+def _link_progress_to_teachers(tenant_id, academic_year):
+    """
+    Link TeacherProgress records to existing Teacher records by name match.
+
+    For each TeacherProgress that has no teacher_id, try to find a matching
+    Teacher record by first_name + last_name (case-insensitive). If found:
+      - Set TeacherProgress.teacher_id
+      - Set Teacher.school_id from building name (if currently None)
+    """
+    if tenant_id:
+        progress_records = TeacherProgress.query.filter_by(
+            academic_year=academic_year, tenant_id=tenant_id
+        ).all()
+    else:
+        progress_records = TeacherProgress.query.filter_by(
+            academic_year=academic_year
+        ).all()
+
+    linked_count = 0
+    school_set_count = 0
+
+    for tp in progress_records:
+        # Skip if already linked
+        if tp.teacher_id:
+            continue
+
+        # Split TeacherProgress name into first/last
+        name_parts = tp.name.strip().split(" ", 1) if tp.name else []
+        if len(name_parts) < 2:
+            continue
+
+        first_name = name_parts[0]
+        last_name = name_parts[1]
+
+        # Find matching Teacher by name (case-insensitive)
+        teacher = Teacher.query.filter(
+            func.lower(Teacher.first_name) == func.lower(first_name),
+            func.lower(Teacher.last_name) == func.lower(last_name),
+        ).first()
+
+        if not teacher:
+            continue
+
+        # Link TeacherProgress → Teacher
+        tp.teacher_id = teacher.id
+        linked_count += 1
+
+        # Set school_id on Teacher if not already set
+        if not teacher.school_id and tp.building:
+            school = _find_school_by_building_name(tp.building)
+            if school:
+                teacher.school_id = school.id
+                school_set_count += 1
+
+    if linked_count > 0 or school_set_count > 0:
+        db.session.commit()
+
+    try:
+        current_app.logger.info(
+            f"Teacher linking: {linked_count} TeacherProgress records linked, "
+            f"{school_set_count} Teacher school_ids set"
+        )
+    except RuntimeError:
+        # Outside app context (e.g. testing)
+        pass
+
+    return linked_count, school_set_count
 
 
 def validate_import_data(df):
@@ -205,7 +316,10 @@ def import_roster(
 
                 records_deactivated += 1
 
-        # 5. Commit & Update Log
+        # 5. Link TeacherProgress records to Teacher entities
+        _link_progress_to_teachers(tenant_id, academic_year)
+
+        # 6. Commit & Update Log
         import_log.records_added = records_added
         import_log.records_updated = records_updated
         import_log.records_deactivated = records_deactivated

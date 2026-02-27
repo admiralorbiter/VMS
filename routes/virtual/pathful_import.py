@@ -1785,6 +1785,324 @@ def load_pathful_routes():
             return jsonify({"success": False, "error": str(e)}), 500
 
     # =============================================================================
+    # MANUAL SESSION CREATION & TEACHER SEARCH API
+    # =============================================================================
+
+    @virtual_bp.route("/sessions/create", methods=["POST"])
+    @login_required
+    @admin_required
+    def create_virtual_session():
+        """
+        Manually create a virtual session.
+
+        Creates a new Event with type=VIRTUAL_SESSION from form data and
+        optionally links teachers via EventTeacher association.
+        """
+        from models.event import EventTeacher
+        from models.teacher import Teacher
+
+        title = request.form.get("title", "").strip()
+        start_date_str = request.form.get("start_date", "").strip()
+
+        if not title or not start_date_str:
+            flash("Title and Date are required.", "error")
+            return redirect(url_for("virtual.virtual_sessions"))
+
+        try:
+            start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+        except ValueError:
+            flash("Invalid date format.", "error")
+            return redirect(url_for("virtual.virtual_sessions"))
+
+        # Parse optional fields
+        district_partner = request.form.get("district_partner", "").strip() or None
+        career_cluster = request.form.get("career_cluster", "").strip() or None
+        school_id = request.form.get("school", "").strip() or None
+        status_str = request.form.get("status", "Confirmed").strip()
+        teacher_ids_str = request.form.get("teacher_ids", "").strip()
+
+        try:
+            registered_student_count = int(
+                request.form.get("registered_student_count", "0") or "0"
+            )
+        except ValueError:
+            registered_student_count = 0
+
+        # Map status
+        try:
+            status = EventStatus(status_str)
+        except ValueError:
+            status = EventStatus.CONFIRMED
+
+        # Create the event
+        event = Event(
+            title=title,
+            start_date=start_date,
+            type=EventType.VIRTUAL_SESSION,
+            format=EventFormat.VIRTUAL,
+            status=status,
+            district_partner=district_partner,
+            career_cluster=career_cluster,
+            school=school_id,
+            registered_student_count=registered_student_count,
+            import_source="manual",
+        )
+        db.session.add(event)
+        db.session.flush()  # Get the event ID
+
+        # Link teachers if provided
+        linked_teachers = 0
+        if teacher_ids_str:
+            for tid_str in teacher_ids_str.split(","):
+                tid_str = tid_str.strip()
+                if not tid_str:
+                    continue
+                try:
+                    tid = int(tid_str)
+                    teacher = Teacher.query.get(tid)
+                    if teacher:
+                        et = EventTeacher(
+                            event_id=event.id,
+                            teacher_id=teacher.id,
+                            status="registered",
+                        )
+                        db.session.add(et)
+                        linked_teachers += 1
+                except (ValueError, TypeError):
+                    continue
+
+        db.session.commit()
+
+        msg = f'Session "{title}" created successfully.'
+        if linked_teachers:
+            msg += f" {linked_teachers} teacher(s) linked."
+        flash(msg, "success")
+        return redirect(url_for("virtual.virtual_sessions"))
+
+    @virtual_bp.route("/api/teachers/search")
+    @login_required
+    @admin_required
+    def api_search_teachers():
+        """
+        Search teachers by name for the session creation modal.
+
+        Returns JSON array of matching teachers: [{id, name, school_name}]
+        """
+        from models.teacher import Teacher
+
+        q = request.args.get("q", "").strip()
+        if not q or len(q) < 2:
+            return jsonify([])
+
+        teachers = (
+            Teacher.query.filter(
+                db.or_(
+                    Teacher.first_name.ilike(f"%{q}%"),
+                    Teacher.last_name.ilike(f"%{q}%"),
+                    (Teacher.first_name + " " + Teacher.last_name).ilike(f"%{q}%"),
+                )
+            )
+            .limit(20)
+            .all()
+        )
+
+        results = []
+        for t in teachers:
+            school_name = t.school.name if t.school else ""
+            results.append(
+                {
+                    "id": t.id,
+                    "name": f"{t.first_name or ''} {t.last_name or ''}".strip(),
+                    "school_name": school_name,
+                }
+            )
+
+        return jsonify(results)
+
+    # =============================================================================
+    # VIRTUAL SESSION EDIT VIEW
+    # =============================================================================
+
+    @virtual_bp.route("/sessions/<int:session_id>/edit", methods=["GET", "POST"])
+    @login_required
+    @admin_required
+    def edit_virtual_session(session_id):
+        """
+        Dedicated virtual session edit page with teacher management.
+
+        GET: Display the edit form with current session data and linked teachers.
+        POST: Save changes to session fields and teacher list.
+        """
+        from models.event import EventTeacher
+        from models.teacher import Teacher
+
+        event = db.session.get(Event, session_id)
+        if not event or event.type != EventType.VIRTUAL_SESSION:
+            flash("Virtual session not found.", "error")
+            return redirect(url_for("virtual.virtual_sessions"))
+
+        if request.method == "POST":
+            # Update fields
+            title = request.form.get("title", "").strip()
+            start_date_str = request.form.get("start_date", "").strip()
+
+            if not title or not start_date_str:
+                flash("Title and Date are required.", "error")
+                return redirect(
+                    url_for("virtual.edit_virtual_session", session_id=session_id)
+                )
+
+            try:
+                event.start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+            except ValueError:
+                flash("Invalid date format.", "error")
+                return redirect(
+                    url_for("virtual.edit_virtual_session", session_id=session_id)
+                )
+
+            event.title = title
+            event.district_partner = (
+                request.form.get("district_partner", "").strip() or None
+            )
+            event.career_cluster = (
+                request.form.get("career_cluster", "").strip() or None
+            )
+            event.school = request.form.get("school", "").strip() or None
+
+            try:
+                event.registered_student_count = int(
+                    request.form.get("registered_student_count", "0") or "0"
+                )
+            except ValueError:
+                event.registered_student_count = 0
+
+            status_str = request.form.get("status", "Confirmed").strip()
+            try:
+                event.status = EventStatus(status_str)
+            except ValueError:
+                event.status = EventStatus.CONFIRMED
+
+            db.session.commit()
+            flash(f'Session "{event.title}" updated successfully.', "success")
+            return redirect(
+                url_for("virtual.edit_virtual_session", session_id=session_id)
+            )
+
+        # GET: Gather data for the form
+        # Current teachers linked to this event
+        linked_teachers = []
+        for et in event.teacher_registrations:
+            t = et.teacher
+            linked_teachers.append(
+                {
+                    "id": t.id,
+                    "name": f"{t.first_name or ''} {t.last_name or ''}".strip(),
+                    "school_name": t.school.name if t.school else "",
+                    "status": et.status or "registered",
+                }
+            )
+
+        # Get districts and clusters for datalists
+        districts = (
+            db.session.query(Event.district_partner)
+            .filter(
+                Event.type == EventType.VIRTUAL_SESSION,
+                Event.district_partner.isnot(None),
+                Event.district_partner != "",
+            )
+            .distinct()
+            .order_by(Event.district_partner)
+            .all()
+        )
+        districts = [d[0] for d in districts]
+
+        career_clusters = (
+            db.session.query(Event.career_cluster)
+            .filter(
+                Event.type == EventType.VIRTUAL_SESSION,
+                Event.career_cluster.isnot(None),
+                Event.career_cluster != "",
+            )
+            .distinct()
+            .order_by(Event.career_cluster)
+            .all()
+        )
+        career_clusters = [c[0] for c in career_clusters]
+
+        return render_template(
+            "virtual/session_edit.html",
+            event=event,
+            linked_teachers=linked_teachers,
+            districts=districts,
+            career_clusters=career_clusters,
+        )
+
+    @virtual_bp.route("/sessions/<int:session_id>/teachers", methods=["POST"])
+    @login_required
+    @admin_required
+    def add_session_teacher(session_id):
+        """Add a teacher to a virtual session via AJAX."""
+        from models.event import EventTeacher
+        from models.teacher import Teacher
+
+        event = db.session.get(Event, session_id)
+        if not event:
+            return jsonify({"success": False, "error": "Session not found"}), 404
+
+        data = request.get_json()
+        teacher_id = data.get("teacher_id")
+        if not teacher_id:
+            return jsonify({"success": False, "error": "teacher_id required"}), 400
+
+        teacher = Teacher.query.get(teacher_id)
+        if not teacher:
+            return jsonify({"success": False, "error": "Teacher not found"}), 404
+
+        # Check if already linked
+        existing = EventTeacher.query.filter_by(
+            event_id=session_id, teacher_id=teacher_id
+        ).first()
+        if existing:
+            return jsonify({"success": False, "error": "Teacher already linked"}), 409
+
+        et = EventTeacher(
+            event_id=session_id, teacher_id=teacher_id, status="registered"
+        )
+        db.session.add(et)
+        db.session.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "teacher": {
+                    "id": teacher.id,
+                    "name": f"{teacher.first_name or ''} {teacher.last_name or ''}".strip(),
+                    "school_name": teacher.school.name if teacher.school else "",
+                },
+            }
+        )
+
+    @virtual_bp.route(
+        "/sessions/<int:session_id>/teachers/<int:teacher_id>/remove",
+        methods=["POST"],
+    )
+    @login_required
+    @admin_required
+    def remove_session_teacher(session_id, teacher_id):
+        """Remove a teacher from a virtual session via AJAX."""
+        from models.event import EventTeacher
+
+        et = EventTeacher.query.filter_by(
+            event_id=session_id, teacher_id=teacher_id
+        ).first()
+        if not et:
+            return jsonify({"success": False, "error": "Link not found"}), 404
+
+        db.session.delete(et)
+        db.session.commit()
+        return jsonify({"success": True})
+
+    # =============================================================================
     # SIMPLIFIED VIRTUAL SESSIONS VIEW
     # =============================================================================
     # This is a clean, simple replacement for the complex /usage route.

@@ -31,6 +31,7 @@ ADRs are immutable records of significant technical decisions that capture conte
 | D-001 | Salesforce API (Simple-Salesforce) | ✅ Accepted | 2024-03 |
 | D-002 | Google Sheets Integration | ✅ Accepted | 2024-03 |
 | D-003 | Daily Sync with Conflict Resolution | ✅ Accepted | 2024-04 |
+| D-004 | Auto-Link TeacherProgress to Teacher on Import | ✅ Accepted | 2026-02 |
 
 ### GUI Enhancement Decisions
 
@@ -86,6 +87,32 @@ ADRs are immutable records of significant technical decisions that capture conte
 - Simpler, maintainable codebase
 - Focus on actual data relationships
 - Reduced database complexity
+
+---
+
+### 2026-02-27: D-004 — Auto-Link TeacherProgress to Teacher on Import
+
+**Context:** The teacher roster import (`utils/roster_import.py`) created `TeacherProgress` records from district spreadsheets but never linked them to `Teacher` records (created separately by Pathful/Salesforce imports). This caused:
+- `TeacherProgress.teacher_id` was always `None` (0/464 linked)
+- `Teacher.school_id` was `None` for 60% of records (5,846/9,692)
+- Manually-added session teachers didn't appear in the teacher usage dashboard
+- The two data systems (spreadsheet imports vs session imports) were completely disconnected
+
+**Decision:** Add an automatic post-import linking step to `import_roster()` that:
+1. Matches `TeacherProgress` → `Teacher` by first/last name (case-insensitive)
+2. Sets `Teacher.school_id` by fuzzy-matching the `building` name to the School table
+3. Also updates `teacher_detail` and `compute_teacher_progress` to use both `EventTeacher` records AND `event.educators` text field for session matching
+
+**Consequences:**
+- ✅ 280/464 TeacherProgress records now linked to Teacher entities
+- ✅ 56 Teacher `school_id` values automatically set
+- ✅ Dashboard now shows sessions from both import paths (Pathful text matching + EventTeacher DB links)
+- ⚠️ 184 TeacherProgress records remain unlinked (no matching Teacher entity exists — these teachers haven't appeared in any Pathful session)
+- ⚠️ 3 buildings (Douglass, Grant, JFK) have no School record and are skipped
+
+**Files Changed:**
+- `utils/roster_import.py` — `_find_school_by_building_name()`, `_link_progress_to_teachers()`
+- `routes/district/tenant_teacher_usage.py` — `teacher_detail()`, `compute_teacher_progress()`
 
 ---
 

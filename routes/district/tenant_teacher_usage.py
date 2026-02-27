@@ -133,10 +133,40 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
 
     events = events_query.all()
 
-    # Match sessions to teachers using shared service
+    # Match sessions to teachers using shared service (via educators text field)
     teacher_progress_map = count_sessions_for_teachers(
         events, teacher_alias_map, teacher_progress_map
     )
+
+    # Also count sessions linked via EventTeacher (from session edit / manual add)
+    from models.event import EventTeacher
+
+    # Build a reverse map: teacher_id -> [teacher_progress_ids]
+    teacher_id_to_tp = {}
+    for t in teachers:
+        if t.teacher_id:
+            teacher_id_to_tp.setdefault(t.teacher_id, []).append(t.id)
+
+    if teacher_id_to_tp:
+        # Query all EventTeacher links for these teacher IDs on completed virtual sessions
+        et_links = EventTeacher.query.join(Event).filter(
+            EventTeacher.teacher_id.in_(teacher_id_to_tp.keys()),
+            Event.type == EventType.VIRTUAL_SESSION,
+            Event.status == EventStatus.COMPLETED,
+        )
+        if date_from:
+            et_links = et_links.filter(Event.start_date >= date_from)
+        if date_to:
+            et_links = et_links.filter(Event.start_date <= date_to)
+
+        # Track which events were already counted via educators text field
+        educators_event_ids = {e.id for e in events if e.educators}
+
+        for et in et_links.all():
+            if et.event_id not in educators_event_ids:
+                for tp_id in teacher_id_to_tp.get(et.teacher_id, []):
+                    if tp_id in teacher_progress_map:
+                        teacher_progress_map[tp_id] += 1
 
     # ── Apply attendance overrides (FR-VIRTUAL-234, FR-VIRTUAL-238) ────
     active_overrides = AttendanceOverride.query.filter(
@@ -478,8 +508,62 @@ def teacher_detail(teacher_progress_id):
     now = datetime.now(timezone.utc)
     past_sessions = []
     upcoming_sessions = []
+    matched_event_ids = set()  # Track to avoid duplicates
 
+    # --- Path 1: Match via EventTeacher (direct DB link) ---
+    # This picks up sessions added via the session edit page or manual creation
+    from models.event import EventTeacher
+
+    if tp.teacher_id:
+        et_links = EventTeacher.query.filter_by(teacher_id=tp.teacher_id).all()
+        for et in et_links:
+            event = et.event
+            if not event or event.type != EventType.VIRTUAL_SESSION:
+                continue
+            matched_event_ids.add(event.id)
+
+            presenter_name = ""
+            presenter_org = ""
+            if event.volunteers:
+                vol = event.volunteers[0]
+                presenter_name = f"{vol.first_name} {vol.last_name}".strip()
+                presenter_org = vol.organization_name or ""
+
+            start_date = event.start_date
+            if start_date and start_date.tzinfo is None:
+                start_date = start_date.replace(tzinfo=timezone.utc)
+
+            session_data = {
+                "id": event.id,
+                "title": event.title or "Untitled Session",
+                "date": start_date.date() if start_date else None,
+                "time": start_date.time() if start_date else None,
+                "datetime": start_date,
+                "status": event.status.value if event.status else "unknown",
+                "topic_theme": event.series or "",
+                "session_link": event.registration_link or "",
+                "presenter_name": presenter_name,
+                "presenter_org": presenter_org,
+                "is_simulcast": getattr(et, "is_simulcast", False),
+                "attendance_status": et.status or "",
+            }
+
+            if start_date and start_date < now:
+                past_sessions.append(session_data)
+            elif start_date and start_date >= now:
+                if event.status in [
+                    EventStatus.CONFIRMED,
+                    EventStatus.PUBLISHED,
+                    EventStatus.REQUESTED,
+                    EventStatus.COMPLETED,
+                ]:
+                    upcoming_sessions.append(session_data)
+
+    # --- Path 2: Match via educators text field (Pathful import data) ---
     for event in events:
+        if event.id in matched_event_ids:
+            continue  # Already found via EventTeacher
+
         if not event.educators:
             continue
 
@@ -491,6 +575,8 @@ def teacher_detail(teacher_progress_id):
         )
         if not matched:
             continue
+
+        matched_event_ids.add(event.id)
 
         # Get presenter info from volunteers
         presenter_name = ""
