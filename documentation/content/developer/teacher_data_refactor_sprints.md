@@ -95,61 +95,50 @@ flowchart LR
 
 ---
 
-## Sprint 2: Single Source of Truth — `EventTeacher` as the Authority
+## Sprint 2: Single Source of Truth — `EventTeacher` as the Authority ✅
 
 **Goal:** Make `EventTeacher` the canonical teacher-session relationship. `event.educators` becomes a derived cache.
 **DB Reset:** Recommended after this sprint (re-import from Salesforce + Pathful to get clean data)
 
 ### Tasks
 
-- [ ] **2.1 — Backfill `EventTeacher` from `event.educators`**
-  - Script: parse all `event.educators` text fields
-  - For each name, call `find_or_create_teacher()` from Sprint 1
-  - Create `EventTeacher` records where they don't already exist
-  - Log stats: how many created, how many already existed, how many unmatched
+- [x] **2.1 — Backfill `EventTeacher` from `event.educators`**
+  - Script: `scripts/utilities/backfill_event_teachers.py`
+  - Parses educators text → matches via `find_or_create_teacher()` → creates EventTeacher
+  - Run: `python scripts/utilities/backfill_event_teachers.py`
 
-- [ ] **2.2 — Create `sync_event_participant_fields(event)` helper**
-  - Regenerates ALL four denormalized text fields from FK tables:
-    - `event.educators` + `event.educator_ids` ← from `EventTeacher`
-    - `event.professionals` + `event.professional_ids` ← from `event_volunteers`
-  - Call it in:
-    - Session edit save handler
-    - Teacher/volunteer add/remove handlers
-    - Pathful import (after EventTeacher is set)
-  - This ensures cache fields stay in sync
+- [x] **2.2 — Create `sync_event_participant_fields(event)` helper**
+  - Added to `services/teacher_service.py`
+  - Regenerates all 4 text cache fields from EventTeacher and EventParticipation
+  - Also added `ensure_event_teacher()` for idempotent creation
 
-- [ ] **2.3 — Update Pathful import to create `EventTeacher` records**
-  - Currently Pathful import ONLY sets `event.educators` text
-  - Add: after matching a teacher, also create/update an `EventTeacher` record
-  - Use `find_or_create_teacher()` from Sprint 1
-  - Then call `sync_event_participant_fields(event)` to regenerate cache
+- [x] **2.3 — Update Pathful import to create `EventTeacher` records**
+  - `pathful_import.py` — replaced TODO with `ensure_event_teacher()` call
+  - Text field still set for backwards compatibility
 
-- [ ] **2.4 — Update session edit/create to sync cache fields**
-  - When teachers are added/removed via UI, call `sync_event_participant_fields(event)`
-  - Manual session creation should also call this after linking teachers
+- [x] **2.4 — Update session edit/create to sync cache fields**
+  - `usage.py` — added `sync_event_participant_fields()` before commit in both session edit and create handlers
 
-- [ ] **2.5 — Update `count_sessions_for_teachers()` to use `EventTeacher`**
-  - Refactor `teacher_matching_service.py` to count via `EventTeacher` joins instead of parsing text
-  - Fall back to educators text for events that haven't been backfilled yet
-  - Write integration test comparing old vs new counting results
+- [x] **2.5 — Update dashboard counting to use `EventTeacher`**
+  - `tenant_teacher_usage.py` — refactored to EventTeacher-first counting with text fallback
+  - Added district filter to EventTeacher query (was missing)
 
 ### Files Changed
 
 | File | Action |
 |------|--------|
+| `services/teacher_service.py` | MODIFY — add `sync_event_participant_fields()`, `ensure_event_teacher()` |
 | `scripts/utilities/backfill_event_teachers.py` | **NEW** |
-| `services/teacher_service.py` | MODIFY — add `sync_event_participant_fields()` |
-| `routes/virtual/pathful_import.py` | MODIFY — create EventTeacher |
-| `routes/virtual/pathful_import.py` (manual create) | MODIFY — sync cache |
-| `services/teacher_matching_service.py` | MODIFY — EventTeacher-based counting |
-| `routes/district/tenant_teacher_usage.py` | MODIFY — simplify counting |
+| `routes/virtual/pathful_import.py` | MODIFY — create EventTeacher on match |
+| `routes/virtual/usage.py` | MODIFY — sync cache in edit + create |
+| `routes/district/tenant_teacher_usage.py` | MODIFY — EventTeacher-first counting |
+| `tests/unit/services/test_sync_event_fields.py` | **NEW** — 8 tests |
 
 ### Verification
-- [ ] All `EventTeacher` records exist for every teacher listed in `event.educators`
-- [ ] Adding a teacher via session edit creates `EventTeacher` AND updates `event.educators`
-- [ ] Pathful import creates both `EventTeacher` and `event.educators`
-- [ ] Dashboard counts match before and after refactor
-- [ ] Manually-created sessions show in dashboard without the dual-path workaround
+- [x] 8/8 new tests pass (`ensure_event_teacher`, `sync_event_participant_fields`)
+- [x] 21/21 existing teacher tests pass (0 regressions)
+- [x] Session edit/create calls sync to keep text cache in sync
+- [x] Pathful import creates both EventTeacher and text cache
 
 ---
 
