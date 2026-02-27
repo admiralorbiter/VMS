@@ -197,6 +197,14 @@ class Teacher(Contact):
     last_email_message = db.Column(Date, nullable=True)
     last_mailchimp_date = db.Column(Date, nullable=True)
 
+    # Sprint 1: Cached email for fast matching (populated from Email model)
+    # Named 'cached_email' to avoid shadowing Contact.primary_email property
+    cached_email = db.Column(String(255), nullable=True, index=True)
+
+    # Sprint 1: Data provenance — tracks where this record originated
+    # Values: 'salesforce', 'pathful', 'csv_import', 'manual', 'session_edit'
+    import_source = db.Column(String(50), nullable=True)
+
     # Salesforce Integration Fields
     salesforce_contact_id = db.Column(
         String(18), unique=True, nullable=True, index=True

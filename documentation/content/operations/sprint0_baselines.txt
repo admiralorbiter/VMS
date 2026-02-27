@@ -1,0 +1,43 @@
+﻿[2026-02-27 15:04:33,773] INFO in logging_config: Logging configured: level=DEBUG, env=development
+[2026-02-27 15:04:33,774] INFO in rate_limiter: Rate limiter initialized with storage: memory://
+============================================================
+TEACHER DATA BASELINES ù 2026-02-27T15:04:33.866266
+============================================================
+
+--- Teacher Records ---
+  Total:             9692
+  Active:            9692
+  With school_id:    3902
+  Without school_id: 5790
+
+--- TeacherProgress Records ---
+  Total:      464
+  Active:     464
+  Linked:     280 (60.3%)
+  Unlinked:   184
+  Duplicate groups: 0
+
+--- EventTeacher Records ---
+  Total:      8
+
+--- Event Records ---
+  Total events:            9122
+  With educators text:     4087
+  With professionals text: 2320
+
+--- Consistency ---
+  Events with EventTeacher FK links:   1
+  Events with educators text field:     4087
+
+--- Schools ---
+  Total: 177
+
+--- TeacherProgress by Tenant ---
+  Tenant 1: 464 records
+
+--- TeacherProgress by Academic Year ---
+  2025-2026: 464 records
+
+============================================================
+Save this output for post-refactor comparison.
+============================================================
