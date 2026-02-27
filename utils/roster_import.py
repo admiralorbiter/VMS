@@ -61,13 +61,20 @@ def _find_school_by_building_name(building_name):
 
 def _link_progress_to_teachers(tenant_id, academic_year):
     """
-    Link TeacherProgress records to existing Teacher records by name match.
+    Link TeacherProgress records to existing Teacher records.
 
-    For each TeacherProgress that has no teacher_id, try to find a matching
-    Teacher record by first_name + last_name (case-insensitive). If found:
+    Match priority (Sprint 1 — consolidated matching):
+      1. Email match: TeacherProgress.email → Teacher.cached_email (exact, case-insensitive)
+      2. Email match: TeacherProgress.email → Email model (fallback)
+      3. Name match: normalized first+last name comparison
+
+    For each match found:
       - Set TeacherProgress.teacher_id
       - Set Teacher.school_id from building name (if currently None)
+      - Cache the email on Teacher.cached_email (if not already set)
     """
+    from services.teacher_matching_service import normalize_name
+
     if tenant_id:
         progress_records = TeacherProgress.query.filter_by(
             academic_year=academic_year, tenant_id=tenant_id
@@ -85,19 +92,45 @@ def _link_progress_to_teachers(tenant_id, academic_year):
         if tp.teacher_id:
             continue
 
-        # Split TeacherProgress name into first/last
-        name_parts = tp.name.strip().split(" ", 1) if tp.name else []
-        if len(name_parts) < 2:
-            continue
+        teacher = None
 
-        first_name = name_parts[0]
-        last_name = name_parts[1]
+        # Priority 1: Match by email (highest confidence)
+        if tp.email:
+            email_lower = tp.email.strip().lower()
 
-        # Find matching Teacher by name (case-insensitive)
-        teacher = Teacher.query.filter(
-            func.lower(Teacher.first_name) == func.lower(first_name),
-            func.lower(Teacher.last_name) == func.lower(last_name),
-        ).first()
+            # 1a: Check Teacher.cached_email (fast, indexed)
+            teacher = Teacher.query.filter(
+                func.lower(Teacher.cached_email) == email_lower
+            ).first()
+
+            # 1b: Check Email model (slower fallback)
+            if not teacher:
+                from models.contact import Email
+
+                email_record = (
+                    Email.query.filter(func.lower(Email.email) == email_lower)
+                    .join(Teacher, Email.contact_id == Teacher.id)
+                    .first()
+                )
+                if email_record:
+                    teacher = Teacher.query.get(email_record.contact_id)
+
+        # Priority 2: Match by normalized name (lower confidence)
+        if not teacher and tp.name:
+            name_parts = tp.name.strip().split(" ", 1)
+            if len(name_parts) >= 2:
+                normalized_first = normalize_name(name_parts[0])
+                normalized_last = normalize_name(name_parts[1])
+
+                # Query candidates and compare normalized names
+                candidates = Teacher.query.filter(Teacher.active == True).all()
+                for candidate in candidates:
+                    if (
+                        normalize_name(candidate.first_name or "") == normalized_first
+                        and normalize_name(candidate.last_name or "") == normalized_last
+                    ):
+                        teacher = candidate
+                        break
 
         if not teacher:
             continue
@@ -105,6 +138,10 @@ def _link_progress_to_teachers(tenant_id, academic_year):
         # Link TeacherProgress → Teacher
         tp.teacher_id = teacher.id
         linked_count += 1
+
+        # Cache email on teacher for faster future matching
+        if tp.email and not teacher.cached_email:
+            teacher.cached_email = tp.email.strip().lower()
 
         # Set school_id on Teacher if not already set
         if not teacher.school_id and tp.building:

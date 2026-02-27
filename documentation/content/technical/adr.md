@@ -116,6 +116,35 @@ ADRs are immutable records of significant technical decisions that capture conte
 
 ---
 
+### 2026-02-27: D-005 — Sprint 1: Centralized Teacher Service + Model Hardening
+
+**Context:** Teacher records were created inline across 5+ route files (`routes/virtual/routes.py`, `usage.py`, `pathful_import.py`, etc.) using inconsistent matching logic. This caused duplicates and made the system fragile. Name matching in `roster_import.py` used raw `func.lower()` instead of the shared `normalize_name()` function.
+
+**Decision:**
+1. Create `services/teacher_service.py` with a single `find_or_create_teacher()` entry point using prioritized matching: `salesforce_individual_id` → email → normalized name
+2. Add `cached_email` column to Teacher (named `cached_email` instead of `primary_email` to avoid shadowing the existing `Contact.primary_email` property)
+3. Add `import_source` column to Teacher for data provenance tracking
+4. Add `UniqueConstraint('tenant_id', 'email', 'academic_year')` to TeacherProgress
+5. Refactor `_link_progress_to_teachers()` to use email-first matching + shared `normalize_name()`
+
+**Consequences:**
+- ✅ Single entry point for all teacher creation — future sprints wire routes through the service
+- ✅ Email matching is now the primary strategy (higher confidence than name matching)
+- ✅ TeacherProgress duplicates prevented at the DB level
+- ✅ `MatchInfo` dataclass provides transparency for debugging matches
+- ⚠️ Existing routes still create teachers inline (Sprint 3 will redirect them)
+- ⚠️ `cached_email` needs backfill from Email model records via `backfill_primary_emails()`
+
+**Files Changed:**
+- `services/teacher_service.py` — **NEW**: `find_or_create_teacher()`, `backfill_primary_emails()`, `MatchInfo`
+- `models/teacher.py` — `cached_email`, `import_source` columns
+- `models/teacher_progress.py` — `UniqueConstraint`
+- `utils/roster_import.py` — email-first + normalized matching
+- `tests/unit/services/test_teacher_service.py` — **NEW**: 13 tests
+- `scripts/migrations/sprint1_teacher_foundation.py` — **NEW**: migration script
+
+---
+
 ## Creating New ADRs
 
 ### When to Create
