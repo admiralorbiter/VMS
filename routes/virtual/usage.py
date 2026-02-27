@@ -2851,21 +2851,23 @@ def load_usage_routes():
             return jsonify({"error": "First and Last Name are required"}), 400
 
         try:
-            # Check for existing teacher
-            teacher = Teacher.query.filter(
-                func.lower(Teacher.first_name) == func.lower(f_name),
-                func.lower(Teacher.last_name) == func.lower(l_name),
-            ).first()
+            from services.teacher_service import find_or_create_teacher
 
-            if not teacher:
-                teacher = Teacher(first_name=f_name, last_name=l_name, middle_name="")
-                if school_name:
-                    district_obj = get_or_create_district(None)
-                    school_obj = get_or_create_school(school_name, district_obj)
-                    if school_obj:
-                        teacher.school_id = school_obj.id
-                db.session.add(teacher)
-                db.session.commit()
+            # Resolve school_id if provided
+            school_id = None
+            if school_name:
+                district_obj = get_or_create_district(None)
+                school_obj = get_or_create_school(school_name, district_obj)
+                if school_obj:
+                    school_id = school_obj.id
+
+            teacher, is_new, match_info = find_or_create_teacher(
+                first_name=f_name,
+                last_name=l_name,
+                school_id=school_id,
+                import_source="manual",
+            )
+            db.session.commit()
 
             # Re-query ensure relationships loaded (if needed)
             school_res = teacher.school.name if teacher.school else ""
@@ -3157,30 +3159,29 @@ def load_usage_routes():
             if not teacher and t_name:
                 t_first, t_last = _split_name(t_name)
                 if t_first and t_last:
+                    from services.teacher_service import find_or_create_teacher
+
                     school_name = (
                         _norm(teacher_schools[idx])
                         if idx < len(teacher_schools)
                         else ""
                     )
-                    teacher_q = Teacher.query.filter(
-                        func.lower(Teacher.first_name) == func.lower(t_first),
-                        func.lower(Teacher.last_name) == func.lower(t_last),
-                    )
-                    teacher = teacher_q.first()
+                    school_id = None
+                    if school_name:
+                        district_obj = get_or_create_district(None)
+                        school_obj = get_or_create_school(school_name, district_obj)
+                        if school_obj:
+                            school_id = school_obj.id
+                            if school_obj.district:
+                                districts_set.add(school_obj.district.name)
 
-                    if not teacher:
-                        teacher = Teacher(
-                            first_name=t_first, last_name=t_last, middle_name=""
-                        )
-                        if school_name:
-                            district_obj = get_or_create_district(None)
-                            school_obj = get_or_create_school(school_name, district_obj)
-                            if school_obj:
-                                teacher.school_id = school_obj.id
-                                if school_obj.district:
-                                    districts_set.add(school_obj.district.name)
-                        db.session.add(teacher)
-                        db.session.flush()
+                    teacher, is_new, match_info = find_or_create_teacher(
+                        first_name=t_first,
+                        last_name=t_last,
+                        school_id=school_id,
+                        import_source="manual",
+                    )
+                    db.session.flush()
 
             if not teacher:
                 continue
@@ -3198,6 +3199,8 @@ def load_usage_routes():
             db.session.add(reg)
 
         # ---- Quick Create Teachers (Edit) ----
+        from services.teacher_service import find_or_create_teacher as _foct_edit
+
         new_t_first = request.form.getlist("new_teacher_first_name[]")
         new_t_last = request.form.getlist("new_teacher_last_name[]")
         new_t_school = request.form.getlist("new_teacher_school[]")
@@ -3209,24 +3212,22 @@ def load_usage_routes():
                 continue
 
             school_name = _norm(new_t_school[idx]) if idx < len(new_t_school) else ""
+            school_id = None
+            if school_name:
+                district_obj = get_or_create_district(None)
+                school_obj = get_or_create_school(school_name, district_obj)
+                if school_obj:
+                    school_id = school_obj.id
+                    if school_obj.district:
+                        districts_set.add(school_obj.district.name)
 
-            # Check if teacher already exists to avoid dupes
-            teacher = Teacher.query.filter(
-                func.lower(Teacher.first_name) == func.lower(f_name),
-                func.lower(Teacher.last_name) == func.lower(l_name),
-            ).first()
-
-            if not teacher:
-                teacher = Teacher(first_name=f_name, last_name=l_name, middle_name="")
-                if school_name:
-                    district_obj = get_or_create_district(None)
-                    school_obj = get_or_create_school(school_name, district_obj)
-                    if school_obj:
-                        teacher.school_id = school_obj.id
-                        if school_obj.district:
-                            districts_set.add(school_obj.district.name)
-                db.session.add(teacher)
-                db.session.flush()
+            teacher, is_new, match_info = _foct_edit(
+                first_name=f_name,
+                last_name=l_name,
+                school_id=school_id,
+                import_source="manual",
+            )
+            db.session.flush()
 
             if teacher.school and teacher.school.district:
                 districts_set.add(teacher.school.district.name)
@@ -3542,37 +3543,29 @@ def load_usage_routes():
                 if not teacher and t_name:
                     t_first, t_last = _split_name(t_name)
                     if t_first and t_last:
+                        from services.teacher_service import find_or_create_teacher
+
                         school_name = (
                             _norm(teacher_schools[idx])
                             if idx < len(teacher_schools)
                             else ""
                         )
+                        school_id = None
+                        if school_name:
+                            district_obj = get_or_create_district(None)
+                            school_obj = get_or_create_school(school_name, district_obj)
+                            if school_obj:
+                                school_id = school_obj.id
+                                if school_obj.district:
+                                    districts_set.add(school_obj.district.name)
 
-                        # Find existing teacher by name (case-insensitive)
-                        teacher_q = Teacher.query.filter(
-                            func.lower(Teacher.first_name) == func.lower(t_first),
-                            func.lower(Teacher.last_name) == func.lower(t_last),
+                        teacher, is_new, match_info = find_or_create_teacher(
+                            first_name=t_first,
+                            last_name=t_last,
+                            school_id=school_id,
+                            import_source="manual",
                         )
-                        teacher = teacher_q.first()
-
-                        # Create new teacher if not found
-                        if not teacher:
-                            teacher = Teacher(
-                                first_name=t_first, last_name=t_last, middle_name=""
-                            )
-                            if school_name:
-                                district_obj = get_or_create_district(
-                                    None
-                                )  # Will be set from school
-                                school_obj = get_or_create_school(
-                                    school_name, district_obj
-                                )
-                                if school_obj:
-                                    teacher.school_id = school_obj.id
-                                    if school_obj.district:
-                                        districts_set.add(school_obj.district.name)
-                            db.session.add(teacher)
-                            db.session.flush()
+                        db.session.flush()
 
                 if not teacher:
                     continue
@@ -3596,6 +3589,8 @@ def load_usage_routes():
                     db.session.add(reg)
 
             # ---- Quick Create Teachers (Create) ----
+            from services.teacher_service import find_or_create_teacher as _foct_create
+
             new_t_first = request.form.getlist("new_teacher_first_name[]")
             new_t_last = request.form.getlist("new_teacher_last_name[]")
             new_t_school = request.form.getlist("new_teacher_school[]")
@@ -3609,28 +3604,22 @@ def load_usage_routes():
                 school_name = (
                     _norm(new_t_school[idx]) if idx < len(new_t_school) else ""
                 )
+                school_id = None
+                if school_name:
+                    district_obj = get_or_create_district(None)
+                    school_obj = get_or_create_school(school_name, district_obj)
+                    if school_obj:
+                        school_id = school_obj.id
+                        if school_obj.district:
+                            districts_set.add(school_obj.district.name)
 
-                # Check if teacher already exists to avoid dupes
-                teacher = Teacher.query.filter(
-                    func.lower(Teacher.first_name) == func.lower(f_name),
-                    func.lower(Teacher.last_name) == func.lower(l_name),
-                ).first()
-
-                if not teacher:
-                    teacher = Teacher(
-                        first_name=f_name, last_name=l_name, middle_name=""
-                    )
-                    if school_name:
-                        district_obj = get_or_create_district(
-                            None
-                        )  # Will be set from school
-                        school_obj = get_or_create_school(school_name, district_obj)
-                        if school_obj:
-                            teacher.school_id = school_obj.id
-                            if school_obj.district:
-                                districts_set.add(school_obj.district.name)
-                    db.session.add(teacher)
-                    db.session.flush()
+                teacher, is_new, match_info = _foct_create(
+                    first_name=f_name,
+                    last_name=l_name,
+                    school_id=school_id,
+                    import_source="manual",
+                )
+                db.session.flush()
 
                 if teacher.school and teacher.school.district:
                     districts_set.add(teacher.school.district.name)

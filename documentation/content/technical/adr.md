@@ -174,6 +174,20 @@ ADRs are immutable records of significant technical decisions that capture conte
 
 ---
 
+### 2026-02-27: D-007 — Sprint 3: All Teacher Creation Through Service Layer
+
+**Context:** 7 inline `Teacher()` constructor calls in route files bypassed the centralized matching logic (Salesforce ID, email, normalized name). This meant duplicate-prone name-only matching and no `import_source` provenance tracking.
+
+**Decision:** Replace all 7 inline sites with `find_or_create_teacher()` from `teacher_service.py`. Delete obsolete `fix_duplicate_teachers.py`.
+
+**Consequences:**
+- ✅ All Teacher creation uses the full matching chain (SF ID → email → normalized name)
+- ✅ `import_source` tracked on every creation (`"spreadsheet"`, `"manual"`)
+- ✅ Zero inline `Teacher()` calls remain in routes
+- ✅ `fix_duplicate_teachers.py` deleted — Sprint 1 constraints prevent duplicates
+
+---
+
 ## Creating New ADRs
 
 ### When to Create

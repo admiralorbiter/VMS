@@ -252,33 +252,31 @@ def process_teacher_data(row, is_simulcast=False):
 
     teacher_names = split_teacher_names(row.get("Teacher Name"))
 
+    from services.teacher_service import find_or_create_teacher
+
     for teacher_name in teacher_names:
         name_parts = teacher_name.split(" ", 1)
         if len(name_parts) >= 2:
             first_name, last_name = name_parts[0], name_parts[1]
 
-            # Find or create teacher
-            teacher = Teacher.query.filter(
-                func.lower(Teacher.first_name) == func.lower(first_name),
-                func.lower(Teacher.last_name) == func.lower(last_name),
-            ).first()
-
-            if not teacher:
-                teacher = Teacher(
-                    first_name=first_name, last_name=last_name, middle_name=""
+            # Resolve school_id if available
+            school_id = None
+            school_name = row.get("School Name")
+            district_name = row.get("District")
+            if school_name:
+                school = get_or_create_school(
+                    school_name, get_or_create_district(district_name)
                 )
+                if school:
+                    school_id = school.id
 
-                # Handle school association
-                school_name = row.get("School Name")
-                district_name = row.get("District")
-                if school_name:
-                    school = get_or_create_school(
-                        school_name, get_or_create_district(district_name)
-                    )
-                    teacher.school_id = school.id
-
-                db.session.add(teacher)
-                db.session.commit()
+            teacher, is_new, match_info = find_or_create_teacher(
+                first_name=first_name,
+                last_name=last_name,
+                school_id=school_id,
+                import_source="spreadsheet",
+            )
+            db.session.commit()
 
 
 def process_presenter(row, event, is_simulcast):
@@ -523,46 +521,32 @@ def process_teacher_for_event(row, event, is_simulcast):
 
     teacher_names = split_teacher_names(row.get("Teacher Name"))
 
+    from services.teacher_service import find_or_create_teacher
+
     for teacher_name in teacher_names:
         name_parts = teacher_name.split(" ", 1)
         if len(name_parts) >= 2:
             first_name, last_name = name_parts[0], name_parts[1]
 
-            # Find or create teacher
-            teacher = Teacher.query.filter(
-                func.lower(Teacher.first_name) == func.lower(first_name),
-                func.lower(Teacher.last_name) == func.lower(last_name),
-            ).first()
-
-            if not teacher:
-                teacher = Teacher(
-                    first_name=first_name, last_name=last_name, middle_name=""
+            # Resolve school_id if available
+            school_id = None
+            school_name = row.get("School Name")
+            district_name = row.get("District")
+            if school_name and not pd.isna(school_name):
+                district = (
+                    get_or_create_district(district_name) if district_name else None
                 )
+                school = get_or_create_school(school_name, district)
+                if school:
+                    school_id = school.id
 
-                # Handle school association
-                school_name = row.get("School Name")
-                district_name = row.get("District")
-                if school_name and not pd.isna(school_name):
-                    district = (
-                        get_or_create_district(district_name) if district_name else None
-                    )
-                    school = get_or_create_school(school_name, district)
-                    if school:  # Only set school_id if school exists
-                        teacher.school_id = school.id
-
-                db.session.add(teacher)
-                db.session.flush()
-            else:
-                # Update existing teacher's school association if it has changed
-                school_name = row.get("School Name")
-                district_name = row.get("District")
-                if school_name and not pd.isna(school_name):
-                    district = (
-                        get_or_create_district(district_name) if district_name else None
-                    )
-                    school = get_or_create_school(school_name, district)
-                    if school and school.id != teacher.school_id:
-                        teacher.school_id = school.id
+            teacher, is_new, match_info = find_or_create_teacher(
+                first_name=first_name,
+                last_name=last_name,
+                school_id=school_id,
+                import_source="spreadsheet",
+            )
+            db.session.flush()
 
             # Create or update teacher participation record
             event_teacher = EventTeacher.query.filter_by(
