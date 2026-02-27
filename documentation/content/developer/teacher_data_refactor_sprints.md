@@ -1,8 +1,13 @@
 # Teacher Data System Refactor — Sprint Plan
 
 **Created:** 2026-02-27
-**Status:** Draft — Awaiting Approval
+**Status:** Approved
 **Goal:** Systematically fix all 8 architectural issues in the teacher data pipeline, making the system robust, reliable, and future-proof.
+
+**Related Docs:**
+- [Architecture Analysis](../technical/teacher_data_architecture_analysis.md) — 8 issues identified
+- [Pre-Refactor System Analysis](../technical/pre_refactor_system_analysis.md) — Broader system perspective
+- [Retrospective](../operations/retro_teacher_data_linking.md) — Original bug investigation
 
 > [!NOTE]
 > **Database resets are acceptable** during this refactor since teacher data can be re-imported from source systems (Salesforce, spreadsheets, Pathful). We will note where a DB reset is the cleanest path.
@@ -13,13 +18,37 @@
 
 ```mermaid
 flowchart LR
+    S0["Sprint 0<br/>Prep"]
     S1["Sprint 1<br/>Foundation"]
     S2["Sprint 2<br/>Single Source<br/>of Truth"]
     S3["Sprint 3<br/>Pipeline<br/>Cleanup"]
     S4["Sprint 4<br/>Dashboard<br/>Hardening"]
 
-    S1 --> S2 --> S3 --> S4
+    S0 --> S1 --> S2 --> S3 --> S4
 ```
+
+---
+
+## Sprint 0: Pre-Refactor Preparation
+
+**Goal:** Establish baselines and clean existing data before any code changes.
+**DB Reset:** Not required
+
+### Tasks
+
+- [ ] **0.1 — Run existing tests → establish green baseline**
+  - Run full test suite: `pytest tests/`
+  - Fix any failures before starting refactor
+  - Relevant test files: `test_teacher.py`, `test_teacher_progress_tracking.py`, `test_teacher_matching.py`, `test_roster_import.py`
+
+- [ ] **0.2 — Run `fix_duplicate_teachers.py`** to clean existing TeacherProgress duplicates
+
+- [ ] **0.3 — Back up the database** — Snapshot before any schema changes
+
+- [ ] **0.4 — Document current dashboard numbers** for post-refactor verification
+  - Teacher count per district
+  - Session counts for key teachers (e.g., Michelle Michalski)
+  - TeacherProgress linked vs unlinked counts
 
 ---
 
@@ -34,7 +63,9 @@ flowchart LR
   - Match priority chain: `salesforce_individual_id` → `pathful_user_id` → email → normalized name
   - Returns `(teacher, is_new, confidence_score)`
   - Logs match method used (for debugging)
+  - Accept optional `tenant_id` param for future multi-tenant filtering
   - Unit testable (no route dependencies)
+  - Write tests: SF match, email match, name match, new creation, duplicate prevention
 
 - [ ] **1.2 — Add `primary_email` field to `Teacher` model**
   - New column: `primary_email = Column(String(255), nullable=True, index=True)`
@@ -87,36 +118,39 @@ flowchart LR
   - Create `EventTeacher` records where they don't already exist
   - Log stats: how many created, how many already existed, how many unmatched
 
-- [ ] **2.2 — Sync `event.educators` from `EventTeacher` on save**
-  - Create a helper: `sync_educators_field(event)` that regenerates `event.educators` from the event's `EventTeacher` records
+- [ ] **2.2 — Create `sync_event_participant_fields(event)` helper**
+  - Regenerates ALL four denormalized text fields from FK tables:
+    - `event.educators` + `event.educator_ids` ← from `EventTeacher`
+    - `event.professionals` + `event.professional_ids` ← from `event_volunteers`
   - Call it in:
-    - Session edit save handler (`pathful_import.py` → manual session routes)
-    - Teacher add/remove handlers
+    - Session edit save handler
+    - Teacher/volunteer add/remove handlers
     - Pathful import (after EventTeacher is set)
-  - This ensures `event.educators` stays in sync as a cache
+  - This ensures cache fields stay in sync
 
 - [ ] **2.3 — Update Pathful import to create `EventTeacher` records**
   - Currently Pathful import ONLY sets `event.educators` text
   - Add: after matching a teacher, also create/update an `EventTeacher` record
   - Use `find_or_create_teacher()` from Sprint 1
+  - Then call `sync_event_participant_fields(event)` to regenerate cache
 
-- [ ] **2.4 — Update session edit/create to sync `event.educators`**
-  - When teachers are added/removed in the session edit UI, call `sync_educators_field(event)`
+- [ ] **2.4 — Update session edit/create to sync cache fields**
+  - When teachers are added/removed via UI, call `sync_event_participant_fields(event)`
   - Manual session creation should also call this after linking teachers
 
 - [ ] **2.5 — Update `count_sessions_for_teachers()` to use `EventTeacher`**
-  - Refactor `teacher_matching_service.py` to count via `EventTeacher` joins instead of parsing `event.educators` text
+  - Refactor `teacher_matching_service.py` to count via `EventTeacher` joins instead of parsing text
   - Fall back to educators text for events that haven't been backfilled yet
-  - This simplifies the counting logic and eliminates name-matching errors
+  - Write integration test comparing old vs new counting results
 
 ### Files Changed
 
 | File | Action |
 |------|--------|
 | `scripts/utilities/backfill_event_teachers.py` | **NEW** |
-| `services/teacher_service.py` | MODIFY — add `sync_educators_field()` |
+| `services/teacher_service.py` | MODIFY — add `sync_event_participant_fields()` |
 | `routes/virtual/pathful_import.py` | MODIFY — create EventTeacher |
-| `routes/virtual/pathful_import.py` (manual create) | MODIFY — sync educators |
+| `routes/virtual/pathful_import.py` (manual create) | MODIFY — sync cache |
 | `services/teacher_matching_service.py` | MODIFY — EventTeacher-based counting |
 | `routes/district/tenant_teacher_usage.py` | MODIFY — simplify counting |
 
@@ -142,12 +176,10 @@ flowchart LR
   - `routes/virtual/pathful_import.py` (`match_teacher` function)
   - Each call passes `import_source` for tracking
 
-- [ ] **3.2 — Extract `services/virtual_session_service.py` from `usage.py`**
-  - Move cache management functions (lines 63-269)
-  - Move data processing helpers (lines 277-860)
-  - Move `compute_virtual_session_data` (lines 863-1198)
-  - Leave routes in `usage.py`, but they call the service layer
-  - Goal: `usage.py` drops from 7,474 lines to ~3,000 (routes + templates only)
+- [ ] **3.2 — Extract teacher logic from `usage.py` into service layer**
+  - Extract only the teacher find/create/link logic into `teacher_service.py`
+  - Leave route handlers, cache management, and report computation in `usage.py`
+  - Full `usage.py` monolith decomposition is a **separate future project** — don't scope-creep
 
 - [ ] **3.3 — Strengthen `_link_progress_to_teachers()` to use email matching**
   - Primary match: `TeacherProgress.email` → `Teacher.primary_email` (exact, case-insensitive)
@@ -167,8 +199,8 @@ flowchart LR
 
 | File | Action |
 |------|--------|
-| `services/virtual_session_service.py` | **NEW** — extracted from usage.py |
-| `routes/virtual/usage.py` | MODIFY — major reduction |
+| `services/teacher_service.py` | MODIFY — absorb teacher logic from routes |
+| `routes/virtual/usage.py` | MODIFY — delegate teacher ops to service |
 | `routes/virtual/routes.py` | MODIFY — use service |
 | `routes/virtual/pathful_import.py` | MODIFY — use service |
 | `utils/roster_import.py` | MODIFY — email-first matching |
