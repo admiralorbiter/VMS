@@ -321,3 +321,99 @@ def backfill_primary_emails() -> dict:
     )
 
     return {"updated": updated, "skipped": skipped, "total": len(teachers)}
+
+
+# ---------------------------------------------------------------------------
+# Sprint 2: EventTeacher sync and cache regeneration
+# ---------------------------------------------------------------------------
+
+
+def sync_event_participant_fields(event) -> None:
+    """
+    Regenerate the 4 denormalized text fields on an Event from FK tables.
+
+    After Sprint 2, EventTeacher is the source of truth for teacher-session
+    links. This function keeps the legacy text cache in sync:
+
+        event.educators      ← "; ".join(EventTeacher teacher names)
+        event.educator_ids   ← ",".join(EventTeacher teacher IDs)
+        event.professionals  ← "; ".join(volunteer names from EventParticipation)
+        event.professional_ids ← ",".join(volunteer IDs from EventParticipation)
+
+    Call this after any change to EventTeacher or EventParticipation records.
+    """
+    from models.event import EventTeacher
+
+    # --- Educators (from EventTeacher) ---
+    et_records = (
+        EventTeacher.query.filter_by(event_id=event.id)
+        .join(Teacher, EventTeacher.teacher_id == Teacher.id)
+        .all()
+    )
+
+    educator_names = []
+    educator_ids = []
+    for et in et_records:
+        if et.teacher:
+            name = et.teacher.full_name
+            if name:
+                educator_names.append(name.strip())
+            educator_ids.append(str(et.teacher_id))
+
+    event.educators = "; ".join(sorted(set(educator_names))) if educator_names else None
+    event.educator_ids = ",".join(educator_ids) if educator_ids else None
+
+    # --- Professionals (from EventParticipation / volunteers) ---
+    from models.event import EventParticipation
+
+    participations = EventParticipation.query.filter_by(event_id=event.id).all()
+
+    professional_names = []
+    professional_ids = []
+    for p in participations:
+        if p.volunteer:
+            name = f"{p.volunteer.first_name} {p.volunteer.last_name}".strip()
+            if name:
+                professional_names.append(name)
+            professional_ids.append(str(p.volunteer_id))
+
+    event.professionals = (
+        "; ".join(sorted(set(professional_names))) if professional_names else None
+    )
+    event.professional_ids = ",".join(professional_ids) if professional_ids else None
+
+    logger.debug(
+        f"Synced event {event.id}: {len(educator_names)} educators, "
+        f"{len(professional_names)} professionals"
+    )
+
+
+def ensure_event_teacher(event_id: int, teacher_id: int, **kwargs):
+    """
+    Idempotently create or retrieve an EventTeacher record.
+
+    Args:
+        event_id: The event ID
+        teacher_id: The teacher ID
+        **kwargs: Optional fields to set (status, is_simulcast, notes)
+
+    Returns:
+        The existing or newly-created EventTeacher record.
+    """
+    from models.event import EventTeacher
+
+    existing = EventTeacher.query.filter_by(
+        event_id=event_id, teacher_id=teacher_id
+    ).first()
+
+    if existing:
+        # Update optional fields if provided
+        for key, value in kwargs.items():
+            if hasattr(existing, key) and value is not None:
+                setattr(existing, key, value)
+        return existing
+
+    et = EventTeacher(event_id=event_id, teacher_id=teacher_id, **kwargs)
+    db.session.add(et)
+    logger.debug(f"Created EventTeacher: event={event_id}, teacher={teacher_id}")
+    return et

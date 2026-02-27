@@ -133,12 +133,8 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
 
     events = events_query.all()
 
-    # Match sessions to teachers using shared service (via educators text field)
-    teacher_progress_map = count_sessions_for_teachers(
-        events, teacher_alias_map, teacher_progress_map
-    )
-
-    # Also count sessions linked via EventTeacher (from session edit / manual add)
+    # Sprint 2: EventTeacher-first counting
+    # Primary path: count via EventTeacher FK links (the source of truth)
     from models.event import EventTeacher
 
     # Build a reverse map: teacher_id -> [teacher_progress_ids]
@@ -147,6 +143,8 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
         if t.teacher_id:
             teacher_id_to_tp.setdefault(t.teacher_id, []).append(t.id)
 
+    et_counted_event_ids = set()
+
     if teacher_id_to_tp:
         # Query all EventTeacher links for these teacher IDs on completed virtual sessions
         et_links = EventTeacher.query.join(Event).filter(
@@ -154,19 +152,28 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
             Event.type == EventType.VIRTUAL_SESSION,
             Event.status == EventStatus.COMPLETED,
         )
+        if district_name:
+            et_links = et_links.filter(Event.district_partner == district_name)
         if date_from:
             et_links = et_links.filter(Event.start_date >= date_from)
         if date_to:
             et_links = et_links.filter(Event.start_date <= date_to)
 
-        # Track which events were already counted via educators text field
-        educators_event_ids = {e.id for e in events if e.educators}
-
         for et in et_links.all():
-            if et.event_id not in educators_event_ids:
-                for tp_id in teacher_id_to_tp.get(et.teacher_id, []):
-                    if tp_id in teacher_progress_map:
-                        teacher_progress_map[tp_id] += 1
+            et_counted_event_ids.add(et.event_id)
+            for tp_id in teacher_id_to_tp.get(et.teacher_id, []):
+                if tp_id in teacher_progress_map:
+                    teacher_progress_map[tp_id] += 1
+
+    # Fallback path: count from educators text for events not yet backfilled
+    # (events that have educators text but NO EventTeacher records)
+    fallback_events = [
+        e for e in events if e.educators and e.id not in et_counted_event_ids
+    ]
+    if fallback_events:
+        teacher_progress_map = count_sessions_for_teachers(
+            fallback_events, teacher_alias_map, teacher_progress_map
+        )
 
     # ── Apply attendance overrides (FR-VIRTUAL-234, FR-VIRTUAL-238) ────
     active_overrides = AttendanceOverride.query.filter(

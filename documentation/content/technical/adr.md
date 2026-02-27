@@ -145,6 +145,35 @@ ADRs are immutable records of significant technical decisions that capture conte
 
 ---
 
+### 2026-02-27: D-006 — Sprint 2: EventTeacher as Single Source of Truth
+
+**Context:** Teacher-session links were stored in two disconnected ways: (1) `event.educators` text field (semicolon-separated names from Pathful import), and (2) `EventTeacher` FK records (from session edit UI). The dashboard used a fragile dual-path counting merge that could double-count or miss sessions.
+
+**Decision:**
+1. Make `EventTeacher` the canonical source of truth for teacher-session links
+2. Create `sync_event_participant_fields()` to regenerate all 4 text cache fields from FK tables
+3. Create `ensure_event_teacher()` for idempotent EventTeacher creation
+4. Wire Pathful import to create EventTeacher records (previously only set text)
+5. Add sync calls to session edit/create handlers
+6. Refactor dashboard counting to EventTeacher-first with text fallback
+
+**Consequences:**
+- ✅ Single authoritative path for teacher-session relationships
+- ✅ Text fields are now a cache, not a source of truth
+- ✅ Dashboard counting simplified — EventTeacher-first with text fallback
+- ✅ Backfill script available for existing data
+- ⚠️ Backfill script must be run on existing database to populate EventTeacher records
+- ⚠️ Text fallback still active until backfill is complete
+
+**Files Changed:**
+- `services/teacher_service.py` — `sync_event_participant_fields()`, `ensure_event_teacher()`
+- `scripts/utilities/backfill_event_teachers.py` — **NEW**: backfill from text
+- `routes/virtual/pathful_import.py` — create EventTeacher on teacher match
+- `routes/virtual/usage.py` — sync cache in edit + create
+- `routes/district/tenant_teacher_usage.py` — EventTeacher-first counting
+
+---
+
 ## Creating New ADRs
 
 ### When to Create

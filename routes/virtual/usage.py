@@ -3380,6 +3380,11 @@ def load_usage_routes():
         if districts_set:
             event.district_partner = ", ".join(sorted(districts_set))
 
+        # Sprint 2: Sync text cache fields from EventTeacher/EventParticipation
+        from services.teacher_service import sync_event_participant_fields
+
+        sync_event_participant_fields(event)
+
         db.session.commit()
 
         # Invalidate caches so the report reflects updated entries
@@ -3785,6 +3790,11 @@ def load_usage_routes():
                 event.add_volunteer(
                     volunteer, participant_type="Presenter", status="Confirmed"
                 )
+
+            # Sprint 2: Sync text cache fields from EventTeacher/EventParticipation
+            from services.teacher_service import sync_event_participant_fields
+
+            sync_event_participant_fields(event)
 
             db.session.commit()
 
