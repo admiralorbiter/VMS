@@ -205,6 +205,9 @@ class Teacher(Contact):
     # Values: 'salesforce', 'pathful', 'csv_import', 'manual', 'session_edit'
     import_source = db.Column(String(50), nullable=True)
 
+    # Sprint 4: Multi-tenant scoping — links teacher to their tenant
+    tenant_id = db.Column(Integer, ForeignKey("tenant.id"), nullable=True, index=True)
+
     # Salesforce Integration Fields
     salesforce_contact_id = db.Column(
         String(18), unique=True, nullable=True, index=True

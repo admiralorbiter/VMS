@@ -84,13 +84,15 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
     """
     Compute teacher progress data for a tenant.
 
-    Matches imported teachers against completed virtual sessions using
-    the Event.educators field (semicolon-separated teacher names).
+    Counting strategy (text-primary, EventTeacher-supplementary):
+    1. Text path: match teacher names in event.educators (handles all historical data)
+    2. EventTeacher path: count FK-linked events NOT already found via text
+       (handles future events created via the session editor)
 
     Returns dict of building -> {teachers: [], stats}
     """
     from models import Event
-    from models.event import EventStatus, EventType
+    from models.event import EventStatus, EventTeacher, EventType
     from models.tenant import Tenant
 
     # Get all active teachers for this tenant/year
@@ -114,43 +116,43 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
         else:
             district_name = tenant.get_setting("linked_district_name")
 
-    # Build teacher name aliases using shared service
+    # Build teacher name aliases for text-based matching
     teacher_progress_map, teacher_alias_map = build_teacher_alias_map(teachers)
 
-    # Query completed virtual sessions for this district
+    # ── COMPLETED sessions ─────────────────────────────────────────────
+    # Primary: text-based counting from event.educators
     events_query = Event.query.filter(
         Event.type == EventType.VIRTUAL_SESSION, Event.status == EventStatus.COMPLETED
     )
-
     if district_name:
         events_query = events_query.filter(Event.district_partner == district_name)
-
-    # Apply date filters if provided
     if date_from:
         events_query = events_query.filter(Event.start_date >= date_from)
     if date_to:
         events_query = events_query.filter(Event.start_date <= date_to)
-
     events = events_query.all()
 
-    # Sprint 2: EventTeacher-first counting
-    # Primary path: count via EventTeacher FK links (the source of truth)
-    from models.event import EventTeacher
+    # Count via text matching (primary path)
+    text_counted_event_ids = set()
+    for event in events:
+        if event.educators:
+            text_counted_event_ids.add(event.id)
+    teacher_progress_map = count_sessions_for_teachers(
+        events, teacher_alias_map, teacher_progress_map
+    )
 
-    # Build a reverse map: teacher_id -> [teacher_progress_ids]
+    # Supplementary: EventTeacher FK links for events NOT already counted via text
     teacher_id_to_tp = {}
     for t in teachers:
         if t.teacher_id:
             teacher_id_to_tp.setdefault(t.teacher_id, []).append(t.id)
 
-    et_counted_event_ids = set()
-
     if teacher_id_to_tp:
-        # Query all EventTeacher links for these teacher IDs on completed virtual sessions
         et_links = EventTeacher.query.join(Event).filter(
             EventTeacher.teacher_id.in_(teacher_id_to_tp.keys()),
             Event.type == EventType.VIRTUAL_SESSION,
             Event.status == EventStatus.COMPLETED,
+            ~Event.id.in_(text_counted_event_ids) if text_counted_event_ids else True,
         )
         if district_name:
             et_links = et_links.filter(Event.district_partner == district_name)
@@ -160,20 +162,9 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
             et_links = et_links.filter(Event.start_date <= date_to)
 
         for et in et_links.all():
-            et_counted_event_ids.add(et.event_id)
             for tp_id in teacher_id_to_tp.get(et.teacher_id, []):
                 if tp_id in teacher_progress_map:
                     teacher_progress_map[tp_id] += 1
-
-    # Fallback path: count from educators text for events not yet backfilled
-    # (events that have educators text but NO EventTeacher records)
-    fallback_events = [
-        e for e in events if e.educators and e.id not in et_counted_event_ids
-    ]
-    if fallback_events:
-        teacher_progress_map = count_sessions_for_teachers(
-            fallback_events, teacher_alias_map, teacher_progress_map
-        )
 
     # ── Apply attendance overrides (FR-VIRTUAL-234, FR-VIRTUAL-238) ────
     active_overrides = AttendanceOverride.query.filter(
@@ -188,10 +179,11 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
             elif ov.action == OverrideAction.REMOVE:
                 teacher_progress_map[tid] = max(0, teacher_progress_map[tid] - 1)
 
-    # Also count planned/upcoming sessions (confirmed, published, requested)
+    # ── PLANNED sessions (upcoming: confirmed/published/requested) ─────
     from datetime import datetime, timezone
 
     now = datetime.now(timezone.utc)
+
     planned_events_query = Event.query.filter(
         Event.type == EventType.VIRTUAL_SESSION,
         Event.status.in_(
@@ -205,14 +197,12 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
         )
     planned_events = planned_events_query.all()
 
-    # Build a separate map for planned session counts
     planned_progress_map = {t.id: 0 for t in teachers}
     planned_progress_map = count_sessions_for_teachers(
         planned_events, teacher_alias_map, planned_progress_map
     )
 
-    # Count "in planning" sessions: confirmed/published/requested but in the
-    # past (date has passed without being marked completed in Salesforce).
+    # ── IN-PLANNING sessions (past date, not completed) ────────────────
     in_planning_statuses = [
         EventStatus.CONFIRMED,
         EventStatus.PUBLISHED,
@@ -469,13 +459,15 @@ def export_excel():
 def teacher_detail(teacher_progress_id):
     """View a teacher's virtual session history from the usage dashboard.
 
-    Uses the same name-based matching against Event.educators that the
-    usage dashboard relies on, so results are consistent regardless of
-    whether the TeacherProgress record has a linked teacher_id.
+    Dual-path matching (text-primary, EventTeacher-supplementary):
+    1. Text path: match teacher name in event.educators (handles historical data)
+    2. EventTeacher path: find FK-linked sessions not found via text (handles
+       sessions created via the session editor)
+    Deduplicates via matched_event_ids to avoid double-counting.
     """
     from datetime import datetime, timezone
 
-    from models.event import Event, EventStatus, EventType
+    from models.event import Event, EventStatus, EventTeacher, EventType
     from services.teacher_matching_service import (
         build_teacher_alias_map,
         match_educator_to_teacher,
@@ -492,7 +484,7 @@ def teacher_detail(teacher_progress_id):
 
     district_name = get_tenant_district_name(effective_tenant_id) or "Your District"
 
-    # Resolve the tenant's linked district name (same as compute_teacher_progress)
+    # Resolve the tenant's linked district name
     tenant = Tenant.query.get(effective_tenant_id)
     linked_district = None
     if tenant:
@@ -501,10 +493,10 @@ def teacher_detail(teacher_progress_id):
         else:
             linked_district = tenant.get_setting("linked_district_name")
 
-    # Build alias map for just this one teacher
+    # Build alias map for this teacher
     _, alias_map = build_teacher_alias_map([tp])
 
-    # Query ALL virtual sessions for this district (completed + future)
+    # Query ALL virtual sessions for this district
     events_query = Event.query.filter(
         Event.type == EventType.VIRTUAL_SESSION,
     )
@@ -515,18 +507,72 @@ def teacher_detail(teacher_progress_id):
     now = datetime.now(timezone.utc)
     past_sessions = []
     upcoming_sessions = []
-    matched_event_ids = set()  # Track to avoid duplicates
+    matched_event_ids = set()
 
-    # --- Path 1: Match via EventTeacher (direct DB link) ---
-    # This picks up sessions added via the session edit page or manual creation
-    from models.event import EventTeacher
+    # --- Path 1 (primary): Match via educators text field ---
+    for event in events:
+        if not event.educators:
+            continue
 
+        educator_names = [n.strip() for n in event.educators.split(";") if n.strip()]
+        matched = any(
+            match_educator_to_teacher(name, alias_map) == tp.id
+            for name in educator_names
+        )
+        if not matched:
+            continue
+
+        matched_event_ids.add(event.id)
+
+        presenter_name = ""
+        presenter_org = ""
+        if event.volunteers:
+            vol = event.volunteers[0]
+            presenter_name = f"{vol.first_name} {vol.last_name}".strip()
+            presenter_org = vol.organization_name or ""
+
+        start_date = event.start_date
+        if start_date and start_date.tzinfo is None:
+            start_date = start_date.replace(tzinfo=timezone.utc)
+
+        session_data = {
+            "id": event.id,
+            "title": event.title or "Untitled Session",
+            "date": start_date.date() if start_date else None,
+            "time": start_date.time() if start_date else None,
+            "datetime": start_date,
+            "status": event.status.value if event.status else "unknown",
+            "topic_theme": event.series or "",
+            "session_link": event.registration_link or "",
+            "presenter_name": presenter_name,
+            "presenter_org": presenter_org,
+            "is_simulcast": False,
+            "attendance_status": "",
+        }
+
+        if start_date and start_date < now:
+            past_sessions.append(session_data)
+        elif start_date and start_date >= now:
+            if event.status in [
+                EventStatus.CONFIRMED,
+                EventStatus.PUBLISHED,
+                EventStatus.REQUESTED,
+                EventStatus.COMPLETED,
+            ]:
+                upcoming_sessions.append(session_data)
+
+    # --- Path 2 (supplementary): EventTeacher FK links ---
+    # Catches sessions created via the session editor (have EventTeacher but
+    # may not appear in educators text)
     if tp.teacher_id:
         et_links = EventTeacher.query.filter_by(teacher_id=tp.teacher_id).all()
         for et in et_links:
             event = et.event
             if not event or event.type != EventType.VIRTUAL_SESSION:
                 continue
+            if event.id in matched_event_ids:
+                continue  # Already found via text
+
             matched_event_ids.add(event.id)
 
             presenter_name = ""
@@ -565,63 +611,6 @@ def teacher_detail(teacher_progress_id):
                     EventStatus.COMPLETED,
                 ]:
                     upcoming_sessions.append(session_data)
-
-    # --- Path 2: Match via educators text field (Pathful import data) ---
-    for event in events:
-        if event.id in matched_event_ids:
-            continue  # Already found via EventTeacher
-
-        if not event.educators:
-            continue
-
-        # Check if this teacher is listed in the educators field
-        educator_names = [n.strip() for n in event.educators.split(";") if n.strip()]
-        matched = any(
-            match_educator_to_teacher(name, alias_map) == tp.id
-            for name in educator_names
-        )
-        if not matched:
-            continue
-
-        matched_event_ids.add(event.id)
-
-        # Get presenter info from volunteers
-        presenter_name = ""
-        presenter_org = ""
-        if event.volunteers:
-            vol = event.volunteers[0]
-            presenter_name = f"{vol.first_name} {vol.last_name}".strip()
-            presenter_org = vol.organization_name or ""
-
-        start_date = event.start_date
-        if start_date and start_date.tzinfo is None:
-            start_date = start_date.replace(tzinfo=timezone.utc)
-
-        session_data = {
-            "id": event.id,
-            "title": event.title or "Untitled Session",
-            "date": start_date.date() if start_date else None,
-            "time": start_date.time() if start_date else None,
-            "datetime": start_date,
-            "status": event.status.value if event.status else "unknown",
-            "topic_theme": event.series or "",
-            "session_link": event.registration_link or "",
-            "presenter_name": presenter_name,
-            "presenter_org": presenter_org,
-            "is_simulcast": False,
-            "attendance_status": "",
-        }
-
-        if start_date and start_date < now:
-            past_sessions.append(session_data)
-        elif start_date and start_date >= now:
-            if event.status in [
-                EventStatus.CONFIRMED,
-                EventStatus.PUBLISHED,
-                EventStatus.REQUESTED,
-                EventStatus.COMPLETED,
-            ]:
-                upcoming_sessions.append(session_data)
 
     # ── Merge attendance overrides into session lists ──────────────────
     add_overrides = AttendanceOverride.query.filter_by(
