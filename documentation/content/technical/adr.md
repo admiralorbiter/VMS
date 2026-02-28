@@ -188,6 +188,22 @@ ADRs are immutable records of significant technical decisions that capture conte
 
 ---
 
+### 2026-02-28: D-008 — Sprint 4: Text-Primary + EventTeacher-Supplementary Counting
+
+**Context:** Sprint 4 initially removed text-based counting in favor of EventTeacher-only. However, the real database has 0 EventTeacher records and 3,793 events with educators text — the text path was doing all the work.
+
+**Decision:** Restore text-based counting as PRIMARY (handles all historical data). EventTeacher is SUPPLEMENTARY (catches future FK-linked sessions not in text). The EventTeacher-only simplification is deferred until a verified backfill populates the EventTeacher table. Added `tenant_id` to Teacher model.
+
+**Lesson:** Never remove a data access path before verifying the new path has equivalent data coverage. Sequence: backfill → verify → simplify.
+
+**Consequences:**
+- ✅ Dashboard counts match pre-refactor numbers
+- ✅ Both `compute_teacher_progress` and `teacher_detail` use dual-path strategy
+- ✅ Teacher model has `tenant_id` for future tenant-scoped queries
+- ✅ Health check script created for ongoing data integrity monitoring
+
+---
+
 ## Creating New ADRs
 
 ### When to Create
