@@ -138,3 +138,29 @@ class District(db.Model):
             str: Debug representation showing district name
         """
         return f"<District {self.name}>"
+
+
+class DistrictAlias(db.Model):
+    """
+    Alias mapping for district names.
+
+    Stores alternative names / abbreviations that should resolve to a
+    canonical District record.  For example:
+        alias="KCKPS"  →  district.name="Kansas City Kansas Public Schools"
+        alias="Hickman Mills"  →  district.name="Hickman Mills School District"
+
+    This replaces the former hardcoded DISTRICT_MAPPINGS dict (TD-010).
+    """
+
+    __tablename__ = "district_alias"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    alias = db.Column(db.String(255), nullable=False, unique=True, index=True)
+    district_id = db.Column(
+        db.Integer, db.ForeignKey("district.id"), nullable=False, index=True
+    )
+
+    district = db.relationship("District", backref="aliases")
+
+    def __repr__(self):
+        return f"<DistrictAlias '{self.alias}' → district_id={self.district_id}>"

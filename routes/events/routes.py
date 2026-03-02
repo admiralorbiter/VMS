@@ -68,7 +68,6 @@ from models.teacher import Teacher
 from models.volunteer import EventParticipation, Skill, Volunteer
 from routes.decorators import global_users_only
 from routes.utils import (
-    DISTRICT_MAPPINGS,
     admin_required,
     log_audit_action,
     map_cancellation_reason,
@@ -77,6 +76,7 @@ from routes.utils import (
     parse_date,
     parse_event_skills,
 )
+from services.district_service import resolve_district
 from services.scoping import can_edit_event, get_editable_fields, is_tenant_user
 from utils.cache_refresh_scheduler import refresh_all_caches
 
@@ -218,9 +218,8 @@ def process_event_row(row, success_count, error_count, errors, skipped_count):
 
         # Try to get the district
         district = None
-        if district_name and district_name in DISTRICT_MAPPINGS:
-            mapped_name = DISTRICT_MAPPINGS[district_name]
-            district = District.query.filter_by(name=mapped_name).first()
+        if district_name:
+            district = resolve_district(district_name)
 
         # Clear and reassign districts if we have a valid district to assign
         if district or school_district:

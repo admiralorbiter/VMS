@@ -29,7 +29,6 @@ from models.sync_log import SyncLog, SyncStatus
 from models.volunteer import EventParticipation, Skill, Volunteer
 from routes.decorators import global_users_only
 from routes.utils import (
-    DISTRICT_MAPPINGS,
     map_cancellation_reason,
     map_event_format,
     map_session_type,
