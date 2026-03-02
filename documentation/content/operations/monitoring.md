@@ -239,14 +239,14 @@ Monitor data freshness by checking sync timestamps:
 
 ### Pathful Import
 
-**Expected Cadence:** Daily or as needed
+**Expected Cadence:** Weekly (manual upload)
 
 **How to Check:**
 - Check last virtual session import timestamp
-- Route: `routes/virtual/routes.py` `/virtual/import-sheet`
+- Route: `routes/virtual/pathful_import.py` `/virtual/pathful/import`
 - Verify import logs
 
-**Threshold:** > 24 hours stale (if daily expected) → SEV2
+**Threshold:** > 2 weeks stale (if expected to be current) → SEV2
 
 **Reference:** [Architecture - Pathful → Polaris](architecture#pathful--polaris)
 

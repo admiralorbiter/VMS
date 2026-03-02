@@ -102,7 +102,7 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 import requests
 from flask import Blueprint, current_app, jsonify, render_template, request
-from flask_login import login_required
+from flask_login import current_user, login_required
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload  # Import for potential optimization if needed
 
@@ -1191,6 +1191,16 @@ def find_existing_event(title, target_datetime, processed_event_ids=None):
 @virtual_bp.route("/import-sheet", methods=["POST"])
 @login_required
 def import_sheet():
+    """DEPRECATED: Legacy Google Sheets import. Use /virtual/pathful/import instead.
+
+    This route is scheduled for removal (see TD-024 in tech_debt.md).
+    Deprecation logging added March 2026 per dev_notes.md monitoring plan.
+    """
+    current_app.logger.warning(
+        "DEPRECATED: /virtual/import-sheet route accessed by user=%s. "
+        "This route is scheduled for removal. Use /virtual/pathful/import instead.",
+        current_user.username if hasattr(current_user, "username") else "unknown",
+    )
     try:
         data = request.get_json() or {}
         academic_year = data.get("academic_year")
