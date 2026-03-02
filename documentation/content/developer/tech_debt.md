@@ -71,27 +71,22 @@ All 464 TeacherProgress linked to Teacher records. EventTeacher backfill complet
 
 ---
 
-## TD-006: `app.py` Is a God Module (841 Lines)
+## ~~TD-006: `app.py` Is a God Module (841 Lines)~~ ✅ RESOLVED
 
 **Created:** 2026-03-01
+**Resolved:** 2026-03-01
 **Priority:** High
 **Category:** Architecture / Maintainability
 
-### Description
+### Resolution
 
-`app.py` contains ~600 lines of quality-scoring and validation API routes (`/api/quality-score`, `/api/run-validation`, `/api/clear-validation-data`, `/api/debug-validation-data`, `/api/quality-settings`, `/api/run-multiple-validations`) plus 3 helper functions. These belong in `routes/quality/` (which exists but is empty). Also contains inline documentation-serving routes (`/docs/`) and a mid-file `import json`.
+Extracted ~590 lines into two new blueprints:
+- `routes/quality/routes.py` (`quality_bp`) — 8 route handlers + 3 helper functions
+- `routes/docs/__init__.py` (`docs_bp`) — 2 documentation-serving routes
 
-### Impact
+Both registered in `routes/routes.py`. `app.py` reduced from 841 → 248 lines. Also fixed a `from app import db` circular import in the extracted code.
 
-Every import of `app` triggers all validation code to load. The quality subsystem is tightly coupled to the entry point and cannot be tested in isolation. Contributes to circular import risks.
-
-### Proposed Fix
-
-1. Extract quality/validation routes → `routes/quality/routes.py`
-2. Extract documentation routes → `routes/docs/routes.py`
-3. Register both as blueprints in `routes/routes.py`
-
-**Risk:** Low — straightforward extraction with no logic changes.
+**Risk:** Low — all 338 routes verified, no logic changes.
 
 ---
 
