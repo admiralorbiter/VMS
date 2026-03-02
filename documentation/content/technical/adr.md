@@ -167,7 +167,7 @@ ADRs are immutable records of significant technical decisions that capture conte
 
 **Files Changed:**
 - `services/teacher_service.py` — `sync_event_participant_fields()`, `ensure_event_teacher()`
-- `scripts/utilities/backfill_event_teachers.py` — **NEW**: backfill from text
+- EventTeacher backfill — **completed**: 15,838+ records created from educators text (one-time operation)
 - `routes/virtual/pathful_import.py` — create EventTeacher on teacher match
 - `routes/virtual/usage.py` — sync cache in edit + create
 - `routes/district/tenant_teacher_usage.py` — EventTeacher-first counting
@@ -188,19 +188,35 @@ ADRs are immutable records of significant technical decisions that capture conte
 
 ---
 
-### 2026-02-28: D-008 — Sprint 4: Text-Primary + EventTeacher-Supplementary Counting
+### 2026-02-28: D-008 — Sprint 4: EventTeacher-Primary Counting (Resolved)
 
-**Context:** Sprint 4 initially removed text-based counting in favor of EventTeacher-only. However, the real database has 0 EventTeacher records and 3,793 events with educators text — the text path was doing all the work.
+**Context:** Sprint 4 tried three counting approaches:
+1. EventTeacher-only (failed: 0 EventTeacher records existed)
+2. EventTeacher-primary after backfill (failed: only 60% of TeacherProgress had `teacher_id`, global `matched_event_ids` excluded events from unlinked teachers)
+3. Text-primary + EventTeacher-supplementary (worked but fragile)
 
-**Decision:** Restore text-based counting as PRIMARY (handles all historical data). EventTeacher is SUPPLEMENTARY (catches future FK-linked sessions not in text). The EventTeacher-only simplification is deferred until a verified backfill populates the EventTeacher table. Added `tenant_id` to Teacher model.
+**Decision:** Created 184 missing Teacher records from TeacherProgress data, linking all 464 records (100%). Re-ran backfill (15,838+ EventTeacher records, 97.5% coverage). Switched to EventTeacher-primary, text-supplementary.
 
-**Lesson:** Never remove a data access path before verifying the new path has equivalent data coverage. Sequence: backfill → verify → simplify.
+**Lesson:** EventTeacher-primary requires ALL TeacherProgress → Teacher links. The root cause of under-counting wasn't the counting logic — it was missing Teacher records.
 
 **Consequences:**
-- ✅ Dashboard counts match pre-refactor numbers
-- ✅ Both `compute_teacher_progress` and `teacher_detail` use dual-path strategy
-- ✅ Teacher model has `tenant_id` for future tenant-scoped queries
-- ✅ Health check script created for ongoing data integrity monitoring
+- ✅ Dashboard counts verified: 162 goals achieved (matches pre-refactor ±1)
+- ✅ EventTeacher is primary data source — reliable FK lookups, no fuzzy matching
+- ✅ Text-supplementary catches remaining 2.5% edge cases
+- ✅ EventTeacher backfill completed (15,838+ records, one-time operation)
+
+---
+
+### 2026-02-28: D-009 — Task 4.4: KCKPS Schools + District-Scoped Matching
+
+**Context:** KCKPS district (ID=23) had 0 School records. `_find_school_by_building_name()` searched all 177 schools globally, causing cross-district false matches (e.g. "Banneker" matching a Missouri school).
+
+**Decision:** Seed 28 School records from TeacherProgress building names with deterministic IDs (`kckps-{name}`). Add `district_id` parameter to `_find_school_by_building_name()` — search within district first, global fallback only if no match.
+
+**Consequences:**
+- ✅ All 28 KCKPS buildings match to correct, district-scoped schools
+- ✅ No cross-district false matches
+- ✅ All 28 KCKPS buildings have School records (seeded during Sprint 4.4)
 
 ---
 

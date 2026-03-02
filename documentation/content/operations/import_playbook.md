@@ -183,13 +183,15 @@ Rows invalid: F
 
  After the upsert step, the import automatically runs `_link_progress_to_teachers()` which:
 
- 1. **Matches by name** — For each TeacherProgress without a `teacher_id`, splits the name into first/last and finds a matching Teacher record (case-insensitive).
- 2. **Links records** — Sets `TeacherProgress.teacher_id` to the matched `Teacher.id`.
- 3. **Sets school** — If the Teacher has no `school_id`, fuzzy-matches the `building` name to the School table and sets it.
+ 1. **Matches by email** (highest confidence) — checks `Teacher.cached_email`, then `Email` model.
+ 2. **Matches by name** (fallback) — splits the name into first/last and finds a matching Teacher record (case-insensitive, normalized).
+ 3. **Links records** — Sets `TeacherProgress.teacher_id` to the matched `Teacher.id`.
+ 4. **Sets school** — If the Teacher has no `school_id`, fuzzy-matches the `building` name to the School table (district-scoped first, then global fallback).
 
- School name matching strategy (in `_find_school_by_building_name()`):
+ School name matching strategy (in `_find_school_by_building_name(name, district_id)`):
+ - Searches within the tenant's district first to avoid cross-district false matches
  - Exact case-insensitive → Substring ("Claude Huyck" → "Claude Huyck Elementary") → Word-by-word fallback ("TA Edison" → "THOMAS A EDISON ELEMENTARY")
- - 3 buildings (Douglass, Grant, JFK) have no School record and are skipped.
+ - All 28 KCKPS buildings have School records (seeded during Sprint 4.4)
 
  **Note:** Import uses upsert (merge) strategy — existing records are updated, new ones are added, removed ones are soft-deleted.
 

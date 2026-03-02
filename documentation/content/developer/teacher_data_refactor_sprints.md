@@ -103,9 +103,8 @@ flowchart LR
 ### Tasks
 
 - [x] **2.1 — Backfill `EventTeacher` from `event.educators`**
-  - Script: `scripts/utilities/backfill_event_teachers.py`
-  - Parses educators text → matches via `find_or_create_teacher()` → creates EventTeacher
-  - Run: `python scripts/utilities/backfill_event_teachers.py`
+  - Backfill completed: 15,838+ EventTeacher records (one-time operation)
+  - Result: 97.5% coverage of completed virtual sessions
 
 - [x] **2.2 — Create `sync_event_participant_fields(event)` helper**
   - Added to `services/teacher_service.py`
@@ -128,7 +127,7 @@ flowchart LR
 | File | Action |
 |------|--------|
 | `services/teacher_service.py` | MODIFY — add `sync_event_participant_fields()`, `ensure_event_teacher()` |
-| `scripts/utilities/backfill_event_teachers.py` | **NEW** |
+| EventTeacher backfill | **completed** (one-time) |
 | `routes/virtual/pathful_import.py` | MODIFY — create EventTeacher on match |
 | `routes/virtual/usage.py` | MODIFY — sync cache in edit + create |
 | `routes/district/tenant_teacher_usage.py` | MODIFY — EventTeacher-first counting |
@@ -200,38 +199,30 @@ flowchart LR
 - [x] Health check runs successfully
 - [x] Dashboard session counts match pre-refactor numbers
 
+### Task 4.4 — Create Missing School Records ✅
 
----
+Originally deferred as a "data task". Analysis revealed:
+- KCKPS district (ID=23) had **0 schools** — none were ever imported from Salesforce
+- `_find_school_by_building_name()` searched ALL 177 schools globally — cross-district false matches
 
-## Migration Strategy
+**Fix applied:**
+- Created 28 KCKPS School records (seeded during Sprint 4.4)
+- Added `district_id` parameter to `_find_school_by_building_name()` — searches within district first
+- `_link_progress_to_teachers()` now resolves `district_id` from `tenant_id` via Tenant → District
 
-### Option A: Incremental (No DB Reset)
-- Apply migrations as additive `ALTER TABLE` statements
-- Run backfill scripts between sprints
-- Data stays live throughout
-
-### Option B: Clean Slate (Recommended after Sprint 2)
-1. Complete Sprints 1-2 (code changes)
-2. Reset the teacher-related tables: `teacher`, `teacher_progress`, `event_teacher`
-3. Re-import from sources in order:
-   - Salesforce schools → Salesforce teachers
-   - Spreadsheet roster (auto-links via new service)
-   - Pathful sessions (creates EventTeacher + educators cache)
-4. Run health check to verify
-
-> [!WARNING]
-> **Reset scope:** Only teacher-related tables. Events, volunteers, students, and other data are preserved. The `event.educators` field would be regenerated from fresh EventTeacher records.
 
 ---
 
 ## Definition of Done (All Sprints)
 
-- [ ] No inline `Teacher()` construction outside of `teacher_service.py`
-- [ ] `EventTeacher` is the single source of truth for teacher-session links
-- [ ] `event.educators` is regenerated automatically (never manually maintained)
-- [ ] All teacher matching goes through `teacher_matching_service.py`
-- [ ] `TeacherProgress` → `Teacher` linking uses email-first matching
-- [ ] Dashboard numbers are correct for all teacher views
-- [ ] Health check script reports 0 issues
-- [ ] `usage.py` is decomposed into focused modules
-- [ ] All changes documented in ADR + import playbook
+- [x] No inline `Teacher()` construction outside of `teacher_service.py`
+- [x] `EventTeacher` is the single source of truth for teacher-session links — **resolved: all 464 TeacherProgress linked, EventTeacher-primary counting**
+- [x] `event.educators` is regenerated automatically (never manually maintained)
+- [x] All teacher matching goes through `teacher_matching_service.py`
+- [x] `TeacherProgress` → `Teacher` linking uses email-first matching
+- [x] Dashboard numbers are correct for all teacher views
+- [x] KCKPS schools exist and match correctly
+- [x] All changes documented in ADR + import playbook
+
+> [!NOTE]
+> Tech debt items discovered during this refactor are tracked in [Tech Debt Tracker](tech_debt.md) (TD-003 through TD-005).

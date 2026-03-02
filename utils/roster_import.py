@@ -19,11 +19,15 @@ from models.teacher import Teacher
 from models.teacher_progress import TeacherProgress
 
 
-def _find_school_by_building_name(building_name):
+def _find_school_by_building_name(building_name, district_id=None):
     """
     Fuzzy-match a building short name (e.g. 'TA Edison') to a School record.
 
-    Matching strategy:
+    When district_id is provided, searches within that district first to avoid
+    cross-district false matches.  Falls back to global search only if no
+    district-scoped match is found.
+
+    Matching strategy (applied district-scoped first, then global):
      1. Exact case-insensitive match
      2. Substring match (building name contained in school name)
      3. Word-by-word match (each word with len>2 searched individually)
@@ -36,27 +40,37 @@ def _find_school_by_building_name(building_name):
 
     b = building_name.strip()
 
-    # 1. Exact match
-    school = School.query.filter(func.upper(School.name) == b.upper()).first()
-    if school:
-        return school
+    def _search(base_query):
+        """Run the 3-tier match against a base query."""
+        # 1. Exact match
+        school = base_query.filter(func.upper(School.name) == b.upper()).first()
+        if school:
+            return school
 
-    # 2. Substring match (building name IN school name)
-    school = School.query.filter(School.name.ilike(f"%{b}%")).first()
-    if school:
-        return school
+        # 2. Substring match (building name IN school name)
+        school = base_query.filter(School.name.ilike(f"%{b}%")).first()
+        if school:
+            return school
 
-    # 3. Word-by-word fallback — search the longest word (skip abbreviations)
-    words = [w for w in b.split() if len(w) > 2]
-    if words:
-        # Sort by length descending so we match on the most distinctive word first
-        words.sort(key=len, reverse=True)
-        for word in words:
-            school = School.query.filter(School.name.ilike(f"%{word}%")).first()
-            if school:
-                return school
+        # 3. Word-by-word fallback — search the longest word (skip abbreviations)
+        words = [w for w in b.split() if len(w) > 2]
+        if words:
+            words.sort(key=len, reverse=True)
+            for word in words:
+                school = base_query.filter(School.name.ilike(f"%{word}%")).first()
+                if school:
+                    return school
 
-    return None
+        return None
+
+    # District-scoped search first (prevents cross-district false matches)
+    if district_id:
+        result = _search(School.query.filter(School.district_id == district_id))
+        if result:
+            return result
+
+    # Global fallback
+    return _search(School.query)
 
 
 def _link_progress_to_teachers(tenant_id, academic_year):
@@ -73,7 +87,15 @@ def _link_progress_to_teachers(tenant_id, academic_year):
       - Set Teacher.school_id from building name (if currently None)
       - Cache the email on Teacher.cached_email (if not already set)
     """
+    from models.tenant import Tenant
     from services.teacher_matching_service import normalize_name
+
+    # Resolve district_id for district-scoped school matching
+    district_id = None
+    if tenant_id:
+        tenant = Tenant.query.get(tenant_id)
+        if tenant and tenant.district_id:
+            district_id = tenant.district_id
 
     if tenant_id:
         progress_records = TeacherProgress.query.filter_by(
@@ -145,7 +167,7 @@ def _link_progress_to_teachers(tenant_id, academic_year):
 
         # Set school_id on Teacher if not already set
         if not teacher.school_id and tp.building:
-            school = _find_school_by_building_name(tp.building)
+            school = _find_school_by_building_name(tp.building, district_id=district_id)
             if school:
                 teacher.school_id = school.id
                 school_set_count += 1
