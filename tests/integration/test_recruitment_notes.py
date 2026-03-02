@@ -17,30 +17,19 @@ from models.user import User
 class TestRecruitmentNoteModel:
     """Tests for RecruitmentNote model (FR-RECRUIT-306)."""
 
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        app.config["WTF_CSRF_ENABLED"] = False
-        app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-        return app
-
-    @pytest.fixture
-    def db_session(self, app):
-        """Create database session with test data."""
+    def test_recruitment_note_model_exists(self, app):
+        """TC-380: RecruitmentNote model exists."""
         with app.app_context():
-            # Ensure clean database state
-            db.drop_all()
-            db.create_all()
+            assert RecruitmentNote is not None
 
-            # Create test tenant
+    def test_create_recruitment_note(self, app):
+        """TC-380: Create and save recruitment note."""
+        with app.app_context():
+            # Create test data
             tenant = Tenant(name="Test District", slug="test-district")
             db.session.add(tenant)
             db.session.flush()
 
-            # Create test user
             user = User()
             user.username = "staff_test"
             user.email = "staff@test.com"
@@ -50,12 +39,10 @@ class TestRecruitmentNoteModel:
             db.session.add(user)
             db.session.flush()
 
-            # Create test volunteer
             volunteer = Volunteer(first_name="John", last_name="Doe")
             db.session.add(volunteer)
             db.session.flush()
 
-            # Add volunteer to tenant
             district_vol = DistrictVolunteer(
                 volunteer_id=volunteer.id,
                 tenant_id=tenant.id,
@@ -63,29 +50,12 @@ class TestRecruitmentNoteModel:
             db.session.add(district_vol)
             db.session.commit()
 
-            yield {
-                "tenant": tenant,
-                "user": user,
-                "volunteer": volunteer,
-            }
-
-            db.session.remove()
-            db.drop_all()
-
-    def test_recruitment_note_model_exists(self, app):
-        """TC-380: RecruitmentNote model exists."""
-        with app.app_context():
-            assert RecruitmentNote is not None
-
-    def test_create_recruitment_note(self, app, db_session):
-        """TC-380: Create and save recruitment note."""
-        with app.app_context():
             note = RecruitmentNote.create_note(
-                volunteer_id=db_session["volunteer"].id,
-                tenant_id=db_session["tenant"].id,
+                volunteer_id=volunteer.id,
+                tenant_id=tenant.id,
                 note="Initial contact via email. Volunteer expressed interest.",
                 outcome="interested",
-                created_by=db_session["user"].id,
+                created_by=user.id,
             )
 
             assert note.id is not None
@@ -93,9 +63,9 @@ class TestRecruitmentNoteModel:
                 note.note == "Initial contact via email. Volunteer expressed interest."
             )
             assert note.outcome == "interested"
-            assert note.volunteer_id == db_session["volunteer"].id
-            assert note.tenant_id == db_session["tenant"].id
-            assert note.created_by == db_session["user"].id
+            assert note.volunteer_id == volunteer.id
+            assert note.tenant_id == tenant.id
+            assert note.created_by == user.id
 
     def test_outcome_choices_available(self, app):
         """TC-381: Outcome choices are defined."""
@@ -107,50 +77,76 @@ class TestRecruitmentNoteModel:
             assert "accepted" in outcomes
             assert "declined" in outcomes
 
-    def test_outcome_recorded_correctly(self, app, db_session):
+    def test_outcome_recorded_correctly(self, app):
         """TC-381: Outcome is recorded and retrievable."""
         with app.app_context():
-            # Create note with specific outcome
+            tenant = Tenant(name="Test District", slug="test-district")
+            db.session.add(tenant)
+            db.session.flush()
+
+            volunteer = Volunteer(first_name="John", last_name="Doe")
+            db.session.add(volunteer)
+            db.session.flush()
+
+            district_vol = DistrictVolunteer(
+                volunteer_id=volunteer.id,
+                tenant_id=tenant.id,
+            )
+            db.session.add(district_vol)
+            db.session.commit()
+
             note = RecruitmentNote.create_note(
-                volunteer_id=db_session["volunteer"].id,
-                tenant_id=db_session["tenant"].id,
+                volunteer_id=volunteer.id,
+                tenant_id=tenant.id,
                 note="Volunteer accepted position.",
                 outcome="accepted",
             )
 
-            # Retrieve and verify
             retrieved = RecruitmentNote.query.get(note.id)
             assert retrieved.outcome == "accepted"
 
-    def test_notes_chronological_order(self, app, db_session):
+    def test_notes_chronological_order(self, app):
         """FR-RECRUIT-306: Notes displayed in chronological order (newest first)."""
         with app.app_context():
-            # Create multiple notes
+            tenant = Tenant(name="Test District", slug="test-district")
+            db.session.add(tenant)
+            db.session.flush()
+
+            volunteer = Volunteer(first_name="John", last_name="Doe")
+            db.session.add(volunteer)
+            db.session.flush()
+
+            district_vol = DistrictVolunteer(
+                volunteer_id=volunteer.id,
+                tenant_id=tenant.id,
+            )
+            db.session.add(district_vol)
+            db.session.commit()
+
             note1 = RecruitmentNote.create_note(
-                volunteer_id=db_session["volunteer"].id,
-                tenant_id=db_session["tenant"].id,
+                volunteer_id=volunteer.id,
+                tenant_id=tenant.id,
                 note="First contact",
                 outcome="interested",
             )
 
             note2 = RecruitmentNote.create_note(
-                volunteer_id=db_session["volunteer"].id,
-                tenant_id=db_session["tenant"].id,
+                volunteer_id=volunteer.id,
+                tenant_id=tenant.id,
                 note="Follow up call",
                 outcome="follow_up",
             )
 
             note3 = RecruitmentNote.create_note(
-                volunteer_id=db_session["volunteer"].id,
-                tenant_id=db_session["tenant"].id,
+                volunteer_id=volunteer.id,
+                tenant_id=tenant.id,
                 note="Final decision",
                 outcome="accepted",
             )
 
-            # Retrieve in chronological order
             notes = RecruitmentNote.get_for_volunteer(
-                db_session["volunteer"].id,
-                db_session["tenant"].id,
+                volunteer.id,
+                tenant.id,
             )
 
             # Newest first
@@ -159,39 +155,74 @@ class TestRecruitmentNoteModel:
             assert notes[1].note == "Follow up call"
             assert notes[2].note == "First contact"
 
-    def test_tenant_isolation(self, app, db_session):
+    def test_tenant_isolation(self, app):
         """FR-RECRUIT-306: Notes are tenant-scoped."""
         with app.app_context():
-            # Create another tenant
+            tenant = Tenant(name="Test District", slug="test-district")
+            db.session.add(tenant)
             other_tenant = Tenant(name="Other District", slug="other-district")
             db.session.add(other_tenant)
+            db.session.flush()
+
+            volunteer = Volunteer(first_name="John", last_name="Doe")
+            db.session.add(volunteer)
+            db.session.flush()
+
+            district_vol = DistrictVolunteer(
+                volunteer_id=volunteer.id,
+                tenant_id=tenant.id,
+            )
+            db.session.add(district_vol)
             db.session.commit()
 
-            # Create note for original tenant
             RecruitmentNote.create_note(
-                volunteer_id=db_session["volunteer"].id,
-                tenant_id=db_session["tenant"].id,
+                volunteer_id=volunteer.id,
+                tenant_id=tenant.id,
                 note="Note for original tenant",
                 outcome="interested",
             )
 
             # Try to retrieve for other tenant - should return empty
             notes = RecruitmentNote.get_for_volunteer(
-                db_session["volunteer"].id,
+                volunteer.id,
                 other_tenant.id,
             )
 
             assert len(notes) == 0
 
-    def test_to_dict_serialization(self, app, db_session):
+    def test_to_dict_serialization(self, app):
         """RecruitmentNote serializes correctly to dict."""
         with app.app_context():
+            tenant = Tenant(name="Test District", slug="test-district")
+            db.session.add(tenant)
+            db.session.flush()
+
+            user = User()
+            user.username = "staff_test"
+            user.email = "staff@test.com"
+            user.first_name = "Test"
+            user.last_name = "Staff"
+            user.password_hash = "hashed_password"
+            db.session.add(user)
+            db.session.flush()
+
+            volunteer = Volunteer(first_name="John", last_name="Doe")
+            db.session.add(volunteer)
+            db.session.flush()
+
+            district_vol = DistrictVolunteer(
+                volunteer_id=volunteer.id,
+                tenant_id=tenant.id,
+            )
+            db.session.add(district_vol)
+            db.session.commit()
+
             note = RecruitmentNote.create_note(
-                volunteer_id=db_session["volunteer"].id,
-                tenant_id=db_session["tenant"].id,
+                volunteer_id=volunteer.id,
+                tenant_id=tenant.id,
                 note="Test note for serialization",
                 outcome="follow_up",
-                created_by=db_session["user"].id,
+                created_by=user.id,
             )
 
             data = note.to_dict()
@@ -205,15 +236,6 @@ class TestRecruitmentNoteModel:
 
 class TestRecruitmentNoteRoutes:
     """Tests for recruitment note route registration."""
-
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        app.config["WTF_CSRF_ENABLED"] = False
-        return app
 
     def test_create_note_route_exists(self, app):
         """TC-380: Create recruitment note route exists."""

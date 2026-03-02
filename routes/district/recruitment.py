@@ -188,7 +188,10 @@ def score_volunteer_for_event(volunteer, event, tenant_id):
     )
 
     if last_attendance and last_attendance.attended_at:
-        days_since = (datetime.now(timezone.utc) - last_attendance.attended_at).days
+        attended_at = last_attendance.attended_at
+        if attended_at.tzinfo is None:
+            attended_at = attended_at.replace(tzinfo=timezone.utc)
+        days_since = (datetime.now(timezone.utc) - attended_at).days
         if days_since < 30:
             recency_score = 20
             reasons.append("Active in last 30 days")
