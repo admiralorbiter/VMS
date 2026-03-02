@@ -1,6 +1,6 @@
 # VMS Development Status Tracker
 
-**Last Updated:** February 2026  
+**Last Updated:** March 2026
 **Total Functional Requirements:** ~188
 
 ---
@@ -257,8 +257,8 @@
 | ID | Requirement | Status | Notes |
 |----|-------------|--------|-------|
 | FR-DISTRICT-524 | Import district-provided teacher roster | ✅ | TC-030, TC-031 |
-| FR-DISTRICT-531 | Auto/manual teacher matching | 📋 | TBD |
-| FR-DISTRICT-532 | Google Sheets per district | 📋 | TBD |
+| FR-DISTRICT-531 | Auto/manual teacher matching | ✅ | Email-first + name fallback |
+| FR-DISTRICT-532 | Google Sheets per district | ✅ | Implemented |
 
 ### Semester Reset & Archiving
 
@@ -454,10 +454,10 @@
 
 | ID | Requirement | Status | Notes |
 |----|-------------|--------|-------|
-| FR-TENANT-113 | Import teacher rosters (CSV/Sheets) | 📋 | TBD |
-| FR-TENANT-114 | Upsert by email | 📋 | TBD |
-| FR-TENANT-115 | Teacher usage dashboard | 📋 | TBD |
-| FR-TENANT-116 | Filter by semester | 📋 | TBD |
+| FR-TENANT-113 | Import teacher rosters (CSV/Sheets) | ✅ | Via Google Sheets |
+| FR-TENANT-114 | Upsert by email | ✅ | Email-first matching |
+| FR-TENANT-115 | Teacher usage dashboard | ✅ | EventTeacher-primary counting |
+| FR-TENANT-116 | Filter by semester | ✅ | Virtual year filter |
 | FR-TENANT-117 | Excel export | 📋 | TBD |
 
 ### District Event Management
@@ -525,8 +525,8 @@
 
 ### ⚡ Medium Priority
 
-5. **District Teacher Management** — FR-531–532 (2 FRs)
-6. **Tenant Teacher Management** — FR-TENANT-113–117 (5 FRs)
+5. **District Teacher Management** — FR-531–532 *(Implemented)*
+6. **Tenant Teacher Management** — FR-TENANT-117 (1 FR remaining: Excel export)
 7. **Manual Archive Semester** — FR-DISTRICT-544
 
 ### 🔮 Future (Phase 5 / Near-term)

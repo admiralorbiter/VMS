@@ -126,7 +126,7 @@ The following were considered but are **not currently feasible**:
 |--------|-------|--------|
 | Sprint 1 | Service layer extraction | ✅ Complete |
 | Sprint 2 | Error handling & savepoints | ✅ Complete |
-| Sprint 3 | Dashboard enhancements | ⬜ Not Started |
+| Sprint 3 | Dashboard enhancements | ✅ Complete |
 
 ---
 

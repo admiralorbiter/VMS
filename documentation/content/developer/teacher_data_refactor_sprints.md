@@ -1,13 +1,13 @@
 # Teacher Data System Refactor — Sprint Plan
 
 **Created:** 2026-02-27
-**Status:** Approved
+**Status:** ✅ Completed (2026-02-28)
 **Goal:** Systematically fix all 8 architectural issues in the teacher data pipeline, making the system robust, reliable, and future-proof.
 
 **Related Docs:**
-- [Architecture Analysis](../technical/teacher_data_architecture_analysis.md) — 8 issues identified
-- [Pre-Refactor System Analysis](../technical/pre_refactor_system_analysis.md) — Broader system perspective
-- [Retrospective](../operations/retro_teacher_data_linking.md) — Original bug investigation
+- [Architecture Analysis](../archive/teacher_refactor/teacher_data_architecture_analysis.md) — 8 issues identified *(archived)*
+- [Pre-Refactor System Analysis](../archive/teacher_refactor/pre_refactor_system_analysis.md) — Broader system perspective *(archived)*
+- [Retrospective](../archive/teacher_refactor/retro_teacher_data_linking.md) — Original bug investigation *(archived)*
 
 > [!NOTE]
 > **Database resets are acceptable** during this refactor since teacher data can be re-imported from source systems (Salesforce, spreadsheets, Pathful). We will note where a DB reset is the cleanest path.
@@ -43,7 +43,7 @@ flowchart LR
 
 - [x] **0.3 — Back up the database** — `instance/backup_pre_refactor_2026-02-27.db`
 
-- [x] **0.4 — Document current dashboard numbers** — saved to `documentation/content/operations/sprint0_baselines.txt`
+- [x] **0.4 — Document current dashboard numbers** — saved to `archive/teacher_refactor/sprint0_baselines.txt`
 
 ---
 
@@ -176,12 +176,11 @@ flowchart LR
 - [x] **4.1 — Harden `teacher_detail` counting (text-primary, EventTeacher-supplementary)**
   - Text-based matching handles 100% of existing event data (3,793 events)
   - EventTeacher supplements for future FK-linked sessions not in text
-  - Deduplication via `matched_event_ids`
+   - Deduplication via `matched_event_ids`
 
 - [x] **4.2 — Harden `compute_teacher_progress` counting (same strategy)**
-  - Completed, planned, and in-planning counts all use text-primary
-  - EventTeacher catches FK-only events not found via text
-  - ⚠ **EventTeacher-only simplification deferred** until a real backfill populates the table
+  - Completed, planned, and in-planning counts all use EventTeacher-primary
+  - Text fallback catches remaining 2.5% edge cases
 
 - [x] **4.3 — Add `tenant_id` to Teacher model**
   - Added `tenant_id = Column(Integer, ForeignKey('tenant.id'), nullable=True, index=True)`
@@ -191,8 +190,8 @@ flowchart LR
   - Created `scripts/utilities/teacher_data_health_check.py`
   - Checks: missing emails, unlinked TeacherProgress, orphaned educators text, duplicates, missing tenant_id
 
-- *Deferred:* 4.4 (missing school records) — data task
-- *Deferred:* 4.6 (full doc update) — content task
+- [x] **4.4 — Create missing KCKPS school records** (see below)
+- [x] **4.6 — Full doc update** — completed 2026-03-01
 
 ### Verification
 - [x] 81/81 tests pass (0 regressions)
