@@ -121,7 +121,7 @@
         var form = document.getElementById('sessionsFilterForm');
         var searchInput = document.getElementById('sessionsSearchInput');
         if (!form || !searchInput) return;
-        var debounceMs = 250;
+        var debounceMs = 450;
         var debounceTimer = null;
         searchInput.addEventListener('input', function () {
             if (debounceTimer) clearTimeout(debounceTimer);
