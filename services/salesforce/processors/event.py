@@ -31,13 +31,13 @@ from models.school_model import School
 from models.student import Student
 from models.volunteer import EventParticipation, Skill, Volunteer
 from routes.utils import (
-    DISTRICT_MAPPINGS,
     map_cancellation_reason,
     map_event_format,
     map_session_type,
     parse_date,
     parse_event_skills,
 )
+from services.district_service import resolve_district
 from services.salesforce.utils import safe_parse_delivery_hours
 
 
@@ -141,9 +141,8 @@ def process_event_row(
             district_name = parent_account
 
         district = None
-        if district_name and district_name in DISTRICT_MAPPINGS:
-            mapped_name = DISTRICT_MAPPINGS[district_name]
-            district = District.query.filter_by(name=mapped_name).first()
+        if district_name:
+            district = resolve_district(district_name)
 
         if district or school_district:
             event.districts = []

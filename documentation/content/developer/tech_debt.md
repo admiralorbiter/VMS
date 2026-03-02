@@ -153,21 +153,21 @@ Adopt a service-layer transaction pattern:
 
 ---
 
-## TD-010: Hardcoded District Mappings in `routes/utils.py`
+## ~~TD-010: Hardcoded District Mappings in `routes/utils.py`~~ ✅ RESOLVED
 
 **Created:** 2026-03-01
+**Resolved:** 2026-03-01
 **Priority:** Medium
 **Category:** Scalability / Configuration
 
-### Description
+### Resolution
 
-`DISTRICT_MAPPINGS` dictionary (lines 66–100 of `routes/utils.py`) contains ~30 hardcoded district name entries and aliases. Adding a new district partner requires a code change and redeployment.
+Replaced the hardcoded `DISTRICT_MAPPINGS` dict with a DB-driven solution:
+- Added `DistrictAlias` model in `models/district_model.py`
+- Created `services/district_service.py` with `resolve_district()` (4-tier: exact name → exact alias → case-insensitive name → case-insensitive alias) and `seed_district_aliases()`
+- Updated 3 consumers to use `resolve_district()`, removed dict from `routes/utils.py`
 
-### Proposed Fix
-
-Create a `DistrictAlias` model or add an `aliases` JSON column to the `District` model. Load mappings from the DB at startup or on cache refresh.
-
-**Risk:** Low — additive change, existing mappings can be migrated as seed data.
+**Risk:** Low — additive model, same behavior, no districts lost.
 
 ---
 
