@@ -276,6 +276,7 @@ def import_organizations_from_salesforce():
     "/organizations/import-affiliations-from-salesforce", methods=["POST"]
 )
 @login_required
+@global_users_only
 def import_affiliations_from_salesforce():
     """
     Import volunteer-organization affiliations from Salesforce.

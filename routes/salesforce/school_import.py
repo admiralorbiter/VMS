@@ -17,12 +17,16 @@ from datetime import datetime, timezone
 from flask import Blueprint, jsonify, request
 from flask_login import login_required
 from simple_salesforce.exceptions import SalesforceAuthenticationFailed
+from sqlalchemy import func
 
 from models import db
 from models.class_model import Class
 from models.district_model import District
+from models.event import Event
 from models.school_model import School
+from models.student import Student
 from models.sync_log import SyncLog, SyncStatus
+from models.teacher import Teacher
 from routes.decorators import global_users_only
 from services.salesforce import get_salesforce_client, safe_query_all
 from services.salesforce.errors import classify_exception, create_import_error
@@ -148,13 +152,56 @@ def import_schools():
             # Use savepoint to isolate each record
             try:
                 with db.session.begin_nested():
-                    existing_school = School.query.filter_by(id=row["Id"]).first()
+                    sf_id = row["Id"]
+                    sf_name = row["Name"]
+
                     district = District.query.filter_by(
                         salesforce_id=row["ParentId"]
                     ).first()
 
+                    existing_school = School.query.filter_by(id=sf_id).first()
+
+                    # TD-021 Fix: Name-based fallback for app-created VRT* schools
+                    # If no school found by Salesforce ID, check if one exists
+                    # with the same name (e.g. created via app with VRT* ID).
+                    # If found, migrate FK references and replace with SF identity.
+                    name_matched_school = None
+                    if not existing_school:
+                        name_matched_school = School.query.filter(
+                            func.lower(School.name) == func.lower(sf_name)
+                        ).first()
+
+                    if name_matched_school and name_matched_school.id != sf_id:
+                        old_id = name_matched_school.id
+                        print(
+                            f"  ↔ Reconciling school '{sf_name}': "
+                            f"{old_id} → {sf_id}"
+                        )
+
+                        # Migrate all FK references from old ID → new SF ID
+                        Teacher.query.filter_by(school_id=old_id).update(
+                            {"school_id": sf_id}, synchronize_session="fetch"
+                        )
+                        Student.query.filter_by(school_id=old_id).update(
+                            {"school_id": sf_id}, synchronize_session="fetch"
+                        )
+                        Event.query.filter_by(school=old_id).update(
+                            {"school": sf_id}, synchronize_session="fetch"
+                        )
+                        Class.query.filter_by(school_salesforce_id=old_id).update(
+                            {"school_salesforce_id": sf_id},
+                            synchronize_session="fetch",
+                        )
+
+                        # Delete the old VRT record
+                        db.session.delete(name_matched_school)
+                        db.session.flush()
+
+                        # Create with Salesforce identity
+                        existing_school = None  # Force creation below
+
                     if existing_school:
-                        existing_school.name = row["Name"]
+                        existing_school.name = sf_name
                         existing_school.district_id = district.id if district else None
                         existing_school.salesforce_district_id = row["ParentId"]
                         existing_school.normalized_name = row[
@@ -163,8 +210,8 @@ def import_schools():
                         existing_school.school_code = row["School_Code_External_ID__c"]
                     else:
                         new_school = School(
-                            id=row["Id"],
-                            name=row["Name"],
+                            id=sf_id,
+                            name=sf_name,
                             district_id=district.id if district else None,
                             salesforce_district_id=row["ParentId"],
                             normalized_name=row["Connector_Account_Name__c"],
