@@ -191,7 +191,9 @@ class History(db.Model):
     )  # Current status of the activity
 
     # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
-    created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
+    created_at = db.Column(
+        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
     # Note: updated_at column removed to match current database schema
 
     # Status and Integration Fields

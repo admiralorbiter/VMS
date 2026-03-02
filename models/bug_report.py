@@ -62,7 +62,7 @@ Usage Examples:
     user_reports = user.bug_reports
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import IntEnum
 
 from . import db
@@ -166,5 +166,7 @@ class BugReport(db.Model):
     resolution_notes = db.Column(db.Text)
 
     # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
-    created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
+    created_at = db.Column(
+        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
     resolved_at = db.Column(db.DateTime)

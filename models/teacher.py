@@ -217,9 +217,13 @@ class Teacher(Contact):
     )  # Remove ForeignKey constraint
 
     # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
-    created_at = db.Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = db.Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
     updated_at = db.Column(
-        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     # Enhanced event tracking

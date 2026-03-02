@@ -7,7 +7,7 @@ from validation runs, enabling trend analysis and quality monitoring.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Tuple
 
 from models import db
@@ -334,7 +334,7 @@ class ValidationHistoryService:
             Number of history records created
         """
         try:
-            cutoff_date = datetime.utcnow() - timedelta(days=days)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
             recent_runs = ValidationRun.query.filter(
                 ValidationRun.completed_at >= cutoff_date,
                 ValidationRun.status == "completed",

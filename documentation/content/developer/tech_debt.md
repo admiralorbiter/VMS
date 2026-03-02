@@ -95,24 +95,16 @@ Every import of `app` triggers all validation code to load. The quality subsyste
 
 ---
 
-## TD-007: Deprecated `datetime.utcnow()` Across 20+ Files
+## ~~TD-007: Deprecated `datetime.utcnow()` Across 20+ Files~~ ✅ RESOLVED
 
 **Created:** 2026-03-01
+**Resolved:** 2026-03-01
 **Priority:** Medium
 **Category:** Correctness / Forward Compatibility
 
-### Description
+### Resolution
 
-`datetime.utcnow()` is deprecated since Python 3.12 (PEP 695) and is scheduled for removal in Python 3.14. Found in 20+ files across models, routes, utils, and scripts:
-
-- **Models:** `event.py`, `contact.py`, `volunteer.py`, `teacher.py`, `user.py`, `history.py`, `organization.py`, `class_model.py`, `bug_report.py`, `client_project_model.py`, `reports.py`, `validation/run.py`
-- **Routes:** `volunteers/routes.py`, `salesforce/routes.py`, `reports/common.py`
-- **Utils:** `logging_config.py`, `calendar_utils.py`, `services/history_service.py`
-- **Scripts:** `validation/run_validation.py`, `validation/populate_phase_3_4_data.py`
-
-### Proposed Fix
-
-Global find-and-replace: `datetime.utcnow()` → `datetime.now(timezone.utc)`. Most files already import `timezone`.
+Replaced all `datetime.utcnow()` calls with `datetime.now(timezone.utc)` across 18 files. Column defaults converted to `lambda: datetime.now(timezone.utc)` pattern. Added `timezone` imports where missing. Final grep scan confirms zero remaining instances.
 
 **Risk:** Low — direct replacement, behavior-identical.
 

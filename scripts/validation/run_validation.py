@@ -10,7 +10,7 @@ import argparse
 import logging
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 
@@ -414,7 +414,7 @@ def clear_validation_data(
     """Clear old validation data from the database."""
     try:
         # Import and set up Flask app context
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
 
         from app import app, db
         from models.validation.history import ValidationHistory
@@ -429,7 +429,9 @@ def clear_validation_data(
             run_filters = []
 
             if older_than_days:
-                cutoff_date = datetime.utcnow() - timedelta(days=older_than_days)
+                cutoff_date = datetime.now(timezone.utc) - timedelta(
+                    days=older_than_days
+                )
                 run_filters.append(ValidationRun.started_at < cutoff_date)
                 logger.info(
                     f"Clearing data older than {older_than_days} days (before {cutoff_date})"

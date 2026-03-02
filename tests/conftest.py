@@ -233,15 +233,33 @@ def app():
         # Create all tables
         db.create_all()
 
+        # Safety assertion: tests must NEVER run against a real database
+        actual_uri = str(db.engine.url)
+        assert ":memory:" in actual_uri, (
+            f"TEST SAFETY FAILURE: Tests are pointing at '{actual_uri}' "
+            f"instead of ':memory:'. Aborting to protect production data."
+        )
+
         yield test_app
 
         db.session.remove()
-        # Disable FK constraints for clean teardown, then drop all tables
+        # Safety: only drop tables if we're on an in-memory database
         try:
-            with db.engine.connect() as conn:
-                conn.execute(text("PRAGMA foreign_keys=OFF"))
-                conn.commit()
-            db.drop_all()
+            db_url = str(db.engine.url)
+            if ":memory:" in db_url:
+                with db.engine.connect() as conn:
+                    conn.execute(text("PRAGMA foreign_keys=OFF"))
+                    conn.commit()
+                db.drop_all()
+            else:
+                import warnings
+
+                warnings.warn(
+                    f"SAFETY: Skipped db.drop_all() — engine points to "
+                    f"'{db_url}', not :memory:. This indicates a test "
+                    f"isolation leak.",
+                    stacklevel=2,
+                )
         except Exception:
             # Silently handle any remaining teardown issues
             pass

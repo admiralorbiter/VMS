@@ -47,7 +47,7 @@ Author: VMS Development Team
 Last Updated: 2024
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import declared_attr, relationship, validates
@@ -124,12 +124,14 @@ class ConnectorData(db.Model):
 
     # Automatic timestamp tracking (timezone-aware, Python-side defaults)
     created_at = db.Column(
-        DateTime(timezone=True), default=datetime.utcnow, nullable=True
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=True,
     )
     updated_at = db.Column(
         DateTime(timezone=True),
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
         nullable=True,
     )
 

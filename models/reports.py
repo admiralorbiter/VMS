@@ -111,7 +111,9 @@ class DistrictYearEndReport(db.Model):
     report_data = db.Column(db.JSON, nullable=False)
     events_data = db.Column(db.JSON, nullable=True)
     last_updated = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     district = db.relationship("District", backref="year_end_reports")
@@ -179,7 +181,9 @@ class DistrictEngagementReport(db.Model):
     breakdown_data = db.Column(db.JSON, nullable=True)
 
     last_updated = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     district = db.relationship("District", backref="engagement_reports")
@@ -245,7 +249,9 @@ class OrganizationReport(db.Model):
     volunteers_data = db.Column(db.JSON, nullable=True)
 
     last_updated = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     organization = db.relationship("Organization", backref="cached_reports")
@@ -292,7 +298,9 @@ class OrganizationSummaryCache(db.Model):
     school_year = db.Column(db.String(4), nullable=False, index=True)  # e.g., '2425'
     organizations_data = db.Column(db.JSON)  # Cached organization summary data
     last_updated = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     def __repr__(self):
@@ -348,7 +356,9 @@ class OrganizationDetailCache(db.Model):
     summary_stats = db.Column(db.JSON)  # Summary statistics
 
     last_updated = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     # Unique constraint to prevent duplicates
@@ -372,7 +382,9 @@ class FirstTimeVolunteerReportCache(db.Model):
     school_year = db.Column(db.String(4), nullable=False, index=True)
     report_data = db.Column(db.JSON, nullable=False)
     last_updated = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
     __table_args__ = (
         db.UniqueConstraint("school_year", name="uq_first_time_volunteer_report_cache"),
@@ -428,7 +440,9 @@ class VirtualSessionReportCache(db.Model):
     filter_options = db.Column(db.JSON, nullable=True)  # Available filter options
 
     last_updated = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     __table_args__ = (
@@ -635,13 +649,13 @@ class DIAEventsReportCache(db.Model):
 class DistrictManualInput(db.Model):
     """
     Model for storing manually entered district-level data for Year-End reports.
-    
+
     This model stores values like Math Relays and Data Science participation
     that are entered manually by staff and need to appear in Year-End reports.
-    
+
     Database Table:
         district_manual_inputs - Stores manual district data entries
-    
+
     Key Features:
         - District-specific manual data entry
         - School year organization
@@ -649,36 +663,44 @@ class DistrictManualInput(db.Model):
         - Data type categorization (math_relays, data_science, etc.)
         - Automatic timestamp tracking
         - Unique constraints to prevent duplicate entries
-    
+
     Relationships:
         - Many-to-one with District model
-    
+
     Data Organization:
         - district_id: Links to specific district (Integer, matches District.id)
         - school_year: Academic year (e.g., "2425" for 2024-2025)
         - host_filter: Host environment filter ("all", "prep-kc", etc.)
         - data_type: Type of data (e.g., "math_relays", "data_science")
         - value: Numeric value entered by staff (Integer, 0-30000 range)
-    
+
     Performance Features:
         - Indexed fields for fast queries
         - Unique constraint prevents duplicate entries
         - Efficient lookups by district, year, filter, and type
     """
-    
+
     __tablename__ = "district_manual_inputs"
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    district_id = db.Column(db.Integer, db.ForeignKey("district.id"), nullable=False, index=True)
+    district_id = db.Column(
+        db.Integer, db.ForeignKey("district.id"), nullable=False, index=True
+    )
     school_year = db.Column(db.String(4), nullable=False, index=True)
     host_filter = db.Column(db.String(20), default="all", nullable=False, index=True)
     data_type = db.Column(db.String(50), nullable=False, index=True)
     value = db.Column(db.Integer, nullable=False, default=0)
-    created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+    created_at = db.Column(
+        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at = db.Column(
+        db.DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
     district = db.relationship("District", backref="manual_inputs")
-    
+
     __table_args__ = (
         db.UniqueConstraint(
             "district_id",
@@ -688,6 +710,6 @@ class DistrictManualInput(db.Model):
             name="uix_district_year_host_datatype",
         ),
     )
-    
+
     def __repr__(self):
         return f"<DistrictManualInput district={self.district_id} year={self.school_year} type={self.data_type} value={self.value}>"
