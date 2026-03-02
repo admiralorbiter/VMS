@@ -311,3 +311,155 @@ Domain-driven extraction:
 4. Move aggregation logic to `services/usage_service.py`
 
 **Risk:** Medium — large file but routes can be extracted one at a time.
+
+---
+
+## TD-018: Duplicate Permission Pattern — Inline `is_admin` Checks
+
+**Created:** 2026-03-02
+**Priority:** Medium
+**Category:** Security / Maintainability
+
+### Description
+
+40+ instances of `if not current_user.is_admin:` scattered across route handlers instead of using the `@admin_required` decorator from `routes/decorators.py`. Worst offender: `management/management.py` with 20+ inline checks.
+
+**Files affected:** `management/management.py`, `client_projects/routes.py` (7), `volunteers/routes.py`, `events/routes.py`, `teachers/routes.py`, `auth/routes.py`, `attendance/routes.py`, `bug_reports/routes.py`
+
+### Proposed Fix
+
+Replace inline checks with `@admin_required` or `@staff_required` decorators. Audit each handler for nuanced permission logic that may need a custom decorator (e.g., `tenant_teacher_usage.py` checks both `is_admin` and `tenant_id`).
+
+**Risk:** Low — decorator already exists, mostly mechanical replacement.
+
+---
+
+## TD-019: `management.py` Is a God Module (~1,300+ Lines)
+
+**Created:** 2026-03-02
+**Priority:** Medium
+**Category:** Architecture / Maintainability
+
+### Description
+
+`routes/management/management.py` contains user management, bulk operations, data purging, configuration, and administrative actions all in a single file. It has 20+ inline admin checks and mixes CRUD, import triggers, and system maintenance.
+
+### Proposed Fix
+
+Extract into sub-modules: `management/users.py`, `management/bulk_ops.py`, `management/system.py`.
+
+**Risk:** Low — same extraction pattern used for TD-006 (app.py extraction).
+
+---
+
+## TD-020: `virtual_session.py` and `pathful_import.py` Are Oversized
+
+**Created:** 2026-03-02
+**Priority:** Medium
+**Category:** Architecture / Maintainability
+
+### Description
+
+After `usage.py` (7,472 lines — TD-017), these are the next largest route files:
+
+| File | Lines |
+|------|------:|
+| `routes/reports/virtual_session.py` | 5,287 |
+| `routes/virtual/pathful_import.py` | 2,686 |
+| `routes/reports/district_year_end.py` | 2,405 |
+| `routes/virtual/routes.py` | 1,825 |
+
+### Proposed Fix
+
+Apply the same domain-driven extraction strategy proposed for TD-017.
+
+**Risk:** Medium — same pattern as usage.py, can be done one file at a time.
+
+---
+
+## TD-021: SQLite `RETURNING` Workaround in Roster Import
+
+**Created:** 2026-03-02
+**Priority:** Medium
+**Category:** Database Compatibility
+
+### Description
+
+Line 272 of `utils/roster_import.py`:
+
+```python
+# Temporary workaround: Skipping DB logging due to SQLite RETURNING issue
+```
+
+SQLite lacks `RETURNING` clause support, which silently disables audit logging for roster imports. This means tenant roster imports have no audit trail.
+
+### Proposed Fix
+
+- **Short term:** Implement an alternative insert-then-query pattern to restore audit logging.
+- **Long term:** Resolved automatically by PostgreSQL migration (TD-011).
+
+**Risk:** Low for short-term fix; resolved by TD-011 long-term.
+
+---
+
+## TD-022: No Test Coverage for Extracted Blueprints
+
+**Created:** 2026-03-02
+**Priority:** Medium
+**Category:** Testing / Reliability
+
+### Description
+
+The `quality` and `docs` blueprints (extracted from `app.py` in TD-006) have zero test coverage. The 14-module `reports/` directory is only partially covered by `test_report_routes.py`.
+
+### Proposed Fix
+
+Add integration tests for `quality_bp` and `docs_bp`. Audit `reports/` test coverage to ensure all 14 report modules have at least smoke tests.
+
+**Risk:** Low — additive, no code changes needed.
+
+---
+
+## Priority Order
+
+Ordered by **what best unblocks future work** — structural improvements first, since they make every subsequent fix dramatically easier.
+
+### Phase 1: Organize the Code (Unblocks Everything Else)
+
+| Order | ID | Item | Rationale |
+|:-----:|----|------|-----------|
+| 1 | **TD-017** | Break up `usage.py` (7,472 lines) | Biggest friction point; every other fix touches this file. Must be split first. |
+| 2 | **TD-020** | Break up `virtual_session.py` + `pathful_import.py` | Same pattern as TD-017 — do while approach is fresh. |
+| 3 | **TD-019** | Break up `management.py` | 20+ inline admin checks become trivially fixable once in smaller files. |
+| 4 | **TD-012** | Split oversized model files | Enums in their own files makes route extraction cleaner. |
+
+### Phase 2: Standardize Patterns (Safer After Smaller Files)
+
+| Order | ID | Item | Rationale |
+|:-----:|----|------|-----------|
+| 5 | **TD-018** | Inline `is_admin` → decorators | 40+ sites; mechanical fix, but must be done in smaller files or you'll lose your place. |
+| 6 | **TD-008** | Audit `except Exception` handlers | Per-handler analysis in 200-line files is feasible; in 7,000-line files it's not. |
+| 7 | **TD-009** | Centralize transaction management | Service-layer pattern requires clear route boundaries — only possible after extraction. |
+| 8 | **TD-016** | Generic `ReportCache` model | Reduces boilerplate for new reports; depends on model files being cleaned up (TD-012). |
+
+### Phase 3: Foundation & Safety Net
+
+| Order | ID | Item | Rationale |
+|:-----:|----|------|-----------|
+| 9 | **TD-013** | True application factory pattern | Enables isolated test instances; unblocks better testing infrastructure. |
+| 10 | **TD-022** | Add tests for extracted blueprints | Build safety net before making data-layer changes. |
+| 11 | **TD-015** | F-string → `%s` logger migration | Low priority but can be done incrementally anytime. |
+| 12 | **TD-021** | SQLite `RETURNING` workaround | Short-term fix to restore audit logging. |
+
+### Phase 4: Data Integrity (Requires Migrations)
+
+| Order | ID | Item | Rationale |
+|:-----:|----|------|-----------|
+| 13 | **TD-003** | `Teacher.school_id` FK constraint | Requires data cleanup migration; safer after test coverage is solid. |
+| 14 | **TD-004** | `Event.district_partner` → FK | 50+ callsites; most pervasive data pattern. Needs all route files to be manageable first. |
+
+### Phase 5: Infrastructure
+
+| Order | ID | Item | Rationale |
+|:-----:|----|------|-----------|
+| 15 | **TD-011** | SQLite → PostgreSQL | Largest change possible. Resolves TD-021 as a side effect. Do last when codebase is clean. |
