@@ -63,21 +63,9 @@ role_value = tenant_role.value if hasattr(tenant_role, 'value') else str(tenant_
 
 ---
 
-## ~~TD-002: Incomplete Savepoint Recovery in Import Files~~ *(Resolved)*
+## ~~TD-002: Incomplete Savepoint Recovery in Import Files~~ *(Resolved 2026-02-04)*
 
-**Created:** 2026-02-04
-**Resolved:** 2026-02-04
-**Category:** Data Integrity / Error Handling
-
-### Resolution
-
-All Salesforce import files have been updated with:
-- Savepoint recovery using `db.session.begin_nested()`
-- Structured error codes using `ImportErrorCode` enum and `ImportError` dataclass
-
-Files updated: `volunteer_import.py`, `history_import.py`, `pathway_import.py`, `teacher_import.py`, `student_import.py`, `organization_import.py`, `school_import.py`
-
-See [Salesforce Import Roadmap](salesforce_import_roadmap.md) for details.
+All Salesforce import files updated with savepoint recovery and structured error codes.
 
 ---
 
@@ -129,18 +117,6 @@ Replace with `district_id` FK to `District`. Requires updating all filtering log
 
 ---
 
-## ~~TD-005: EventTeacher Cannot Be Primary Until All TeacherProgress Are Linked~~ *(Resolved)*
+## ~~TD-005: EventTeacher Cannot Be Primary Until All TeacherProgress Are Linked~~ *(Resolved 2026-02-28)*
 
-**Created:** 2026-02-28
-**Resolved:** 2026-02-28
-**Category:** Data Architecture
-
-### Resolution
-
-1. Created 184 missing Teacher records from unlinked TeacherProgress data
-2. All 464 TeacherProgress now have `teacher_id` (100% linking)
-3. EventTeacher backfill: 15,838+ records (97.5% event coverage)
-4. Dashboard switched to EventTeacher-primary, text-supplementary
-5. Verified: 162 goals achieved (matches expected ±1 due to new Teacher matches)
-
-See ADR D-008.
+All 464 TeacherProgress linked to Teacher records. EventTeacher backfill completed (15,838+ records, 97.5% coverage). Dashboard switched to EventTeacher-primary counting. See ADR D-008.

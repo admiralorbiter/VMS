@@ -161,9 +161,9 @@ ADRs are immutable records of significant technical decisions that capture conte
 - ✅ Single authoritative path for teacher-session relationships
 - ✅ Text fields are now a cache, not a source of truth
 - ✅ Dashboard counting simplified — EventTeacher-first with text fallback
-- ✅ Backfill script available for existing data
-- ⚠️ Backfill script must be run on existing database to populate EventTeacher records
-- ⚠️ Text fallback still active until backfill is complete
+- ✅ Backfill completed (15,838+ EventTeacher records)
+- ✅ Text fields are now a cache, not a source of truth
+- ✅ EventTeacher is primary data source (D-008)
 
 **Files Changed:**
 - `services/teacher_service.py` — `sync_event_participant_fields()`, `ensure_event_teacher()`
