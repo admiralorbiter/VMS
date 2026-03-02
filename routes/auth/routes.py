@@ -78,6 +78,14 @@ def login():
     if form.validate_on_submit():
         user = User.find_by_username_or_email(form.username.data)
         if user and check_password_hash(user.password_hash, form.password.data):
+            # Check if user account is active (FR-TENANT-108 soft deactivation)
+            if hasattr(user, "is_active") and not user.is_active:
+                flash(
+                    "Your account has been deactivated. Please contact an administrator.",
+                    "danger",
+                )
+                return render_template("login.html", form=form)
+
             login_user(user)
             flash("Logged in successfully.", "success")
 
