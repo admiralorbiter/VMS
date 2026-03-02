@@ -231,9 +231,33 @@ Staging under same load (10 users, 5 min) shows much higher latency than local (
 
 *(Add more runs above or below using the same format.)*
 
+### Pytest stress suite (break/fuzz)
+
+- **Run:** `pytest tests/stress/ -v` (in-process). **Result:** 12 passed (API break + Hypothesis fuzz). Suite executed and green; no failures.
+
 ---
 
-## 4. Findings / Bug List
+## 4. Summary: top bottlenecks and crash/500 causes
+
+### Top 5 bottlenecks (identified so far)
+
+1. **Rate limiter per IP (429)** — Caps throughput from a single source; all Locust traffic from one machine is rate-limited (F-1).
+2. **Staging 502 under load** — Two 502s on GET /students and GET /teachers on staging (F-2).
+3. **Staging latency spikes** — Large outliers (e.g. 19+ s) on staging vs. local.
+4. **Staging baseline latency** — Median ~93 ms vs. ~5 ms local (proxy/worker environment).
+5. **TBD** — e.g. SQLite contention under heavy write load if observed.
+
+### Top 5 crash/500 causes (identified so far)
+
+1. **update_local_status: missing body or wrong Content-Type** → 500 (F-3).
+2. **update_local_status: malformed JSON** → 500 (F-4).
+3. **Staging 502 (proxy/worker)** — Counted as crash-like (F-2).
+4. No other 500s observed in Locust or stress suite.
+5. **TBD.**
+
+---
+
+## 5. Findings / Bug List
 
 ### F-1: 429 Too Many Requests under load from single IP
 
@@ -265,5 +289,27 @@ Staging under same load (10 users, 5 min) shows much higher latency than local (
 | **Why** | Suspected: staging proxy or worker timeout/overload under load (e.g. PythonAnywhere limits). |
 | **Severity** | Medium (staging; may indicate risk under production load). |
 | **Repro** | 1) Locust: `locust -f locustfile.py --host=https://romulus-jlane.pythonanywhere.com`. 2) Open http://localhost:8089, set 10 users, spawn rate 1, Start swarming, run 5 min. 3) Check Failures tab for 502. |
+
+### F-3: 500 on update_local_status when request has no JSON body or wrong Content-Type
+
+| Field | Value |
+|-------|--------|
+| **What** | POST to `/volunteers/update-local-status/<id>` with no body or without `Content-Type: application/json` returns HTTP 500. |
+| **When** | Stress test: API break suite (missing-body case). |
+| **Where** | Endpoint: POST /volunteers/update-local-status/&lt;id&gt;. Local and staging. |
+| **Why** | App uses `request.get_json()`; when body is missing or Content-Type is wrong, Flask/Werkzeug raises; exception is caught and returned as 500 instead of 415/400. |
+| **Severity** | Low–Medium (bad client input should return 4xx, not 500). |
+| **Repro** | Run: `pytest tests/stress/test_api_break.py::test_update_local_status_missing_body -v`. Or: POST to the endpoint with no body or with wrong Content-Type; observe 500 and JSON body with message like "415 Unsupported Media Type...". |
+
+### F-4: 500 on update_local_status when request body is malformed JSON
+
+| Field | Value |
+|-------|--------|
+| **What** | POST to `/volunteers/update-local-status/<id>` with malformed JSON body (e.g. plain text) returns HTTP 500. |
+| **When** | Stress test: API break suite (malformed-JSON case). |
+| **Where** | Endpoint: POST /volunteers/update-local-status/&lt;id&gt;. Local and staging. |
+| **Why** | JSON decode failure is raised and returned as 500 instead of 400 Bad Request. |
+| **Severity** | Low–Medium (invalid JSON should return 4xx, not 500). |
+| **Repro** | Run: `pytest tests/stress/test_api_break.py::test_update_local_status_malformed_json_returns_4xx -v`. Or: POST with `Content-Type: application/json` and body `not json at all`; observe 500 and message like "400 Bad Request: Failed to decode JSON object...". |
 
 *(Add more findings below as you discover 5xxs, timeouts, or other issues.)*

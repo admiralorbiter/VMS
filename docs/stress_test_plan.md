@@ -4,7 +4,7 @@
 
 - **In scope:** Local app (`http://127.0.0.1:5050`) and approved test-production (staging) URL only.
 - **Out of scope:** Production environment, real user data.
-- **Tools:** Locust (load testing), optional: pytest + requests, Hypothesis for property-based/input testing.
+- **Tools:** Locust (load testing), pytest + requests (API break tests), Hypothesis (property-based/input fuzzing).
 
 ## 2. Test Scenarios
 
@@ -31,6 +31,19 @@
 - **Staging:** `locust -f locustfile.py --host=https://romulus-jlane.pythonanywhere.com`
 
 Use two terminals: one for the app, one for Locust.
+
+### Pytest stress suite (API break + Hypothesis fuzz)
+
+- **Local (in-process, no server):**  
+  `pytest tests/stress/ -v`
+- **Run only API-break tests:**  
+  `pytest tests/stress/test_api_break.py -v`
+- **Run only Hypothesis fuzz tests:**  
+  `pytest tests/stress/test_input_fuzz.py -v`
+- **Exclude stress tests from normal runs:**  
+  `pytest -m "not stress"`
+
+These tests use the same in-process app as the rest of the test suite. For optional live runs against a running server or staging, set `VMS_STRESS_BASE_URL` (e.g. `http://127.0.0.1:5050` or `https://romulus-jlane.pythonanywhere.com`); the current tests are written for the in-process client.
 
 ## 4. Expected Behavior / Success Criteria
 
