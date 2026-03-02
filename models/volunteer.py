@@ -381,47 +381,6 @@ class Volunteer(Contact):
             )
             return None
 
-    def _check_local_status_from_events(self):
-        """
-        Check local status based on event participation.
-
-        If a volunteer has participated in any in-person events (non-virtual),
-        they are very likely local since they physically attended.
-
-        Returns:
-            LocalStatusEnum or None: Local status if determinable from events
-        """
-        try:
-            from models.event import Event, EventFormat, EventType
-
-            # Check for participation in non-virtual events with attended status
-            in_person_participation = (
-                EventParticipation.query.filter(
-                    EventParticipation.volunteer_id == self.id,
-                    EventParticipation.status.in_(
-                        ["Attended", "Completed", "Successfully Completed"]
-                    ),
-                )
-                .join(Event, EventParticipation.event_id == Event.id)
-                .filter(
-                    Event.type != EventType.VIRTUAL_SESSION,
-                    Event.format != EventFormat.VIRTUAL,
-                )
-                .first()
-            )
-
-            if in_person_participation:
-                # Strong indicator they are local - they attended in-person
-                return LocalStatusEnum.local
-
-            return None
-
-        except Exception as e:
-            print(
-                f"Error checking local status from events for volunteer {self.id}: {str(e)}"
-            )
-            return None
-
     @validates("first_volunteer_date", "last_volunteer_date", "last_activity_date")
     def validate_dates(self, key, value):
         """
