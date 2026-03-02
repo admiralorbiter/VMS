@@ -18,16 +18,6 @@ class TestTenantContext:
     """Tests for tenant context management (FR-TENANT-103, FR-TENANT-105)."""
 
     @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        app.config["WTF_CSRF_ENABLED"] = False
-        app.config["SECRET_KEY"] = "test-secret-key"
-        return app
-
-    @pytest.fixture
     def client(self, app):
         """Create test client."""
         return app.test_client()
@@ -238,16 +228,6 @@ class TestTenantContext:
 
 class TestTenantContextIntegration:
     """Integration tests for tenant context with routes."""
-
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        app.config["WTF_CSRF_ENABLED"] = False
-        app.config["SECRET_KEY"] = "test-secret-key"
-        return app
 
     @pytest.fixture
     def client(self, app):

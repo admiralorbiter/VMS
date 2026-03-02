@@ -34,16 +34,6 @@ class TestDistrictEventRoutes:
     """Integration tests for district event routes (FR-SELFSERV-201, 202, 203)."""
 
     @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        app.config["WTF_CSRF_ENABLED"] = False
-        app.config["SECRET_KEY"] = "test-secret-key"
-        return app
-
-    @pytest.fixture
     def client(self, app):
         """Create test client."""
         return app.test_client()
@@ -71,15 +61,6 @@ class TestDistrictEventRoutes:
 
 class TestEventCreation:
     """Tests for FR-SELFSERV-201: Event Creation."""
-
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        app.config["WTF_CSRF_ENABLED"] = False
-        return app
 
     def test_event_has_tenant_id_column(self, app):
         """TC-901: Event model has tenant_id column."""
@@ -117,14 +98,6 @@ class TestEventCreation:
 class TestEventEditing:
     """Tests for FR-SELFSERV-202: Event Editing."""
 
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        return app
-
     def test_completed_event_cannot_be_edited_check(self, app):
         """TC-911: Completed events should not be editable."""
         with app.app_context():
@@ -153,14 +126,6 @@ class TestEventEditing:
 
 class TestEventCancellation:
     """Tests for FR-SELFSERV-203: Event Cancellation."""
-
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        return app
 
     def test_event_can_be_cancelled(self, app):
         """TC-920: Event status can be set to Cancelled."""
@@ -192,14 +157,6 @@ class TestEventCancellation:
 class TestEventDataIsolation:
     """Tests for tenant data isolation."""
 
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        return app
-
     def test_event_query_filters_by_tenant(self, app):
         """TC-930: Events should be filterable by tenant_id."""
         with app.app_context():
@@ -222,14 +179,6 @@ class TestEventDataIsolation:
 
 class TestEventStatusTransitions:
     """Tests for event status workflow."""
-
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        return app
 
     def test_publish_draft_event(self, app):
         """TC-904: Draft event can be published."""
@@ -276,14 +225,6 @@ class TestDistrictEventTypes:
 
 class TestDistrictEventCalendar:
     """Tests for FR-SELFSERV-204: Calendar View."""
-
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        return app
 
     def test_calendar_route_exists(self, app):
         """TC-940: Calendar view route exists."""

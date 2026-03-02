@@ -48,16 +48,6 @@ class TestDistrictVolunteerRoutes:
     """Integration tests for district volunteer routes (FR-SELFSERV-301-305)."""
 
     @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        app.config["WTF_CSRF_ENABLED"] = False
-        app.config["SECRET_KEY"] = "test-secret-key"
-        return app
-
-    @pytest.fixture
     def client(self, app):
         """Create test client."""
         return app.test_client()
@@ -95,15 +85,6 @@ class TestDistrictVolunteerRoutes:
 
 class TestVolunteerProfileManagement:
     """Tests for FR-SELFSERV-301: Volunteer Profile Management."""
-
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        app.config["WTF_CSRF_ENABLED"] = False
-        return app
 
     def test_district_volunteer_model_exists(self, app):
         """TC-1001: DistrictVolunteer model exists and has required fields."""
@@ -166,15 +147,6 @@ class TestVolunteerProfileManagement:
 class TestCSVImport:
     """Tests for FR-SELFSERV-302: CSV Import."""
 
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        app.config["WTF_CSRF_ENABLED"] = False
-        return app
-
     def test_detect_column_helper(self, app):
         """TC-1010: Column detection helper works."""
         with app.app_context():
@@ -210,14 +182,6 @@ class TestCSVImport:
 class TestVolunteerSearch:
     """Tests for FR-SELFSERV-303: Volunteer Search."""
 
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        return app
-
     def test_volunteer_has_searchable_fields(self, app):
         """TC-1020/1021/1022: Volunteer model has searchable fields."""
         with app.app_context():
@@ -240,14 +204,6 @@ class TestVolunteerSearch:
 
 class TestEventAssignment:
     """Tests for FR-SELFSERV-304: Event Assignment."""
-
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        return app
 
     def test_district_participation_model_exists(self, app):
         """TC-1030: DistrictParticipation model exists."""
@@ -296,15 +252,6 @@ class TestEventAssignment:
 
 class TestEventRosterRoutes:
     """Tests for FR-SELFSERV-304: Event Roster Management Routes."""
-
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        app.config["WTF_CSRF_ENABLED"] = False
-        return app
 
     def test_add_to_roster_route_exists(self, app):
         """TC-1030: Route for adding volunteers to event roster exists."""
@@ -372,14 +319,6 @@ class TestEventRosterRoutes:
 class TestTenantIsolation:
     """Tests for FR-SELFSERV-305: Tenant Isolation."""
 
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        return app
-
     def test_district_volunteer_requires_tenant_id(self, app):
         """TC-1040/1041: DistrictVolunteer requires tenant_id."""
         with app.app_context():
@@ -434,14 +373,6 @@ class TestTenantIsolation:
 class TestEmailPhoneHandling:
     """Tests for volunteer email/phone record creation."""
 
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        return app
-
     def test_email_model_exists(self, app):
         """TC-1003: Email model for volunteer contact info."""
         with app.app_context():
@@ -471,14 +402,6 @@ class TestEmailPhoneHandling:
 
 class TestRouteHelpers:
     """Tests for route helper functions."""
-
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        return app
 
     def test_require_tenant_context_decorator_exists(self, app):
         """Test that tenant context decorator exists."""

@@ -29,7 +29,7 @@ All Salesforce import files updated with savepoint recovery and structured error
 
 ### Description
 
-`Teacher.school_id` is `String(255)` with no `ForeignKey('school.id')`. Existing values are Salesforce contact IDs that mostly don't resolve to valid `School` records. Used in 40+ places in `routes/virtual/usage.py`.
+`Teacher.school_id` is `String(255)` with no `ForeignKey('school.id')`. Existing values are Salesforce contact IDs that mostly don't resolve to valid `School` records. Used in 40+ places across `routes/virtual/usage/`.
 
 ### Current Workaround
 
@@ -290,27 +290,30 @@ Create a generic `ReportCache` model with `cache_key` (composite of report type 
 
 ---
 
-## TD-017: `usage.py` Is Still 7,473 Lines
+## ~~TD-017: `usage.py` Is Still 7,473 Lines~~ ✅ RESOLVED
 
 **Created:** 2026-03-01
+**Resolved:** 2026-03-02
 **Priority:** High
 **Category:** Architecture / Maintainability
 
-### Description
+### Resolution
 
-`routes/virtual/usage.py` remains at 7,473 lines with 68 top-level functions covering cache management, data processing, session computation, district reporting, teacher progress, Excel export, and event CRUD. This is the **single largest file** in the codebase and the highest-friction point for development.
+Extracted `routes/virtual/usage.py` (7,473 lines) into a package with 7 domain-specific modules:
 
-See also: KI TD-004 (originally identified 2026-02-02).
+| Module | Lines | Responsibility |
+|--------|------:|----------------|
+| `cache.py` | 221 | Cache CRUD |
+| `computation.py` | 1,837 | Data processing |
+| `exports.py` | 250 | Excel generation |
+| `session_routes.py` | 1,774 | Session CRUD routes |
+| `district_routes.py` | 1,743 | District reporting |
+| `teacher_progress_routes.py` | 1,330 | Teacher progress |
+| `teacher_progress.py` | 744 | Standalone helpers |
 
-### Proposed Fix
+Backward-compatible `__init__.py` re-exports all public symbols. All 1,114 tests pass.
 
-Domain-driven extraction:
-1. `routes/virtual/usage/cache.py` — cache CRUD
-2. `routes/virtual/usage/computation.py` — data processing helpers
-3. `routes/virtual/usage/exports.py` — Excel generation
-4. Move aggregation logic to `services/usage_service.py`
-
-**Risk:** Medium — large file but routes can be extracted one at a time.
+**Risk:** Low — verified, no behavior changes.
 
 ---
 
@@ -360,7 +363,7 @@ Extract into sub-modules: `management/users.py`, `management/bulk_ops.py`, `mana
 
 ### Description
 
-After `usage.py` (7,472 lines — TD-017), these are the next largest route files:
+With `usage.py` resolved (TD-017), these are the largest remaining route files:
 
 | File | Lines |
 |------|------:|
@@ -420,6 +423,23 @@ Add integration tests for `quality_bp` and `docs_bp`. Audit `reports/` test cove
 
 ---
 
+## ~~TD-023: Unsafe Test Fixtures Import Real App~~ ✅ RESOLVED
+
+**Created:** 2026-03-02
+**Resolved:** 2026-03-02
+**Priority:** Critical
+**Category:** Testing / Data Safety
+
+### Resolution
+
+7 test files used `from app import app` (real production app) and attempted to override `SQLALCHEMY_DATABASE_URI` to `:memory:` **after** the engine was already bound. This had no effect — SQLAlchemy ignores config changes post-`init_app()`. As a result, `db.drop_all()` in `test_recruitment_notes.py` and `test_magic_link.py` **wiped the real dev database**.
+
+Removed 31 unsafe `app` fixture definitions across 7 files. All now use the safe conftest `app` fixture (fresh Flask app + `TestingConfig` + `:memory:` safety assertion).
+
+**Files fixed:** `test_recruitment_notes.py`, `test_magic_link.py`, `test_public_api.py`, `test_district_events.py`, `test_district_recruitment.py`, `test_district_volunteers.py`, `test_tenant_context.py`
+
+---
+
 ## Priority Order
 
 Ordered by **what best unblocks future work** — structural improvements first, since they make every subsequent fix dramatically easier.
@@ -428,7 +448,7 @@ Ordered by **what best unblocks future work** — structural improvements first,
 
 | Order | ID | Item | Rationale |
 |:-----:|----|------|-----------|
-| 1 | **TD-017** | Break up `usage.py` (7,472 lines) | Biggest friction point; every other fix touches this file. Must be split first. |
+| ~~1~~ | ~~**TD-017**~~ | ~~Break up `usage.py`~~ ✅ | Resolved 2026-03-02. Extracted into 7 modules. |
 | 2 | **TD-020** | Break up `virtual_session.py` + `pathful_import.py` | Same pattern as TD-017 — do while approach is fresh. |
 | 3 | **TD-019** | Break up `management.py` | 20+ inline admin checks become trivially fixable once in smaller files. |
 | 4 | **TD-012** | Split oversized model files | Enums in their own files makes route extraction cleaner. |
