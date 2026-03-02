@@ -440,6 +440,32 @@ Removed 31 unsafe `app` fixture definitions across 7 files. All now use the safe
 
 ---
 
+## TD-024: Remove Legacy `import_sheet()` Route (634 Lines of Dead Code)
+
+**Created:** 2026-03-02
+**Priority:** Medium
+**Category:** Dead Code / Deprecation
+
+### Description
+
+The `import_sheet()` function in `routes/virtual/routes.py` (lines 1191–1835, ~634 lines) is the legacy Google Sheets virtual session import. It has been fully superseded by the Pathful direct import system in `routes/virtual/pathful_import.py`. Deprecation logging was added in March 2026.
+
+**Related dead code:**
+- Helper functions only used by `import_sheet()`: `clean_name()`, `standardize_organization()`, `parse_datetime()`, `validate_csv_row()`, `clean_time_string()`, `extract_session_id()`, `get_status_priority()`, `should_update_status()`, `find_existing_event()`, `process_teacher_data()`, `add_district_to_event()`
+- `templates/management/google_sheets.html` line 494 calls `/virtual/import-sheet` (button may be broken)
+- `scripts/daily_imports/run_virtual_import_2025_26_standalone.py` — imports from this route
+
+### Proposed Fix
+
+1. Monitor deprecation logs for 30 days (through April 2026)
+2. If no hits, remove `import_sheet()` and all helper functions only used by it
+3. Remove or update the Import button in `google_sheets.html`
+4. Update test `test_virtual_import_sheet` in `test_virtual_routes.py`
+
+**Risk:** Low — route is deprecated and superseded. Monitor first to confirm zero usage.
+
+---
+
 ## Priority Order
 
 Ordered by **what best unblocks future work** — structural improvements first, since they make every subsequent fix dramatically easier.

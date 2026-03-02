@@ -116,8 +116,9 @@ Flask blueprints organized by feature domain. Each subdirectory contains a `rout
 ### Virtual Routes (`routes/virtual/`)
 
 The largest route module, handling:
-- `routes.py` - Session management, Google Sheets import
-- `usage.py` - District dashboards, teacher progress tracking, semester reset
+- `routes.py` - Session management, legacy Google Sheets import (deprecated — see `pathful_import.py`)
+- `pathful_import.py` - Pathful direct import (primary virtual session import)
+- `usage/` - District dashboards, teacher progress tracking, semester reset (extracted package)
 
 ---
 

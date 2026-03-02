@@ -42,8 +42,8 @@ Verify data freshness for these syncs. See [Monitoring and Alert - Sync Timestam
    - Expected: As configured in cache management
 
 4. **Pathful Import**: Check last virtual session import timestamp
-   - Expected: Daily or as needed
-   - Route: `routes/virtual/routes.py` `/virtual/import-sheet`
+   - Expected: Weekly (manual upload)
+   - Route: `routes/virtual/pathful_import.py` `/virtual/pathful/import`
 
 5. **Roster Import**: Check last teacher roster import timestamp
    - Expected: Manual (2 week cadence)
@@ -241,7 +241,7 @@ Verify data freshness for these syncs. See [Monitoring and Alert - Sync Timestam
 - Identify missing, renamed, or new columns
 
 **Step 4: Update alias mapping**
-- If column names changed, update mapping code in `routes/virtual/routes.py`
+- If column names changed, update mapping code in `routes/virtual/pathful_import.py`
 - Update field mappings if column structure changed
 - Ensure all required columns are mapped
 
@@ -257,7 +257,7 @@ Verify data freshness for these syncs. See [Monitoring and Alert - Sync Timestam
 **Reference:**
 - [Import Playbook - Column Change Procedure](import_playbook#column-change-procedure)
 - [Field Mappings - Pathful Export](field_mappings#6-pathful-export--polaris)
-- Implementation: `routes/virtual/routes.py` `/virtual/import-sheet`
+- Implementation: `routes/virtual/pathful_import.py` `/virtual/pathful/import`
 
 ## Runbook 10.4: Calendar Invites Not Sending
 

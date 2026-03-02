@@ -29,7 +29,6 @@ Field mappings in [Field Mappings](field_mappings). Entity definitions in [Data 
 - Confirm required columns: SessionId, EventId, TeacherEmail, SessionStart, AttendanceStatus
 - Normalize emails: lowercase, trim
 - Check dates: parseable, correct timezone (ISO-8601 format preferred)
-- Export as CSV or ensure Google Sheet format matches expected structure
 
 **Required Columns (from Pathful Export):**
 
@@ -44,13 +43,13 @@ Field mappings in [Field Mappings](field_mappings). Entity definitions in [Data 
 
 **Run Import:**
 
-1. Go to **Virtual → Import Sheet**
-2. Select academic year from dropdown
-3. System reads from configured Google Sheet (purpose = "virtual_sessions")
-4. Automatic validation runs
-5. Review validation results (errors/warnings)
-6. If validation passes, click **Import**
-7. Review import summary
+1. Go to **Virtual → Pathful Imports**
+2. Select the **Session Report** import type
+3. Click **"Choose File"** and select your Pathful Session Report (.xlsx)
+4. Click **"Upload & Process"**
+5. Automatic validation runs
+6. Review import summary (sessions created/updated, teachers matched, unmatched records)
+7. Resolve unmatched records via **Virtual → Pathful Imports → Unmatched**
 
 **Expected Output:**
 
@@ -88,15 +87,15 @@ Rows invalid: F
 **Invalid Rows:**
 - **Cause:** Missing required columns, invalid data formats
 - **Resolution:**
-  1. Fix in source file (Google Sheet or CSV)
+  1. Fix in source Pathful export file
   2. Validate date formats (ISO-8601 preferred)
   3. Check email normalization
   4. Verify required fields present
   5. Re-import
 
 **Implementation:**
-- Route: `routes/virtual/routes.py` `/virtual/import-sheet`
-- Validation: `validate_csv_row()` function
+- Route: `routes/virtual/pathful_import.py` `/virtual/pathful/import`
+- Validation: `validate_session_report_columns()` function
 - Reference: [Field Mappings - Pathful Export](field_mappings#6-pathful-export--polaris)
 
 ## Playbook B: Teacher Roster Import
@@ -700,7 +699,7 @@ Pathful changes `TeacherEmail` column to `EducatorEmail`:
 1. Stop Pathful imports
 2. Save sample export with `EducatorEmail` column
 3. Compare to Field Mappings (expects `TeacherEmail`)
-4. Update code in `routes/virtual/routes.py` to map `EducatorEmail` → `TeacherEmail`
+4. Update code in `routes/virtual/pathful_import.py` to map `EducatorEmail` → `TeacherEmail`
 5. Test import with small file
 6. Update Field Mappings documentation
 7. Resume production imports
