@@ -1113,7 +1113,7 @@ def load_session_routes():
         # Update teachers (remove old, add new)
         EventTeacher.query.filter_by(event_id=event.id).delete()
 
-        from routes.virtual.routes import get_or_create_district, get_or_create_school
+        from routes.virtual.utils import get_or_create_district, get_or_create_school
 
         districts_set = set()
 
@@ -1475,7 +1475,7 @@ def load_session_routes():
         end_dt = start_dt + timedelta(minutes=duration_minutes)
 
         # ---- District/School helpers (reuse import logic) ----
-        from routes.virtual.routes import get_or_create_district, get_or_create_school
+        from routes.virtual.utils import get_or_create_district, get_or_create_school
 
         # Collect districts from teachers
         districts_set = set()
