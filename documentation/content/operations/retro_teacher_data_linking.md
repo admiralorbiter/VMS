@@ -61,29 +61,25 @@ The teacher usage dashboard (`tenant_teacher_usage.py`) only matched sessions us
 ## What Went Well
 
 - **Investigation approach was thorough** — writing scripts to query the DB directly revealed the full scope of the disconnection
-- **Fuzzy school matching** was effective — 25/28 building names matched, only 3 genuinely missing
+- **Fuzzy school matching** was effective — 28/28 building names now match (KCKPS schools seeded in Sprint 4.4)
 - **Minimal code changes** — two files modified, existing architecture leveraged
 
 ## What Could Be Better
 
 ### Open Items / Known Gaps
 
-1. **184 unlinked TeacherProgress records** — These teachers exist only in the spreadsheet and have no `Teacher` entity. They'll auto-link if/when they appear in a Pathful session. Consider creating `Teacher` records proactively during import.
+1. **184 unlinked TeacherProgress records** — These teachers exist only in the spreadsheet and have no `Teacher` entity. They'll auto-link if/when they appear in a Pathful session. *(Partially addressed: email-first matching added in Sprint 1.)*
 
-2. **3 missing School records** — Douglass, Grant, and JFK have no entry in the School table. These may need to be created manually or imported from Salesforce.
+2. ~~**3 missing School records** — Douglass, Grant, and JFK~~ ✅ **Resolved in Sprint 4.4.** All 28 KCKPS schools created.
 
 3. **Name-based matching limitations** — Matching by first/last name can have issues with:
    - Name variations (e.g., "MICHELLE" vs "Michelle" — handled via case-insensitive)
    - Name duplicates (two teachers with same name — `.first()` picks one arbitrarily)
    - Middle names or suffixes — not currently handled
 
-4. **`event.educators` vs `EventTeacher` duality** — The system stores teacher-session links in two places:
-   - `event.educators` (text field, semicolon-separated names) — set by Pathful import
-   - `event_teacher` table (proper FK relationship) — set by session edit page and Salesforce import
+4. **`event.educators` vs `EventTeacher` duality** — Tracked as [TD-005](../developer/tech_debt.md#td-005). Currently using text-primary + EventTeacher-supplementary counting. EventTeacher-only simplification deferred until backfill.
 
-   Long-term, the `EventTeacher` relationship should be the single source of truth, with `event.educators` treated as a denormalized cache field.
-
-5. **Dashboard counting accuracy** — The dedup check between Path 1 (EventTeacher) and Path 2 (educators text) uses `event_id` match to avoid double-counting. However, if the same teacher appears in both `EventTeacher` AND `event.educators` for the same session, they are correctly only counted once. Worth monitoring for edge cases.
+5. ~~**Dashboard counting accuracy**~~ ✅ **Resolved.** Dedup via `matched_event_ids` prevents double-counting between text and EventTeacher paths.
 
 ## Lessons Learned
 

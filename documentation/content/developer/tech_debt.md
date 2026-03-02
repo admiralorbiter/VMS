@@ -82,3 +82,65 @@ See [Salesforce Import Roadmap](salesforce_import_roadmap.md) for details.
 ---
 
 *Add new tech debt items below following the same format.*
+
+---
+
+## TD-003: `Teacher.school_id` Has No FK Constraint
+
+**Created:** 2026-02-28
+**Priority:** Low
+**Category:** Data Integrity / Schema
+
+### Description
+
+`Teacher.school_id` is `String(255)` with no `ForeignKey('school.id')`. Existing values are Salesforce contact IDs that mostly don't resolve to valid `School` records. Used in 40+ places in `routes/virtual/usage.py`.
+
+### Current Workaround
+
+Code does `School.query.get(teacher.school_id)` and handles `None` gracefully.
+
+### Proposed Fix
+
+Add `ForeignKey('school.id')`. Requires a data migration to clean up invalid values first.
+
+**Risk:** High — many callsites, requires data migration.
+
+---
+
+## TD-004: `Event.district_partner` Is a Text Field, Not a FK
+
+**Created:** 2026-02-28
+**Priority:** Low
+**Category:** Data Normalization
+
+### Description
+
+Events store the district name as a plain text string (`Event.district_partner`), not a FK to the `District` table. Used in 50+ places for filtering across `usage.py`, `pathful_import.py`, `tenant_teacher_usage.py`.
+
+### Current Workaround
+
+Text matching works — filtering by `Event.district_partner == district_name`. Just not normalized.
+
+### Proposed Fix
+
+Replace with `district_id` FK to `District`. Requires updating all filtering logic across the codebase.
+
+**Risk:** Very high — most pervasive data pattern in the codebase.
+
+---
+
+## ~~TD-005: EventTeacher Cannot Be Primary Until All TeacherProgress Are Linked~~ *(Resolved)*
+
+**Created:** 2026-02-28
+**Resolved:** 2026-02-28
+**Category:** Data Architecture
+
+### Resolution
+
+1. Created 184 missing Teacher records from unlinked TeacherProgress data
+2. All 464 TeacherProgress now have `teacher_id` (100% linking)
+3. EventTeacher backfill: 15,838+ records (97.5% event coverage)
+4. Dashboard switched to EventTeacher-primary, text-supplementary
+5. Verified: 162 goals achieved (matches expected ±1 due to new Teacher matches)
+
+See ADR D-008.

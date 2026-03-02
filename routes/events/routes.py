@@ -940,6 +940,10 @@ def edit_event(id):
             # Update event from form data
             form.populate_obj(event)
 
+            # Restore educators — this is a derived field auto-generated from
+            # EventTeacher records. Must not be overwritten by form input.
+            event.educators = original_educators
+
             # Handle enum conversions
             event.type = EventType(form.type.data)
             event.format = EventFormat(form.format.data)
