@@ -1984,9 +1984,7 @@ def load_pathful_routes():
 
             db.session.commit()
             flash(f'Session "{event.title}" updated successfully.', "success")
-            return redirect(
-                url_for("virtual.edit_virtual_session", session_id=session_id)
-            )
+            return redirect(url_for("events.view_event", id=session_id))
 
         # GET: Gather data for the form
         # Current teachers linked to this event
@@ -1999,8 +1997,24 @@ def load_pathful_routes():
                     "name": f"{t.first_name or ''} {t.last_name or ''}".strip(),
                     "school_name": t.school.name if t.school else "",
                     "status": et.status or "registered",
+                    "source": "event_teacher",
                 }
             )
+
+        # Also include text-based educators from Pathful imports
+        if event.educators:
+            for educator_name in event.educators.split(";"):
+                educator_name = educator_name.strip()
+                if educator_name:
+                    linked_teachers.append(
+                        {
+                            "id": None,
+                            "name": educator_name,
+                            "school_name": "",
+                            "status": "imported",
+                            "source": "text_field",
+                        }
+                    )
 
         # Get districts and clusters for datalists
         districts = (

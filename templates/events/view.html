@@ -428,29 +428,7 @@ Security: All links properly escaped and validated
             {% endif %}
             {% endif %}
 
-            {# Add text-based educators for virtual events #}
-            {% if event.educators and (event.format.value == 'virtual' or event.type.value == 'virtual_session') %}
-            <div class="participation-group">
-                <h4 class="group-title">
-                    <span class="status-badge">Educators</span>
-                    ({{ event.educators.split(';')|length }})
-                </h4>
-                <div class="participants-grid">
-                    {% for educator in event.educators.split(';') %}
-                    {% if educator.strip() %}
-                    <div class="participant-card volunteer-card" data-name="{{ educator.strip() }}">
-                        <div class="participant-info">
-                            <span class="participant-name">{{ educator.strip() }}</span>
-                            <span class="org-name">(Educator)</span>
-                        </div>
-                    </div>
-                    {% endif %}
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-
-            {% if not participation_stats and not event.volunteers and not event.educators %}
+            {% if not participation_stats and not event.volunteers %}
             <div class="no-participation">No volunteer participation data available.</div>
             {% endif %}
         </div>
@@ -505,7 +483,32 @@ Security: All links properly escaped and validated
                     {% endfor %}
                 </div>
             </div>
-            {% else %}
+            {% endif %}
+
+            {# Text-based educators for virtual events #}
+            {% if event.educators and (event.format.value == 'virtual' or event.type.value == 'virtual_session') %}
+            <div class="participation-group">
+                <h4 class="group-title">
+                    <span class="status-badge">Educators</span>
+                    ({{ event.educators.split(';')|reject('equalto', '')|list|length }})
+                </h4>
+                <div class="participants-grid">
+                    {% for educator in event.educators.split(';') %}
+                    {% if educator.strip() %}
+                    <div class="participant-card teacher-card" data-name="{{ educator.strip() }}">
+                        <div class="participant-info">
+                            <span class="participant-name">{{ educator.strip() }}</span>
+                            <span class="org-name">(Educator)</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if not event_teachers and not (event.educators and (event.format.value == 'virtual' or event.type.value
+            == 'virtual_session')) %}
             <div class="no-participation">No teacher participation data available.</div>
             {% endif %}
         </div>

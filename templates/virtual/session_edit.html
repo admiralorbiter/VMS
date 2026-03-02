@@ -144,6 +144,24 @@
                 <div id="teacherList">
                     {% if linked_teachers %}
                     {% for t in linked_teachers %}
+                    {% if t.source == 'text_field' %}
+                    <div class="teacher-row" data-source="text_field"
+                        style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border:1px solid #eef2f7; border-radius:8px; margin-bottom:8px; background:#f8f9fa;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <div
+                                style="width:36px; height:36px; background:linear-gradient(135deg, #43a047, #66bb6a); border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:600; font-size:0.85em;">
+                                {{ t.name[0] if t.name else '?' }}
+                            </div>
+                            <div>
+                                <div style="font-weight:600; color:#2c3e50; font-size:0.95em;">{{ t.name }}</div>
+                                <div style="color:#999; font-size:0.8em;">
+                                    <span
+                                        style="background:#e8f5e9; color:#2e7d32; padding:1px 8px; border-radius:10px; font-size:0.85em;">Imported</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
                     <div class="teacher-row" data-id="{{ t.id }}"
                         style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border:1px solid #eef2f7; border-radius:8px; margin-bottom:8px; transition: all 0.2s;">
                         <div style="display:flex; align-items:center; gap:10px;">
@@ -164,6 +182,7 @@
                             <i class="fas fa-times"></i> Remove
                         </button>
                     </div>
+                    {% endif %}
                     {% endfor %}
                     {% else %}
                     <div id="noTeachersMsg" style="text-align:center; padding:30px; color:#999;">
