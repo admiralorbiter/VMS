@@ -24,7 +24,7 @@ Author: VMS Development Team
 Last Updated: 2024
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask import (
     Blueprint,
@@ -1190,7 +1190,7 @@ def update_local_status(id):
         # Update the field
         old_status = volunteer.local_status.name if volunteer.local_status else "None"
         volunteer.local_status = LocalStatusEnum[new_status]
-        volunteer.local_status_last_updated = datetime.utcnow()
+        volunteer.local_status_last_updated = datetime.now(timezone.utc)
         db.session.commit()
 
         return jsonify(
@@ -1247,7 +1247,7 @@ def update_local_statuses():
                         else "None"
                     )
                     volunteer.local_status = new_status
-                    volunteer.local_status_last_updated = datetime.utcnow()
+                    volunteer.local_status_last_updated = datetime.now(timezone.utc)
                     stats["volunteers"]["updated"] += 1
 
                     # Show status changes for first 10 and every 100th
@@ -1281,7 +1281,7 @@ def update_local_statuses():
                     old_status = getattr(teacher, "local_status", None)
                     old_status_name = old_status.name if old_status else "None"
                     teacher.local_status = new_status
-                    teacher.local_status_last_updated = datetime.utcnow()
+                    teacher.local_status_last_updated = datetime.now(timezone.utc)
                     stats["teachers"]["updated"] += 1
 
                     # Show status changes for first 10 and every 100th
@@ -1315,7 +1315,7 @@ def update_local_statuses():
                     old_status = getattr(student, "local_status", None)
                     old_status_name = old_status.name if old_status else "None"
                     student.local_status = new_status
-                    student.local_status_last_updated = datetime.utcnow()
+                    student.local_status_last_updated = datetime.now(timezone.utc)
                     stats["students"]["updated"] += 1
 
                     # Show status changes for first 10 and every 100th

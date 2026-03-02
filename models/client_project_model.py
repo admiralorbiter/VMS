@@ -63,7 +63,7 @@ Usage Examples:
         print("Project is finished")
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 from models import db
@@ -164,9 +164,13 @@ class ClientProject(db.Model):
     number_of_students = db.Column(db.Integer)
 
     # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
-    created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
+    created_at = db.Column(
+        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
     updated_at = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     def to_dict(self):

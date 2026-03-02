@@ -227,12 +227,14 @@ class User(db.Model, UserMixin):
 
     # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
     created_at = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, nullable=False
+        db.DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
     )
     updated_at = db.Column(
         db.DateTime(timezone=True),
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
 

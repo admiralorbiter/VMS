@@ -10,7 +10,7 @@ import logging
 import os
 import random
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Add the project root to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -39,7 +39,7 @@ def create_test_validation_runs():
 
             # Create multiple validation runs over the past 30 days
             for i in range(30):
-                run_date = datetime.utcnow() - timedelta(days=i)
+                run_date = datetime.now(timezone.utc) - timedelta(days=i)
 
                 # Create validation run
                 run = ValidationRun(
@@ -157,7 +157,7 @@ def create_test_metrics(run_id, run_date):
                 unit = "mb"
 
             # Add some trend variation (improving over time)
-            days_ago = (datetime.utcnow() - run_date).days
+            days_ago = (datetime.now(timezone.utc) - run_date).days
             trend_factor = 1 + (days_ago * 0.01)  # Slight improvement over time
             value = min(100, value * trend_factor) if unit == "percentage" else value
 

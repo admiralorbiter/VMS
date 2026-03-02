@@ -372,7 +372,7 @@ def api_clear_validation_data():
 
         # If older_than_days is 0, clear ALL data regardless of age
         if older_than_days > 0:
-            cutoff_date = datetime.utcnow() - timedelta(days=older_than_days)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=older_than_days)
             run_filters.append(ValidationRun.started_at < cutoff_date)
             app.logger.info(
                 f"Filtering by date: older than {older_than_days} days (before {cutoff_date})"
@@ -489,7 +489,7 @@ def get_filtered_validation_results(
 
         from models.validation import ValidationResult, ValidationRun
 
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
         app.logger.info(
             f"Looking for validation results for {entity_type} in last {days} days (cutoff: {cutoff_date})"
         )
@@ -541,7 +541,7 @@ def get_performance_metrics(entity_type, days):
 
         from models.validation import ValidationRun
 
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         # Get performance metrics from recent runs
         metrics = (

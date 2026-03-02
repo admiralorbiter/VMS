@@ -2,8 +2,14 @@ from datetime import date, datetime
 
 import pytest
 
-from app import db
-from models import District, School, Teacher, TeacherProgress, TeacherProgressArchive
+from models import (
+    District,
+    School,
+    Teacher,
+    TeacherProgress,
+    TeacherProgressArchive,
+    db,
+)
 from routes.virtual.usage import (
     get_current_virtual_year,
     get_semester_dates,

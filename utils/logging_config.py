@@ -9,7 +9,7 @@ aggregation tools, while maintaining human-readable logs in development.
 import logging
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 
 
@@ -25,7 +25,7 @@ class JSONFormatter(logging.Formatter):
         import json
 
         log_entry = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),

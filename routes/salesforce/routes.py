@@ -109,7 +109,7 @@ def health_metrics():
     from datetime import timedelta
 
     # Get date range for 7 days (use utcnow for consistency with naive DB timestamps)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     seven_days_ago = now - timedelta(days=7)
 
     sync_types = [
