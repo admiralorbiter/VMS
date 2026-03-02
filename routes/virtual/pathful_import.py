@@ -1849,8 +1849,28 @@ def load_pathful_routes():
         # Other filters
         career_cluster = request.args.get("career_cluster", "")
         district = request.args.get("district", "")
+        school = request.args.get("school", "")
         status = request.args.get("status", "")
         search = request.args.get("search", "")
+
+        # Sort: validate and apply for all sortable columns
+        ALLOWED_SORTS = (
+            "date",
+            "title",
+            "district",
+            "school",
+            "educators",
+            "presenters",
+            "cluster",
+            "students",
+            "status",
+        )
+        sort_param = request.args.get("sort", "date")
+        if sort_param not in ALLOWED_SORTS:
+            sort_param = "date"
+        dir_param = request.args.get("dir", "desc")
+        if dir_param not in ("asc", "desc"):
+            dir_param = "desc"
 
         # Base query - all virtual sessions
         query = Event.query.filter(
@@ -1869,6 +1889,9 @@ def load_pathful_routes():
         if district:
             query = query.filter(Event.district_partner == district)
 
+        if school:
+            query = query.filter(Event.school == school)
+
         if status:
             try:
                 status_enum = EventStatus(status)
@@ -1877,16 +1900,12 @@ def load_pathful_routes():
                 pass
 
         if search:
-            # Search across multiple columns
+            # Search by Title, Educator(s), and Presenter(s) only (case-insensitive, partial match)
             query = query.filter(
                 db.or_(
                     Event.title.ilike(f"%{search}%"),
-                    Event.career_cluster.ilike(f"%{search}%"),
-                    Event.district_partner.ilike(f"%{search}%"),
-                    Event.location.ilike(f"%{search}%"),  # School name fallback
                     Event.educators.ilike(f"%{search}%"),
                     Event.professionals.ilike(f"%{search}%"),
-                    Event.pathful_session_id.ilike(f"%{search}%"),
                 )
             )
 
@@ -1897,7 +1916,39 @@ def load_pathful_routes():
             joinedload(Event.school_obj),
             joinedload(Event.volunteers),
             joinedload(Event.teachers),
-        ).order_by(Event.start_date.desc())
+        )
+        # Apply order_by for the selected sort column
+        if sort_param == "date":
+            if dir_param == "desc":
+                query = query.order_by(Event.start_date.desc())
+            else:
+                query = query.order_by(Event.start_date.asc())
+        elif sort_param == "title":
+            col = db.func.coalesce(Event.title, "")
+            query = query.order_by(col.desc() if dir_param == "desc" else col.asc())
+        elif sort_param == "district":
+            col = db.func.coalesce(Event.district_partner, "")
+            query = query.order_by(col.desc() if dir_param == "desc" else col.asc())
+        elif sort_param == "school":
+            query = query.outerjoin(School, Event.school == School.id)
+            col = db.func.coalesce(School.name, "")
+            query = query.order_by(col.desc() if dir_param == "desc" else col.asc())
+        elif sort_param == "educators":
+            col = db.func.coalesce(Event.educators, "")
+            query = query.order_by(col.desc() if dir_param == "desc" else col.asc())
+        elif sort_param == "presenters":
+            col = db.func.coalesce(Event.professionals, "")
+            query = query.order_by(col.desc() if dir_param == "desc" else col.asc())
+        elif sort_param == "cluster":
+            col = db.func.coalesce(Event.career_cluster, "")
+            query = query.order_by(col.desc() if dir_param == "desc" else col.asc())
+        elif sort_param == "students":
+            col = db.func.coalesce(Event.registered_student_count, 0)
+            query = query.order_by(col.desc() if dir_param == "desc" else col.asc())
+        elif sort_param == "status":
+            query = query.order_by(
+                Event.status.desc() if dir_param == "desc" else Event.status.asc()
+            )
         pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
         # Get unique career clusters for filter dropdown
@@ -1949,6 +2000,24 @@ def load_pathful_routes():
         )
         districts = [d[0] for d in districts]
 
+        # Get unique schools for filter dropdown (restricted by district when set)
+        schools_base = (
+            db.session.query(Event.school, School.name)
+            .join(School, Event.school == School.id)
+            .filter(
+                Event.type == EventType.VIRTUAL_SESSION,
+                Event.start_date >= date_from,
+                Event.start_date <= date_to,
+                Event.school.isnot(None),
+                Event.school != "",
+            )
+        )
+        schools_base = scope_events_query(schools_base, current_user)
+        if district:
+            schools_base = schools_base.filter(Event.district_partner == district)
+        schools_rows = schools_base.distinct().order_by(School.name).all()
+        schools = [{"id": row[0], "name": row[1] or row[0]} for row in schools_rows]
+
         # Per-district stats for the district strip (admin only)
         district_stats = []
         if current_user.is_admin:
@@ -1984,6 +2053,7 @@ def load_pathful_routes():
             sessions=pagination,
             career_clusters=career_clusters,
             districts=districts,
+            schools=schools,
             district_stats=district_stats,
             total_sessions=total_sessions,
             total_students=total_students,
@@ -1995,8 +2065,11 @@ def load_pathful_routes():
                 "district": district
                 or user_district
                 or "",  # Pre-select for tenant users
+                "school": school,
                 "status": status,
                 "search": search,
+                "sort": sort_param,
+                "dir": dir_param,
             },
             # Phase D-3: Tenant context for UI adjustments
             is_tenant_user=is_tenant,
