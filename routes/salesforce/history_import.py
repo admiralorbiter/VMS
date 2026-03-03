@@ -172,7 +172,7 @@ def import_history_from_salesforce():
 
         # Use no_autoflush to prevent premature flushing
         with db.session.no_autoflush:
-            for row in all_records:
+            for i, row in enumerate(all_records):
                 try:
                     record_type = row.get("record_type", "Task")
                     contact = None
@@ -254,10 +254,12 @@ def import_history_from_salesforce():
                     db.session.add(history)
                     success_count += 1
 
-                    # Commit every 100 records
-                    if success_count % 100 == 0:
+                    # Batch commit every 100 records for resumability
+                    if (i + 1) % 100 == 0:
                         db.session.commit()
-                        print(f"Processed {success_count} records...")
+                        print(
+                            f"  → Committed history batch {(i+1) // 100} ({success_count} successful)"
+                        )
 
                 except Exception as e:
                     error_count += 1

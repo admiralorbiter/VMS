@@ -184,10 +184,23 @@ def import_events_from_salesforce():
 
         participant_success = 0
         participant_error = 0
-        for row in participant_rows:
+        for i, row in enumerate(participant_rows):
             participant_success, participant_error = process_participation_row(
                 row, participant_success, participant_error, errors
             )
+
+            # Batch commit every 100 records for resumability
+            if (i + 1) % 100 == 0:
+                try:
+                    db.session.commit()
+                    print(
+                        f"  → Committed volunteer participations batch {(i+1) // 100}"
+                    )
+                except Exception as batch_e:
+                    db.session.rollback()
+                    print(
+                        f"  → Volunteer participations batch commit failed: {batch_e}"
+                    )
 
         db.session.commit()
 

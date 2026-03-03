@@ -465,6 +465,15 @@ def sync_unaffiliated_events():
                     pct = (i + 1) * 100 // total_events
                     print(f"  → Events: {i+1}/{total_events} ({pct}%)")
 
+                # Batch commit every 100 events for resumability
+                if (i + 1) % 100 == 0:
+                    try:
+                        db.session.commit()
+                        print(f"  → Committed pathway events batch {(i+1) // 100}")
+                    except Exception as batch_e:
+                        db.session.rollback()
+                        print(f"  → Pathway events batch commit failed: {batch_e}")
+
             except Exception as e:
                 db.session.rollback()
                 errors.append(
