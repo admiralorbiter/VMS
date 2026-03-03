@@ -131,6 +131,22 @@ def import_from_salesforce():
         updated_count = 0
         errors = []
 
+        # Pre-load lookup caches to avoid N+1 queries
+        print("Pre-loading lookup caches...")
+        volunteer_cache = {
+            v.salesforce_individual_id: v
+            for v in Volunteer.query.filter(
+                Volunteer.salesforce_individual_id.isnot(None)
+            ).all()
+        }
+        skill_cache = {s.name: s for s in Skill.query.all()}
+        email_cache = {(e.contact_id, e.email): e for e in Email.query.all()}
+        phone_cache = {(p.contact_id, p.number): p for p in Phone.query.all()}
+        print(
+            f"  → Cached: {len(volunteer_cache)} volunteers, {len(skill_cache)} skills, "
+            f"{len(email_cache)} emails, {len(phone_cache)} phones"
+        )
+
         # Progress tracking
         progress_interval = max(1, total_records // 20)  # Show progress every 5%
         last_progress = 0
@@ -148,10 +164,8 @@ def import_from_salesforce():
                         )
                     last_progress = i
 
-                # Check if volunteer exists
-                volunteer = Volunteer.query.filter_by(
-                    salesforce_individual_id=row["Id"]
-                ).first()
+                # Check if volunteer exists (cache lookup instead of DB query)
+                volunteer = volunteer_cache.get(row["Id"])
                 is_new = False
                 updates = []
 
@@ -161,6 +175,8 @@ def import_from_salesforce():
                     db.session.add(volunteer)
                     is_new = True
                     updates.append("new")
+                    # Add to cache for future lookups
+                    volunteer_cache[row["Id"]] = volunteer
 
                 # Update volunteer fields only if they've changed
                 if volunteer.salesforce_account_id != row["AccountId"]:
@@ -330,10 +346,11 @@ def import_from_salesforce():
                         # Add new skills - use no_autoflush to prevent identity map warnings
                         with db.session.no_autoflush:
                             for skill_name in new_skills:
-                                skill = Skill.query.filter_by(name=skill_name).first()
+                                skill = skill_cache.get(skill_name)
                                 if not skill:
                                     skill = Skill(name=skill_name)
                                     db.session.add(skill)
+                                    skill_cache[skill_name] = skill
                                 if skill not in volunteer.skills:
                                     volunteer.skills.append(skill)
                         updates.append("skills")
@@ -415,10 +432,9 @@ def import_from_salesforce():
                     ):  # Default to standard Email field as primary if no preference
                         is_primary = True
 
-                    # Check if email already exists
-                    email = Email.query.filter_by(
-                        contact_id=volunteer.id, email=email_value
-                    ).first()
+                    # Check if email already exists (cache lookup)
+                    cache_key = (volunteer.id, email_value)
+                    email = email_cache.get(cache_key)
 
                     if not email:
                         email = Email(
@@ -428,6 +444,7 @@ def import_from_salesforce():
                             primary=is_primary,
                         )
                         db.session.add(email)
+                        email_cache[cache_key] = email
                         email_changes = True
                     else:
                         # Update existing email type and primary status if changed
@@ -485,10 +502,9 @@ def import_from_salesforce():
                     ):  # Default to business Phone as primary if no preference
                         is_primary = True
 
-                    # Check if phone already exists
-                    phone = Phone.query.filter_by(
-                        contact_id=volunteer.id, number=phone_value
-                    ).first()
+                    # Check if phone already exists (cache lookup)
+                    cache_key = (volunteer.id, phone_value)
+                    phone = phone_cache.get(cache_key)
 
                     if not phone:
                         phone = Phone(
@@ -498,6 +514,7 @@ def import_from_salesforce():
                             primary=is_primary,
                         )
                         db.session.add(phone)
+                        phone_cache[cache_key] = phone
                         phone_changes = True
                     else:
                         # Update existing phone type and primary status if changed
