@@ -473,6 +473,15 @@ Eliminates ~15,000+ individual queries for a 2,000-record import.
 
 ---
 
+## ~~TD-018: Inline `is_admin` → `@admin_required` Decorator~~ ✅ RESOLVED
+
+**Created:** 2026-03-01
+**Resolved:** 2026-03-03
+
+Replaced 37 inline `if not current_user.is_admin` checks with the `@admin_required` decorator across 13 route files. The decorator auto-detects JSON vs HTML requests (JSON → 403, HTML → 302 redirect). 2 compound checks were intentionally skipped (privilege escalation guard in `management/routes.py`, tenant scoping in `tenant_teacher_usage.py`). Updated 4 test assertions to accept 302 redirect. All 1108 tests pass, 337 routes unchanged.
+
+---
+
 ## Priority Order
 
 Ordered by **what best unblocks future work** — structural improvements first, since they make every subsequent fix dramatically easier.
@@ -490,7 +499,7 @@ Ordered by **what best unblocks future work** — structural improvements first,
 
 | Order | ID | Item | Rationale |
 |:-----:|----|------|-----------|
-| 5 | **TD-018** | Inline `is_admin` → decorators | 40+ sites; mechanical fix, but must be done in smaller files or you'll lose your place. |
+| ~~5~~ | ~~**TD-018**~~ | ~~Inline `is_admin` → decorators~~ ✅ | Resolved 2026-03-03. 37 checks replaced across 13 files. |
 | 6 | **TD-008** | Audit `except Exception` handlers | Per-handler analysis in 200-line files is feasible; in 7,000-line files it's not. |
 | 7 | **TD-009** | Centralize transaction management | Service-layer pattern requires clear route boundaries — only possible after extraction. |
 | 8 | **TD-016** | Generic `ReportCache` model | Reduces boilerplate for new reports; depends on model files being cleaned up (TD-012). |

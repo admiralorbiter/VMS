@@ -36,6 +36,7 @@ from models.reports import (
 )
 from models.sync_log import SyncLog
 from models.user import SecurityLevel, User
+from routes.decorators import admin_required
 
 # Import sub-module registration functions
 from routes.management.bug_reports import register_bug_report_routes
@@ -147,6 +148,7 @@ def admin():
 
 @management_bp.route("/admin/sync-logs")
 @login_required
+@admin_required
 def view_sync_logs():
     """
     Display historical sync logs.
@@ -154,10 +156,6 @@ def view_sync_logs():
     Permission Requirements:
         - Admin access required
     """
-    if not current_user.is_admin:
-        flash("Access denied. Admin privileges required.", "error")
-        return redirect(url_for("management.admin"))
-
     page = request.args.get("page", 1, type=int)
     per_page = 20
     pagination = SyncLog.query.order_by(SyncLog.started_at.desc()).paginate(
@@ -175,15 +173,13 @@ def view_sync_logs():
 
 @management_bp.route("/admin/audit-logs")
 @login_required
+@admin_required
 def audit_logs():
     """
     Simple audit log viewer with basic filters.
     Query params:
       - action, resource_type, user_id
     """
-    if not current_user.is_admin:
-        flash("Access denied. Admin privileges required.", "error")
-        return redirect(url_for("index"))
 
     from models.audit_log import AuditLog
 
@@ -258,6 +254,7 @@ def audit_logs():
 
 @management_bp.route("/management/refresh-all-caches", methods=["POST"])
 @login_required
+@admin_required
 def refresh_all_caches():
     """
     Refresh/invalidate all report caches.
@@ -272,9 +269,6 @@ def refresh_all_caches():
     Returns JSON with counts of deleted/invalidated/updated records.
     Requires admin.
     """
-    if not current_user.is_admin:
-        return jsonify({"error": "Unauthorized"}), 403
-
     scope = request.args.get("scope", "all").lower()
     school_year = request.args.get("school_year")
     host_filter = request.args.get("host_filter", "all")

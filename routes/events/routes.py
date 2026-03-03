@@ -1110,9 +1110,6 @@ def purge_events():
     Returns:
         JSON response indicating success or failure
     """
-    if not current_user.is_admin:
-        return jsonify({"error": "Unauthorized"}), 403
-
     try:
         # First delete all event participations
         EventParticipation.query.delete()
@@ -1158,9 +1155,6 @@ def delete_event(id):
     Raises:
         404: If event not found
     """
-    if not current_user.is_admin:
-        return jsonify({"error": "Unauthorized"}), 403
-
     try:
         event = db.session.get(Event, id)
         if not event:

@@ -11,6 +11,7 @@ from flask_login import current_user, login_required
 
 from models import db
 from models.google_sheet import GoogleSheet
+from routes.decorators import admin_required
 from routes.utils import log_audit_action
 from utils.academic_year import get_academic_year_range
 
@@ -20,6 +21,7 @@ def register_google_sheets_routes(bp):
 
     @bp.route("/google-sheets")
     @login_required
+    @admin_required
     def google_sheets():
         """
         Display Google Sheets management interface.
@@ -38,11 +40,6 @@ def register_google_sheets_routes(bp):
             available_years: Academic years available for new sheets
             sheet_years: Years that already have sheet configurations
         """
-        if not current_user.is_admin:
-            from flask import flash, redirect
-
-            flash("Access denied. Admin privileges required.", "error")
-            return redirect(url_for("index"))
         sheets = (
             GoogleSheet.query.filter_by(purpose="virtual_sessions")
             .order_by(GoogleSheet.academic_year.desc())
@@ -61,6 +58,7 @@ def register_google_sheets_routes(bp):
 
     @bp.route("/google-sheets", methods=["POST"])
     @login_required
+    @admin_required
     def create_google_sheet():
         """
         Create a new Google Sheet configuration.
@@ -89,8 +87,6 @@ def register_google_sheets_routes(bp):
             500: Database or encryption error
         """
         print("GOOGLE SHEETS ROUTE HIT")
-        if not current_user.is_admin:
-            return jsonify({"error": "Unauthorized"}), 403
         try:
             # Debug environment variable
             encryption_key = os.getenv("ENCRYPTION_KEY")
@@ -154,9 +150,8 @@ def register_google_sheets_routes(bp):
 
     @bp.route("/google-sheets/<int:sheet_id>", methods=["PUT"])
     @login_required
+    @admin_required
     def update_google_sheet(sheet_id):
-        if not current_user.is_admin:
-            return jsonify({"error": "Unauthorized"}), 403
         try:
             sheet = GoogleSheet.query.get_or_404(sheet_id)
             data = request.get_json()
@@ -176,9 +171,8 @@ def register_google_sheets_routes(bp):
 
     @bp.route("/google-sheets/<int:sheet_id>", methods=["DELETE"])
     @login_required
+    @admin_required
     def delete_google_sheet(sheet_id):
-        if not current_user.is_admin:
-            return jsonify({"error": "Unauthorized"}), 403
         try:
             sheet = GoogleSheet.query.get_or_404(sheet_id)
             academic_year = sheet.academic_year
@@ -199,9 +193,8 @@ def register_google_sheets_routes(bp):
 
     @bp.route("/google-sheets/<int:sheet_id>", methods=["GET"])
     @login_required
+    @admin_required
     def get_google_sheet(sheet_id):
-        if not current_user.is_admin:
-            return jsonify({"error": "Unauthorized"}), 403
         try:
             sheet = GoogleSheet.query.get_or_404(sheet_id)
             return jsonify({"success": True, "sheet": sheet.to_dict()})

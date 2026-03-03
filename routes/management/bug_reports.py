@@ -12,6 +12,7 @@ from sqlalchemy import or_
 
 from models import db
 from models.bug_report import BugReport, BugReportType
+from routes.decorators import admin_required
 from routes.utils import log_audit_action
 
 
@@ -20,10 +21,8 @@ def register_bug_report_routes(bp):
 
     @bp.route("/bug-reports")
     @login_required
+    @admin_required
     def bug_reports():
-        if not current_user.is_admin:
-            flash("Access denied. Admin privileges required.", "error")
-            return redirect(url_for("index"))
 
         # Get filter parameters
         status_filter = request.args.get("status", "all")  # all, open, resolved
@@ -78,9 +77,8 @@ def register_bug_report_routes(bp):
 
     @bp.route("/bug-reports/<int:report_id>/resolve", methods=["POST"])
     @login_required
+    @admin_required
     def resolve_bug_report(report_id):
-        if not current_user.is_admin:
-            return jsonify({"error": "Unauthorized"}), 403
 
         try:
             report = BugReport.query.get_or_404(report_id)
@@ -106,9 +104,8 @@ def register_bug_report_routes(bp):
 
     @bp.route("/bug-reports/<int:report_id>", methods=["DELETE"])
     @login_required
+    @admin_required
     def delete_bug_report(report_id):
-        if not current_user.is_admin:
-            return jsonify({"error": "Unauthorized"}), 403
 
         try:
             report = BugReport.query.get_or_404(report_id)
@@ -124,9 +121,8 @@ def register_bug_report_routes(bp):
 
     @bp.route("/bug-reports/<int:report_id>/resolve-form")
     @login_required
+    @admin_required
     def get_resolve_form(report_id):
-        if not current_user.is_admin:
-            return jsonify({"error": "Unauthorized"}), 403
 
         report = BugReport.query.get_or_404(report_id)
         return render_template(

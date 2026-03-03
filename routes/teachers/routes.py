@@ -25,7 +25,7 @@ from config import Config
 from models import db
 from models.school_model import School
 from models.teacher import Teacher, TeacherStatus
-from routes.decorators import global_users_only
+from routes.decorators import admin_required, global_users_only
 
 # Create Blueprint for teacher routes
 teachers_bp = Blueprint("teachers", __name__)
@@ -99,10 +99,9 @@ def list_teachers():
 @teachers_bp.route("/teachers/toggle-exclude-reports/<int:id>", methods=["POST"])
 @login_required
 @global_users_only
+@admin_required
 def toggle_teacher_exclude_reports(id):
     """Toggle the exclude_from_reports field for a teacher - Admin only"""
-    if not current_user.is_admin:
-        return jsonify({"success": False, "message": "Admin access required"}), 403
 
     try:
         teacher = db.session.get(Teacher, id)
@@ -169,6 +168,7 @@ def view_teacher(teacher_id):
 @teachers_bp.route("/teachers/edit/<int:teacher_id>", methods=["GET", "POST"])
 @login_required
 @global_users_only
+@admin_required
 def edit_teacher(teacher_id):
     """
     Edit teacher information - Admin only
@@ -179,8 +179,6 @@ def edit_teacher(teacher_id):
     Returns:
         Rendered template with edit form or redirect on success
     """
-    if not current_user.is_admin:
-        return jsonify({"success": False, "message": "Admin access required"}), 403
 
     try:
         teacher = Teacher.query.get_or_404(teacher_id)

@@ -8,6 +8,7 @@ from flask import flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from models import db
+from routes.decorators import admin_required
 
 
 def register_data_integrity_routes(bp):
@@ -15,6 +16,7 @@ def register_data_integrity_routes(bp):
 
     @bp.route("/admin/data-flags")
     @login_required
+    @admin_required
     def data_flags():
         """
         Admin page to review all teacher data flags across tenants.
@@ -26,9 +28,6 @@ def register_data_integrity_routes(bp):
             type: Filter by flag type (missing_session, not_tracked, other)
             status: Filter by status (open, resolved, all). Default: open
         """
-        if not current_user.is_admin:
-            flash("Access denied. Admin privileges required.", "error")
-            return redirect(url_for("management.admin"))
 
         from models.teacher_data_flag import TeacherDataFlag, TeacherDataFlagType
 
@@ -66,6 +65,7 @@ def register_data_integrity_routes(bp):
 
     @bp.route("/admin/scan-student-participation-duplicates")
     @login_required
+    @admin_required
     def scan_student_participation_duplicates():
         """
         Scan for duplicate EventStudentParticipation records by (event_id, student_id).
@@ -73,9 +73,6 @@ def register_data_integrity_routes(bp):
         Admin-only utility to help decide on enforcing a unique constraint.
         Returns a simple HTML view if template exists, otherwise JSON.
         """
-        if not current_user.is_admin:
-            flash("Access denied. Admin privileges required.", "error")
-            return redirect(url_for("index"))
 
         from sqlalchemy import func
 
@@ -135,6 +132,7 @@ def register_data_integrity_routes(bp):
     @bp.route("/admin/dedupe-student-participations", methods=["POST"])
     @bp.route("/dedupe-student-participations", methods=["POST"])
     @login_required
+    @admin_required
     def dedupe_student_participations():
         """
         Admin action: deduplicate EventStudentParticipation by (event_id, student_id).
@@ -145,8 +143,6 @@ def register_data_integrity_routes(bp):
           - Delete the other records.
         Returns JSON summary.
         """
-        if not current_user.is_admin:
-            return jsonify({"error": "Admin only"}), 403
 
         from sqlalchemy import func
 

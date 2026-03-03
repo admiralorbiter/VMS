@@ -59,6 +59,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from forms import LoginForm  # Adjust import path as needed
 from models import User, db  # Adjust import path as needed
+from routes.decorators import admin_required
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -152,6 +153,7 @@ def logout():
 
 @auth_bp.route("/admin/users", methods=["POST"])
 @login_required
+@admin_required
 def create_user():
     """
     Create a new user account.
@@ -175,9 +177,6 @@ def create_user():
     Returns:
         Redirect to admin panel with success/error message
     """
-    if not current_user.is_admin:
-        flash("Permission denied", "danger")
-        return redirect(url_for("management.admin"))
 
     username = request.form.get("username")
     email = request.form.get("email")

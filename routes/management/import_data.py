@@ -25,7 +25,7 @@ from config import Config
 from models import db
 from models.district_model import District
 from models.school_model import School
-from routes.decorators import global_users_only
+from routes.decorators import admin_required, global_users_only
 from routes.utils import log_audit_action
 
 
@@ -34,6 +34,7 @@ def register_import_data_routes(bp):
 
     @bp.route("/admin/import", methods=["POST"])
     @login_required
+    @admin_required
     def import_data():
         """
         Handle data import functionality.
@@ -53,8 +54,6 @@ def register_import_data_routes(bp):
         Raises:
             403: Unauthorized access attempt
         """
-        if not current_user.is_admin:
-            return {"error": "Unauthorized"}, 403
 
         if "import_file" not in request.files:
             flash("No file provided", "error")
@@ -73,9 +72,8 @@ def register_import_data_routes(bp):
 
     @bp.route("/management/import-districts", methods=["POST"])
     @login_required
+    @admin_required
     def import_districts():
-        if not current_user.is_admin:
-            return jsonify({"error": "Unauthorized"}), 403
 
         try:
             # Define Salesforce query
@@ -161,10 +159,8 @@ def register_import_data_routes(bp):
     @bp.route("/schools")
     @login_required
     @global_users_only
+    @admin_required
     def schools():
-        if not current_user.is_admin:
-            flash("Access denied. Admin privileges required.", "error")
-            return redirect(url_for("index"))
 
         # Filters and pagination
         district_q = request.args.get("district_q", "").strip()
@@ -232,9 +228,8 @@ def register_import_data_routes(bp):
 
     @bp.route("/management/schools/<school_id>", methods=["DELETE"])
     @login_required
+    @admin_required
     def delete_school(school_id):
-        if not current_user.is_admin:
-            return jsonify({"error": "Unauthorized"}), 403
 
         try:
             school = School.query.get_or_404(school_id)
@@ -250,9 +245,8 @@ def register_import_data_routes(bp):
 
     @bp.route("/management/districts/<district_id>", methods=["DELETE"])
     @login_required
+    @admin_required
     def delete_district(district_id):
-        if not current_user.is_admin:
-            return jsonify({"error": "Unauthorized"}), 403
 
         try:
             district = District.query.get_or_404(district_id)
@@ -273,9 +267,8 @@ def register_import_data_routes(bp):
 
     @bp.route("/management/update-school-levels", methods=["POST"])
     @login_required
+    @admin_required
     def update_school_levels_route():
-        if not current_user.is_admin:
-            return jsonify({"error": "Unauthorized"}), 403
         return update_school_levels()
 
 
