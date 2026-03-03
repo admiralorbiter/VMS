@@ -108,14 +108,21 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
     if not teachers:
         return {}
 
-    # Get the tenant's linked district name for filtering sessions
+    # Get the tenant's linked district name(s) for filtering sessions.
+    # We use ALL known variants (canonical name + aliases) because
+    # Event.district_partner stores Pathful-imported strings that may
+    # not match the canonical District.name.
+    from services.district_service import get_district_name_variants
+
     tenant = Tenant.query.get(tenant_id)
-    district_name = None
+    district_names = set()
     if tenant:
         if tenant.district:
-            district_name = tenant.district.name
+            district_names = get_district_name_variants(tenant.district)
         else:
-            district_name = tenant.get_setting("linked_district_name")
+            linked = tenant.get_setting("linked_district_name")
+            if linked:
+                district_names = {linked}
 
     # Map teacher_id -> list of TeacherProgress IDs (for EventTeacher lookups)
     teacher_id_to_tp = {}
@@ -135,8 +142,8 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
             Event.type == EventType.VIRTUAL_SESSION,
             Event.status == EventStatus.COMPLETED,
         )
-        if district_name:
-            et_query = et_query.filter(Event.district_partner == district_name)
+        if district_names:
+            et_query = et_query.filter(Event.district_partner.in_(district_names))
         if date_from:
             et_query = et_query.filter(Event.start_date >= date_from)
         if date_to:
@@ -152,8 +159,8 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
     events_query = Event.query.filter(
         Event.type == EventType.VIRTUAL_SESSION, Event.status == EventStatus.COMPLETED
     )
-    if district_name:
-        events_query = events_query.filter(Event.district_partner == district_name)
+    if district_names:
+        events_query = events_query.filter(Event.district_partner.in_(district_names))
     if date_from:
         events_query = events_query.filter(Event.start_date >= date_from)
     if date_to:
@@ -191,9 +198,9 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
         ),
         Event.start_date >= now,
     )
-    if district_name:
+    if district_names:
         planned_events_query = planned_events_query.filter(
-            Event.district_partner == district_name
+            Event.district_partner.in_(district_names)
         )
     planned_events = planned_events_query.all()
 
@@ -213,9 +220,9 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
         Event.status.in_(in_planning_statuses),
         Event.start_date < now,
     )
-    if district_name:
+    if district_names:
         in_planning_query = in_planning_query.filter(
-            Event.district_partner == district_name
+            Event.district_partner.in_(district_names)
         )
     if date_from:
         in_planning_query = in_planning_query.filter(Event.start_date >= date_from)
@@ -485,14 +492,18 @@ def teacher_detail(teacher_progress_id):
 
     district_name = get_tenant_district_name(effective_tenant_id) or "Your District"
 
-    # Resolve the tenant's linked district name
+    # Resolve the tenant's linked district name(s) — use all variants
+    from services.district_service import get_district_name_variants
+
     tenant = Tenant.query.get(effective_tenant_id)
-    linked_district = None
+    district_names = set()
     if tenant:
         if tenant.district:
-            linked_district = tenant.district.name
+            district_names = get_district_name_variants(tenant.district)
         else:
-            linked_district = tenant.get_setting("linked_district_name")
+            linked = tenant.get_setting("linked_district_name")
+            if linked:
+                district_names = {linked}
 
     now = datetime.now(timezone.utc)
     past_sessions = []
@@ -559,8 +570,8 @@ def teacher_detail(teacher_progress_id):
     events_query = Event.query.filter(
         Event.type == EventType.VIRTUAL_SESSION,
     )
-    if linked_district:
-        events_query = events_query.filter(Event.district_partner == linked_district)
+    if district_names:
+        events_query = events_query.filter(Event.district_partner.in_(district_names))
     events = events_query.order_by(Event.start_date.desc()).all()
 
     for event in events:

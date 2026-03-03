@@ -86,6 +86,28 @@ def resolve_district(name: str) -> Optional["District"]:
     return None
 
 
+def get_district_name_variants(district: "District") -> set:
+    """
+    Return all known name variants for a district.
+
+    Collects the canonical name plus every alias so that queries against
+    free-text fields like Event.district_partner can match any spelling.
+
+    Args:
+        district: A District model instance.
+
+    Returns:
+        A set of name strings (canonical + aliases).
+    """
+    if not district:
+        return set()
+
+    names = {district.name}
+    for alias in getattr(district, "aliases", []):
+        names.add(alias.alias)
+    return names
+
+
 def seed_district_aliases() -> dict:
     """
     Seed the district_alias table from the legacy DISTRICT_MAPPINGS data.

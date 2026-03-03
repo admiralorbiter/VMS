@@ -254,11 +254,12 @@ def compute_teacher_school_breakdown(district_name, virtual_year, date_from, dat
 
 def compute_teacher_progress_tracking(district_name, virtual_year, date_from, date_to):
     """
-    Compute teacher progress tracking for specific teachers in Kansas City Kansas Public Schools.
-    This function will track progress for a predefined set of teachers imported from a spreadsheet.
+    Compute teacher progress tracking for specific teachers in a district.
+    This function tracks progress for a predefined set of teachers imported
+    via roster import and matches them against Pathful session data.
 
     Args:
-        district_name: Name of the district (should be "Kansas City Kansas Public Schools")
+        district_name: Name of the district
         virtual_year: The virtual year
         date_from: Start date
         date_to: End date
@@ -269,9 +270,21 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
 
     from models import Event, TeacherProgress
     from models.event import EventStatus, EventType
+    from models.tenant import Tenant
 
-    # Get all teachers from the progress tracking table for this virtual year
-    teachers = TeacherProgress.query.filter_by(virtual_year=virtual_year).all()
+    # Get teachers from progress tracking table, filtered by tenant/district
+    # This ensures we only load teachers relevant to the requested district.
+    query = TeacherProgress.query.filter_by(virtual_year=virtual_year)
+
+    # Try to scope by tenant (preferred) or fall back to district_name
+    tenant = Tenant.query.filter(Tenant.district.has(name=district_name)).first()
+    if tenant:
+        query = query.filter_by(tenant_id=tenant.id)
+    else:
+        # Legacy fallback: filter by district_name field
+        query = query.filter_by(district_name=district_name)
+
+    teachers = query.all()
 
     if not teachers:
         return {}
@@ -286,6 +299,9 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
     # Create mappings for unique teachers and their name variations
     teacher_progress_map = {}
     teacher_alias_map = {}
+    # FK-based map: Teacher.id → TeacherProgress.id (fastest, highest confidence)
+    teacher_id_to_progress = {}
+
     for teacher in teachers:
         teacher_progress_map[teacher.id] = {
             "teacher": teacher,
@@ -294,7 +310,11 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
             "no_show_count": 0,  # Track no-shows to affect status calculation
         }
 
-        # Store multiple possible name variations for matching
+        # Build FK reverse map (Teacher.id → TeacherProgress.id)
+        if teacher.teacher_id:
+            teacher_id_to_progress[teacher.teacher_id] = teacher.id
+
+        # Store multiple possible name variations for matching (fallback)
         # Normalize names by replacing hyphens with spaces for better matching
         base_name = teacher.name.lower().strip()
         normalized_name = base_name.replace("-", " ").replace(".", "").replace(",", "")
@@ -328,20 +348,27 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
     for event in events:
         for teacher_reg in event.teacher_registrations:
             if teacher_reg.teacher:
-                teacher_name = (
-                    f"{teacher_reg.teacher.first_name} {teacher_reg.teacher.last_name}"
-                )
-                teacher_key = teacher_name.lower().strip()
-                # Normalize the key by replacing hyphens with spaces for better matching
-                teacher_key_normalized = teacher_key.replace("-", " ")
-
-                # Try exact match first against aliases (both original and normalized)
-                teacher_id = teacher_alias_map.get(
-                    teacher_key
-                ) or teacher_alias_map.get(teacher_key_normalized)
+                # Priority 1: FK-based matching (highest confidence)
+                # Check if this Teacher record is linked to any TeacherProgress
+                progress_id = teacher_id_to_progress.get(teacher_reg.teacher.id)
                 progress_data = (
-                    teacher_progress_map.get(teacher_id) if teacher_id else None
+                    teacher_progress_map.get(progress_id) if progress_id else None
                 )
+
+                # Priority 2: Name-based matching (fallback)
+                if not progress_data:
+                    teacher_name = f"{teacher_reg.teacher.first_name} {teacher_reg.teacher.last_name}"
+                    teacher_key = teacher_name.lower().strip()
+                    # Normalize the key by replacing hyphens with spaces for better matching
+                    teacher_key_normalized = teacher_key.replace("-", " ")
+
+                    # Try exact match first against aliases (both original and normalized)
+                    teacher_id = teacher_alias_map.get(
+                        teacher_key
+                    ) or teacher_alias_map.get(teacher_key_normalized)
+                    progress_data = (
+                        teacher_progress_map.get(teacher_id) if teacher_id else None
+                    )
 
                 if not progress_data:
                     # Try flexible matching - look for partial matches

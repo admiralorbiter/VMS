@@ -294,10 +294,16 @@ def build_import_caches():
     school_by_name = {s.name.lower(): s for s in all_schools if s.name}
     print(f"  Schools: {len(all_schools)}")
 
-    # District cache
+    # District cache (includes aliases for Pathful name resolution)
+    from models.district_model import DistrictAlias
+
     all_districts = District.query.all()
     district_by_name = {d.name.lower(): d for d in all_districts if d.name}
-    print(f"  Districts: {len(all_districts)}")
+    # Also index all aliases so cache lookup resolves different spellings
+    all_aliases = DistrictAlias.query.all()
+    for alias in all_aliases:
+        district_by_name[alias.alias.lower()] = alias.district
+    print(f"  Districts: {len(all_districts)} ({len(all_aliases)} aliases)")
 
     # Event caches
     all_events = Event.query.filter(Event.type == EventType.VIRTUAL_SESSION).all()
@@ -309,6 +315,30 @@ def build_import_caches():
         if e.title and e.start_date:
             event_by_title_date[(e.title.lower().strip(), e.start_date.date())] = e
     print(f"  Events: {len(all_events)} ({len(event_by_session_id)} by session_id)")
+
+    # EventTeacher existence cache — avoids per-row SELECT in ensure_event_teacher
+    from models.event import EventTeacher
+
+    all_et = EventTeacher.query.all()
+    event_teacher_set = {(et.event_id, et.teacher_id) for et in all_et}
+    print(f"  EventTeacher links: {len(event_teacher_set)}")
+
+    # Teacher model caches — avoids loading ALL teachers in find_or_create_teacher
+    from models.teacher import Teacher
+    from services.teacher_matching_service import normalize_name
+
+    all_teacher_records = Teacher.query.filter(Teacher.active == True).all()
+    teacher_record_by_email = {}
+    teacher_record_by_name = {}
+    for t in all_teacher_records:
+        if t.cached_email:
+            teacher_record_by_email[t.cached_email.lower()] = t
+        norm_name = f"{normalize_name(t.first_name or '')} {normalize_name(t.last_name or '')}".strip()
+        if norm_name:
+            teacher_record_by_name[norm_name] = t
+    print(
+        f"  Teacher records: {len(all_teacher_records)} ({len(teacher_record_by_email)} by email, {len(teacher_record_by_name)} by name)"
+    )
 
     print("Caches built.\n")
 
@@ -323,6 +353,9 @@ def build_import_caches():
         "district_by_name": district_by_name,
         "event_by_session_id": event_by_session_id,
         "event_by_title_date": event_by_title_date,
+        "event_teacher_set": event_teacher_set,
+        "teacher_record_by_email": teacher_record_by_email,
+        "teacher_record_by_name": teacher_record_by_name,
     }
 
 
@@ -330,8 +363,14 @@ def upsert_district(district_name, caches=None):
     """
     Find or create a District record by name.
 
-    This ensures the District table is populated automatically during
-    Pathful imports, providing normalized district data.
+    Uses resolve_district() for alias-aware matching, preventing duplicate
+    Districts when Pathful sends a different spelling (e.g. "Kansas City,
+    KS (KCKPS) Public Schools" vs the canonical "Kansas City Kansas School
+    District").
+
+    When an existing district is found by alias but the incoming name is NOT
+    yet registered as an alias, it is automatically added to DistrictAlias
+    so the teacher progress dashboard can find events using that string.
 
     Args:
         district_name: Name of the district from Pathful data
@@ -343,28 +382,45 @@ def upsert_district(district_name, caches=None):
     if not district_name:
         return None
 
-    # Cache lookup first
-    if caches:
-        district = caches["district_by_name"].get(district_name.lower())
-        if district:
-            return district
-    else:
-        district = District.query.filter(
-            func.lower(District.name) == func.lower(district_name)
-        ).first()
-        if district:
-            return district
+    from models.district_model import DistrictAlias
+    from services.district_service import resolve_district
 
-    # Create new district
+    # 1. Cache lookup (fast, avoids DB round-trip for repeated rows)
+    if caches:
+        cached = caches["district_by_name"].get(district_name.lower())
+        if cached:
+            return cached
+
+    # 2. Alias-aware resolution (canonical name → alias → case-insensitive)
+    district = resolve_district(district_name)
+
+    if district:
+        # Auto-register the Pathful string as an alias if it differs from
+        # the canonical name and isn't already registered.
+        if district_name != district.name:
+            existing_alias = DistrictAlias.query.filter_by(alias=district_name).first()
+            if not existing_alias:
+                new_alias = DistrictAlias(alias=district_name, district_id=district.id)
+                db.session.add(new_alias)
+                db.session.flush()
+                current_app.logger.info(
+                    f"Auto-registered DistrictAlias: "
+                    f"'{district_name}' -> '{district.name}'"
+                )
+
+        # Update cache
+        if caches:
+            caches["district_by_name"][district_name.lower()] = district
+        return district
+
+    # 3. No match — create a new District record
     import re
 
     # Generate district code from name
-    # Look for acronym in parentheses first
     acronym_match = re.search(r"\(([A-Z]+)\)", district_name)
     if acronym_match:
         code = acronym_match.group(1)
     else:
-        # Create code from first word
         simplified = re.sub(
             r"\s*(School District|Public Schools|Schools)$",
             "",
@@ -384,12 +440,12 @@ def upsert_district(district_name, caches=None):
     district = District(
         name=district_name,
         district_code=code,
-        salesforce_id=None,  # Virtual imports don't have Salesforce IDs
+        salesforce_id=None,
     )
     db.session.add(district)
-    db.session.flush()  # Get the ID
+    db.session.flush()
 
-    # Add to cache for subsequent rows
+    # Add to cache
     if caches:
         caches["district_by_name"][district_name.lower()] = district
 
@@ -815,11 +871,14 @@ def process_session_report_row(
         # Parse date
         session_date = parse_pathful_date(date_value)
         if not session_date:
-            current_app.logger.warning(
-                f"Row {row_index}: Could not parse date '{date_value}'"
-            )
-            import_log.error_count += 1
-            return False
+            # Only warn for genuinely unparseable dates, not empty/NaT values
+            date_str = str(date_value).strip().lower() if date_value is not None else ""
+            if date_str and date_str not in ("nat", "nan", "none", ""):
+                current_app.logger.warning(
+                    f"Row {row_index}: Could not parse date '{date_value}'"
+                )
+            import_log.skipped_rows += 1
+            return True
 
         if not title:
             current_app.logger.warning(f"Row {row_index}: Missing title")
@@ -891,26 +950,45 @@ def process_session_report_row(
                 caches=caches,
             )
 
-            # Link teacher to event via EventTeacher FK
-            from services.teacher_service import (
-                ensure_event_teacher,
-                find_or_create_teacher,
-            )
+            # Link teacher to event via EventTeacher FK (cache-first)
+            from models.event import EventTeacher as _ET
+            from services.teacher_matching_service import normalize_name as _norm
 
+            teacher_id_to_link = None
             if teacher_progress and teacher_progress.teacher_id:
-                # TeacherProgress has a linked Teacher record — use that
-                ensure_event_teacher(event.id, teacher_progress.teacher_id)
+                teacher_id_to_link = teacher_progress.teacher_id
             elif name:
-                # No TeacherProgress match (or no linked Teacher) —
-                # find-or-create a Teacher record directly from the name
+                # Try cache-first Teacher resolution before DB
                 first_name, last_name = parse_name(name)
                 if first_name or last_name:
-                    teacher_record, is_new, _match_info = find_or_create_teacher(
-                        first_name=first_name,
-                        last_name=last_name,
-                        import_source="pathful",
-                    )
-                    ensure_event_teacher(event.id, teacher_record.id)
+                    norm_key = f"{_norm(first_name)} {_norm(last_name)}".strip()
+                    cached_teacher = None
+                    if caches:
+                        cached_teacher = caches["teacher_record_by_name"].get(norm_key)
+                    if cached_teacher:
+                        teacher_id_to_link = cached_teacher.id
+                    else:
+                        from services.teacher_service import find_or_create_teacher
+
+                        teacher_record, is_new, _match_info = find_or_create_teacher(
+                            first_name=first_name,
+                            last_name=last_name,
+                            import_source="pathful",
+                        )
+                        teacher_id_to_link = teacher_record.id
+                        # Update cache for subsequent rows
+                        if caches and norm_key:
+                            caches["teacher_record_by_name"][norm_key] = teacher_record
+
+            # Create EventTeacher only if it doesn't already exist (cache-first)
+            if teacher_id_to_link:
+                et_key = (event.id, teacher_id_to_link)
+                et_set = caches["event_teacher_set"] if caches else set()
+                if et_key not in et_set:
+                    et = _ET(event_id=event.id, teacher_id=teacher_id_to_link)
+                    db.session.add(et)
+                    if caches:
+                        caches["event_teacher_set"].add(et_key)
 
             # Text cache (Event.educators) is regenerated post-import
             # by sync_event_participant_fields — no manual accumulation needed
