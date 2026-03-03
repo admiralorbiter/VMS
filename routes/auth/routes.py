@@ -44,7 +44,16 @@ Template Dependencies:
 - management/admin.html: Admin panel template
 """
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from flask_login import current_user, login_required, login_user, logout_user
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -86,7 +95,8 @@ def login():
                 )
                 return render_template("login.html", form=form)
 
-            login_user(user)
+            login_user(user, remember=True)
+            session.permanent = True  # Use PERMANENT_SESSION_LIFETIME (8h)
             flash("Logged in successfully.", "success")
 
             # Redirect district-scoped users to their first assigned district

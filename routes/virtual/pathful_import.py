@@ -237,7 +237,96 @@ def safe_str(value):
     return str(value).strip()
 
 
-def upsert_district(district_name):
+def build_import_caches():
+    """
+    Pre-load all lookup data into dicts to avoid per-row DB queries.
+
+    Returns:
+        dict of caches keyed by name
+    """
+    from models.contact import Email as ContactEmail
+
+    print("Building import caches...")
+
+    # Teacher caches (TeacherProgress)
+    all_teachers = TeacherProgress.query.all()
+    teacher_by_pathful_id = {}
+    teacher_by_email = {}
+    teacher_by_name = {}
+    for t in all_teachers:
+        if t.pathful_user_id:
+            teacher_by_pathful_id[t.pathful_user_id] = t
+        if t.email:
+            teacher_by_email[t.email.lower()] = t
+        if t.name:
+            teacher_by_name[t.name.lower()] = t
+    print(
+        f"  Teachers: {len(all_teachers)} ({len(teacher_by_pathful_id)} by pathful_id, {len(teacher_by_email)} by email)"
+    )
+
+    # Volunteer caches
+    all_volunteers = Volunteer.query.all()
+    volunteer_by_pathful_id = {}
+    volunteer_by_name = {}
+    for v in all_volunteers:
+        if v.pathful_user_id:
+            volunteer_by_pathful_id[v.pathful_user_id] = v
+        if v.first_name and v.last_name:
+            volunteer_by_name[(v.first_name.lower(), v.last_name.lower())] = v
+
+    # Volunteer email cache (requires joining Email table)
+    volunteer_by_email = {}
+    volunteer_emails = (
+        db.session.query(ContactEmail.email, ContactEmail.contact_id)
+        .join(Volunteer, Volunteer.id == ContactEmail.contact_id)
+        .all()
+    )
+    vol_id_map = {v.id: v for v in all_volunteers}
+    for email_addr, contact_id in volunteer_emails:
+        if email_addr and contact_id in vol_id_map:
+            volunteer_by_email[email_addr.lower()] = vol_id_map[contact_id]
+    print(
+        f"  Volunteers: {len(all_volunteers)} ({len(volunteer_by_pathful_id)} by pathful_id, {len(volunteer_by_email)} by email)"
+    )
+
+    # School cache
+    all_schools = School.query.all()
+    school_by_name = {s.name.lower(): s for s in all_schools if s.name}
+    print(f"  Schools: {len(all_schools)}")
+
+    # District cache
+    all_districts = District.query.all()
+    district_by_name = {d.name.lower(): d for d in all_districts if d.name}
+    print(f"  Districts: {len(all_districts)}")
+
+    # Event caches
+    all_events = Event.query.filter(Event.type == EventType.VIRTUAL_SESSION).all()
+    event_by_session_id = {}
+    event_by_title_date = {}
+    for e in all_events:
+        if e.pathful_session_id:
+            event_by_session_id[e.pathful_session_id] = e
+        if e.title and e.start_date:
+            event_by_title_date[(e.title.lower().strip(), e.start_date.date())] = e
+    print(f"  Events: {len(all_events)} ({len(event_by_session_id)} by session_id)")
+
+    print("Caches built.\n")
+
+    return {
+        "teacher_by_pathful_id": teacher_by_pathful_id,
+        "teacher_by_email": teacher_by_email,
+        "teacher_by_name": teacher_by_name,
+        "volunteer_by_pathful_id": volunteer_by_pathful_id,
+        "volunteer_by_email": volunteer_by_email,
+        "volunteer_by_name": volunteer_by_name,
+        "school_by_name": school_by_name,
+        "district_by_name": district_by_name,
+        "event_by_session_id": event_by_session_id,
+        "event_by_title_date": event_by_title_date,
+    }
+
+
+def upsert_district(district_name, caches=None):
     """
     Find or create a District record by name.
 
@@ -246,6 +335,7 @@ def upsert_district(district_name):
 
     Args:
         district_name: Name of the district from Pathful data
+        caches: Pre-built import caches (optional)
 
     Returns:
         District: Found or created District instance
@@ -253,13 +343,17 @@ def upsert_district(district_name):
     if not district_name:
         return None
 
-    # Look for existing district by name (case-insensitive)
-    district = District.query.filter(
-        func.lower(District.name) == func.lower(district_name)
-    ).first()
-
-    if district:
-        return district
+    # Cache lookup first
+    if caches:
+        district = caches["district_by_name"].get(district_name.lower())
+        if district:
+            return district
+    else:
+        district = District.query.filter(
+            func.lower(District.name) == func.lower(district_name)
+        ).first()
+        if district:
+            return district
 
     # Create new district
     import re
@@ -294,6 +388,10 @@ def upsert_district(district_name):
     )
     db.session.add(district)
     db.session.flush()  # Get the ID
+
+    # Add to cache for subsequent rows
+    if caches:
+        caches["district_by_name"][district_name.lower()] = district
 
     current_app.logger.info(f"Created new District: {district_name} (code={code})")
     return district
@@ -335,7 +433,14 @@ def serialize_row_for_json(row):
 
 
 def match_or_create_event(
-    session_id, title, session_date, status_str, duration, career_cluster, import_log
+    session_id,
+    title,
+    session_date,
+    status_str,
+    duration,
+    career_cluster,
+    import_log,
+    caches=None,
 ):
     """
     Find existing event or create new one (idempotent).
@@ -399,18 +504,27 @@ def match_or_create_event(
 
     # Priority 1: Match by pathful_session_id
     if session_id_str:
-        event = Event.query.filter(Event.pathful_session_id == session_id_str).first()
+        event = (
+            caches["event_by_session_id"].get(session_id_str)
+            if caches
+            else Event.query.filter(Event.pathful_session_id == session_id_str).first()
+        )
         if event:
             _update_matched_event(event, status_str, career_cluster)
             return event, "matched_by_session_id"
 
     # Priority 2: Match by title + date
     if title and session_date:
-        event = Event.query.filter(
-            func.lower(Event.title) == func.lower(title.strip()),
-            func.date(Event.start_date) == session_date.date(),
-            Event.type == EventType.VIRTUAL_SESSION,
-        ).first()
+        cache_key = (title.lower().strip(), session_date.date())
+        event = (
+            caches["event_by_title_date"].get(cache_key)
+            if caches
+            else Event.query.filter(
+                func.lower(Event.title) == func.lower(title.strip()),
+                func.date(Event.start_date) == session_date.date(),
+                Event.type == EventType.VIRTUAL_SESSION,
+            ).first()
+        )
 
         if event:
             # Update pathful_session_id if not set
@@ -444,12 +558,28 @@ def match_or_create_event(
     db.session.add(event)
     db.session.flush()  # Get the event.id
 
+    # Add to caches for subsequent rows
+    if caches:
+        if session_id_str:
+            caches["event_by_session_id"][session_id_str] = event
+        if title and session_date:
+            caches["event_by_title_date"][
+                (title.lower().strip(), session_date.date())
+            ] = event
+
     import_log.created_events += 1
     return event, "created"
 
 
 def match_teacher(
-    name, email, school_name, pathful_user_id, import_log, row_number, raw_data
+    name,
+    email,
+    school_name,
+    pathful_user_id,
+    import_log,
+    row_number,
+    raw_data,
+    caches=None,
 ):
     """
     Match a teacher from Pathful data to existing TeacherProgress records.
@@ -477,18 +607,26 @@ def match_teacher(
 
     # Priority 1: Match by pathful_user_id
     if pathful_id_str:
-        teacher_progress = TeacherProgress.query.filter(
-            TeacherProgress.pathful_user_id == pathful_id_str
-        ).first()
+        teacher_progress = (
+            caches["teacher_by_pathful_id"].get(pathful_id_str)
+            if caches
+            else TeacherProgress.query.filter(
+                TeacherProgress.pathful_user_id == pathful_id_str
+            ).first()
+        )
         if teacher_progress:
             import_log.matched_teachers += 1
             return teacher_progress
 
     # Priority 2: Match by email
     if email_normalized:
-        teacher_progress = TeacherProgress.query.filter(
-            func.lower(TeacherProgress.email) == email_normalized
-        ).first()
+        teacher_progress = (
+            caches["teacher_by_email"].get(email_normalized)
+            if caches
+            else TeacherProgress.query.filter(
+                func.lower(TeacherProgress.email) == email_normalized
+            ).first()
+        )
         if teacher_progress:
             # Update pathful_user_id if not set
             if pathful_id_str and not teacher_progress.pathful_user_id:
@@ -498,9 +636,13 @@ def match_teacher(
 
     # Priority 3: Match by name (case-insensitive)
     if name_str:
-        teacher_progress = TeacherProgress.query.filter(
-            func.lower(TeacherProgress.name) == func.lower(name_str)
-        ).first()
+        teacher_progress = (
+            caches["teacher_by_name"].get(name_str.lower())
+            if caches
+            else TeacherProgress.query.filter(
+                func.lower(TeacherProgress.name) == func.lower(name_str)
+            ).first()
+        )
         if teacher_progress:
             if pathful_id_str and not teacher_progress.pathful_user_id:
                 teacher_progress.pathful_user_id = pathful_id_str
@@ -527,7 +669,14 @@ def match_teacher(
 
 
 def match_volunteer(
-    name, email, organization_name, pathful_user_id, import_log, row_number, raw_data
+    name,
+    email,
+    organization_name,
+    pathful_user_id,
+    import_log,
+    row_number,
+    raw_data,
+    caches=None,
 ):
     """
     Match a volunteer/professional from Pathful data.
@@ -556,37 +705,50 @@ def match_volunteer(
 
     # Priority 1: Match by pathful_user_id
     if pathful_id_str:
-        volunteer = Volunteer.query.filter(
-            Volunteer.pathful_user_id == pathful_id_str
-        ).first()
+        volunteer = (
+            caches["volunteer_by_pathful_id"].get(pathful_id_str)
+            if caches
+            else Volunteer.query.filter(
+                Volunteer.pathful_user_id == pathful_id_str
+            ).first()
+        )
         if volunteer:
             import_log.matched_volunteers += 1
             return volunteer
 
     # Priority 2: Match by email (using Email model)
     if email_normalized:
-        from models.contact import Email
+        if caches:
+            volunteer = caches["volunteer_by_email"].get(email_normalized)
+        else:
+            from models.contact import Email
 
-        email_record = Email.query.filter(
-            func.lower(Email.email) == email_normalized
-        ).first()
-        if email_record and email_record.contact:
-            volunteer = Volunteer.query.filter(
-                Volunteer.id == email_record.contact_id
+            email_record = Email.query.filter(
+                func.lower(Email.email) == email_normalized
             ).first()
-            if volunteer:
-                # Update pathful_user_id if not set
-                if pathful_id_str and not volunteer.pathful_user_id:
-                    volunteer.pathful_user_id = pathful_id_str
-                import_log.matched_volunteers += 1
-                return volunteer
+            volunteer = None
+            if email_record and email_record.contact:
+                volunteer = Volunteer.query.filter(
+                    Volunteer.id == email_record.contact_id
+                ).first()
+        if volunteer:
+            # Update pathful_user_id if not set
+            if pathful_id_str and not volunteer.pathful_user_id:
+                volunteer.pathful_user_id = pathful_id_str
+            import_log.matched_volunteers += 1
+            return volunteer
 
     # Priority 3: Match by name
     if first_name and last_name:
-        volunteer = Volunteer.query.filter(
-            func.lower(Volunteer.first_name) == func.lower(first_name),
-            func.lower(Volunteer.last_name) == func.lower(last_name),
-        ).first()
+        name_key = (first_name.lower(), last_name.lower())
+        volunteer = (
+            caches["volunteer_by_name"].get(name_key)
+            if caches
+            else Volunteer.query.filter(
+                func.lower(Volunteer.first_name) == func.lower(first_name),
+                func.lower(Volunteer.last_name) == func.lower(last_name),
+            ).first()
+        )
         if volunteer:
             if pathful_id_str and not volunteer.pathful_user_id:
                 volunteer.pathful_user_id = pathful_id_str
@@ -612,7 +774,9 @@ def match_volunteer(
     return None
 
 
-def process_session_report_row(row, row_index, import_log, processed_events):
+def process_session_report_row(
+    row, row_index, import_log, processed_events, caches=None
+):
     """
     Process a single row from the Pathful Session Report.
 
@@ -681,6 +845,7 @@ def process_session_report_row(row, row_index, import_log, processed_events):
                 duration,
                 career_cluster,
                 import_log,
+                caches=caches,
             )
             processed_events[session_id_str] = event
 
@@ -723,6 +888,7 @@ def process_session_report_row(row, row_index, import_log, processed_events):
                 import_log=import_log,
                 row_number=row_index,
                 raw_data=raw_data,
+                caches=caches,
             )
 
             # Link teacher to event via EventTeacher FK
@@ -753,17 +919,20 @@ def process_session_report_row(row, row_index, import_log, processed_events):
             if district_or_company and not event.district_partner:
                 event.district_partner = district_or_company
                 # Also upsert and link to District model for proper FK relationship
-                district_record = upsert_district(district_or_company)
+                district_record = upsert_district(district_or_company, caches=caches)
                 if district_record and district_record not in event.districts:
                     event.districts.append(district_record)
 
             # Store school info from Educator rows
             if school and school.upper() != "PREP-KC":  # Skip "PREP-KC" as school name
                 if not event.school:
-                    # Try to match school to existing School record
-                    school_record = School.query.filter(
-                        func.lower(School.name) == func.lower(school)
-                    ).first()
+                    # Try to match school to existing School record (cache first)
+                    if caches:
+                        school_record = caches["school_by_name"].get(school.lower())
+                    else:
+                        school_record = School.query.filter(
+                            func.lower(School.name) == func.lower(school)
+                        ).first()
                     if school_record:
                         event.school = school_record.id
                 # Always store school name in location as fallback display
@@ -780,6 +949,7 @@ def process_session_report_row(row, row_index, import_log, processed_events):
                 import_log=import_log,
                 row_number=row_index,
                 raw_data=raw_data,
+                caches=caches,
             )
             # If matched, link volunteer to event
             if volunteer and volunteer not in event.volunteers:
@@ -891,8 +1061,16 @@ def load_pathful_routes():
                 db.session.rollback()
                 return redirect(url_for("virtual.pathful_import"))
 
+            # Build caches to avoid per-row DB queries
+            import time as import_time
+
+            cache_start = import_time.time()
+            caches = build_import_caches()
+            print(f"Cache build time: {import_time.time() - cache_start:.1f}s")
+
             # Process rows
             processed_events = {}  # Cache events by session_id
+            process_start = import_time.time()
 
             for index, row in df.iterrows():
                 process_session_report_row(
@@ -900,7 +1078,14 @@ def load_pathful_routes():
                     row_index=index + 1,  # 1-based row number
                     import_log=import_log,
                     processed_events=processed_events,
+                    caches=caches,
                 )
+
+                # Progress output every 500 rows
+                if (index + 1) % 500 == 0 or index + 1 == len(df):
+                    elapsed = import_time.time() - process_start
+                    rate = (index + 1) / elapsed if elapsed > 0 else 0
+                    print(f"  → Row {index + 1}/{len(df)} ({rate:.0f} rows/sec)")
 
             # Regenerate text cache from EventTeacher (source of truth)
             from services.teacher_service import sync_event_participant_fields
