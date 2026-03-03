@@ -215,7 +215,7 @@ class DailyImporter:
                 db.session.commit()
 
             self.admin_user = admin_user
-            self.logger.info(f"Using admin user: {admin_user.username}")
+            self.logger.info("Using admin user: %s", admin_user.username)
 
     def authenticate(self):
         """Authenticate as admin user."""
@@ -362,7 +362,7 @@ class DailyImporter:
                     result, "Organizations imported successfully"
                 )
             except Exception as e:
-                self.logger.error(f"Import function failed: {e}", exc_info=True)
+                self.logger.error("Import function failed: %s", e, exc_info=True)
                 return {"success": False, "message": f"Import failed: {str(e)}"}
 
         return self._run_with_auth(_call_import)
@@ -380,7 +380,7 @@ class DailyImporter:
                     result, "Volunteers imported successfully"
                 )
             except Exception as e:
-                self.logger.error(f"Import function failed: {e}", exc_info=True)
+                self.logger.error("Import function failed: %s", e, exc_info=True)
                 return {"success": False, "message": f"Import failed: {str(e)}"}
 
         return self._run_with_auth(_call_import)
@@ -400,7 +400,7 @@ class DailyImporter:
                     result, "Affiliations imported successfully"
                 )
             except Exception as e:
-                self.logger.error(f"Import function failed: {e}", exc_info=True)
+                self.logger.error("Import function failed: %s", e, exc_info=True)
                 return {"success": False, "message": f"Import failed: {str(e)}"}
 
         return self._run_with_auth(_call_import)
@@ -416,7 +416,7 @@ class DailyImporter:
                 result = original_func()
                 return self._parse_import_result(result, "Events imported successfully")
             except Exception as e:
-                self.logger.error(f"Import function failed: {e}", exc_info=True)
+                self.logger.error("Import function failed: %s", e, exc_info=True)
                 return {"success": False, "message": f"Import failed: {str(e)}"}
 
         return self._run_with_auth(_call_import)
@@ -436,7 +436,7 @@ class DailyImporter:
                     result, "History imported successfully"
                 )
             except Exception as e:
-                self.logger.error(f"Import function failed: {e}", exc_info=True)
+                self.logger.error("Import function failed: %s", e, exc_info=True)
                 return {"success": False, "message": f"Import failed: {str(e)}"}
 
         return self._run_with_auth(_call_import)
@@ -503,7 +503,7 @@ class DailyImporter:
                         "message": "Volunteers imported successfully",
                     }
             except Exception as e:
-                self.logger.error(f"Import function failed: {e}", exc_info=True)
+                self.logger.error("Import function failed: %s", e, exc_info=True)
                 return {"success": False, "message": f"Import failed: {str(e)}"}
 
         return self._run_with_auth(_call_import)
@@ -567,7 +567,7 @@ class DailyImporter:
                         "message": "Affiliations imported successfully",
                     }
             except Exception as e:
-                self.logger.error(f"Import function failed: {e}", exc_info=True)
+                self.logger.error("Import function failed: %s", e, exc_info=True)
                 return {"success": False, "message": f"Import failed: {str(e)}"}
 
         return self._run_with_auth(_call_import)
@@ -626,7 +626,7 @@ class DailyImporter:
                 else:
                     return {"success": True, "message": "Events imported successfully"}
             except Exception as e:
-                self.logger.error(f"Import function failed: {e}", exc_info=True)
+                self.logger.error("Import function failed: %s", e, exc_info=True)
                 return {"success": False, "message": f"Import failed: {str(e)}"}
 
         return self._run_with_auth(_call_import)
@@ -687,7 +687,7 @@ class DailyImporter:
                 else:
                     return {"success": True, "message": "History imported successfully"}
             except Exception as e:
-                self.logger.error(f"Import function failed: {e}", exc_info=True)
+                self.logger.error("Import function failed: %s", e, exc_info=True)
                 return {"success": False, "message": f"Import failed: {str(e)}"}
 
         return self._run_with_auth(_call_import)
@@ -705,7 +705,7 @@ class DailyImporter:
                     result, "Schools imported successfully"
                 )
             except Exception as e:
-                self.logger.error(f"Import function failed: {e}", exc_info=True)
+                self.logger.error("Import function failed: %s", e, exc_info=True)
                 return {"success": False, "message": f"Import failed: {str(e)}"}
 
         return self._run_with_auth(_call_import)
@@ -723,7 +723,7 @@ class DailyImporter:
                     result, "Classes imported successfully"
                 )
             except Exception as e:
-                self.logger.error(f"Import function failed: {e}", exc_info=True)
+                self.logger.error("Import function failed: %s", e, exc_info=True)
                 return {"success": False, "message": f"Import failed: {str(e)}"}
 
         return self._run_with_auth(_call_import)
@@ -737,7 +737,7 @@ class DailyImporter:
         template = EmailTemplate.query.filter_by(purpose_key=template_key).first()
 
         if not template:
-            self.logger.info(f"Creating default email template: {template_key}")
+            self.logger.info("Creating default email template: %s", template_key)
             subject = "Daily Import Report - {{date}} - {{status}}"
 
             html_body = """
@@ -901,7 +901,7 @@ class DailyImporter:
                 }
 
                 # Create and send message
-                self.logger.info(f"Sending summary email to {recipient}...")
+                self.logger.info("Sending summary email to %s...", recipient)
 
                 # Mock a user ID for "System" if admin_user is not available for some reason
                 sender_id = self.admin_user.id if self.admin_user else 1
@@ -920,7 +920,7 @@ class DailyImporter:
                 self.logger.info("Summary email sent successfully.")
 
         except Exception as e:
-            self.logger.error(f"Failed to send summary email: {e}", exc_info=True)
+            self.logger.error("Failed to send summary email: %s", e, exc_info=True)
 
     def _import_teachers(self) -> Dict:
         """Import teachers from Salesforce."""
@@ -937,7 +937,7 @@ class DailyImporter:
                     result, "Teachers imported successfully"
                 )
             except Exception as e:
-                self.logger.error(f"Import function failed: {e}", exc_info=True)
+                self.logger.error("Import function failed: %s", e, exc_info=True)
                 return {"success": False, "message": f"Import failed: {str(e)}"}
 
         return self._run_with_auth(_call_import)
@@ -955,7 +955,7 @@ class DailyImporter:
                     result, "Student participations imported successfully"
                 )
             except Exception as e:
-                self.logger.error(f"Import function failed: {e}", exc_info=True)
+                self.logger.error("Import function failed: %s", e, exc_info=True)
                 return {"success": False, "message": f"Import failed: {str(e)}"}
 
         return self._run_with_auth(_call_import)
@@ -987,7 +987,7 @@ class DailyImporter:
                         result, "Students imported successfully"
                     )
             except Exception as e:
-                self.logger.error(f"Import function failed: {e}", exc_info=True)
+                self.logger.error("Import function failed: %s", e, exc_info=True)
                 return {"success": False, "message": f"Import failed: {str(e)}"}
 
         return self._run_with_auth(_call_import)
@@ -1005,7 +1005,7 @@ class DailyImporter:
                     result, "Unaffiliated events synced successfully"
                 )
             except Exception as e:
-                self.logger.error(f"Import function failed: {e}", exc_info=True)
+                self.logger.error("Import function failed: %s", e, exc_info=True)
                 return {"success": False, "message": f"Import failed: {str(e)}"}
 
         return self._run_with_auth(_call_import)
@@ -1015,7 +1015,7 @@ class DailyImporter:
     ) -> bool:
         """Run a single import step."""
         step.start_time = datetime.now()
-        self.logger.info(f"Starting {step.name}: {step.description}")
+        self.logger.info("Starting %s: %s", step.name, step.description)
 
         try:
             if step.chunked:
@@ -1033,7 +1033,7 @@ class DailyImporter:
 
                     if not result.get("success", True):
                         step.error = result.get("message", "Unknown error")
-                        self.logger.error(f"{step.name} failed: {step.error}")
+                        self.logger.error("%s failed: %s", step.name, step.error)
                         return False
 
                     processed_count = result.get("processed_count", 0)
@@ -1063,25 +1063,27 @@ class DailyImporter:
 
                 if not result.get("success", True):
                     step.error = result.get("message", "Unknown error")
-                    self.logger.error(f"{step.name} failed: {step.error}")
+                    self.logger.error("%s failed: %s", step.name, step.error)
                     return False
 
                 step.records_processed = result.get("processed_count", 0)
                 step.records_failed = result.get("error_count", 0)
                 step.records_skipped = result.get("skipped_count", 0)
-                self.logger.info(f"{step.name} completed successfully")
+                self.logger.info("%s completed successfully", step.name)
 
             step.completed = True
             step.end_time = datetime.now()
             duration = (step.end_time - step.start_time).total_seconds()
-            self.logger.info(f"{step.name} completed in {duration:.2f} seconds")
+            self.logger.info("%s completed in %.2f seconds", step.name, duration)
 
             return True
 
         except Exception as e:
             step.error = str(e)
             step.end_time = datetime.now()
-            self.logger.error(f"{step.name} failed with exception: {e}", exc_info=True)
+            self.logger.error(
+                "%s failed with exception: %s", step.name, e, exc_info=True
+            )
             return False
 
     def run_imports(
@@ -1111,7 +1113,7 @@ class DailyImporter:
         if dry_run:
             self.logger.info("DRY RUN - Steps that would be executed:")
             for step in steps_to_run:
-                self.logger.info(f"  - {step.name}: {step.description}")
+                self.logger.info("  - %s: %s", step.name, step.description)
             return True
 
         # Authenticate
@@ -1120,12 +1122,12 @@ class DailyImporter:
         # Run each step
         overall_success = True
         for step in steps_to_run:
-            self.logger.info(f"=== Running step: {step.name} ===")
+            self.logger.info("=== Running step: %s ===", step.name)
 
             success = self.run_step(step, chunk_size, sleep_ms)
             if not success:
                 overall_success = False
-                self.logger.error(f"Step failed: {step.name}")
+                self.logger.error("Step failed: %s", step.name)
                 # Continue with remaining steps for resilience
 
         # Log summary
@@ -1133,7 +1135,9 @@ class DailyImporter:
         completed_steps = [step for step in steps_to_run if step.completed]
         failed_steps = [step for step in steps_to_run if not step.completed]
 
-        self.logger.info(f"Completed: {len(completed_steps)}/{len(steps_to_run)} steps")
+        self.logger.info(
+            "Completed: %s/%s steps", len(completed_steps), len(steps_to_run)
+        )
         for step in completed_steps:
             duration = (step.end_time - step.start_time).total_seconds()
             self.logger.info(
@@ -1141,9 +1145,9 @@ class DailyImporter:
             )
 
         if failed_steps:
-            self.logger.error(f"Failed: {len(failed_steps)} steps")
+            self.logger.error("Failed: %s steps", len(failed_steps))
             for step in failed_steps:
-                self.logger.error(f"  [FAIL] {step.name}: {step.error}")
+                self.logger.error("  [FAIL] %s: %s", step.name, step.error)
 
         # Send summary email
         if not dry_run:  # Or allow dry_run to send dry-run email if desired
@@ -1190,7 +1194,7 @@ class DailyImporter:
                     db.session.commit()
                     self.logger.info("Recorded aggregate sync log for daily_import")
             except Exception as e:
-                self.logger.warning(f"Failed to record aggregate sync log: {e}")
+                self.logger.warning("Failed to record aggregate sync log: %s", e)
 
             # Use the start time of the first step as the approximate start time, or just use now - duration
             self.send_summary_email(
@@ -1446,8 +1450,8 @@ def main() -> int:
     logger = setup_logger(args.log_file, args.log_level)
 
     logger.info("Starting daily imports script")
-    logger.info(f"Log level: {args.log_level}")
-    logger.info(f"Log file: {args.log_file}")
+    logger.info("Log level: %s", args.log_level)
+    logger.info("Log file: %s", args.log_file)
 
     try:
         # Create Flask app
@@ -1513,7 +1517,7 @@ def main() -> int:
             return 1
 
     except Exception as e:
-        logger.error(f"Fatal error: {e}", exc_info=True)
+        logger.error("Fatal error: %s", e, exc_info=True)
         return 2
 
 

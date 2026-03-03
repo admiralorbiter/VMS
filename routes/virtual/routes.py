@@ -293,5 +293,5 @@ def get_event(event_id):
         )
 
     except Exception as e:
-        current_app.logger.error(f"Error fetching event {event_id}", exc_info=True)
+        current_app.logger.error("Error fetching event %s", event_id, exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 400

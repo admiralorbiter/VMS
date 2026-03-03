@@ -36,27 +36,27 @@ def test_score_weighting_engine():
 
         # Test getting entity weights
         volunteer_weights = engine.get_entity_weights("volunteer")
-        logger.info(f"   Volunteer weights: {volunteer_weights}")
+        logger.info("   Volunteer weights: %s", volunteer_weights)
 
         # Test getting validation type weight
         field_weight = engine.get_validation_type_weight(
             "volunteer", "field_completeness"
         )
-        logger.info(f"   Field completeness weight for volunteer: {field_weight}")
+        logger.info("   Field completeness weight for volunteer: %s", field_weight)
 
         # Test severity weights
         critical_weight = engine.get_severity_weight("critical")
-        logger.info(f"   Critical severity weight: {critical_weight}")
+        logger.info("   Critical severity weight: %s", critical_weight)
 
         # Test weight summary
         summary = engine.get_weight_summary()
-        logger.info(f"   Weight summary: {len(summary)} items")
+        logger.info("   Weight summary: %s items", len(summary))
 
         logger.info("✅ Score Weighting Engine tests passed!")
         assert True, "Score Weighting Engine tests passed"
 
     except Exception as e:
-        logger.error(f"❌ Score Weighting Engine test failed: {e}")
+        logger.error("❌ Score Weighting Engine test failed: %s", e)
         assert False, f"Score Weighting Engine test failed: {e}"
 
 
@@ -69,27 +69,27 @@ def test_threshold_manager():
 
         # Test getting entity threshold
         volunteer_threshold = manager.get_entity_threshold("volunteer")
-        logger.info(f"   Volunteer threshold: {volunteer_threshold}")
+        logger.info("   Volunteer threshold: %s", volunteer_threshold)
 
         # Test getting validation type threshold
         field_threshold = manager.get_validation_type_threshold(
             "volunteer", "field_completeness"
         )
-        logger.info(f"   Field completeness threshold: {field_threshold}")
+        logger.info("   Field completeness threshold: %s", field_threshold)
 
         # Test quality status
         status = manager.get_quality_status(85.0, "volunteer")
-        logger.info(f"   Quality status for 85.0: {status}")
+        logger.info("   Quality status for 85.0: %s", status)
 
         # Test threshold summary
         summary = manager.get_threshold_summary()
-        logger.info(f"   Threshold summary: {len(summary)} items")
+        logger.info("   Threshold summary: %s items", len(summary))
 
         logger.info("✅ Threshold Manager tests passed!")
         assert True, "Threshold Manager tests passed"
 
     except Exception as e:
-        logger.error(f"❌ Threshold Manager test failed: {e}")
+        logger.error("❌ Threshold Manager test failed: %s", e)
         assert False, f"Threshold Manager test failed: {e}"
 
 
@@ -102,7 +102,7 @@ def test_score_calculator():
 
         # Test scoring algorithm detection
         algorithm = calculator._get_scoring_algorithm("field_completeness")
-        logger.info(f"   Field completeness algorithm: {algorithm}")
+        logger.info("   Field completeness algorithm: %s", algorithm)
 
         # Test default score calculation
         # Create mock validation results
@@ -124,17 +124,17 @@ def test_score_calculator():
         score = calculator.calculate_dimension_score(
             "field_completeness", mock_results, "volunteer"
         )
-        logger.info(f"   Calculated field completeness score: {score}")
+        logger.info("   Calculated field completeness score: %s", score)
 
         # Test score breakdown
         breakdown = calculator.get_score_breakdown("field_completeness", mock_results)
-        logger.info(f"   Score breakdown: {breakdown['final_score']}")
+        logger.info("   Score breakdown: %s", breakdown["final_score"])
 
         logger.info("✅ Score Calculator tests passed!")
         assert True, "Score Calculator tests passed"
 
     except Exception as e:
-        logger.error(f"❌ Score Calculator test failed: {e}")
+        logger.error("❌ Score Calculator test failed: %s", e)
         assert False, f"Score Calculator test failed: {e}"
 
 
@@ -150,9 +150,11 @@ def test_quality_scoring_service():
             entity_type="volunteer", days=7, include_details=True
         )
 
-        logger.info(f"   Volunteer quality score: {result.get('quality_score', 'N/A')}")
-        logger.info(f"   Quality status: {result.get('quality_status', 'N/A')}")
-        logger.info(f"   Total checks: {result.get('total_checks', 'N/A')}")
+        logger.info(
+            "   Volunteer quality score: %s", result.get("quality_score", "N/A")
+        )
+        logger.info("   Quality status: %s", result.get("quality_status", "N/A"))
+        logger.info("   Total checks: %s", result.get("total_checks", "N/A"))
 
         # Test comprehensive report
         report = service.calculate_comprehensive_quality_report(
@@ -167,7 +169,7 @@ def test_quality_scoring_service():
         assert True, "Quality Scoring Service tests passed"
 
     except Exception as e:
-        logger.error(f"❌ Quality Scoring Service test failed: {e}")
+        logger.error("❌ Quality Scoring Service test failed: %s", e)
         assert False, f"Quality Scoring Service test failed: {e}"
 
 
@@ -183,14 +185,14 @@ def test_integration():
         entity_types = ["volunteer", "organization", "event"]
 
         for entity_type in entity_types:
-            logger.info(f"   Testing {entity_type}...")
+            logger.info("   Testing %s...", entity_type)
 
             result = service.calculate_entity_quality_score(
                 entity_type=entity_type, days=7, include_details=True
             )
 
             if "error" in result:
-                logger.warning(f"      {entity_type} had error: {result['error']}")
+                logger.warning("      %s had error: %s", entity_type, result["error"])
             else:
                 logger.info(
                     f"      {entity_type} score: {result.get('quality_score', 'N/A')}"
@@ -200,7 +202,7 @@ def test_integration():
         assert True, "Integration tests passed"
 
     except Exception as e:
-        logger.error(f"❌ Integration test failed: {e}")
+        logger.error("❌ Integration test failed: %s", e)
         assert False, f"Integration test failed: {e}"
 
 
@@ -229,8 +231,8 @@ def main():
 
             # Summary
             logger.info("📊 Test Summary:")
-            logger.info(f"   Passed: {passed}/{total}")
-            logger.info(f"   Success Rate: {(passed/total)*100:.1f}%")
+            logger.info("   Passed: %s/%s", passed, total)
+            logger.info("   Success Rate: %.1f%%", (passed / total) * 100)
 
             if passed == total:
                 logger.info(
@@ -248,7 +250,7 @@ def main():
             return passed == total
 
         except Exception as e:
-            logger.error(f"❌ Test suite failed: {e}")
+            logger.error("❌ Test suite failed: %s", e)
             return False
 
 

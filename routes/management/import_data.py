@@ -292,7 +292,7 @@ def update_school_levels():
         try:
             df = pd.read_csv(csv_url)
         except Exception as e:
-            current_app.logger.error(f"Failed to read CSV: {str(e)}")
+            current_app.logger.error("Failed to read CSV: %s", str(e))
             # Try alternative URL format
             csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid=0"
             df = pd.read_csv(csv_url)

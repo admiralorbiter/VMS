@@ -269,21 +269,16 @@ def import_roster(
     Returns:
         RosterImportLog: The log entry for this import
     """
-    # Temporary workaround: Skipping DB logging due to SQLite RETURNING issue
-    # import_log = RosterImportLog(...)
-    # db.session.add(import_log)
-    # db.session.commit()
-
-    # Mock log object for return compatibility
-    class MockLog:
-        def __init__(self):
-            self.id = 0
-            self.records_added = 0
-            self.records_updated = 0
-            self.records_deactivated = 0
-            self.status = "success"
-
-    import_log = MockLog()
+    # 1. Create audit log entry (ORM add + flush — no RETURNING clause needed)
+    import_log = RosterImportLog(
+        district_name=district_name,
+        academic_year=academic_year,
+        imported_by=user_id,
+        source_sheet_id=sheet_id,
+        status="pending",
+    )
+    db.session.add(import_log)
+    db.session.flush()  # Assigns import_log.id via SQLite-compatible SELECT
 
     try:
         # 2. Get existing records for this district/year
@@ -357,8 +352,6 @@ def import_roster(
 
                 records_added += 1
 
-        # 4. Handle Removals (Soft Delete)
-
         # 4. Handle Removals (Soft Delete) - Using Core Update
         for email, record in existing_map.items():
             if email not in processed_emails and record.is_active:
@@ -378,7 +371,7 @@ def import_roster(
         # 5. Link TeacherProgress records to Teacher entities
         _link_progress_to_teachers(tenant_id, academic_year)
 
-        # 6. Commit & Update Log
+        # 6. Update audit log with results
         import_log.records_added = records_added
         import_log.records_updated = records_updated
         import_log.records_deactivated = records_deactivated
@@ -389,7 +382,18 @@ def import_roster(
 
     except Exception as e:
         db.session.rollback()
-        # import_log.status = "failed"
-        # import_log.error_message = str(e)
-        # db.session.commit()
+        # Log the failure in a new transaction
+        try:
+            import_log_fail = RosterImportLog(
+                district_name=district_name,
+                academic_year=academic_year,
+                imported_by=user_id,
+                source_sheet_id=sheet_id,
+                status="failed",
+                error_message=str(e),
+            )
+            db.session.add(import_log_fail)
+            db.session.commit()
+        except Exception:
+            pass  # Don't mask the original error
         raise e

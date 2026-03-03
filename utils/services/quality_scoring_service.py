@@ -10,7 +10,7 @@ This service provides comprehensive quality scoring capabilities including:
 """
 
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Tuple
 
 from models import db
@@ -80,7 +80,7 @@ class QualityScoringService:
             Dictionary containing quality score and details
         """
         try:
-            self.logger.info(f"Calculating quality score for {entity_type}")
+            self.logger.info("Calculating quality score for %s", entity_type)
 
             # Get validation results for the entity
             if run_id:
@@ -120,7 +120,9 @@ class QualityScoringService:
             dimension_scores = self._calculate_dimension_scores(results, entity_type)
 
             # Log the dimension scores for debugging
-            self.logger.info(f"Dimension scores for {entity_type}: {dimension_scores}")
+            self.logger.info(
+                "Dimension scores for %s: %s", entity_type, dimension_scores
+            )
 
             # Calculate composite quality score
             composite_score = self._calculate_composite_score(
@@ -163,7 +165,9 @@ class QualityScoringService:
             return result
 
         except Exception as e:
-            self.logger.error(f"Error calculating quality score for {entity_type}: {e}")
+            self.logger.error(
+                "Error calculating quality score for %s: %s", entity_type, e
+            )
             return {
                 "entity_type": entity_type,
                 "error": str(e),
@@ -261,12 +265,15 @@ class QualityScoringService:
             if include_trends:
                 report["trends"] = self._calculate_overall_trends(entity_types, days)
 
-            self.logger.info(f"Comprehensive quality report generated successfully")
+            self.logger.info("Comprehensive quality report generated successfully")
             return report
 
         except Exception as e:
-            self.logger.error(f"Error generating comprehensive quality report: {e}")
-            return {"error": str(e), "report_date": datetime.now(timezone.utc).isoformat()}
+            self.logger.error("Error generating comprehensive quality report: %s", e)
+            return {
+                "error": str(e),
+                "report_date": datetime.now(timezone.utc).isoformat(),
+            }
 
     def _get_validation_results_by_run(
         self, run_id: int, entity_type: str
@@ -329,7 +336,7 @@ class QualityScoringService:
             self.logger.info(
                 f"Found validation types for {entity_type}: {list(results_by_type.keys())}"
             )
-            self.logger.info(f"Total results for {entity_type}: {len(results)}")
+            self.logger.info("Total results for %s: %s", entity_type, len(results))
 
             for validation_type, type_results in results_by_type.items():
                 self.logger.info(
@@ -348,21 +355,21 @@ class QualityScoringService:
                 if validation_type == "count":
                     score = self._calculate_count_validation_score(type_results)
                     dimension_scores["count_validation"] = score
-                    self.logger.info(f"Count validation score: {score}")
+                    self.logger.info("Count validation score: %s", score)
                 elif validation_type == "field_completeness":
                     score = self._calculate_field_completeness_score(type_results)
                     dimension_scores["field_completeness"] = score
-                    self.logger.info(f"Field completeness score: {score}")
+                    self.logger.info("Field completeness score: %s", score)
                 elif (
                     validation_type == "data_type_validation"
                 ):  # Fix: match actual validation type
                     score = self._calculate_data_type_score(type_results)
                     dimension_scores["data_types"] = score
-                    self.logger.info(f"Data type score: {score}")
+                    self.logger.info("Data type score: %s", score)
                 elif validation_type == "business_rules":
                     score = self._calculate_business_rule_score(type_results)
                     dimension_scores["business_rules"] = score
-                    self.logger.info(f"Business rules score: {score}")
+                    self.logger.info("Business rules score: %s", score)
                 elif validation_type in [
                     "relationships",
                     "orphaned_record",
@@ -384,7 +391,7 @@ class QualityScoringService:
             if relationship_results:
                 score = self._calculate_relationship_score(relationship_results)
                 dimension_scores["relationships"] = score
-                self.logger.info(f"Relationship score: {score}")
+                self.logger.info("Relationship score: %s", score)
 
             self.logger.info(
                 f"Final dimension scores for {entity_type}: {dimension_scores}"
@@ -392,7 +399,7 @@ class QualityScoringService:
             return dimension_scores
 
         except Exception as e:
-            self.logger.error(f"Error calculating dimension scores: {e}")
+            self.logger.error("Error calculating dimension scores: %s", e)
             return {
                 "field_completeness": 0.0,
                 "data_types": 0.0,
@@ -669,7 +676,7 @@ class QualityScoringService:
             return dimension_scores
 
         except Exception as e:
-            self.logger.error(f"Error calculating aggregate dimension scores: {e}")
+            self.logger.error("Error calculating aggregate dimension scores: %s", e)
             return {
                 "field_completeness": 0.0,
                 "data_types": 0.0,
@@ -726,7 +733,7 @@ class QualityScoringService:
             return {"trend": "insufficient_data", "data_points": len(scores)}
 
         except Exception as e:
-            self.logger.error(f"Error calculating quality trend: {e}")
+            self.logger.error("Error calculating quality trend: %s", e)
             return {"trend": "error", "error": str(e)}
 
     def _calculate_quality_distribution(self, entity_scores: Dict) -> Dict:
@@ -798,5 +805,5 @@ class QualityScoringService:
             return overall_trends
 
         except Exception as e:
-            self.logger.error(f"Error calculating overall trends: {e}")
+            self.logger.error("Error calculating overall trends: %s", e)
             return {"error": str(e)}

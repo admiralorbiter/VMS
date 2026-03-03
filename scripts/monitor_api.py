@@ -87,7 +87,7 @@ def send_alert_email(error_message, url):
         logger.warning("Missing MAIL_FROM or DAILY_IMPORT_RECIPIENT.")
         return False
 
-    logger.info(f"Sending alert email to {recipient_email}...")
+    logger.info("Sending alert email to %s...", recipient_email)
 
     # Construct the email payload for Mailjet API
     data = {
@@ -122,7 +122,7 @@ def send_alert_email(error_message, url):
             )
             return False
     except Exception as e:
-        logger.error(f"Exception sending email: {e}")
+        logger.error("Exception sending email: %s", e)
         return False
 
 
@@ -137,7 +137,7 @@ def check_api_health(url, send_email=True):
     Returns:
         tuple: (success (bool), message (str))
     """
-    logger.info(f"Checking API health: {url}")
+    logger.info("Checking API health: %s", url)
 
     try:
         # Perform GET request with 10 second timeout
@@ -153,7 +153,7 @@ def check_api_health(url, send_email=True):
                 return True, "API returned 200 but content is not JSON (Warning)."
         else:
             error_msg = f"API returned status code: {response.status_code}"
-            logger.error(f"❌ {error_msg}")
+            logger.error("❌ %s", error_msg)
 
             # Trigger alert if configured
             if send_email:
@@ -163,7 +163,7 @@ def check_api_health(url, send_email=True):
 
     except requests.exceptions.RequestException as e:
         error_msg = f"Connection failed: {str(e)}"
-        logger.error(f"❌ {error_msg}")
+        logger.error("❌ %s", error_msg)
 
         # Trigger alert if configured
         if send_email:

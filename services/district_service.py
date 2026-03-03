@@ -82,7 +82,7 @@ def resolve_district(name: str) -> Optional["District"]:
         return alias_row.district
 
     # Not found
-    logger.warning(f"Could not resolve district name: '{name}'")
+    logger.warning("Could not resolve district name: '%s'", name)
     return None
 
 
@@ -156,5 +156,5 @@ def seed_district_aliases() -> dict:
         "skipped": skipped,
         "missing": missing,
     }
-    logger.info(f"seed_district_aliases: {summary}")
+    logger.info("seed_district_aliases: %s", summary)
     return summary

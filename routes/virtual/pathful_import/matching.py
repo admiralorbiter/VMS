@@ -233,7 +233,7 @@ def upsert_district(district_name, caches=None):
     if caches:
         caches["district_by_name"][district_name.lower()] = district
 
-    current_app.logger.info(f"Created new District: {district_name} (code={code})")
+    current_app.logger.info("Created new District: %s (code=%s)", district_name, code)
     return district
 
 

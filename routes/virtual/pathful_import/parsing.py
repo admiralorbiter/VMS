@@ -122,7 +122,7 @@ def parse_pathful_date(date_value):
         except ValueError:
             continue
 
-    current_app.logger.warning(f"Could not parse date: {date_value}")
+    current_app.logger.warning("Could not parse date: %s", date_value)
     return None
 
 

@@ -43,16 +43,16 @@ def run_fast_validation(user_id: int = None):
             engine = get_validation_engine()
             run = engine.run_fast_validation(user_id=user_id)
 
-            logger.info(f"Fast validation completed successfully!")
-            logger.info(f"Run ID: {run.id}")
-            logger.info(f"Status: {run.status}")
-            logger.info(f"Results: {run.total_checks} total checks")
-            logger.info(f"Execution time: {run.execution_time_seconds}s")
+            logger.info("Fast validation completed successfully!")
+            logger.info("Run ID: %s", run.id)
+            logger.info("Status: %s", run.status)
+            logger.info("Results: %s total checks", run.total_checks)
+            logger.info("Execution time: %ss", run.execution_time_seconds)
 
             return run
 
     except Exception as e:
-        logger.error(f"Fast validation failed: {e}")
+        logger.error("Fast validation failed: %s", e)
         raise
 
 
@@ -69,16 +69,16 @@ def run_slow_validation(user_id: int = None):
             engine = get_validation_engine()
             run = engine.run_slow_validation(user_id=user_id)
 
-            logger.info(f"Slow validation completed successfully!")
-            logger.info(f"Run ID: {run.id}")
-            logger.info(f"Status: {run.status}")
-            logger.info(f"Results: {run.total_checks} total checks")
-            logger.info(f"Execution time: {run.execution_time_seconds}s")
+            logger.info("Slow validation completed successfully!")
+            logger.info("Run ID: %s", run.id)
+            logger.info("Status: %s", run.status)
+            logger.info("Results: %s total checks", run.total_checks)
+            logger.info("Execution time: %ss", run.execution_time_seconds)
 
             return run
 
     except Exception as e:
-        logger.error(f"Slow validation failed: {e}")
+        logger.error("Slow validation failed: %s", e)
         raise
 
 
@@ -90,7 +90,7 @@ def run_count_validation(entity_type: str = "all", user_id: int = None):
         from utils.validation_engine import get_validation_engine
         from utils.validators.count_validator import CountValidator
 
-        logger.info(f"Starting count validation for {entity_type}...")
+        logger.info("Starting count validation for %s...", entity_type)
 
         with app.app_context():
             # Create validator
@@ -105,15 +105,15 @@ def run_count_validation(entity_type: str = "all", user_id: int = None):
                 user_id=user_id,
             )
 
-            logger.info(f"Count validation completed successfully!")
-            logger.info(f"Run ID: {run.id}")
-            logger.info(f"Status: {run.status}")
-            logger.info(f"Results: {run.total_checks} total checks")
+            logger.info("Count validation completed successfully!")
+            logger.info("Run ID: %s", run.id)
+            logger.info("Status: %s", run.status)
+            logger.info("Results: %s total checks", run.total_checks)
 
             return run
 
     except Exception as e:
-        logger.error(f"Count validation failed: {e}")
+        logger.error("Count validation failed: %s", e)
         raise
 
 
@@ -127,7 +127,7 @@ def run_field_completeness_validation(entity_type: str = "all", user_id: int = N
             FieldCompletenessValidator,
         )
 
-        logger.info(f"Starting field completeness validation for {entity_type}...")
+        logger.info("Starting field completeness validation for %s...", entity_type)
 
         with app.app_context():
             # Create validator
@@ -142,16 +142,16 @@ def run_field_completeness_validation(entity_type: str = "all", user_id: int = N
                 user_id=user_id,
             )
 
-            logger.info(f"Field completeness validation completed successfully!")
-            logger.info(f"Run ID: {run.id}")
-            logger.info(f"Status: {run.status}")
-            logger.info(f"Results: {run.total_checks} total checks")
-            logger.info(f"Execution time: {run.execution_time_seconds}s")
+            logger.info("Field completeness validation completed successfully!")
+            logger.info("Run ID: %s", run.id)
+            logger.info("Status: %s", run.status)
+            logger.info("Results: %s total checks", run.total_checks)
+            logger.info("Execution time: %ss", run.execution_time_seconds)
 
             return run
 
     except Exception as e:
-        logger.error(f"Field completeness validation failed: {e}")
+        logger.error("Field completeness validation failed: %s", e)
         raise
 
 
@@ -163,7 +163,7 @@ def run_data_type_validation(entity_type: str = "all", user_id: int = None):
         from utils.validation_engine import get_validation_engine
         from utils.validators.data_type_validator import DataTypeValidator
 
-        logger.info(f"Starting data type validation for {entity_type}...")
+        logger.info("Starting data type validation for %s...", entity_type)
 
         with app.app_context():
             # Create validator
@@ -178,16 +178,16 @@ def run_data_type_validation(entity_type: str = "all", user_id: int = None):
                 user_id=user_id,
             )
 
-            logger.info(f"Data type validation completed successfully!")
-            logger.info(f"Run ID: {run.id}")
-            logger.info(f"Status: {run.status}")
-            logger.info(f"Results: {run.total_checks} total checks")
-            logger.info(f"Execution time: {run.execution_time_seconds}s")
+            logger.info("Data type validation completed successfully!")
+            logger.info("Run ID: %s", run.id)
+            logger.info("Status: %s", run.status)
+            logger.info("Results: %s total checks", run.total_checks)
+            logger.info("Execution time: %ss", run.execution_time_seconds)
 
             return run
 
     except Exception as e:
-        logger.error(f"Data type validation failed: {e}")
+        logger.error("Data type validation failed: %s", e)
         raise
 
 
@@ -199,7 +199,7 @@ def run_relationship_validation(entity_type: str = "all", user_id: int = None):
         from utils.validation_engine import get_validation_engine
         from utils.validators.relationship_validator import RelationshipValidator
 
-        logger.info(f"Starting relationship validation for {entity_type}...")
+        logger.info("Starting relationship validation for %s...", entity_type)
 
         with app.app_context():
             # Create validator
@@ -214,16 +214,16 @@ def run_relationship_validation(entity_type: str = "all", user_id: int = None):
                 user_id=user_id,
             )
 
-            logger.info(f"Relationship validation completed successfully!")
-            logger.info(f"Run ID: {run.id}")
-            logger.info(f"Status: {run.status}")
-            logger.info(f"Results: {run.total_checks} total checks")
-            logger.info(f"Execution time: {run.execution_time_seconds}s")
+            logger.info("Relationship validation completed successfully!")
+            logger.info("Run ID: %s", run.id)
+            logger.info("Status: %s", run.status)
+            logger.info("Results: %s total checks", run.total_checks)
+            logger.info("Execution time: %ss", run.execution_time_seconds)
 
             return run
 
     except Exception as e:
-        logger.error(f"Relationship validation failed: {e}")
+        logger.error("Relationship validation failed: %s", e)
         raise
 
 
@@ -235,7 +235,7 @@ def run_business_rule_validation(entity_type: str = "all", user_id: int = None):
         from utils.validation_engine import get_validation_engine
         from utils.validators.business_rule_validator import BusinessRuleValidator
 
-        logger.info(f"Starting business rule validation for {entity_type}...")
+        logger.info("Starting business rule validation for %s...", entity_type)
 
         with app.app_context():
             # Create validator
@@ -250,16 +250,16 @@ def run_business_rule_validation(entity_type: str = "all", user_id: int = None):
                 user_id=user_id,
             )
 
-            logger.info(f"Business rule validation completed successfully!")
-            logger.info(f"Run ID: {run.id}")
-            logger.info(f"Status: {run.status}")
-            logger.info(f"Results: {run.total_checks} total checks")
-            logger.info(f"Execution time: {run.execution_time_seconds}s")
+            logger.info("Business rule validation completed successfully!")
+            logger.info("Run ID: %s", run.id)
+            logger.info("Status: %s", run.status)
+            logger.info("Results: %s total checks", run.total_checks)
+            logger.info("Execution time: %ss", run.execution_time_seconds)
 
             return run
 
     except Exception as e:
-        logger.error(f"Business rule validation failed: {e}")
+        logger.error("Business rule validation failed: %s", e)
         raise
 
 
@@ -270,7 +270,7 @@ def run_comprehensive_validation(entity_type: str = "all", user_id: int = None):
         from app import app
         from utils.validation_engine import get_validation_engine
 
-        logger.info(f"Starting comprehensive validation for {entity_type}...")
+        logger.info("Starting comprehensive validation for %s...", entity_type)
 
         with app.app_context():
             # Run comprehensive validation (all validation types)
@@ -282,16 +282,16 @@ def run_comprehensive_validation(entity_type: str = "all", user_id: int = None):
                 user_id=user_id,
             )
 
-            logger.info(f"Comprehensive validation completed successfully!")
-            logger.info(f"Run ID: {run.id}")
-            logger.info(f"Status: {run.status}")
-            logger.info(f"Results: {run.total_checks} total checks")
-            logger.info(f"Execution time: {run.execution_time_seconds}s")
+            logger.info("Comprehensive validation completed successfully!")
+            logger.info("Run ID: %s", run.id)
+            logger.info("Status: %s", run.status)
+            logger.info("Results: %s total checks", run.total_checks)
+            logger.info("Execution time: %ss", run.execution_time_seconds)
 
             return run
 
     except Exception as e:
-        logger.error(f"Comprehensive validation failed: {e}")
+        logger.error("Comprehensive validation failed: %s", e)
         raise
 
 
@@ -307,21 +307,21 @@ def show_run_status(run_id: int):
             run_data = engine.get_run_status(run_id)
 
             if not run_data:
-                logger.error(f"Run {run_id} not found")
+                logger.error("Run %s not found", run_id)
                 return
 
-            logger.info(f"Run {run_id} Status:")
-            logger.info(f"  Type: {run_data.get('run_type')}")
-            logger.info(f"  Name: {run_data.get('name')}")
-            logger.info(f"  Status: {run_data.get('status')}")
-            logger.info(f"  Started: {run_data.get('started_at')}")
-            logger.info(f"  Completed: {run_data.get('completed_at')}")
-            logger.info(f"  Progress: {run_data.get('progress_percentage')}%")
-            logger.info(f"  Total Checks: {run_data.get('total_checks')}")
-            logger.info(f"  Passed: {run_data.get('passed_checks')}")
-            logger.info(f"  Warnings: {run_data.get('warnings')}")
-            logger.info(f"  Errors: {run_data.get('errors')}")
-            logger.info(f"  Critical: {run_data.get('critical_issues')}")
+            logger.info("Run %s Status:", run_id)
+            logger.info("  Type: %s", run_data.get("run_type"))
+            logger.info("  Name: %s", run_data.get("name"))
+            logger.info("  Status: %s", run_data.get("status"))
+            logger.info("  Started: %s", run_data.get("started_at"))
+            logger.info("  Completed: %s", run_data.get("completed_at"))
+            logger.info("  Progress: %s%%", run_data.get("progress_percentage"))
+            logger.info("  Total Checks: %s", run_data.get("total_checks"))
+            logger.info("  Passed: %s", run_data.get("passed_checks"))
+            logger.info("  Warnings: %s", run_data.get("warnings"))
+            logger.info("  Errors: %s", run_data.get("errors"))
+            logger.info("  Critical: %s", run_data.get("critical_issues"))
 
             if run_data.get("execution_time_seconds"):
                 logger.info(
@@ -329,10 +329,10 @@ def show_run_status(run_id: int):
                 )
 
             if run_data.get("memory_usage_mb"):
-                logger.info(f"  Memory Usage: {run_data.get('memory_usage_mb')} MB")
+                logger.info("  Memory Usage: %s MB", run_data.get("memory_usage_mb"))
 
     except Exception as e:
-        logger.error(f"Failed to get run status: {e}")
+        logger.error("Failed to get run status: %s", e)
 
 
 def show_recent_runs(limit: int = 10, run_type: str = None):
@@ -350,11 +350,11 @@ def show_recent_runs(limit: int = 10, run_type: str = None):
                 logger.info("No validation runs found")
                 return
 
-            logger.info(f"Recent Validation Runs (limit: {limit}):")
+            logger.info("Recent Validation Runs (limit: %s):", limit)
             logger.info("-" * 80)
 
             for run in runs:
-                logger.info(f"Run {run['id']}: {run['name']}")
+                logger.info("Run %s: %s", run["id"], run["name"])
                 logger.info(
                     f"  Results: {run['total_checks']} checks, "
                     f"{run['passed_checks']} passed, "
@@ -365,7 +365,7 @@ def show_recent_runs(limit: int = 10, run_type: str = None):
                 logger.info("-" * 80)
 
     except Exception as e:
-        logger.error(f"Failed to get recent runs: {e}")
+        logger.error("Failed to get recent runs: %s", e)
 
 
 def show_run_results(run_id: int, severity: str = None, entity_type: str = None):
@@ -382,14 +382,14 @@ def show_run_results(run_id: int, severity: str = None, entity_type: str = None)
             )
 
             if not results:
-                logger.info(f"No results found for run {run_id}")
+                logger.info("No results found for run %s", run_id)
                 return
 
-            logger.info(f"Results for Run {run_id}:")
+            logger.info("Results for Run %s:", run_id)
             if severity:
-                logger.info(f"  Severity filter: {severity}")
+                logger.info("  Severity filter: %s", severity)
             if entity_type:
-                logger.info(f"  Entity type filter: {entity_type}")
+                logger.info("  Entity type filter: %s", entity_type)
             logger.info("-" * 80)
 
             for result in results:
@@ -397,7 +397,7 @@ def show_run_results(run_id: int, severity: str = None, entity_type: str = None)
                     f"[{result['severity'].upper()}] {result['entity_type']}: {result['message']}"
                 )
                 if result.get("field_name"):
-                    logger.info(f"  Field: {result['field_name']}")
+                    logger.info("  Field: %s", result["field_name"])
                 if result.get("expected_value") and result.get("actual_value"):
                     logger.info(
                         f"  Expected: {result['expected_value']}, Actual: {result['actual_value']}"
@@ -405,7 +405,7 @@ def show_run_results(run_id: int, severity: str = None, entity_type: str = None)
                 logger.info("-" * 40)
 
     except Exception as e:
-        logger.error(f"Failed to get run results: {e}")
+        logger.error("Failed to get run results: %s", e)
 
 
 def clear_validation_data(
@@ -439,7 +439,7 @@ def clear_validation_data(
 
             if user_id:
                 run_filters.append(ValidationRun.created_by == user_id)
-                logger.info(f"Clearing data for user ID: {user_id}")
+                logger.info("Clearing data for user ID: %s", user_id)
 
             # Get run IDs that match the basic filters
             base_run_ids = [
@@ -457,7 +457,7 @@ def clear_validation_data(
                     if result.run_id in base_run_ids
                 ]
                 run_ids = entity_run_ids
-                logger.info(f"Clearing data for entity type: {entity_type}")
+                logger.info("Clearing data for entity type: %s", entity_type)
             else:
                 run_ids = base_run_ids
 
@@ -479,11 +479,11 @@ def clear_validation_data(
                 history_to_delete = 0
                 metrics_to_delete = 0
 
-            logger.info(f"Records to be deleted:")
-            logger.info(f"  - Validation Runs: {runs_to_delete}")
-            logger.info(f"  - Validation Results: {results_to_delete}")
-            logger.info(f"  - Validation History: {history_to_delete}")
-            logger.info(f"  - Validation Metrics: {metrics_to_delete}")
+            logger.info("Records to be deleted:")
+            logger.info("  - Validation Runs: %s", runs_to_delete)
+            logger.info("  - Validation Results: %s", results_to_delete)
+            logger.info("  - Validation History: %s", history_to_delete)
+            logger.info("  - Validation Metrics: %s", metrics_to_delete)
 
             if runs_to_delete == 0:
                 logger.info("No old validation data found to clear.")
@@ -494,25 +494,25 @@ def clear_validation_data(
                 ValidationResult.query.filter(
                     ValidationResult.run_id.in_(run_ids)
                 ).delete(synchronize_session=False)
-                logger.info(f"Deleted {results_to_delete} validation results")
+                logger.info("Deleted %s validation results", results_to_delete)
 
             if history_to_delete > 0:
                 ValidationHistory.query.filter(
                     ValidationHistory.run_id.in_(run_ids)
                 ).delete(synchronize_session=False)
-                logger.info(f"Deleted {history_to_delete} validation history records")
+                logger.info("Deleted %s validation history records", history_to_delete)
 
             if metrics_to_delete > 0:
                 ValidationMetric.query.filter(
                     ValidationMetric.run_id.in_(run_ids)
                 ).delete(synchronize_session=False)
-                logger.info(f"Deleted {metrics_to_delete} validation metrics")
+                logger.info("Deleted %s validation metrics", metrics_to_delete)
 
             if runs_to_delete > 0:
                 ValidationRun.query.filter(ValidationRun.id.in_(run_ids)).delete(
                     synchronize_session=False
                 )
-                logger.info(f"Deleted {runs_to_delete} validation runs")
+                logger.info("Deleted %s validation runs", runs_to_delete)
 
             # Commit the changes
             db.session.commit()
@@ -523,7 +523,7 @@ def clear_validation_data(
             )
 
     except Exception as e:
-        logger.error(f"Validation data cleanup failed: {e}")
+        logger.error("Validation data cleanup failed: %s", e)
         raise
 
 
@@ -831,11 +831,11 @@ Examples:
         elif args.command == "clear":
             clear_validation_data(args.older_than_days, args.entity_type, args.user_id)
         else:
-            logger.error(f"Unknown command: {args.command}")
+            logger.error("Unknown command: %s", args.command)
             sys.exit(1)
 
     except Exception as e:
-        logger.error(f"Command failed: {e}")
+        logger.error("Command failed: %s", e)
         sys.exit(1)
 
 

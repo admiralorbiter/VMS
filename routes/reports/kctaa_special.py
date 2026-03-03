@@ -106,9 +106,9 @@ def _read_kctaa_csv(file_path=None):
 
     # Check if file exists and log helpful info
     if not file_path.exists():
-        current_app.logger.error(f"KCTAA CSV file not found: {file_path}")
-        current_app.logger.error(f"Absolute path: {file_path.resolve()}")
-        current_app.logger.error(f"Current working directory: {os.getcwd()}")
+        current_app.logger.error("KCTAA CSV file not found: %s", file_path)
+        current_app.logger.error("Absolute path: %s", file_path.resolve())
+        current_app.logger.error("Current working directory: %s", os.getcwd())
         return []
 
     try:
@@ -139,13 +139,13 @@ def _read_kctaa_csv(file_path=None):
             f"Successfully loaded {len(csv_records)} KCTAA names from {file_path}"
         )
     except FileNotFoundError:
-        current_app.logger.error(f"KCTAA CSV file not found: {file_path}")
-        current_app.logger.error(f"Absolute path: {file_path.resolve()}")
+        current_app.logger.error("KCTAA CSV file not found: %s", file_path)
+        current_app.logger.error("Absolute path: %s", file_path.resolve())
         return []
     except Exception as e:
-        current_app.logger.error(f"Error reading KCTAA CSV: {str(e)}")
-        current_app.logger.error(f"File path: {file_path}")
-        current_app.logger.error(f"Absolute path: {file_path.resolve()}")
+        current_app.logger.error("Error reading KCTAA CSV: %s", str(e))
+        current_app.logger.error("File path: %s", file_path)
+        current_app.logger.error("Absolute path: %s", file_path.resolve())
         import traceback
 
         current_app.logger.error(traceback.format_exc())

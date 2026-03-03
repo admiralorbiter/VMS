@@ -53,7 +53,7 @@ class DataValidator(ABC):
         self.initial_memory = psutil.Process().memory_info().rss / 1024 / 1024  # MB
         self.peak_memory = self.initial_memory
 
-        logger.debug(f"Initialized {self.__class__.__name__} validator")
+        logger.debug("Initialized %s validator", self.__class__.__name__)
 
     @abstractmethod
     def validate(self) -> List[ValidationResult]:
@@ -130,7 +130,7 @@ class DataValidator(ABC):
     def start_validation(self):
         """Start validation and record start time."""
         self.start_time = datetime.now(timezone.utc)
-        logger.info(f"Starting validation: {self.__class__.__name__}")
+        logger.info("Starting validation: %s", self.__class__.__name__)
 
     def end_validation(self):
         """End validation and record end time."""
@@ -243,7 +243,7 @@ class DataValidator(ABC):
             self.end_validation()
             return results
         except Exception as e:
-            logger.error(f"Validation failed in {self.__class__.__name__}: {e}")
+            logger.error("Validation failed in %s: %s", self.__class__.__name__, e)
             self.end_validation()
 
             # Add error result
@@ -271,11 +271,11 @@ class DataValidator(ABC):
             # Log critical issues
             critical_results = [r for r in self.results if r.is_critical]
             if critical_results:
-                logger.warning(f"Found {len(critical_results)} critical issues:")
+                logger.warning("Found %s critical issues:", len(critical_results))
                 for result in critical_results[:5]:  # Log first 5
-                    logger.warning(f"  - {result.message}")
+                    logger.warning("  - %s", result.message)
                 if len(critical_results) > 5:
-                    logger.warning(f"  ... and {len(critical_results) - 5} more")
+                    logger.warning("  ... and %s more", len(critical_results) - 5)
 
     def get_config_value(self, key: str, default: Any = None) -> Any:
         """Get a configuration value with fallback to defaults."""
@@ -322,7 +322,7 @@ class DataValidator(ABC):
         # Clear results and metrics to free memory
         self.results.clear()
         self.metrics.clear()
-        logger.debug(f"Cleaned up {self.__class__.__name__} validator")
+        logger.debug("Cleaned up %s validator", self.__class__.__name__)
 
 
 class ValidationRule(ABC):
@@ -391,7 +391,7 @@ class ValidationContext:
         self.start_time = datetime.now(timezone.utc)
         self.config = get_config_section("validation_rules")
 
-        logger.debug(f"Created validation context for run {run_id}")
+        logger.debug("Created validation context for run %s", run_id)
 
     def get_elapsed_time(self) -> float:
         """Get elapsed time since context creation."""

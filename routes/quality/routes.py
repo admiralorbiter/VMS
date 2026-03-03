@@ -106,7 +106,7 @@ def api_quality_score():
             result = quality_service.calculate_entity_quality_score(
                 entity_type=entity_type, days=days, include_details=True
             )
-            current_app.logger.info(f"Quality service result: {result}")
+            current_app.logger.info("Quality service result: %s", result)
 
             # Add detailed validation results (always include for dashboard)
             validation_results = _get_filtered_validation_results(
@@ -128,7 +128,7 @@ def api_quality_score():
         return jsonify(result)
 
     except Exception as e:
-        current_app.logger.error(f"Error in quality score API: {e}")
+        current_app.logger.error("Error in quality score API: %s", e)
         return jsonify({"error": str(e)}), 500
 
 
@@ -271,7 +271,7 @@ def api_clear_validation_data():
         )
 
     except Exception as e:
-        current_app.logger.error(f"Error clearing validation data: {e}")
+        current_app.logger.error("Error clearing validation data: %s", e)
         return jsonify({"error": str(e)}), 500
 
 
@@ -300,7 +300,7 @@ def api_run_validation():
             user_id=None,
         )
 
-        current_app.logger.info(f"Comprehensive validation completed: Run ID {run.id}")
+        current_app.logger.info("Comprehensive validation completed: Run ID %s", run.id)
 
         return jsonify(
             {
@@ -313,7 +313,7 @@ def api_run_validation():
         )
 
     except Exception as e:
-        current_app.logger.error(f"Error running validation: {e}")
+        current_app.logger.error("Error running validation: %s", e)
         return jsonify({"error": str(e)}), 500
 
 
@@ -402,7 +402,7 @@ def api_run_multiple_validations():
         )
 
     except Exception as e:
-        current_app.logger.error(f"Error running multiple validations: {e}")
+        current_app.logger.error("Error running multiple validations: %s", e)
         return jsonify({"error": str(e)}), 500
 
 
@@ -468,7 +468,7 @@ def api_debug_validation_data():
         )
 
     except Exception as e:
-        current_app.logger.error(f"Error in debug validation data API: {e}")
+        current_app.logger.error("Error in debug validation data API: %s", e)
         return jsonify({"error": str(e)}), 500
 
 
@@ -510,7 +510,7 @@ def api_quality_settings():
             return jsonify({"message": "Settings updated successfully"})
 
     except Exception as e:
-        current_app.logger.error(f"Error in quality settings API: {e}")
+        current_app.logger.error("Error in quality settings API: %s", e)
         return jsonify({"error": str(e)}), 500
 
 
@@ -570,7 +570,7 @@ def _get_filtered_validation_results(
         return [result.to_dict() for result in results]
 
     except Exception as e:
-        current_app.logger.error(f"Error getting filtered validation results: {e}")
+        current_app.logger.error("Error getting filtered validation results: %s", e)
         return []
 
 
@@ -608,7 +608,7 @@ def _get_performance_metrics(entity_type, days):
         }
 
     except Exception as e:
-        current_app.logger.error(f"Error getting performance metrics: {e}")
+        current_app.logger.error("Error getting performance metrics: %s", e)
         return {}
 
 
@@ -624,5 +624,5 @@ def _get_anomalies(entity_type, days):
         return [anomaly.to_dict() for anomaly in anomalies]
 
     except Exception as e:
-        current_app.logger.error(f"Error getting anomalies: {e}")
+        current_app.logger.error("Error getting anomalies: %s", e)
         return []

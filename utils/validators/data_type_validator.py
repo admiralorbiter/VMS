@@ -51,7 +51,7 @@ class DataTypeValidator(DataValidator):
             "validation_thresholds", {}
         )
 
-        logger.debug(f"Initialized DataTypeValidator for entity type: {entity_type}")
+        logger.debug("Initialized DataTypeValidator for entity type: %s", entity_type)
 
     def get_entity_type(self) -> str:
         """Get the entity type this validator handles."""
@@ -92,7 +92,7 @@ class DataTypeValidator(DataValidator):
             return self.results
 
         except Exception as e:
-            logger.error(f"Data type validation failed: {e}")
+            logger.error("Data type validation failed: %s", e)
             raise
         finally:
             if self.salesforce_client:
@@ -101,19 +101,19 @@ class DataTypeValidator(DataValidator):
     def _validate_entity_data_types(self, entity_type: str):
         """Validate data types for a specific entity type."""
         try:
-            logger.info(f"Validating data types for {entity_type}")
+            logger.info("Validating data types for %s", entity_type)
 
             # Get sample records from Salesforce
             sample_records = self._get_salesforce_sample(entity_type, limit=100)
 
             if not sample_records:
-                logger.warning(f"No sample records found for {entity_type}")
+                logger.warning("No sample records found for %s", entity_type)
                 return
 
             # Get format rules for this entity type
             entity_format_rules = self.format_rules.get(entity_type, {})
             if not entity_format_rules:
-                logger.info(f"No format rules defined for {entity_type}")
+                logger.info("No format rules defined for %s", entity_type)
                 return
 
             # Validate each record
@@ -174,7 +174,7 @@ class DataTypeValidator(DataValidator):
             )
 
         except Exception as e:
-            logger.error(f"Failed to validate data types for {entity_type}: {e}")
+            logger.error("Failed to validate data types for %s: %s", entity_type, e)
             self.add_result(
                 self.create_result(
                     entity_type=entity_type,
@@ -205,11 +205,11 @@ class DataTypeValidator(DataValidator):
             elif entity_type == "district":
                 return self.salesforce_client.get_district_sample(limit=limit)
             else:
-                logger.warning(f"Unknown entity type for sampling: {entity_type}")
+                logger.warning("Unknown entity type for sampling: %s", entity_type)
                 return []
 
         except Exception as e:
-            logger.error(f"Failed to get Salesforce sample for {entity_type}: {e}")
+            logger.error("Failed to get Salesforce sample for %s: %s", entity_type, e)
             return []
 
     def _validate_record_data_types(
@@ -297,7 +297,7 @@ class DataTypeValidator(DataValidator):
             return {"valid": True, "error": None}
 
         except Exception as e:
-            logger.warning(f"Format validation error for {field_name}: {e}")
+            logger.warning("Format validation error for %s: %s", field_name, e)
             return {
                 "valid": True,
                 "error": None,
@@ -552,7 +552,7 @@ class DataTypeValidator(DataValidator):
             )
 
         except Exception as e:
-            logger.error(f"Failed to add data type validation summary metrics: {e}")
+            logger.error("Failed to add data type validation summary metrics: %s", e)
 
     def get_validation_summary(self) -> Dict[str, Any]:
         """Get a summary of the data type validation results."""

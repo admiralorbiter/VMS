@@ -186,7 +186,7 @@ def load_pathful_routes():
 
         except Exception as e:
             db.session.rollback()
-            current_app.logger.error(f"Pathful import error: {str(e)}")
+            current_app.logger.error("Pathful import error: %s", str(e))
             flash(f"Import failed: {str(e)}", "error")
             return redirect(url_for("virtual.pathful_import"))
 
@@ -440,7 +440,7 @@ def load_pathful_routes():
                     resolved_count += 1
 
             except Exception as e:
-                current_app.logger.error(f"Error resolving record {record_id}: {e}")
+                current_app.logger.error("Error resolving record %s: %s", record_id, e)
                 continue
 
         db.session.commit()
@@ -926,7 +926,7 @@ def load_pathful_routes():
             import_log.mark_complete()
             db.session.commit()
 
-            current_app.logger.error(f"User Report import failed: {str(e)}")
+            current_app.logger.error("User Report import failed: %s", str(e))
             flash(f"Import failed: {str(e)}", "error")
             return redirect(url_for("virtual.pathful_import_users"))
 

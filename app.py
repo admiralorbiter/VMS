@@ -162,14 +162,14 @@ app.jinja_env.filters["from_json"] = from_json_filter
 @app.errorhandler(404)
 def not_found_error(error):
     """Handle 404 Not Found errors."""
-    app.logger.warning(f"404 error: {request.url}")
+    app.logger.warning("404 error: %s", request.url)
     return render_template("errors/404.html"), 404
 
 
 @app.errorhandler(500)
 def internal_error(error):
     """Handle 500 Internal Server errors."""
-    app.logger.error(f"500 error: {error}")
+    app.logger.error("500 error: %s", error)
     db.session.rollback()  # Rollback any failed transactions
     return render_template("errors/500.html"), 500
 
@@ -177,14 +177,14 @@ def internal_error(error):
 @app.errorhandler(403)
 def forbidden_error(error):
     """Handle 403 Forbidden errors."""
-    app.logger.warning(f"403 error: {request.url} - {error}")
+    app.logger.warning("403 error: %s - %s", request.url, error)
     return render_template("errors/403.html"), 403
 
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
     """Handle 413 Request Entity Too Large errors."""
-    app.logger.warning(f"413 error: File too large - {request.url}")
+    app.logger.warning("413 error: File too large - %s", request.url)
     return (
         jsonify(
             {
@@ -218,7 +218,7 @@ def health_check():
             200,
         )
     except Exception as e:
-        app.logger.error(f"Health check failed: {e}")
+        app.logger.error("Health check failed: %s", e)
         return (
             jsonify(
                 {"status": "unhealthy", "database": "disconnected", "error": str(e)}
@@ -239,7 +239,7 @@ if __name__ == "__main__":
             start_cache_refresh_scheduler()
             app.logger.info("Cache refresh scheduler started")
         except Exception as e:
-            app.logger.error(f"Failed to start cache refresh scheduler: {e}")
+            app.logger.error("Failed to start cache refresh scheduler: %s", e)
 
     # Use production-ready server configuration
     port = int(os.environ.get("PORT", 5050))

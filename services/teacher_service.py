@@ -415,5 +415,5 @@ def ensure_event_teacher(event_id: int, teacher_id: int, **kwargs):
 
     et = EventTeacher(event_id=event_id, teacher_id=teacher_id, **kwargs)
     db.session.add(et)
-    logger.debug(f"Created EventTeacher: event={event_id}, teacher={teacher_id}")
+    logger.debug("Created EventTeacher: event=%s, teacher=%s", event_id, teacher_id)
     return et

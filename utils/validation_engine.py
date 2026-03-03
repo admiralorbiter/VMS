@@ -86,11 +86,11 @@ class ValidationEngine:
             with self.run_lock:
                 self.active_runs[run.id] = run
 
-            logger.info(f"Created validation run {run.id} of type {run_type}")
+            logger.info("Created validation run %s of type %s", run.id, run_type)
             return run
 
         except Exception as e:
-            logger.error(f"Failed to create validation run: {e}")
+            logger.error("Failed to create validation run: %s", e)
             raise
 
     def run_fast_validation(self, user_id: Optional[int] = None) -> ValidationRun:
@@ -115,7 +115,7 @@ class ValidationEngine:
             return run
 
         except Exception as e:
-            logger.error(f"Fast validation failed: {e}")
+            logger.error("Fast validation failed: %s", e)
             run.mark_failed(str(e))
             self._finalize_run(run)
             raise
@@ -149,7 +149,7 @@ class ValidationEngine:
             return run
 
         except Exception as e:
-            logger.error(f"Slow validation failed: {e}")
+            logger.error("Slow validation failed: %s", e)
             run.mark_failed(str(e))
             self._finalize_run(run)
             raise
@@ -186,7 +186,7 @@ class ValidationEngine:
             return run
 
         except Exception as e:
-            logger.error(f"Custom validation failed: {e}")
+            logger.error("Custom validation failed: %s", e)
             run.mark_failed(str(e))
             self._finalize_run(run)
             raise
@@ -227,7 +227,7 @@ class ValidationEngine:
             return run
 
         except Exception as e:
-            logger.error(f"Comprehensive validation failed: {e}")
+            logger.error("Comprehensive validation failed: %s", e)
             run.mark_failed(str(e))
             self._finalize_run(run)
             raise
@@ -293,7 +293,7 @@ class ValidationEngine:
 
             for validator in validators:
                 try:
-                    logger.info(f"Executing validator: {validator.__class__.__name__}")
+                    logger.info("Executing validator: %s", validator.__class__.__name__)
 
                     # Execute validation
                     results = validator.validate_with_timing()
@@ -352,7 +352,7 @@ class ValidationEngine:
             )
 
         except Exception as e:
-            logger.error(f"Validation execution failed: {e}")
+            logger.error("Validation execution failed: %s", e)
             run.mark_failed(str(e))
             raise
         finally:
@@ -382,7 +382,7 @@ class ValidationEngine:
             )
 
         except Exception as e:
-            logger.error(f"Failed to save validation data: {e}")
+            logger.error("Failed to save validation data: %s", e)
             db.session.rollback()
             raise
 
@@ -412,7 +412,7 @@ class ValidationEngine:
             )
 
         except Exception as e:
-            logger.error(f"Failed to update run statistics: {e}")
+            logger.error("Failed to update run statistics: %s", e)
 
     def _should_continue_on_error(self) -> bool:
         """Check if validation should continue when errors occur."""
@@ -429,10 +429,10 @@ class ValidationEngine:
                 if run.id in self.active_runs:
                     del self.active_runs[run.id]
 
-            logger.debug(f"Finalized validation run {run.id}")
+            logger.debug("Finalized validation run %s", run.id)
 
         except Exception as e:
-            logger.error(f"Failed to finalize run {run.id}: {e}")
+            logger.error("Failed to finalize run %s: %s", run.id, e)
             db.session.rollback()
 
     def get_run_status(self, run_id: int) -> Optional[Dict[str, Any]]:
@@ -443,7 +443,7 @@ class ValidationEngine:
                 return run.to_dict()
             return None
         except Exception as e:
-            logger.error(f"Failed to get run status for {run_id}: {e}")
+            logger.error("Failed to get run status for %s: %s", run_id, e)
             return None
 
     def get_active_runs(self) -> List[Dict[str, Any]]:
@@ -452,7 +452,7 @@ class ValidationEngine:
             with self.run_lock:
                 return [run.to_dict() for run in self.active_runs.values()]
         except Exception as e:
-            logger.error(f"Failed to get active runs: {e}")
+            logger.error("Failed to get active runs: %s", e)
             return []
 
     def cancel_run(self, run_id: int) -> bool:
@@ -468,14 +468,14 @@ class ValidationEngine:
 
                     db.session.commit()
 
-                    logger.info(f"Cancelled validation run {run_id}")
+                    logger.info("Cancelled validation run %s", run_id)
                     return True
                 else:
-                    logger.warning(f"Run {run_id} not found in active runs")
+                    logger.warning("Run %s not found in active runs", run_id)
                     return False
 
         except Exception as e:
-            logger.error(f"Failed to cancel run {run_id}: {e}")
+            logger.error("Failed to cancel run %s: %s", run_id, e)
             return False
 
     def get_recent_runs(
@@ -486,7 +486,7 @@ class ValidationEngine:
             runs = ValidationRun.get_recent_runs(limit=limit, run_type=run_type)
             return [run.to_dict() for run in runs]
         except Exception as e:
-            logger.error(f"Failed to get recent runs: {e}")
+            logger.error("Failed to get recent runs: %s", e)
             return []
 
     def get_run_results(
@@ -499,7 +499,7 @@ class ValidationEngine:
             )
             return [result.to_dict() for result in results]
         except Exception as e:
-            logger.error(f"Failed to get run results for {run_id}: {e}")
+            logger.error("Failed to get run results for %s: %s", run_id, e)
             return []
 
     def get_run_metrics(self, run_id: int) -> List[Dict[str, Any]]:
@@ -508,17 +508,17 @@ class ValidationEngine:
             metrics = ValidationMetric.get_metrics_by_run(run_id=run_id)
             return [metric.to_dict() for metric in metrics]
         except Exception as e:
-            logger.error(f"Failed to get run metrics for {run_id}: {e}")
+            logger.error("Failed to get run metrics for %s: %s", run_id, e)
             return []
 
     def cleanup_old_runs(self, days: int = 90) -> int:
         """Clean up old validation runs and their associated data."""
         try:
             count = ValidationRun.cleanup_old_runs(days=days)
-            logger.info(f"Cleaned up {count} old validation runs")
+            logger.info("Cleaned up %s old validation runs", count)
             return count
         except Exception as e:
-            logger.error(f"Failed to cleanup old runs: {e}")
+            logger.error("Failed to cleanup old runs: %s", e)
             return 0
 
     def get_validation_summary(self, run_id: int) -> Dict[str, Any]:
@@ -542,7 +542,7 @@ class ValidationEngine:
             return summary
 
         except Exception as e:
-            logger.error(f"Failed to get validation summary for {run_id}: {e}")
+            logger.error("Failed to get validation summary for %s: %s", run_id, e)
             return {}
 
     def shutdown(self):
@@ -559,7 +559,7 @@ class ValidationEngine:
             logger.info("Validation engine shutdown complete")
 
         except Exception as e:
-            logger.error(f"Error during validation engine shutdown: {e}")
+            logger.error("Error during validation engine shutdown: %s", e)
 
 
 # Global validation engine instance

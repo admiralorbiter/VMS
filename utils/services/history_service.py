@@ -53,13 +53,13 @@ class ValidationHistoryService:
             # Get the validation run
             run = ValidationRun.query.get(run_id)
             if not run:
-                self.logger.error(f"Validation run {run_id} not found")
+                self.logger.error("Validation run %s not found", run_id)
                 return []
 
             # Get validation results
             results = run.results.all()
             if not results:
-                self.logger.warning(f"No results found for run {run_id}")
+                self.logger.warning("No results found for run %s", run_id)
                 return []
 
             # Get validation metrics
@@ -98,7 +98,7 @@ class ValidationHistoryService:
             return history_records
 
         except Exception as e:
-            self.logger.error(f"Error creating history from run {run_id}: {e}")
+            self.logger.error("Error creating history from run %s: %s", run_id, e)
             db.session.rollback()
             return []
 
@@ -185,7 +185,9 @@ class ValidationHistoryService:
             return history_record
 
         except Exception as e:
-            self.logger.error(f"Error creating entity history for {entity_type}: {e}")
+            self.logger.error(
+                "Error creating entity history for %s: %s", entity_type, e
+            )
             return None
 
     def _calculate_violation_counts(
@@ -321,7 +323,7 @@ class ValidationHistoryService:
                     }
 
         except Exception as e:
-            self.logger.warning(f"Error calculating trend data: {e}")
+            self.logger.warning("Error calculating trend data: %s", e)
 
     def populate_history_from_recent_runs(self, days: int = 7) -> int:
         """
@@ -356,7 +358,7 @@ class ValidationHistoryService:
             return total_created
 
         except Exception as e:
-            self.logger.error(f"Error populating history from recent runs: {e}")
+            self.logger.error("Error populating history from recent runs: %s", e)
             return 0
 
     def get_quality_trends(

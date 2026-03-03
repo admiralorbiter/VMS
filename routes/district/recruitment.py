@@ -480,7 +480,7 @@ def log_outreach():
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Error logging outreach: {e}")
+        current_app.logger.error("Error logging outreach: %s", e)
         flash("An error occurred while logging outreach.", "error")
 
     return redirect(url_for("district.recruitment_event", event_id=event_id))

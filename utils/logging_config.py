@@ -105,4 +105,4 @@ def configure_logging(app):
         app.logger.addHandler(console_handler)
 
     app.logger.setLevel(numeric_level)
-    app.logger.info(f"Logging configured: level={log_level}, env={flask_env}")
+    app.logger.info("Logging configured: level=%s, env=%s", log_level, flask_env)

@@ -225,21 +225,14 @@ Convert to a proper factory: move all initialization inside `create_app(config_n
 
 ---
 
-## TD-015: F-String Logger Interpolation
+## ~~TD-015: F-String Logger Interpolation~~ ✅ RESOLVED
 
 **Created:** 2026-03-01
-**Priority:** Low
-**Category:** Observability / Best Practice
+**Resolved:** 2026-03-03
 
-### Description
+Migrated 562 f-string logger calls to `%s` lazy interpolation across ~30 files using an automated script. Format-spec calls (e.g., `:.2f`) converted with a second-pass script using `%.2f` equivalents. Zero remaining instances. All tests pass.
 
-Throughout routes, logging uses f-string interpolation: `app.logger.info(f"Processing {entity_type}")`. Python's logging module supports `%`-style lazy interpolation which avoids computing the string if the log level is disabled and enables structured log aggregation.
-
-### Proposed Fix
-
-Migrate to `app.logger.info("Processing %s", entity_type)` pattern. Can be done incrementally or via a pre-commit hook / linting rule.
-
-**Risk:** Low — cosmetic, no behavior change.
+**Risk:** None — cosmetic, behavior-identical.
 
 ---
 
@@ -356,28 +349,14 @@ Each package has a backward-compatible `__init__.py` with re-exports. Route coun
 
 ---
 
-## TD-021: SQLite `RETURNING` Workaround in Roster Import
+## ~~TD-021: SQLite `RETURNING` Workaround in Roster Import~~ ✅ RESOLVED
 
 **Created:** 2026-03-02
-**Priority:** Medium
-**Category:** Database Compatibility
+**Resolved:** 2026-03-03
 
-### Description
+Replaced the `MockLog` workaround in `utils/roster_import.py` with a real `RosterImportLog` DB entry using standard ORM `add()` + `flush()` (no `RETURNING` clause needed — SQLAlchemy uses a separate `SELECT` for SQLite). Error handling now creates a separate failure log entry in a new transaction. Roster imports now have a proper audit trail.
 
-Line 272 of `utils/roster_import.py`:
-
-```python
-# Temporary workaround: Skipping DB logging due to SQLite RETURNING issue
-```
-
-SQLite lacks `RETURNING` clause support, which silently disables audit logging for roster imports. This means tenant roster imports have no audit trail.
-
-### Proposed Fix
-
-- **Short term:** Implement an alternative insert-then-query pattern to restore audit logging.
-- **Long term:** Resolved automatically by PostgreSQL migration (TD-011).
-
-**Risk:** Low for short-term fix; resolved by TD-011 long-term.
+**Risk:** Low — verified, all tests pass.
 
 ---
 
@@ -510,8 +489,8 @@ Ordered by **what best unblocks future work** — structural improvements first,
 |:-----:|----|------|-----------|
 | 9 | **TD-013** | True application factory pattern | Enables isolated test instances; unblocks better testing infrastructure. |
 | 10 | **TD-022** | Add tests for extracted blueprints | Build safety net before making data-layer changes. |
-| 11 | **TD-015** | F-string → `%s` logger migration | Low priority but can be done incrementally anytime. |
-| 12 | **TD-021** | SQLite `RETURNING` workaround | Short-term fix to restore audit logging. |
+| ~~11~~ | ~~**TD-015**~~ | ~~F-string → `%s` logger migration~~ ✅ | Resolved 2026-03-03. 562 calls converted via automated script. |
+| ~~12~~ | ~~**TD-021**~~ | ~~SQLite `RETURNING` workaround~~ ✅ | Resolved 2026-03-03. MockLog replaced with real RosterImportLog. |
 
 ### Phase 4: Data Integrity (Requires Migrations)
 

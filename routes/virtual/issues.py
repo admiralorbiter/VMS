@@ -396,5 +396,5 @@ def report_district_issue():
         db.session.rollback()
         from flask import current_app
 
-        current_app.logger.error(f"Error reporting district issue: {e}", exc_info=True)
+        current_app.logger.error("Error reporting district issue: %s", e, exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500

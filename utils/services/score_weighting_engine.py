@@ -60,11 +60,11 @@ class ScoreWeightingEngine:
             # Validate and normalize weights
             normalized_weights = self._normalize_weights(entity_weights)
 
-            self.logger.debug(f"Weights for {entity_type}: {normalized_weights}")
+            self.logger.debug("Weights for %s: %s", entity_type, normalized_weights)
             return normalized_weights
 
         except Exception as e:
-            self.logger.error(f"Error getting weights for {entity_type}: {e}")
+            self.logger.error("Error getting weights for %s: %s", entity_type, e)
             return self._get_fallback_weights()
 
     def get_validation_type_weight(
@@ -109,7 +109,7 @@ class ScoreWeightingEngine:
         try:
             return self.severity_weights.get(severity, 1.0)
         except Exception as e:
-            self.logger.error(f"Error getting severity weight for {severity}: {e}")
+            self.logger.error("Error getting severity weight for %s: %s", severity, e)
             return 1.0
 
     def set_entity_weight_override(self, entity_type: str, weights: Dict[str, float]):
@@ -134,7 +134,9 @@ class ScoreWeightingEngine:
             )
 
         except Exception as e:
-            self.logger.error(f"Error setting weight override for {entity_type}: {e}")
+            self.logger.error(
+                "Error setting weight override for %s: %s", entity_type, e
+            )
 
     def set_validation_type_override(self, validation_type: str, weight: float):
         """
@@ -170,13 +172,13 @@ class ScoreWeightingEngine:
             if entity_type:
                 if entity_type in self.entity_weight_overrides:
                     del self.entity_weight_overrides[entity_type]
-                    self.logger.info(f"Reset weights for {entity_type}")
+                    self.logger.info("Reset weights for %s", entity_type)
             else:
                 self.entity_weight_overrides.clear()
                 self.logger.info("Reset all entity weight overrides")
 
         except Exception as e:
-            self.logger.error(f"Error resetting entity weights: {e}")
+            self.logger.error("Error resetting entity weights: %s", e)
 
     def reset_validation_type_overrides(self):
         """Reset all validation type weight overrides."""
@@ -185,7 +187,7 @@ class ScoreWeightingEngine:
             self.logger.info("Reset all validation type weight overrides")
 
         except Exception as e:
-            self.logger.error(f"Error resetting validation type overrides: {e}")
+            self.logger.error("Error resetting validation type overrides: %s", e)
 
     def get_weight_summary(self) -> Dict:
         """
@@ -208,7 +210,7 @@ class ScoreWeightingEngine:
             return summary
 
         except Exception as e:
-            self.logger.error(f"Error getting weight summary: {e}")
+            self.logger.error("Error getting weight summary: %s", e)
             return {"error": str(e)}
 
     def validate_weights(self, weights: Dict[str, float]) -> bool:
@@ -265,7 +267,7 @@ class ScoreWeightingEngine:
             return normalized
 
         except Exception as e:
-            self.logger.error(f"Error normalizing weights: {e}")
+            self.logger.error("Error normalizing weights: %s", e)
             return self._get_fallback_weights()
 
     def _validate_weights(self, weights: Dict[str, float]) -> Dict[str, float]:
@@ -286,7 +288,7 @@ class ScoreWeightingEngine:
             validated = {}
             for key, value in weights.items():
                 if value < 0:
-                    self.logger.warning(f"Negative weight for {key}, setting to 0")
+                    self.logger.warning("Negative weight for %s, setting to 0", key)
                     validated[key] = 0.0
                 else:
                     validated[key] = float(value)
@@ -294,7 +296,7 @@ class ScoreWeightingEngine:
             return validated
 
         except Exception as e:
-            self.logger.error(f"Error validating weights: {e}")
+            self.logger.error("Error validating weights: %s", e)
             return self._get_fallback_weights()
 
     def _get_fallback_weights(self) -> Dict[str, float]:
@@ -354,11 +356,13 @@ class ScoreWeightingEngine:
 
             weighted_score = total_weighted_score / total_weight
 
-            self.logger.debug(f"Weighted score for {entity_type}: {weighted_score:.2f}")
+            self.logger.debug(
+                "Weighted score for %s: %.2f", entity_type, weighted_score
+            )
             return weighted_score
 
         except Exception as e:
-            self.logger.error(f"Error calculating weighted score: {e}")
+            self.logger.error("Error calculating weighted score: %s", e)
             return 0.0
 
     def get_scoring_algorithm(self, validation_type: str) -> str:

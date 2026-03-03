@@ -287,7 +287,7 @@ def run_step(
             try:
                 data = resp.json()
             except Exception:
-                logger.error(f"{step.name}: Non-JSON response: {resp.text[:200]}...")
+                logger.error("%s: Non-JSON response: %s...", step.name, resp.text[:200])
                 return False
 
             if data.get("status") == "error":
@@ -352,7 +352,9 @@ def run_step(
     logger.info(json.dumps({"step": step.name, "action": "post", "url": url}))
     resp = session.post(url, timeout=timeout_value)
     if resp.status_code != 200:
-        logger.error(f"{step.name}: HTTP {resp.status_code} - {resp.text[:200]}...")
+        logger.error(
+            "%s: HTTP %s - %s...", step.name, resp.status_code, resp.text[:200]
+        )
         return False
     try:
         data = resp.json()
@@ -430,7 +432,7 @@ def main() -> int:
     try:
         login(session, args.base_url, args.username, args.password, logger)
     except Exception as exc:
-        logger.error(f"Login failed: {exc}")
+        logger.error("Login failed: %s", exc)
         return 2
 
     overall_ok = True

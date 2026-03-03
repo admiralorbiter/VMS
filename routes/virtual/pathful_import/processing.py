@@ -79,7 +79,7 @@ def process_session_report_row(
             return True
 
         if not title:
-            current_app.logger.warning(f"Row {row_index}: Missing title")
+            current_app.logger.warning("Row %s: Missing title", row_index)
             import_log.error_count += 1
             return False
 
@@ -243,6 +243,6 @@ def process_session_report_row(
         return True
 
     except Exception as e:
-        current_app.logger.error(f"Row {row_index}: Error processing - {str(e)}")
+        current_app.logger.error("Row %s: Error processing - %s", row_index, str(e))
         import_log.error_count += 1
         return False

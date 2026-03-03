@@ -78,7 +78,7 @@ class BusinessRuleValidator(DataValidator):
 
             for entity_type in entity_types:
                 if entity_type in self.business_rules:
-                    logger.info(f"Validating business rules for {entity_type}...")
+                    logger.info("Validating business rules for %s...", entity_type)
                     entity_results = self._validate_entity_business_rules(entity_type)
                     results.extend(entity_results)
 
@@ -91,7 +91,7 @@ class BusinessRuleValidator(DataValidator):
             return results
 
         except Exception as e:
-            logger.error(f"Business rule validation failed: {e}")
+            logger.error("Business rule validation failed: %s", e)
             results.append(
                 ValidationResult(
                     run_id=self.run_id,
@@ -113,10 +113,10 @@ class BusinessRuleValidator(DataValidator):
         try:
             # Get sample data for validation
             sample_data = self._get_salesforce_sample(entity_type)
-            logger.debug(f"Got {len(sample_data)} sample records for {entity_type}")
+            logger.debug("Got %s sample records for %s", len(sample_data), entity_type)
 
             if not sample_data:
-                logger.warning(f"No sample data available for {entity_type}")
+                logger.warning("No sample data available for %s", entity_type)
                 return results
 
             # Get business rules for this entity type
@@ -127,15 +127,19 @@ class BusinessRuleValidator(DataValidator):
 
             # Validate each business rule
             for rule_name, rule_config in entity_rules.items():
-                logger.debug(f"Validating rule: {rule_name} with config: {rule_config}")
+                logger.debug(
+                    "Validating rule: %s with config: %s", rule_name, rule_config
+                )
                 rule_results = self._validate_business_rule(
                     entity_type, rule_name, rule_config, sample_data
                 )
-                logger.debug(f"Rule {rule_name} produced {len(rule_results)} results")
+                logger.debug(
+                    "Rule %s produced %s results", rule_name, len(rule_results)
+                )
                 results.extend(rule_results)
 
         except Exception as e:
-            logger.error(f"Error validating business rules for {entity_type}: {e}")
+            logger.error("Error validating business rules for %s: %s", entity_type, e)
             results.append(
                 ValidationResult(
                     run_id=self.run_id,
@@ -187,13 +191,13 @@ class BusinessRuleValidator(DataValidator):
                     entity_type, rule_name, rule_config, sample_data
                 )
             else:
-                logger.warning(f"Unknown business rule type: {rule_type}")
+                logger.warning("Unknown business rule type: %s", rule_type)
                 return results
 
             results.extend(rule_results)
 
         except Exception as e:
-            logger.error(f"Error validating business rule {rule_name}: {e}")
+            logger.error("Error validating business rule %s: %s", rule_name, e)
             results.append(
                 ValidationResult(
                     run_id=self.run_id,
@@ -234,7 +238,7 @@ class BusinessRuleValidator(DataValidator):
             valid_statuses.add(current_status)
             valid_statuses.update(allowed_next)
 
-        logger.debug(f"Valid statuses for {entity_type}: {valid_statuses}")
+        logger.debug("Valid statuses for %s: %s", entity_type, valid_statuses)
 
         for record in sample_data:
             current_status = record.get(status_field)
@@ -295,7 +299,7 @@ class BusinessRuleValidator(DataValidator):
         logger.debug(
             f"Validating date range for {entity_type}: {start_field} to {end_field}"
         )
-        logger.debug(f"Duration constraints: {min_duration} to {max_duration} days")
+        logger.debug("Duration constraints: %s to %s days", min_duration, max_duration)
 
         for record in sample_data:
             start_date = record.get(start_field)
@@ -442,7 +446,7 @@ class BusinessRuleValidator(DataValidator):
                 except Exception:
                     pass
 
-                logger.debug(f"Could not parse date string: {date_value}")
+                logger.debug("Could not parse date string: %s", date_value)
                 return None
         else:
             logger.debug(
@@ -474,7 +478,7 @@ class BusinessRuleValidator(DataValidator):
         logger.debug(
             f"Validating capacity limits for {entity_type}: {capacity_field} vs {current_field}"
         )
-        logger.debug(f"Maximum allowed capacity: {max_capacity}")
+        logger.debug("Maximum allowed capacity: %s", max_capacity)
 
         for record in sample_data:
             capacity = record.get(capacity_field)
@@ -511,7 +515,7 @@ class BusinessRuleValidator(DataValidator):
                     # Check if approaching capacity limit
                     if capacity_val > 0:
                         utilization_rate = (current_val / capacity_val) * 100
-                        logger.debug(f"Utilization rate: {utilization_rate:.1f}%")
+                        logger.debug("Utilization rate: %.1f%%", utilization_rate)
 
                         if utilization_rate > 90:
                             results.append(
@@ -610,7 +614,7 @@ class BusinessRuleValidator(DataValidator):
 
         # Handle new format with multiple fields
         if fields and not field_name:
-            logger.debug(f"Processing multiple fields validation: {fields}")
+            logger.debug("Processing multiple fields validation: %s", fields)
             # Get field-specific rules if available
             field_rules = rule_config.get("rules", {})
 
@@ -631,7 +635,7 @@ class BusinessRuleValidator(DataValidator):
                 results.extend(field_results)
         # Handle old format with single field
         elif field_name:
-            logger.debug(f"Processing single field validation: {field_name}")
+            logger.debug("Processing single field validation: %s", field_name)
             field_results = self._validate_single_field_constraint(
                 entity_type,
                 rule_name,
@@ -1133,7 +1137,7 @@ class BusinessRuleValidator(DataValidator):
                 # Get step configuration
                 step_name = step.get("step")
                 if not step_name:
-                    logger.warning(f"Workflow step missing step name: {step}")
+                    logger.warning("Workflow step missing step name: %s", step)
                     continue
 
                 # Get required fields for the step
@@ -1523,7 +1527,7 @@ class BusinessRuleValidator(DataValidator):
             )
 
         except Exception as e:
-            logger.warning(f"Could not add trend metrics: {e}")
+            logger.warning("Could not add trend metrics: %s", e)
 
     def _get_salesforce_sample(
         self, entity_type: str, limit: int = 100
@@ -1561,11 +1565,11 @@ class BusinessRuleValidator(DataValidator):
             elif entity_type == "district":
                 return self.salesforce_client.get_district_sample(limit)
             else:
-                logger.warning(f"Unknown entity type: {entity_type}")
+                logger.warning("Unknown entity type: %s", entity_type)
                 return []
 
         except Exception as e:
-            logger.error(f"Error getting sample data for {entity_type}: {e}")
+            logger.error("Error getting sample data for %s: %s", entity_type, e)
             return []
 
     def _load_custom_rules(self) -> Dict[str, Any]:
@@ -1585,17 +1589,17 @@ class BusinessRuleValidator(DataValidator):
                         continue
                     elif source.startswith("rules/"):
                         # Load from external rule files
-                        logger.debug(f"Loading custom rules from {source}")
+                        logger.debug("Loading custom rules from %s", source)
                         # This would implement file-based rule loading
                         # For now, we'll just log the intent
                         pass
                 except Exception as e:
-                    logger.warning(f"Could not load rules from {source}: {e}")
+                    logger.warning("Could not load rules from %s: %s", source, e)
 
             return custom_rules
 
         except Exception as e:
-            logger.error(f"Error loading custom rules: {e}")
+            logger.error("Error loading custom rules: %s", e)
             return {}
 
     def _apply_rule_templates(self, rule_config: Dict[str, Any]) -> Dict[str, Any]:
@@ -1611,7 +1615,7 @@ class BusinessRuleValidator(DataValidator):
             template_name = rule_config.get("template")
             if template_name and template_name in templates:
                 template = templates[template_name]
-                logger.debug(f"Applying template '{template_name}' to rule")
+                logger.debug("Applying template '%s' to rule", template_name)
 
                 # Merge template with rule config
                 merged_config = template.copy()
@@ -1621,7 +1625,7 @@ class BusinessRuleValidator(DataValidator):
             return rule_config
 
         except Exception as e:
-            logger.warning(f"Could not apply rule template: {e}")
+            logger.warning("Could not apply rule template: %s", e)
             return rule_config
 
     def _evaluate_field_requirements(
@@ -1703,7 +1707,7 @@ class BusinessRuleValidator(DataValidator):
             return {"required": False, "rule_type": "none"}
 
         except Exception as e:
-            logger.warning(f"Could not get field requirements for {field_name}: {e}")
+            logger.warning("Could not get field requirements for %s: %s", field_name, e)
             return {"required": False, "rule_type": "error"}
 
     def _get_salesforce_field_info(
@@ -1728,7 +1732,9 @@ class BusinessRuleValidator(DataValidator):
                 return {"required": False, "field_type": "unknown"}
 
         except Exception as e:
-            logger.warning(f"Could not get Salesforce field info for {field_name}: {e}")
+            logger.warning(
+                "Could not get Salesforce field info for %s: %s", field_name, e
+            )
             return {"required": False, "field_type": "error"}
 
     def _determine_requirement_level(

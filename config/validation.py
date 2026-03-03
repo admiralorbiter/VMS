@@ -2037,6 +2037,6 @@ if config_errors:
 
     logger = logging.getLogger(__name__)
     for error in config_errors:
-        logger.error(f"Validation configuration error: {error}")
+        logger.error("Validation configuration error: %s", error)
     if os.environ.get("VALIDATION_STRICT_CONFIG", "false").lower() == "true":
         raise ValueError(f"Validation configuration errors: {'; '.join(config_errors)}")

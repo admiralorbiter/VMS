@@ -48,12 +48,14 @@ def test_history_service():
                 .all()
             )
 
-            logger.info(f"Found {len(recent_runs)} recent completed runs")
+            logger.info("Found %s recent completed runs", len(recent_runs))
 
             # Create history records for each run
             total_history_created = 0
             for run in recent_runs:
-                logger.info(f"Processing run {run.id}: {run.run_type} - {run.name}")
+                logger.info(
+                    "Processing run %s: %s - %s", run.id, run.run_type, run.name
+                )
 
                 # Create history records for this run
                 history_records = history_service.create_history_from_run(run.id)
@@ -63,7 +65,7 @@ def test_history_service():
                     f"Created {len(history_records)} history records for run {run.id}"
                 )
 
-            logger.info(f"✅ Total history records created: {total_history_created}")
+            logger.info("✅ Total history records created: %s", total_history_created)
 
             # Test 2: Query and display history records
             logger.info("\n📈 Test 2: Querying and displaying history records...")
@@ -71,7 +73,7 @@ def test_history_service():
             all_history = ValidationHistory.query.order_by(
                 ValidationHistory.created_at.desc()
             ).all()
-            logger.info(f"Total history records in database: {len(all_history)}")
+            logger.info("Total history records in database: %s", len(all_history))
 
             if all_history:
                 logger.info("\nRecent history records:")
@@ -79,10 +81,10 @@ def test_history_service():
                     logger.info(
                         f"  {i+1}. {record.entity_type} - {record.validation_type}"
                     )
-                    logger.info(f"     Quality Score: {record.quality_score:.2f}")
-                    logger.info(f"     Violations: {record.total_violations}")
-                    logger.info(f"     Trend: {record.trend_direction or 'N/A'}")
-                    logger.info(f"     Created: {record.created_at}")
+                    logger.info("     Quality Score: %.2f", record.quality_score)
+                    logger.info("     Violations: %s", record.total_violations)
+                    logger.info("     Trend: %s", record.trend_direction or "N/A")
+                    logger.info("     Created: %s", record.created_at)
                     logger.info("")
 
             # Test 3: Test trend analysis
@@ -93,13 +95,13 @@ def test_history_service():
                 entity_type="volunteer", days=30
             )
 
-            logger.info(f"Volunteer quality trends: {volunteer_trends}")
+            logger.info("Volunteer quality trends: %s", volunteer_trends)
 
             # Test 4: Test summary statistics
             logger.info("\n📋 Test 4: Testing summary statistics...")
 
             summary_stats = history_service.get_summary_statistics(days=30)
-            logger.info(f"Summary statistics: {summary_stats}")
+            logger.info("Summary statistics: %s", summary_stats)
 
             # Test 5: Test entity-specific history
             logger.info("\n🔍 Test 5: Testing entity-specific history...")
@@ -108,20 +110,20 @@ def test_history_service():
                 entity_type="volunteer", days=30
             )
 
-            logger.info(f"Volunteer history records: {len(volunteer_history)}")
+            logger.info("Volunteer history records: %s", len(volunteer_history))
 
             if volunteer_history:
                 latest_record = volunteer_history[0]
-                logger.info(f"Latest volunteer record:")
-                logger.info(f"  Quality Score: {latest_record.quality_score:.2f}")
-                logger.info(f"  Status: {latest_record.quality_status}")
-                logger.info(f"  Violation Rate: {latest_record.violation_rate:.2f}%")
-                logger.info(f"  Trend Description: {latest_record.trend_description}")
+                logger.info("Latest volunteer record:")
+                logger.info("  Quality Score: %.2f", latest_record.quality_score)
+                logger.info("  Status: %s", latest_record.quality_status)
+                logger.info("  Violation Rate: %.2f%%", latest_record.violation_rate)
+                logger.info("  Trend Description: %s", latest_record.trend_description)
 
             logger.info("\n🎉 All tests completed successfully!")
 
         except Exception as e:
-            logger.error(f"❌ Error during testing: {e}")
+            logger.error("❌ Error during testing: %s", e)
             import traceback
 
             traceback.print_exc()
@@ -138,14 +140,14 @@ def test_specific_run():
 
     with app.app_context():
         try:
-            logger.info(f"🧪 Testing history creation for run {run_id}...")
+            logger.info("🧪 Testing history creation for run %s...", run_id)
 
             # Check if the run exists
             from models.validation import ValidationRun
 
             run = ValidationRun.query.get(run_id)
             if not run:
-                logger.warning(f"⚠️ Validation run {run_id} not found, skipping test")
+                logger.warning("⚠️ Validation run %s not found, skipping test", run_id)
                 return
 
             history_service = ValidationHistoryService()
@@ -159,24 +161,24 @@ def test_specific_run():
 
             # Display the created records
             for i, record in enumerate(history_records):
-                logger.info(f"\nRecord {i+1}:")
-                logger.info(f"  Entity Type: {record.entity_type}")
-                logger.info(f"  Validation Type: {record.validation_type}")
-                logger.info(f"  Quality Score: {record.quality_score:.2f}")
-                logger.info(f"  Total Checks: {record.total_checks}")
-                logger.info(f"  Violations: {record.total_violations}")
-                logger.info(f"  Success Rate: {record.success_rate:.2f}%")
-                logger.info(f"  Execution Time: {record.execution_time_seconds}s")
+                logger.info("\nRecord %s:", i + 1)
+                logger.info("  Entity Type: %s", record.entity_type)
+                logger.info("  Validation Type: %s", record.validation_type)
+                logger.info("  Quality Score: %.2f", record.quality_score)
+                logger.info("  Total Checks: %s", record.total_checks)
+                logger.info("  Violations: %s", record.total_violations)
+                logger.info("  Success Rate: %.2f%%", record.success_rate)
+                logger.info("  Execution Time: %ss", record.execution_time_seconds)
 
                 if record.trend_direction:
                     logger.info(
                         f"  Trend: {record.trend_direction} (confidence: {record.trend_confidence:.2f})"
                     )
 
-                logger.info(f"  Created: {record.created_at}")
+                logger.info("  Created: %s", record.created_at)
 
         except Exception as e:
-            logger.error(f"❌ Error testing run {run_id}: {e}")
+            logger.error("❌ Error testing run %s: %s", run_id, e)
             import traceback
 
             traceback.print_exc()
