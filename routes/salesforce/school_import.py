@@ -238,7 +238,7 @@ def import_schools():
         )
 
         # Update school levels
-        from routes.management.management import update_school_levels
+        from routes.management.import_data import update_school_levels
 
         level_update_response = update_school_levels()
 

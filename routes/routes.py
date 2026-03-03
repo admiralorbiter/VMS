@@ -63,8 +63,8 @@ from routes.docs import docs_bp
 from routes.email.routes import email_bp
 from routes.events.routes import events_bp
 from routes.history.routes import history_bp
+from routes.management import management_bp
 from routes.management.cache_management import cache_management_bp
-from routes.management.management import management_bp
 from routes.organizations.routes import organizations_bp
 from routes.quality import quality_bp
 from routes.reports import report_bp

@@ -311,45 +311,51 @@ Replace inline checks with `@admin_required` or `@staff_required` decorators. Au
 
 ---
 
-## TD-019: `management.py` Is a God Module (~1,300+ Lines)
+## ~~TD-019: `management.py` Is a God Module (~1,410 Lines)~~ ✅ RESOLVED
 
 **Created:** 2026-03-02
+**Resolved:** 2026-03-03
 **Priority:** Medium
 **Category:** Architecture / Maintainability
 
-### Description
+### Resolution
 
-`routes/management/management.py` contains user management, bulk operations, data purging, configuration, and administrative actions all in a single file. It has 20+ inline admin checks and mixes CRUD, import triggers, and system maintenance.
+Extracted `routes/management/management.py` (1,410 lines) into 5 domain-specific modules:
 
-### Proposed Fix
+| Module | Handlers | Domain |
+|--------|:--------:|--------|
+| `routes.py` | 6 | Blueprint, admin panel, logs, cache refresh, user mgmt |
+| `data_integrity.py` | 3 | Data flags, student participation dedup |
+| `google_sheets.py` | 5 | Google Sheets CRUD |
+| `import_data.py` | 6 | File import, Salesforce import, schools, districts |
+| `bug_reports.py` | 4 | Bug report list, resolve, delete |
 
-Extract into sub-modules: `management/users.py`, `management/bulk_ops.py`, `management/system.py`.
+Backward-compatible `__init__.py` re-exports `management_bp` and `update_school_levels`. All 60 tests pass (40 management + 20 tenant user management).
 
-**Risk:** Low — same extraction pattern used for TD-006 (app.py extraction).
+**Risk:** Low — verified, no behavior changes.
 
 ---
 
-## TD-020: `virtual_session.py` and `pathful_import.py` Are Oversized
+## ~~TD-020: `virtual_session.py`, `pathful_import.py`, and `district_year_end.py` Are Oversized~~ ✅ RESOLVED
 
 **Created:** 2026-03-02
+**Resolved:** 2026-03-03
 **Priority:** Medium
 **Category:** Architecture / Maintainability
 
-### Description
+### Resolution
 
-With `usage.py` resolved (TD-017), these are the largest remaining route files:
+Extracted all 3 oversized route files into domain-specific packages using the same pattern as TD-017:
 
-| File | Lines |
-|------|------:|
-| `routes/reports/virtual_session.py` | 5,287 |
-| `routes/virtual/pathful_import.py` | 2,686 |
-| `routes/reports/district_year_end.py` | 2,405 |
+| Original File | Lines | Modules | Dead Code Removed |
+|---------------|------:|--------:|-------------------:|
+| `routes/reports/virtual_session.py` | 5,287 | 4 (`cache`, `computation`, `exports`, `teacher_progress`) | ~2,703 lines |
+| `routes/virtual/pathful_import.py` | 3,039 | 4 (`parsing`, `matching`, `processing`, `routes`) | 0 |
+| `routes/reports/district_year_end.py` | 2,406 | 2 (`computation`, `routes`) | 0 |
 
-### Proposed Fix
+Each package has a backward-compatible `__init__.py` with re-exports. Route count unchanged (337). All 25 related tests pass.
 
-Apply the same domain-driven extraction strategy proposed for TD-017.
-
-**Risk:** Medium — same pattern as usage.py, can be done one file at a time.
+**Risk:** Low — verified, no behavior changes.
 
 ---
 
@@ -479,8 +485,8 @@ Ordered by **what best unblocks future work** — structural improvements first,
 | Order | ID | Item | Rationale |
 |:-----:|----|------|-----------|
 | ~~1~~ | ~~**TD-017**~~ | ~~Break up `usage.py`~~ ✅ | Resolved 2026-03-02. Extracted into 7 modules. |
-| 2 | **TD-020** | Break up `virtual_session.py` + `pathful_import.py` | Same pattern as TD-017 — do while approach is fresh. |
-| 3 | **TD-019** | Break up `management.py` | 20+ inline admin checks become trivially fixable once in smaller files. |
+| ~~2~~ | ~~**TD-020**~~ | ~~Break up `virtual_session.py` + `pathful_import.py` + `district_year_end.py`~~ ✅ | Resolved 2026-03-03. All 3 files extracted into packages. |
+| ~~3~~ | ~~**TD-019**~~ | ~~Break up `management.py`~~ ✅ | Resolved 2026-03-03. Extracted into 5 modules. |
 | 4 | **TD-012** | Split oversized model files | Enums in their own files makes route extraction cleaner. |
 
 ### Phase 2: Standardize Patterns (Safer After Smaller Files)
