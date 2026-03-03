@@ -65,6 +65,13 @@ Salesforce data validation tools:
 - **`run_validation.bat`** - Windows batch wrapper for validation commands
 - **`run_validation.sh`** - Unix/Linux/Mac shell wrapper for validation commands
 
+### **Synthetic Data Generation** (`generate_synthetic_data.py`)
+Generate realistic synthetic data for testing and demos:
+- **`generate_synthetic_data.py`** - Main synthetic data generator script
+  - Creates test data matching all SQLAlchemy models and relationships
+  - Supports deterministic generation, size presets, and edge case modes
+  - Uses SQLAlchemy ORM to ensure model defaults and validators run
+
 ### **Other Directories**
 - **`performance/`** - Performance testing and profiling
 - **`sql/`** - SQL scripts and migrations
@@ -107,6 +114,177 @@ scripts\validation\run_validation.bat test          # Windows
 # Or directly
 python scripts/validation/run_validation.py --help
 ```
+
+### **Synthetic Data Generation**
+```bash
+# Generate medium-sized demo dataset
+python scripts/generate_synthetic_data.py --size medium --mode demo
+
+# Generate large dataset with specific seed (deterministic)
+python scripts/generate_synthetic_data.py --seed 123 --size large --mode demo
+
+# Generate edge case dataset (boundary conditions, NULLs, etc.)
+python scripts/generate_synthetic_data.py --size medium --mode edge
+
+# Custom counts per model
+python scripts/generate_synthetic_data.py --counts volunteer=200 event=100 school=50
+
+# Clear existing data and regenerate
+python scripts/generate_synthetic_data.py --reset --size small --mode demo
+```
+
+## 📊 **Synthetic Data Generator**
+
+The `generate_synthetic_data.py` script creates realistic synthetic data for testing and demos, matching all SQLAlchemy models and relationships in the system.
+
+### **How to Run**
+
+Run from the project root directory:
+
+```bash
+python scripts/generate_synthetic_data.py [options]
+```
+
+### **Options/Flags**
+
+| Flag | Description | Example |
+|------|-------------|---------|
+| `--seed SEED` | Random seed for deterministic generation (default: random) | `--seed 123` |
+| `--size SIZE` | Dataset size preset: `small`, `medium`, or `large` (default: `medium`) | `--size large` |
+| `--mode MODE` | Generation mode: `demo` (happy path) or `edge` (boundary conditions) | `--mode edge` |
+| `--counts MODEL=N` | Custom counts per model (can be used multiple times) | `--counts volunteer=200 event=100` |
+| `--reset` | Clear existing data before generating (USE WITH CAUTION) | `--reset` |
+| `--export [PATH]` | Export generated IDs to JSON for automated tests (default: `synthetic_data_ids.json`) | `--export` or `--export my_ids.json` |
+
+### **Examples**
+
+```bash
+# Generate medium-sized demo dataset (happy path, realistic data)
+python scripts/generate_synthetic_data.py --size medium --mode demo
+
+# Generate large dataset with specific seed (deterministic - same seed = same data)
+python scripts/generate_synthetic_data.py --seed 123 --size large --mode demo
+
+# Generate edge case dataset (boundary conditions, NULLs, max-length strings, etc.)
+python scripts/generate_synthetic_data.py --size medium --mode edge
+
+# Custom counts per model
+python scripts/generate_synthetic_data.py --counts volunteer=200 event=100 school=50
+
+# Clear existing data and regenerate
+python scripts/generate_synthetic_data.py --reset --size small --mode demo
+
+# Combine options
+python scripts/generate_synthetic_data.py --seed 42 --size large --mode edge --counts volunteer=500
+
+# Export generated IDs to JSON (for automated tests)
+python scripts/generate_synthetic_data.py --size small --mode demo --export
+python scripts/generate_synthetic_data.py --seed 99 --export my_test_ids.json
+```
+
+### **What Data is Created**
+
+The generator creates data for **core models** used in main user-facing features:
+
+**Core Models (17 total):**
+- **Skill** - Professional skills
+- **District** - School districts
+- **Organization** - Companies and organizations
+- **School** - Schools assigned to districts
+- **Class** - Academic classes/cohorts
+- **Tenant** - Multi-tenant platform configuration
+- **User** - User accounts with authentication
+- **Volunteer** - Volunteer profiles (inherits from Contact)
+- **Teacher** - Teacher profiles (inherits from Contact)
+- **Student** - Student records (inherits from Contact)
+- **Event** - Events and sessions
+- **EventTeacher** - Teacher-event associations
+- **EventParticipation** - Volunteer participation in events
+- **EventAttendanceDetail** - Detailed attendance tracking
+- **VolunteerSkill** - Volunteer-skill relationships
+- **VolunteerOrganization** - Volunteer-organization relationships
+- **Engagement** - Volunteer engagement activities
+- **History** - Activity history and notes
+
+**Size Presets:**
+
+| Size | Districts | Schools | Classes | Teachers | Volunteers | Students | Events | Engagements | History |
+|------|-----------|---------|---------|----------|------------|----------|--------|-------------|---------|
+| `small` | 2 | 5 | 10 | 10 | 15 | 20 | 10 | 20 | 15 |
+| `medium` | 5 | 15 | 30 | 30 | 50 | 100 | 30 | 50 | 40 |
+| `large` | 10 | 50 | 100 | 100 | 200 | 500 | 100 | 200 | 150 |
+
+**Note:** This covers core user-facing features. Admin/internal models (BugReport, AuditLog, SyncLog, etc.) are not included as they're not needed for demos.
+
+### **How to Reset/Clean**
+
+**Option 1: Use `--reset` flag (Recommended)**
+```bash
+python scripts/generate_synthetic_data.py --reset --size small --mode demo
+```
+This will prompt for confirmation before clearing data.
+
+**Option 2: Manual database reset**
+If you need to completely reset the database:
+```bash
+# Delete the database file (SQLite)
+rm instance/vms.db  # Unix/Linux/Mac
+del instance\vms.db  # Windows
+
+# Then run migrations to recreate
+flask db upgrade
+```
+
+**Option 4: Clear specific tables**
+You can manually clear specific tables using SQL or the Flask shell:
+```python
+from app import create_app
+from models import db
+from models.volunteer import Skill
+from models.district_model import District
+
+app = create_app()
+with app.app_context():
+    Skill.query.delete()
+    District.query.delete()
+    # ... delete other models
+    db.session.commit()
+```
+
+### **Features**
+
+- ✅ **Deterministic Generation**: Same seed produces identical data
+- ✅ **Size Presets**: Quick setup with small/medium/large datasets
+- ✅ **Mode Switching**: Demo mode (clean data) vs Edge mode (boundary conditions)
+- ✅ **Custom Counts**: Override presets with specific model counts
+- ✅ **SQLAlchemy ORM**: Uses model classes so defaults and validators run
+- ✅ **Flask App Context**: Proper Flask application context for database operations
+- ✅ **Idempotent**: Can run multiple times (skips existing records)
+- ✅ **Batch commits**: Commits every 50 records for better performance
+- ✅ **Edge cases (edge mode)**: Max-length strings, unicode names, near-duplicate values, date boundaries (leap day, end-of-month, very old), stress records (0 vs many related rows), inactive/archived states (Tenant, User, Volunteer, Teacher, Student, History)
+- ✅ **Export IDs**: `--export` writes a JSON summary of generated entity IDs for automated tests
+
+### **Implementation Status**
+
+**Completed:**
+- ✅ Foundation (CLI, app context, seed handling)
+- ✅ Core models (17 models covering main user flows)
+- ✅ Relationships (many-to-many, one-to-many)
+- ✅ Enum/status value coverage
+- ✅ Summary output
+- ✅ Reset functionality
+- ✅ Batch commits (BATCH_SIZE=50)
+- ✅ Edge case coverage in edge mode
+- ✅ `--export` JSON ID summary
+
+**Note:** Database schema must be up-to-date. If you encounter missing column errors, run:
+```bash
+python scripts/fix_database_schema.py
+```
+This will add missing columns like `tenant_role`, `pathful_user_id`, `is_active`, etc.
+
+**Known Limitations:**
+- Admin/internal models (BugReport, AuditLog, etc.) are not generated (not needed for demos)
 
 ## 📝 **Notes**
 
