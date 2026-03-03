@@ -773,10 +773,8 @@ def view_volunteer(id):
         org_relationships[vol_org.organization_id] = vol_org
 
     # Get recruitment notes for this volunteer
-    recruitment_notes = (
-        RecruitmentNote.query.filter_by(volunteer_id=id)
-        .order_by(RecruitmentNote.created_at.desc())
-        .all()
+    recruitment_notes = RecruitmentNote.get_for_volunteer(
+        id, tenant_id=getattr(current_user, "tenant_id", None)
     )
 
     return render_template(

@@ -21,47 +21,21 @@ All Salesforce import files updated with savepoint recovery and structured error
 
 ---
 
-## TD-003: `Teacher.school_id` Has No FK Constraint
+## ~~TD-003: `Teacher.school_id` Has No FK Constraint~~ *(Evaluated — N/A)*
 
 **Created:** 2026-02-28
-**Priority:** Low
-**Category:** Data Integrity / Schema
+**Evaluated:** 2026-03-02
 
-### Description
-
-`Teacher.school_id` is `String(255)` with no `ForeignKey('school.id')`. Existing values are Salesforce contact IDs that mostly don't resolve to valid `School` records. Used in 40+ places across `routes/virtual/usage/`.
-
-### Current Workaround
-
-Code does `School.query.get(teacher.school_id)` and handles `None` gracefully.
-
-### Proposed Fix
-
-Add `ForeignKey('school.id')`. Requires a data migration to clean up invalid values first.
-
-**Risk:** High — many callsites, requires data migration.
+`School.id` uses Salesforce Account IDs (`String(255)`) as primary keys, so `Teacher.school_id = String(255)` is already correct. A formal FK constraint was **not added** because Salesforce imports often set school references before the school record is synced, which would cause import failures. A working ORM relationship exists via `primaryjoin`.
 
 ---
 
-## TD-004: `Event.district_partner` Is a Text Field, Not a FK
+## TD-004: `Event.district_partner` Is a Text Field, Not a FK *(Evaluated — Deferred)*
 
 **Created:** 2026-02-28
-**Priority:** Low
-**Category:** Data Normalization
+**Evaluated:** 2026-03-02
 
-### Description
-
-Events store the district name as a plain text string (`Event.district_partner`), not a FK to the `District` table. Used in 50+ places for filtering across `usage.py`, `pathful_import.py`, `tenant_teacher_usage.py`.
-
-### Current Workaround
-
-Text matching works — filtering by `Event.district_partner == district_name`. Just not normalized.
-
-### Proposed Fix
-
-Replace with `district_id` FK to `District`. Requires updating all filtering logic across the codebase.
-
-**Risk:** Very high — most pervasive data pattern in the codebase.
+Used in 60+ locations for `ILIKE` fuzzy matching, string splitting, and direct display. Events already have a proper `Event.districts` M2M relationship for relational work. Converting to FK would require a full rewrite of reporting and scoping layers. The field remains a **denormalized text cache** prioritized for its flexibility in fuzzy querying.
 
 ---
 
@@ -370,7 +344,6 @@ With `usage.py` resolved (TD-017), these are the largest remaining route files:
 | `routes/reports/virtual_session.py` | 5,287 |
 | `routes/virtual/pathful_import.py` | 2,686 |
 | `routes/reports/district_year_end.py` | 2,405 |
-| `routes/virtual/routes.py` | 1,825 |
 
 ### Proposed Fix
 
@@ -440,29 +413,60 @@ Removed 31 unsafe `app` fixture definitions across 7 files. All now use the safe
 
 ---
 
-## TD-024: Remove Legacy `import_sheet()` Route (634 Lines of Dead Code)
+## ~~TD-024: Remove Legacy `import_sheet()` Route~~ ✅ RESOLVED
 
 **Created:** 2026-03-02
-**Priority:** Medium
-**Category:** Dead Code / Deprecation
+**Resolved:** 2026-03-02
 
-### Description
+Removed `import_sheet()` + 18 helper functions from `routes/virtual/routes.py` (1,836 → 299 lines, ~1,537 lines removed). Fixed broken imports in `session_routes.py`. Removed 3 legacy tests. Standalone script decommissioned.
 
-The `import_sheet()` function in `routes/virtual/routes.py` (lines 1191–1835, ~634 lines) is the legacy Google Sheets virtual session import. It has been fully superseded by the Pathful direct import system in `routes/virtual/pathful_import.py`. Deprecation logging was added in March 2026.
+---
 
-**Related dead code:**
-- Helper functions only used by `import_sheet()`: `clean_name()`, `standardize_organization()`, `parse_datetime()`, `validate_csv_row()`, `clean_time_string()`, `extract_session_id()`, `get_status_priority()`, `should_update_status()`, `find_existing_event()`, `process_teacher_data()`, `add_district_to_event()`
-- `templates/management/google_sheets.html` line 494 calls `/virtual/import-sheet` (button may be broken)
-- `scripts/daily_imports/run_virtual_import_2025_26_standalone.py` — imports from this route
+## ~~TD-025: Consolidate Permission Decorators~~ ✅ RESOLVED
 
-### Proposed Fix
+**Created:** 2026-03-02
+**Resolved:** 2026-03-02
 
-1. Monitor deprecation logs for 30 days (through April 2026)
-2. If no hits, remove `import_sheet()` and all helper functions only used by it
-3. Remove or update the Import button in `google_sheets.html`
-4. Update test `test_virtual_import_sheet` in `test_virtual_routes.py`
+Created canonical `admin_required` + `global_admin_required` in `routes/decorators.py`. Removed 4 local definitions, updated 12 import sites. Fixed 6 test assertions for context-aware behavior (302 vs 403).
 
-**Risk:** Low — route is deprecated and superseded. Monitor first to confirm zero usage.
+---
+
+## ~~TD-026: Standardize DB Commit Patterns in Salesforce Imports~~ ✅ RESOLVED
+
+**Created:** 2026-03-02
+**Resolved:** 2026-03-02
+
+Fixed 3 files with inconsistent batch commit patterns:
+- `history_import.py`: `success_count % 100` → `(i+1) % 100` (no more drifting when errors occur)
+- `event_import.py`: Added batch commits to volunteer participant loop (was single commit)
+- `pathway_import.py`: Added batch commits to events processing loop
+
+---
+
+## ~~TD-027: N+1 Query Bottlenecks in Volunteer Import~~ ✅ RESOLVED
+
+**Created:** 2026-03-02
+**Resolved:** 2026-03-02
+
+Pre-loaded 4 lookup caches before the main processing loop in `volunteer_import.py`:
+- Volunteer cache (`salesforce_individual_id → Volunteer`)
+- Skill cache (`name → Skill`)
+- Email cache (`(contact_id, email) → Email`)
+- Phone cache (`(contact_id, number) → Phone`)
+
+Eliminates ~15,000+ individual queries for a 2,000-record import.
+
+---
+
+## ~~TD-028: Model Cleanup (Duplicate Assignments, Export Bugs, Ordering)~~ ✅ RESOLVED
+
+**Created:** 2026-03-02
+**Resolved:** 2026-03-02
+
+- `google_sheet.py`: Removed duplicate `sheet_name` assignment and duplicate `created_by` key in `to_dict()`
+- `models/__init__.py`: Removed duplicate `TeacherProgressArchive` in `__all__`, added missing `RecruitmentOutcome` import
+- `recruitment_note.py`: Added `id.desc()` tiebreaker to `get_for_volunteer()` for deterministic ordering
+- `volunteers/routes.py`: Replaced inline recruitment notes query with model method
 
 ---
 
@@ -501,8 +505,8 @@ Ordered by **what best unblocks future work** — structural improvements first,
 
 | Order | ID | Item | Rationale |
 |:-----:|----|------|-----------|
-| 13 | **TD-003** | `Teacher.school_id` FK constraint | Requires data cleanup migration; safer after test coverage is solid. |
-| 14 | **TD-004** | `Event.district_partner` → FK | 50+ callsites; most pervasive data pattern. Needs all route files to be manageable first. |
+| ~~13~~ | ~~**TD-003**~~ | ~~`Teacher.school_id` FK~~ | Evaluated — N/A. Column type already correct; FK would break imports. |
+| ~~14~~ | ~~**TD-004**~~ | ~~`Event.district_partner` → FK~~ | Evaluated — Deferred. 60+ callsites, M2M already exists. |
 
 ### Phase 5: Infrastructure
 

@@ -67,7 +67,7 @@ from .magic_link import MagicLink
 from .organization import Organization
 from .outreach import OutreachAttempt
 from .pathful_import import PathfulImportLog, PathfulUnmatchedRecord
-from .recruitment_note import RecruitmentNote
+from .recruitment_note import RecruitmentNote, RecruitmentOutcome
 from .reports import (
     DistrictEngagementReport,
     DistrictManualInput,
@@ -115,7 +115,6 @@ __all__ = [
     "School",
     "Teacher",
     "TeacherProgress",
-    "TeacherProgressArchive",
     "TeacherProgressArchive",
     "RosterImportLog",
     "Student",

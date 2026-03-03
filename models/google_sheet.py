@@ -164,7 +164,6 @@ class GoogleSheet(db.Model):
         self.purpose = purpose
         self.sheet_id = sheet_id  # Store as plain text
         self.sheet_name = sheet_name
-        self.sheet_name = sheet_name
         self.created_by = created_by
         self.district_name = district_name
 
@@ -209,7 +208,6 @@ class GoogleSheet(db.Model):
             "updated_at": (
                 self.updated_at.isoformat() if self.updated_at is not None else None
             ),
-            "created_by": self.created_by,
             "created_by": self.created_by,
             "creator_name": self.creator.username if self.creator else None,
             "district_name": self.district_name,
