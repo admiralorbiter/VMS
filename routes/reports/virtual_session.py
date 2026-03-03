@@ -26,8 +26,7 @@ from models.reports import VirtualSessionDistrictCache, VirtualSessionReportCach
 from models.school_model import School
 from models.teacher import Teacher
 from models.volunteer import Volunteer
-from routes.decorators import district_scoped_required
-from routes.utils import admin_required
+from routes.decorators import admin_required, district_scoped_required
 
 # Create blueprint
 virtual_bp = Blueprint("virtual", __name__)

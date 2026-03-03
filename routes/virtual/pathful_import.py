@@ -55,6 +55,7 @@ from models.teacher_progress import TeacherProgress
 from models.tenant import Tenant
 from models.user import TenantRole
 from models.volunteer import Volunteer
+from routes.decorators import admin_required
 from services.scoping import (
     get_user_district_name,
     is_staff_user,
@@ -87,21 +88,6 @@ OPTIONAL_SESSION_COLUMNS = [
 ]
 
 PARTNER_FILTER = "PREP-KC"  # Only import rows with this partner
-
-
-def admin_required(f):
-    """Decorator to require admin access for pathful import routes."""
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated:
-            return redirect(url_for("login"))
-        if not current_user.is_admin:
-            flash("Admin access required for Pathful imports.", "error")
-            return redirect(url_for("index"))
-        return f(*args, **kwargs)
-
-    return decorated_function
 
 
 def admin_or_tenant_required(f):

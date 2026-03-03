@@ -1,14 +1,103 @@
 """
-Security decorators for district and school scoping.
+Security decorators for route access control.
 
-These decorators provide flexible permission checking for routes
-that need to restrict access based on user scope (global/district/school).
+Provides unified permission decorators for the application:
+- admin_required: Requires admin privileges (context-aware error responses)
+- global_admin_required: Requires admin + non-tenant scope (for tenant management)
+- district_scoped_required: District-level access checks
+- school_scoped_required: School-level access checks
+- security_level_required: Minimum security level enforcement
+- global_users_only: Restricts to global-scoped users
 """
 
 from functools import wraps
 
-from flask import jsonify, request
+from flask import flash, jsonify, redirect, request, url_for
 from flask_login import current_user
+
+
+def _is_json_request():
+    """Check if the current request expects a JSON response."""
+    if request.is_json:
+        return True
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return True
+    accept = request.headers.get("Accept", "")
+    return "application/json" in accept and "text/html" not in accept
+
+
+def admin_required(func):
+    """
+    Decorator to require admin privileges.
+
+    Auto-detects request context:
+    - API/AJAX requests → JSON 403 response
+    - Page requests → redirect to login with flash message
+
+    Usage:
+        @admin_required
+        def admin_only_route():
+            # Only admins can access
+    """
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not getattr(current_user, "is_authenticated", False):
+            if _is_json_request():
+                return jsonify({"error": "Authentication required"}), 401
+            return redirect(url_for("auth.login"))
+
+        if not getattr(current_user, "is_admin", False):
+            if _is_json_request():
+                return jsonify({"error": "Unauthorized"}), 403
+            flash("Admin access required.", "error")
+            return redirect(url_for("index"))
+
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+def global_admin_required(func):
+    """
+    Decorator to require admin privileges AND non-tenant scope.
+
+    Used for tenant management routes where tenant-scoped admins
+    should not have access (only PrepKC global admins).
+
+    Usage:
+        @global_admin_required
+        def manage_tenants():
+            # Only global (non-tenant) admins can access
+    """
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not getattr(current_user, "is_authenticated", False):
+            if _is_json_request():
+                return jsonify({"error": "Authentication required"}), 401
+            return redirect(url_for("auth.login"))
+
+        if not getattr(current_user, "is_admin", False):
+            if _is_json_request():
+                return jsonify({"error": "Unauthorized"}), 403
+            flash("Admin access required.", "error")
+            return redirect(url_for("index"))
+
+        if current_user.tenant_id is not None:
+            if _is_json_request():
+                return (
+                    jsonify(
+                        {"error": "Tenant management requires PrepKC admin access"}
+                    ),
+                    403,
+                )
+            flash("Tenant management requires PrepKC admin access.", "error")
+            return redirect(url_for("index"))
+
+        return func(*args, **kwargs)
+
+    return wrapper
 
 
 def district_scoped_required(func):

@@ -17,7 +17,7 @@ from flask_login import login_required
 
 from models import db
 from models.sync_log import SyncLog
-from routes.utils import admin_required
+from routes.decorators import admin_required
 
 sf_dashboard_bp = Blueprint("sf_dashboard", __name__, url_prefix="/admin/salesforce")
 

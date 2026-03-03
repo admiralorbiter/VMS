@@ -19,7 +19,7 @@ from models.contact import LocalStatusEnum
 from models.event import Event, EventFormat, EventStatus, EventTeacher, EventType, db
 from models.teacher import Teacher
 from models.volunteer import EventParticipation, Volunteer
-from routes.utils import admin_required
+from routes.decorators import admin_required
 
 virtual_bp = Blueprint("virtual", __name__, url_prefix="/virtual")
 

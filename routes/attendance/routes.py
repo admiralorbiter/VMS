@@ -15,8 +15,8 @@ from models.attendance import EventAttendanceDetail
 from models.event import Event, EventTeacher, EventType
 from models.student import Student
 from models.teacher import Teacher
-from routes.decorators import global_users_only
-from routes.utils import admin_required, log_audit_action
+from routes.decorators import admin_required, global_users_only
+from routes.utils import log_audit_action
 
 # Create Blueprint for attendance routes
 attendance = Blueprint("attendance", __name__)

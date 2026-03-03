@@ -68,9 +68,8 @@ from models.volunteer import (
     Volunteer,
     VolunteerSkill,
 )
-from routes.decorators import global_users_only
+from routes.decorators import admin_required, global_users_only
 from routes.utils import (
-    admin_required,
     get_email_addresses,
     get_phone_numbers,
     log_audit_action,

@@ -29,7 +29,7 @@ from models.organization import Organization, VolunteerOrganization
 from models.school_model import School
 from models.teacher import Teacher
 from models.volunteer import EventParticipation, Volunteer
-from routes.decorators import district_scoped_required
+from routes.decorators import admin_required, district_scoped_required
 from routes.reports.common import (
     generate_school_year_options,
     get_current_virtual_year,
@@ -37,7 +37,6 @@ from routes.reports.common import (
     get_virtual_year_dates,
     is_cache_valid,
 )
-from routes.utils import admin_required
 from routes.virtual.routes import virtual_bp
 
 from .cache import (

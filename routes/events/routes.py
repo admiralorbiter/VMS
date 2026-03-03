@@ -66,9 +66,8 @@ from models.student import Student
 from models.sync_log import SyncLog, SyncStatus
 from models.teacher import Teacher
 from models.volunteer import EventParticipation, Skill, Volunteer
-from routes.decorators import global_users_only
+from routes.decorators import admin_required, global_users_only
 from routes.utils import (
-    admin_required,
     log_audit_action,
     map_cancellation_reason,
     map_event_format,

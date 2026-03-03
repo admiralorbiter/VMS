@@ -17,7 +17,7 @@ from flask_login import login_required
 from werkzeug.security import generate_password_hash
 
 from models import Tenant, TenantRole, User, db
-from routes.tenants.routes import admin_required
+from routes.decorators import global_admin_required as admin_required
 
 tenant_users_bp = Blueprint("tenant_users", __name__, url_prefix="/management/tenants")
 
