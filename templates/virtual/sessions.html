@@ -71,7 +71,7 @@
         </div>
 
         <!-- Filters -->
-        <form method="GET"
+        <form id="sessionsFilterForm" method="GET"
             style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; flex: 1; justify-content: flex-end;">
             <input type="date" name="date_from" value="{{ filters.date_from }}"
                 style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: white;">
@@ -82,6 +82,13 @@
                 <option value="">All Districts</option>
                 {% for dist in districts %}
                 <option value="{{ dist }}" {% if filters.district==dist %}selected{% endif %}>{{ dist }}</option>
+                {% endfor %}
+            </select>
+            <select name="school"
+                style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: white; max-width: 200px;">
+                <option value="">All Schools</option>
+                {% for s in schools %}
+                <option value="{{ s.id }}" {% if filters.school==s.id %}selected{% endif %}>{{ s.name }}</option>
                 {% endfor %}
             </select>
             <select name="career_cluster"
@@ -99,9 +106,9 @@
                 <option value="Confirmed" {% if filters.status=='Confirmed' %}selected{% endif %}>Confirmed</option>
                 <option value="Cancelled" {% if filters.status=='Cancelled' %}selected{% endif %}>Cancelled</option>
             </select>
-            <input type="text" name="search" value="{{ filters.search }}" placeholder="Search all..."
-                title="Search title, cluster, district, school, educators, presenters"
-                style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; width: 130px; background: white;">
+            <input type="text" id="sessionsSearchInput" name="search" value="{{ filters.search }}" placeholder="Search title, educators, presenters..."
+                title="Search by Title, Educator(s), and Presenter(s)"
+                style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; width: 200px; background: white;">
             <button type="submit"
                 style="background: #3498db; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">
                 <i class="fas fa-filter"></i>
@@ -112,6 +119,23 @@
             </a>
         </form>
     </div>
+
+    <script>
+    (function () {
+        var form = document.getElementById('sessionsFilterForm');
+        var searchInput = document.getElementById('sessionsSearchInput');
+        if (!form || !searchInput) return;
+        var debounceMs = 450;
+        var debounceTimer = null;
+        searchInput.addEventListener('input', function () {
+            if (debounceTimer) clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function () {
+                debounceTimer = null;
+                form.submit();
+            }, debounceMs);
+        });
+    })();
+    </script>
 
     <!-- District Strip (Admin only) -->
     {% if current_user.is_admin and district_stats is defined and district_stats|length > 0 %}
@@ -156,15 +180,28 @@
         <table style="width: 100%; border-collapse: collapse; min-width: 1200px;">
             <thead>
                 <tr style="background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white;">
-                    <th style="padding: 12px 10px; text-align: left; font-weight: 600; white-space: nowrap;">Date</th>
-                    <th style="padding: 12px 10px; text-align: left; font-weight: 600;">Title</th>
-                    <th style="padding: 12px 10px; text-align: left; font-weight: 600;">District</th>
-                    <th style="padding: 12px 10px; text-align: left; font-weight: 600;">School</th>
-                    <th style="padding: 12px 10px; text-align: left; font-weight: 600;">Educator(s)</th>
-                    <th style="padding: 12px 10px; text-align: left; font-weight: 600;">Presenter(s)</th>
-                    <th style="padding: 12px 10px; text-align: left; font-weight: 600;">Cluster</th>
-                    <th style="padding: 12px 10px; text-align: center; font-weight: 600; width: 70px;">Students</th>
-                    <th style="padding: 12px 10px; text-align: center; font-weight: 600; width: 80px;">Status</th>
+                    {% set base_params = {'date_from': filters.date_from, 'date_to': filters.date_to, 'district': filters.district, 'school': filters.school, 'career_cluster': filters.career_cluster, 'status': filters.status, 'search': filters.search} %}
+                    {% macro sort_header(col_key, label, default_dir) %}
+                    {% set next_dir = ('asc' if filters.dir == 'desc' else 'desc') if filters.sort == col_key else default_dir %}
+                    <th style="padding: 12px 10px; text-align: left; font-weight: 600; {% if col_key == 'students' or col_key == 'status' %}text-align: center;{% endif %} {% if col_key == 'date' %}white-space: nowrap;{% endif %}">
+                        <a href="{{ url_for('virtual.virtual_sessions', sort=col_key, dir=next_dir, **base_params) }}"
+                            style="color: white; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; {% if col_key == 'students' or col_key == 'status' %}justify-content: center;{% endif %}">
+                            {{ label }}
+                            {% if filters.sort == col_key %}
+                                {% if filters.dir == 'desc' %}&darr;{% else %}&uarr;{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+                    {% endmacro %}
+                    {{ sort_header('date', 'Date', 'desc') }}
+                    {{ sort_header('title', 'Title', 'asc') }}
+                    {{ sort_header('district', 'District', 'asc') }}
+                    {{ sort_header('school', 'School', 'asc') }}
+                    {{ sort_header('educators', 'Educator(s)', 'asc') }}
+                    {{ sort_header('presenters', 'Presenter(s)', 'asc') }}
+                    {{ sort_header('cluster', 'Cluster', 'asc') }}
+                    {{ sort_header('students', 'Students', 'asc') }}
+                    {{ sort_header('status', 'Status', 'asc') }}
                     <th style="padding: 12px 10px; text-align: center; font-weight: 600; width: 70px;">Actions</th>
                 </tr>
             </thead>
