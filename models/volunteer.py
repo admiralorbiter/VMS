@@ -63,26 +63,11 @@ from models.contact import (
 )
 from models.history import History
 
-
-class ConnectorSubscriptionEnum(FormEnum):
-    """
-    Enum representing the subscription status of a connector.
-
-    Used to track whether a volunteer is actively participating in the connector program.
-    This is a specialized program within the volunteer system that has additional
-    requirements and tracking mechanisms.
-
-    Values:
-    - NONE: No subscription status (default)
-    - ACTIVE: Currently active in connector program
-    - INACTIVE: Previously active but currently inactive
-    - PENDING: Awaiting activation or approval
-    """
-
-    NONE = ""
-    ACTIVE = "Active"
-    INACTIVE = "Inactive"
-    PENDING = "Pending"
+# Enums extracted to volunteer_enums.py (TD-012)
+from models.volunteer_enums import (  # noqa: F401 — re-exported for backward compat
+    ConnectorSubscriptionEnum,
+    VolunteerStatus,
+)
 
 
 class ConnectorData(db.Model):

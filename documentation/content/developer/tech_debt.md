@@ -166,30 +166,27 @@ ADR G-002 accepted this tradeoff for simplicity, but as multi-tenant usage grows
 
 ---
 
-## TD-012: Oversized Model Files
+## ~~TD-012: Oversized Model Files~~ ✅ RESOLVED
 
 **Created:** 2026-03-01
+**Resolved:** 2026-03-03
 **Priority:** Medium
 **Category:** Maintainability / Code Organization
 
-### Description
+### Resolution
 
-Several model files exceed reasonable size thresholds:
+Extracted enums from 3 model files into dedicated modules:
 
-| File | Lines | Contents |
-|------|-------|----------|
-| `models/event.py` | 1,203 | 8 enums, 5 models, association tables, SF mapping |
-| `models/contact.py` | 763 | 10 enums, base Contact, Email, Phone models |
-| `models/volunteer.py` | 715 | ConnectorData, Volunteer + methods |
-| `models/reports.py` | 693 | 10+ report cache models |
+| Original File | Before | After | New Module | Enums |
+|---------------|-------:|------:|------------|:-----:|
+| `contact.py` | 763 | 566 | `contact_enums.py` (222 lines) | 10 + FormEnum |
+| `event.py` | 1,203 | 1,122 | `event_enums.py` (203 lines) | 5 |
+| `volunteer.py` | 676 | 660 | `volunteer_enums.py` (53 lines) | 2 |
 
-### Proposed Fix
+All original files re-export enums for backward compatibility — zero external import changes.
+`reports.py` excluded (no enums to extract). 1108/1110 tests pass (2 pre-existing failures unrelated).
 
-1. Extract enums to `models/enums/` or per-domain enum files
-2. Move cache models to `models/cache.py`
-3. Split `event.py` into `models/event.py` (core model) and `models/event_enums.py`
-
-**Risk:** Low — purely organizational, no logic changes.
+**Risk:** None — verified, no behavior changes.
 
 ---
 
@@ -487,7 +484,7 @@ Ordered by **what best unblocks future work** — structural improvements first,
 | ~~1~~ | ~~**TD-017**~~ | ~~Break up `usage.py`~~ ✅ | Resolved 2026-03-02. Extracted into 7 modules. |
 | ~~2~~ | ~~**TD-020**~~ | ~~Break up `virtual_session.py` + `pathful_import.py` + `district_year_end.py`~~ ✅ | Resolved 2026-03-03. All 3 files extracted into packages. |
 | ~~3~~ | ~~**TD-019**~~ | ~~Break up `management.py`~~ ✅ | Resolved 2026-03-03. Extracted into 5 modules. |
-| 4 | **TD-012** | Split oversized model files | Enums in their own files makes route extraction cleaner. |
+| ~~4~~ | ~~**TD-012**~~ | ~~Split oversized model files~~ ✅ | Resolved 2026-03-03. Enums extracted to 3 dedicated modules. |
 
 ### Phase 2: Standardize Patterns (Safer After Smaller Files)
 
