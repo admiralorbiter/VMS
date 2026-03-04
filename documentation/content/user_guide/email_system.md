@@ -116,6 +116,46 @@ When `FLASK_ENV != 'production'`:
 
 ---
 
+## Session Reminder Emails
+
+The email system includes a **Teacher Session Reminder** feature for sending personalized emails to teachers about upcoming virtual career sessions.
+
+### Template Seeding
+
+The `teacher_session_reminder` template is seeded via a script:
+
+```bash
+python scripts/daily_imports/test_email_templates.py
+```
+
+This creates (or updates) the template with KCKPS branding (navy/gold gradient, progress card, session table).
+
+### Sending Reminders (via Compose)
+
+1. Seed the template first (if not already done)
+2. Navigate to **Compose** (`/management/email/compose`)
+3. Select the **Teacher Session Reminder** template
+4. Enter the recipient email address manually
+5. Fill in the placeholder values (teacher name, building, session list, etc.)
+6. Use **Dry Run** to preview, then **Queue & Send** when ready
+
+> **Safety Note**: There is no batch send button. Reminders go one at a time via Compose. A future batch send feature will include canary sends, time delays, and confirmation gates.
+
+### Available Placeholders
+
+| Placeholder | Description |
+|-------------|-------------|
+| `teacher_name` | Teacher's full name |
+| `building_name` | School/building name |
+| `district_name` | District name (e.g., Kansas City Kansas Public Schools) |
+| `session_list` | Pre-rendered HTML table of upcoming sessions |
+| `session_list_text` | Plain text version of session list |
+| `completed_count` | Number of sessions the teacher has completed |
+| `target_sessions` | Target number of sessions for the school year |
+
+
+---
+
 ## Data Quality Integration
 
 Every message creation runs **quality checks**:

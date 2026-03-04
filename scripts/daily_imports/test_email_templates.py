@@ -422,6 +422,266 @@ def send_test_daily_import_email(recipient: str):
     print(f"[SUCCESS] Daily Import test email sent to {recipient}")
 
 
+def ensure_teacher_session_reminder_template():
+    """Create or update the teacher session reminder email template.
+
+    This template is used to remind KCKPS teachers about upcoming virtual
+    career sessions they need to complete. It includes personalized greeting,
+    building context, a formatted session table, and progress tracking.
+    """
+    template_key = "teacher_session_reminder"
+
+    subject = "Virtual Career Session Reminder - {{district_name}}"
+
+    html_body = """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 640px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #003366 0%, #004080 60%, #c8a415 100%); padding: 35px 30px; border-radius: 12px 12px 0 0; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px;">Virtual Career Session Reminder</h1>
+        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">{{district_name}}</p>
+    </div>
+
+    <!-- Body -->
+    <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none;">
+
+        <!-- Greeting -->
+        <p style="font-size: 16px; margin: 0 0 20px 0;">
+            Dear <strong>{{teacher_name}}</strong>,
+        </p>
+
+        <p style="margin: 0 0 20px 0; color: #555;">
+            This is a friendly reminder from <strong>{{district_name}}</strong> about completing your virtual career session(s) for this school year. Our goal is to connect students with real-world professionals through engaging virtual experiences.
+        </p>
+
+        <!-- Progress Card -->
+        <div style="background: #f0f4f8; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #003366;">
+            <h3 style="margin: 0 0 10px 0; font-size: 15px; color: #003366;">Your Progress</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 6px 0; color: #666;">Building</td>
+                    <td style="padding: 6px 0; text-align: right; font-weight: 600; color: #333;">{{building_name}}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 0; color: #666;">Sessions Completed</td>
+                    <td style="padding: 6px 0; text-align: right; font-weight: 600; color: #28a745;">{{completed_count}}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 0; color: #666;">Target Sessions</td>
+                    <td style="padding: 6px 0; text-align: right; font-weight: 600; color: #003366;">{{target_sessions}}</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Sessions Table -->
+        <h2 style="margin: 0 0 15px 0; font-size: 17px; color: #003366;">Upcoming Virtual Sessions</h2>
+        <p style="margin: 0 0 15px 0; color: #666; font-size: 14px;">
+            Below are the upcoming virtual career sessions available for your students:
+        </p>
+
+        <div style="overflow-x: auto;">
+            {{session_list}}
+        </div>
+
+        <!-- Call to Action -->
+        <div style="background: linear-gradient(135deg, #e8f0fe 0%, #f0f4f8 100%); padding: 20px; border-radius: 8px; margin-top: 25px; text-align: center;">
+            <p style="margin: 0 0 8px 0; font-size: 15px; color: #003366; font-weight: 600;">
+                Ready to sign up?
+            </p>
+            <p style="margin: 0; font-size: 14px; color: #555;">
+                Please coordinate with your building coordinator or visit the Pathful platform to register for an available session.
+            </p>
+        </div>
+
+        <!-- Support -->
+        <p style="margin: 25px 0 0 0; font-size: 13px; color: #888;">
+            If you have questions or need assistance, please contact your building coordinator or reply to this email.
+        </p>
+
+    </div>
+
+    <!-- Footer -->
+    <div style="background: #003366; padding: 20px; border-radius: 0 0 12px 12px; text-align: center;">
+        <p style="margin: 0; font-size: 12px; color: rgba(255,255,255,0.7);">
+            {{district_name}} &middot; Virtual Career Sessions Program
+        </p>
+        <p style="margin: 6px 0 0 0; font-size: 11px; color: rgba(255,255,255,0.5);">
+            This is an automated reminder from the VMS system.
+        </p>
+    </div>
+
+</body>
+</html>
+    """
+
+    text_body = """
+Virtual Career Session Reminder
+================================
+{{district_name}}
+
+Dear {{teacher_name}},
+
+This is a friendly reminder about completing your virtual career session(s)
+for this school year.
+
+Your Progress
+-------------
+Building: {{building_name}}
+Sessions Completed: {{completed_count}}
+Target Sessions: {{target_sessions}}
+
+Upcoming Virtual Sessions
+-------------------------
+{{session_list_text}}
+
+Please coordinate with your building coordinator or visit the Pathful
+platform to register for an available session.
+
+If you have questions or need assistance, please contact your building
+coordinator or reply to this email.
+
+---
+{{district_name}} - Virtual Career Sessions Program
+This is an automated reminder from the VMS system.
+    """
+
+    # Check if template exists
+    template = EmailTemplate.query.filter_by(purpose_key=template_key).first()
+
+    required_placeholders = [
+        "teacher_name",
+        "building_name",
+        "district_name",
+        "session_list",
+        "session_list_text",
+        "completed_count",
+        "target_sessions",
+    ]
+
+    if template:
+        # Update existing template
+        template.name = "Teacher Session Reminder"
+        template.subject_template = subject
+        template.html_template = html_body
+        template.text_template = text_body
+        template.description = (
+            "Reminder for teachers to sign up for virtual career sessions"
+        )
+        template.required_placeholders = required_placeholders
+        template.version = template.version + 1
+        template.is_active = True
+    else:
+        # Create new template
+        template = EmailTemplate(
+            purpose_key=template_key,
+            name="Teacher Session Reminder",
+            subject_template=subject,
+            html_template=html_body,
+            text_template=text_body,
+            description=(
+                "Reminder for teachers to sign up for virtual career sessions"
+            ),
+            required_placeholders=required_placeholders,
+            version=1,
+            is_active=True,
+        )
+        db.session.add(template)
+
+    db.session.commit()
+    db.session.refresh(template)
+    return template
+
+
+def send_test_teacher_reminder_email(recipient: str):
+    """Send a test teacher session reminder email with sample data."""
+    print("\n=== Sending Test Teacher Session Reminder Email ===")
+
+    template = ensure_teacher_session_reminder_template()
+
+    # Sample session list HTML (mimics what email_reminders.py will produce)
+    session_list_html = """
+    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <thead>
+            <tr style="background-color: #003366;">
+                <th style="padding: 10px 8px; text-align: left; color: white; border-bottom: 2px solid #c8a415;">Date</th>
+                <th style="padding: 10px 8px; text-align: left; color: white; border-bottom: 2px solid #c8a415;">Time</th>
+                <th style="padding: 10px 8px; text-align: left; color: white; border-bottom: 2px solid #c8a415;">Title</th>
+                <th style="padding: 10px 8px; text-align: left; color: white; border-bottom: 2px solid #c8a415;">Career Cluster</th>
+                <th style="padding: 10px 8px; text-align: center; color: white; border-bottom: 2px solid #c8a415;">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #eee;">Mar 15, 2026</td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #eee;">10:00 AM</td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #eee;">Healthcare Careers Exploration</td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #eee;">Health Sciences</td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #eee; text-align: center;">
+                    <span style="background: #d4edda; color: #155724; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">Confirmed</span>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #eee;">Mar 22, 2026</td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #eee;">1:30 PM</td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #eee;">Engineering & Technology Panel</td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #eee;">STEM</td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #eee; text-align: center;">
+                    <span style="background: #fff3cd; color: #856404; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">Requested</span>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #eee;">Apr 5, 2026</td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #eee;">9:00 AM</td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #eee;">Business & Finance Industry Chat</td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #eee;">Business Management</td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #eee; text-align: center;">
+                    <span style="background: #d4edda; color: #155724; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;">Confirmed</span>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    """
+
+    session_list_text = (
+        "- Mar 15, 2026 10:00 AM | Healthcare Careers Exploration | "
+        "Health Sciences | Confirmed\n"
+        "- Mar 22, 2026  1:30 PM | Engineering & Technology Panel | "
+        "STEM | Requested\n"
+        "- Apr 5, 2026   9:00 AM | Business & Finance Industry Chat | "
+        "Business Management | Confirmed\n"
+    )
+
+    context = {
+        "teacher_name": "Tahra Arnold",
+        "building_name": "Banneker Elementary",
+        "district_name": "Kansas City Kansas Public Schools",
+        "session_list": session_list_html,
+        "session_list_text": session_list_text,
+        "completed_count": 0,
+        "target_sessions": 1,
+    }
+
+    admin = User.query.filter_by(username="admin").first()
+    sender_id = admin.id if admin else 1
+
+    message = create_email_message(
+        template=template,
+        recipients=[recipient],
+        context=context,
+        created_by_id=sender_id,
+    )
+
+    db.session.commit()
+    create_delivery_attempt(message)
+    print(f"[SUCCESS] Teacher Session Reminder test email sent to {recipient}")
+
+
 def main():
     """Main entry point."""
     print("=" * 60)
@@ -442,12 +702,13 @@ def main():
         )
 
         try:
-            # Send both test emails
+            # Send all test emails
             send_test_virtual_import_email(recipient)
             send_test_daily_import_email(recipient)
+            send_test_teacher_reminder_email(recipient)
 
             print("\n" + "=" * 60)
-            print("[SUCCESS] Both test emails sent!")
+            print("[SUCCESS] All test emails sent!")
             print("Check your inbox to preview the email styles.")
             print("=" * 60)
             return 0
