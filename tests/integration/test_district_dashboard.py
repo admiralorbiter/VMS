@@ -333,3 +333,152 @@ def test_school_drilldown_tc011(app, dashboard_data):
         assert "Evan Teacher" in school_b_teachers
         assert "Nora Teacher" in school_b_teachers
         assert len(school_b_data["teachers"]) == 2
+
+
+def test_compute_teacher_progress_filters_by_attendance(app):
+    """
+    Verify compute_teacher_progress only counts EventTeacher records with
+    status='attended' (not 'registered' or 'no_show') as completed sessions.
+    """
+    from models.teacher_progress import TeacherProgress
+    from models.tenant import Tenant
+    from routes.district.tenant_teacher_usage import compute_teacher_progress
+
+    with app.app_context():
+        # Setup: district, tenant, school, teachers
+        d = District(name="Attendance Test District")
+        db.session.add(d)
+        db.session.commit()
+
+        tenant = Tenant(name="Attendance Tenant", district_id=d.id, slug="attendance-tenant")
+        db.session.add(tenant)
+        db.session.commit()
+
+        s = School(id="ATT_SCHOOL_01", name="Attendance School", district_id=d.id)
+        db.session.add(s)
+        db.session.commit()
+
+        # Three teachers
+        t_attended = Teacher(
+            first_name="Attended", last_name="Teacher", school_id=s.id
+        )
+        t_registered = Teacher(
+            first_name="Registered", last_name="Teacher", school_id=s.id
+        )
+        t_noshow = Teacher(
+            first_name="NoShow", last_name="Teacher", school_id=s.id
+        )
+        db.session.add_all([t_attended, t_registered, t_noshow])
+        db.session.commit()
+
+        # TeacherProgress entries linked to tenant
+        tp_attended = TeacherProgress(
+            academic_year="2025-2026",
+            virtual_year="2025-2026",
+            building=s.name,
+            name="Attended Teacher",
+            email="attended@test.com",
+            teacher_id=t_attended.id,
+            target_sessions=1,
+        )
+        tp_attended.tenant_id = tenant.id
+        tp_attended.is_active = True
+
+        tp_registered = TeacherProgress(
+            academic_year="2025-2026",
+            virtual_year="2025-2026",
+            building=s.name,
+            name="Registered Teacher",
+            email="registered@test.com",
+            teacher_id=t_registered.id,
+            target_sessions=1,
+        )
+        tp_registered.tenant_id = tenant.id
+        tp_registered.is_active = True
+
+        tp_noshow = TeacherProgress(
+            academic_year="2025-2026",
+            virtual_year="2025-2026",
+            building=s.name,
+            name="NoShow Teacher",
+            email="noshow@test.com",
+            teacher_id=t_noshow.id,
+            target_sessions=1,
+        )
+        tp_noshow.tenant_id = tenant.id
+        tp_noshow.is_active = True
+        db.session.add_all([tp_attended, tp_registered, tp_noshow])
+        db.session.commit()
+
+        # One completed event linked to all three teachers with different statuses
+        from models.event import EventFormat
+
+        e = Event(
+            title="Attendance Filter Test",
+            type=EventType.VIRTUAL_SESSION,
+            status=EventStatus.COMPLETED,
+            format=EventFormat.VIRTUAL,
+            start_date=datetime.now() - timedelta(days=3),
+            districts=[d],
+            district_partner=d.name,
+        )
+        db.session.add(e)
+        db.session.commit()
+
+        # Link teachers with different statuses
+        db.session.add(
+            EventTeacher(
+                event_id=e.id, teacher_id=t_attended.id, status="attended"
+            )
+        )
+        db.session.add(
+            EventTeacher(
+                event_id=e.id, teacher_id=t_registered.id, status="registered"
+            )
+        )
+        db.session.add(
+            EventTeacher(
+                event_id=e.id, teacher_id=t_noshow.id, status="no_show"
+            )
+        )
+        db.session.commit()
+
+        # Call compute_teacher_progress
+        result = compute_teacher_progress(tenant.id, "2025-2026")
+
+        # Flatten all teachers from the result
+        all_teachers = []
+        for building_data in result.values():
+            all_teachers.extend(building_data.get("teachers", []))
+
+        # Find each teacher's completed count
+        attended_info = next(
+            (t for t in all_teachers if t["name"] == "Attended Teacher"), None
+        )
+        registered_info = next(
+            (t for t in all_teachers if t["name"] == "Registered Teacher"), None
+        )
+        noshow_info = next(
+            (t for t in all_teachers if t["name"] == "NoShow Teacher"), None
+        )
+
+        # Only "Attended Teacher" should have completed_sessions = 1
+        assert attended_info is not None
+        assert attended_info["completed_sessions"] == 1, (
+            f"Teacher with status='attended' should have 1 completed session, "
+            f"got {attended_info['completed_sessions']}"
+        )
+
+        # "Registered Teacher" should have 0 completed sessions
+        assert registered_info is not None
+        assert registered_info["completed_sessions"] == 0, (
+            f"Teacher with status='registered' should have 0 completed sessions, "
+            f"got {registered_info['completed_sessions']}"
+        )
+
+        # "NoShow Teacher" should have 0 completed sessions
+        assert noshow_info is not None
+        assert noshow_info["completed_sessions"] == 0, (
+            f"Teacher with status='no_show' should have 0 completed sessions, "
+            f"got {noshow_info['completed_sessions']}"
+        )

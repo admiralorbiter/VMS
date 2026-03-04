@@ -12,6 +12,8 @@ from sqlalchemy import func
 from models import db
 from models.school_model import School
 
+from models.event import EventStatus
+
 from .matching import (
     match_or_create_event,
     match_teacher,
@@ -178,15 +180,49 @@ def process_session_report_row(
                         if caches and norm_key:
                             caches["teacher_record_by_name"][norm_key] = teacher_record
 
-            # Create EventTeacher only if it doesn't already exist (cache-first)
+                    # Backfill teacher_id onto TeacherProgress so future
+                    # counting can use the EventTeacher FK path (prevents drift)
+                    if teacher_id_to_link and teacher_progress and not teacher_progress.teacher_id:
+                        teacher_progress.teacher_id = teacher_id_to_link
+
+            # Derive teacher attendance status from the row's event status
+            mapped_event_status = EventStatus.map_status(status)
+            if mapped_event_status == EventStatus.COMPLETED:
+                et_status = "attended"
+            elif mapped_event_status in (
+                EventStatus.CANCELLED,
+                EventStatus.NO_SHOW,
+            ):
+                et_status = "no_show"
+            else:
+                et_status = "registered"
+
+            # Create or update EventTeacher (cache-first)
             if teacher_id_to_link:
                 et_key = (event.id, teacher_id_to_link)
                 et_set = caches["event_teacher_set"] if caches else set()
                 if et_key not in et_set:
-                    et = _ET(event_id=event.id, teacher_id=teacher_id_to_link)
+                    et = _ET(
+                        event_id=event.id,
+                        teacher_id=teacher_id_to_link,
+                        status=et_status,
+                    )
                     db.session.add(et)
                     if caches:
                         caches["event_teacher_set"].add(et_key)
+                else:
+                    # Update existing EventTeacher status if it progressed
+                    # (e.g., re-import where session went from Draft→Completed)
+                    if et_status in ("attended", "no_show"):
+                        existing_et = _ET.query.filter_by(
+                            event_id=event.id, teacher_id=teacher_id_to_link
+                        ).first()
+                        if existing_et and existing_et.status in (
+                            "registered",
+                            None,
+                            "",
+                        ):
+                            existing_et.status = et_status
 
             # Text cache (Event.educators) is regenerated post-import
             # by sync_event_participant_fields — no manual accumulation needed

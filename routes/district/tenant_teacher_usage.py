@@ -141,6 +141,7 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
             EventTeacher.teacher_id.in_(teacher_id_to_tp.keys()),
             Event.type == EventType.VIRTUAL_SESSION,
             Event.status == EventStatus.COMPLETED,
+            EventTeacher.status.in_(["attended", "completed"]),
         )
         if district_names:
             et_query = et_query.filter(Event.district_partner.in_(district_names))

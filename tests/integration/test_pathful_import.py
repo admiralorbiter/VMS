@@ -566,6 +566,214 @@ def test_status_mapping_draft(client, pathful_admin_login, app):
         assert event.status == EventStatus.DRAFT
 
 
+# --- EventTeacher Attendance Status Tests ---
+
+
+def test_import_completed_sets_event_teacher_attended(client, pathful_admin_login, app):
+    """Verify Completed import sets EventTeacher.status to 'attended'."""
+    from models.event import EventTeacher
+
+    df = pd.DataFrame(
+        [
+            {
+                "Session ID": "sess-et-attended-001",
+                "Title": "ET Attended Session",
+                "Date": "2026-03-15 10:00:00",
+                "Status": "Completed",
+                "Duration": 60,
+                "User Auth Id": "user-et-attend-1",
+                "Name": "Attend Teacher",
+                "SignUp Role": "Educator",
+                "School": "Attend School",
+                "District or Company": "Attend District",
+                "Partner": "PREP-KC",
+                "Registered Student Count": 20,
+                "Attended Student Count": 18,
+                "Career Cluster": "Science",
+            }
+        ]
+    )
+
+    output = io.BytesIO()
+    df.to_excel(output, index=False, engine="openpyxl")
+    output.seek(0)
+
+    client.post(
+        "/virtual/pathful/import",
+        headers=pathful_admin_login,
+        data={
+            "file": (output, "et_attended.xlsx"),
+            "report_type": "session_report",
+        },
+        content_type="multipart/form-data",
+    )
+
+    with app.app_context():
+        event = Event.query.filter_by(
+            pathful_session_id="sess-et-attended-001"
+        ).first()
+        assert event is not None
+
+        # Find EventTeacher record for this event
+        et = EventTeacher.query.filter_by(event_id=event.id).first()
+        assert et is not None, "EventTeacher should have been created"
+        assert et.status == "attended", (
+            f"EventTeacher.status should be 'attended' for Completed session, "
+            f"got '{et.status}'"
+        )
+
+
+def test_import_draft_sets_event_teacher_registered(client, pathful_admin_login, app):
+    """Verify Draft import sets EventTeacher.status to 'registered'."""
+    from models.event import EventTeacher
+
+    df = pd.DataFrame(
+        [
+            {
+                "Session ID": "sess-et-draft-001",
+                "Title": "ET Draft Session",
+                "Date": "2026-04-15 10:00:00",
+                "Status": "Draft",
+                "Duration": 45,
+                "User Auth Id": "user-et-draft-1",
+                "Name": "Draft Teacher Two",
+                "SignUp Role": "Educator",
+                "School": "Draft School",
+                "District or Company": "Draft District",
+                "Partner": "PREP-KC",
+                "Registered Student Count": 0,
+                "Attended Student Count": 0,
+                "Career Cluster": "Engineering",
+            }
+        ]
+    )
+
+    output = io.BytesIO()
+    df.to_excel(output, index=False, engine="openpyxl")
+    output.seek(0)
+
+    client.post(
+        "/virtual/pathful/import",
+        headers=pathful_admin_login,
+        data={
+            "file": (output, "et_draft.xlsx"),
+            "report_type": "session_report",
+        },
+        content_type="multipart/form-data",
+    )
+
+    with app.app_context():
+        event = Event.query.filter_by(pathful_session_id="sess-et-draft-001").first()
+        assert event is not None
+
+        et = EventTeacher.query.filter_by(event_id=event.id).first()
+        assert et is not None, "EventTeacher should have been created"
+        assert et.status == "registered", (
+            f"EventTeacher.status should be 'registered' for Draft session, "
+            f"got '{et.status}'"
+        )
+
+
+def test_reimport_updates_event_teacher_status(client, pathful_admin_login, app):
+    """Verify re-importing with status progression updates EventTeacher.status."""
+    from models.event import EventTeacher
+
+    # First import: Draft session
+    df_draft = pd.DataFrame(
+        [
+            {
+                "Session ID": "sess-et-reimport-001",
+                "Title": "ET Reimport Session",
+                "Date": "2026-05-01 10:00:00",
+                "Status": "Draft",
+                "Duration": 60,
+                "User Auth Id": "user-et-reimport-1",
+                "Name": "Reimport Teacher",
+                "SignUp Role": "Educator",
+                "School": "Reimport School",
+                "District or Company": "Reimport District",
+                "Partner": "PREP-KC",
+                "Registered Student Count": 0,
+                "Attended Student Count": 0,
+                "Career Cluster": "Technology",
+            }
+        ]
+    )
+
+    output1 = io.BytesIO()
+    df_draft.to_excel(output1, index=False, engine="openpyxl")
+    output1.seek(0)
+
+    client.post(
+        "/virtual/pathful/import",
+        headers=pathful_admin_login,
+        data={
+            "file": (output1, "reimport_draft.xlsx"),
+            "report_type": "session_report",
+        },
+        content_type="multipart/form-data",
+    )
+
+    with app.app_context():
+        event = Event.query.filter_by(
+            pathful_session_id="sess-et-reimport-001"
+        ).first()
+        assert event is not None
+        et = EventTeacher.query.filter_by(event_id=event.id).first()
+        assert et is not None
+        assert et.status == "registered", "Should start as 'registered'"
+
+    # Second import: same session, now Completed
+    df_completed = pd.DataFrame(
+        [
+            {
+                "Session ID": "sess-et-reimport-001",
+                "Title": "ET Reimport Session",
+                "Date": "2026-05-01 10:00:00",
+                "Status": "Completed",
+                "Duration": 60,
+                "User Auth Id": "user-et-reimport-1",
+                "Name": "Reimport Teacher",
+                "SignUp Role": "Educator",
+                "School": "Reimport School",
+                "District or Company": "Reimport District",
+                "Partner": "PREP-KC",
+                "Registered Student Count": 25,
+                "Attended Student Count": 22,
+                "Career Cluster": "Technology",
+            }
+        ]
+    )
+
+    output2 = io.BytesIO()
+    df_completed.to_excel(output2, index=False, engine="openpyxl")
+    output2.seek(0)
+
+    client.post(
+        "/virtual/pathful/import",
+        headers=pathful_admin_login,
+        data={
+            "file": (output2, "reimport_completed.xlsx"),
+            "report_type": "session_report",
+        },
+        content_type="multipart/form-data",
+    )
+
+    with app.app_context():
+        event = Event.query.filter_by(
+            pathful_session_id="sess-et-reimport-001"
+        ).first()
+        assert event is not None
+        assert event.status == EventStatus.COMPLETED, "Event status should be Completed"
+
+        et = EventTeacher.query.filter_by(event_id=event.id).first()
+        assert et is not None
+        assert et.status == "attended", (
+            f"EventTeacher.status should be updated to 'attended' after re-import, "
+            f"got '{et.status}'"
+        )
+
+
 # --- Import Log Tests ---
 
 

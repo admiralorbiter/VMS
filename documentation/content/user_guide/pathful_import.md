@@ -122,6 +122,16 @@ The Session Report is the primary import—it creates sessions and tracks partic
 - Teacher names (matched to TeacherProgress)
 - Presenter names (matched to Volunteer)
 - Student attendance counts
+- **Teacher attendance status** — derived from the CSV's `Status` column:
+
+| CSV Status | EventTeacher.status | Counted as Completed? |
+|------------|--------------------|-----------------------|
+| Completed | `attended` | Yes |
+| Cancelled / No Show | `no_show` | No |
+| Draft / other | `registered` | No |
+
+> [!IMPORTANT]
+> On re-import, attendance status is updated if it has progressed (e.g., `registered` → `attended`). The import also **auto-links** TeacherProgress records to Teacher records when a match is found, resolving any missing `teacher_id` links.
 
 > [!TIP]
 > Imports are **idempotent**—you can safely re-import the same file without duplicating data.
@@ -255,4 +265,4 @@ When a User Profile's `pathful_user_id` matches an existing TeacherProgress reco
 
 ---
 
-*Last updated: January 30, 2026*
+*Last updated: March 3, 2026*
