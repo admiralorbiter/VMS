@@ -140,15 +140,16 @@
 ## Session Reminders
 
 > [!NOTE]
-> The session reminder feature sends personalized emails to teachers about upcoming virtual career sessions.
+> The session reminder feature sends personalized emails to teachers about upcoming virtual career sessions using a multi-gate safety system.
 
 | ID | Requirement | Test Coverage | Related Stories |
 |----|-------------|---------------|-----------------|
 | <a id="fr-email-890"></a>**FR-EMAIL-890** | The system shall provide a seeded `teacher_session_reminder` email template with personalized placeholders for teacher name, building, district branding, session list, and progress tracking. | `test_email_reminders.py` | *Technical* |
-| <a id="fr-email-891"></a>**FR-EMAIL-891** | The admin panel shall provide a **Send Session Reminders** action at `/management/email/send-reminders` that sends personalized reminder emails to all active teachers in `TeacherProgress`. | `test_email_reminders.py` | *Technical* |
-| <a id="fr-email-892"></a>**FR-EMAIL-892** | The send reminders action shall query upcoming virtual sessions (`EventType.VIRTUAL_SESSION`) with active statuses (`Confirmed`, `Published`, `Requested`) and future start dates. | `test_email_reminders.py` | *Technical* |
-| <a id="fr-email-893"></a>**FR-EMAIL-893** | The send reminders action shall support **dry-run mode** for testing without actual delivery. | `test_email_reminders.py` | *Technical* |
-| <a id="fr-email-894"></a>**FR-EMAIL-894** | The send reminders action shall be **audit-logged** with sent/skipped/error counts. | Code review | *Technical* |
+| <a id="fr-email-891"></a>**FR-EMAIL-891** | The admin panel shall provide a **Batch Send** workflow at `/management/email/batch/new` with 5 safety gates (create, canary, cooldown, confirmation code, execute). | `test_email_reminders.py` | *Technical* |
+| <a id="fr-email-892"></a>**FR-EMAIL-892** | The batch send shall query upcoming virtual sessions (`EventType.VIRTUAL_SESSION`) with active statuses and future start dates. | `test_email_reminders.py` | *Technical* |
+| <a id="fr-email-893"></a>**FR-EMAIL-893** | The batch send shall send a **canary email** to `DAILY_IMPORT_RECIPIENT` before any batch delivery, then enforce a configurable cooldown (default 10 minutes) with auto-cancel on timeout. | Code review | *Technical* |
+| <a id="fr-email-894"></a>**FR-EMAIL-894** | The batch send shall require a **6-digit confirmation code** entry to proceed past the canary stage. | Code review | *Technical* |
+| <a id="fr-email-895"></a>**FR-EMAIL-895** | All batch send actions shall be **audit-logged** with sent/skipped/error counts and state transitions. | Code review | *Technical* |
 
 ---
 

@@ -130,16 +130,27 @@ python scripts/daily_imports/test_email_templates.py
 
 This creates (or updates) the template with KCKPS branding (navy/gold gradient, progress card, session table).
 
-### Sending Reminders (via Compose)
+### Sending Reminders (Single)
 
-1. Seed the template first (if not already done)
-2. Navigate to **Compose** (`/management/email/compose`)
-3. Select the **Teacher Session Reminder** template
-4. Enter the recipient email address manually
-5. Fill in the placeholder values (teacher name, building, session list, etc.)
-6. Use **Dry Run** to preview, then **Queue & Send** when ready
+For one-off sends, use the **Compose** page:
 
-> **Safety Note**: There is no batch send button. Reminders go one at a time via Compose. A future batch send feature will include canary sends, time delays, and confirmation gates.
+1. Navigate to **Compose** (`/management/email/compose`)
+2. Select the **Teacher Session Reminder** template
+3. Enter the recipient + fill placeholders manually
+
+### Sending Reminders (Batch — 5-Gate Safety)
+
+For sending to all teachers, use the **Batch Send** system (`/management/email/batch/new`):
+
+| Gate | Action | Safety |
+|------|--------|--------|
+| **1. Create** | Configure batch job | No emails sent — preview only |
+| **2. Review** | Click "Send Canary" | Explicit action required |
+| **3. Canary** | ONE email to `DAILY_IMPORT_RECIPIENT` | Visual verification |
+| **4. Cooldown** | 10 min countdown starts | Auto-cancels if you walk away |
+| **5. Confirm** | Type 6-digit code | Prevents accidental clicks |
+
+> **Dead Man's Switch**: If you don't confirm within the cooldown period, the batch job **auto-cancels**. Inaction = zero emails sent.
 
 ### Available Placeholders
 

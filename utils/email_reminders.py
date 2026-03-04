@@ -15,11 +15,14 @@ Key Functions:
 """
 
 import logging
-from datetime import datetime, timezone
+import os
+import secrets
+import string
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Tuple
 
 from models import db
-from models.email import EmailTemplate
+from models.email import BatchEmailJob, BatchEmailJobStatus, EmailTemplate
 from models.event import Event, EventStatus, EventType
 from models.teacher_progress import TeacherProgress
 from utils.email import create_delivery_attempt, create_email_message
@@ -374,3 +377,363 @@ def send_session_reminders(
     )
 
     return result
+
+
+# =============================================================================
+# Batch Email Job Functions (5-Gate Safety System)
+# =============================================================================
+
+
+def generate_confirmation_code(length: int = 6) -> str:
+    """Generate a random alphanumeric confirmation code.
+
+    Uses uppercase letters and digits, excluding ambiguous characters
+    (O, 0, I, 1, L) for readability.
+    """
+    alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+    return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
+def get_canary_email() -> str:
+    """Get the canary email address from environment config.
+
+    Falls back to MAIL_FROM if DAILY_IMPORT_RECIPIENT is not set.
+    """
+    return os.environ.get(
+        "DAILY_IMPORT_RECIPIENT",
+        os.environ.get("MAIL_FROM", ""),
+    )
+
+
+def get_active_teachers(
+    tenant_id: Optional[int] = None,
+) -> List[TeacherProgress]:
+    """Get active teachers with email addresses."""
+    query = TeacherProgress.query.filter_by(is_active=True)
+    if tenant_id is not None:
+        query = query.filter_by(tenant_id=tenant_id)
+    return [t for t in query.all() if t.email]
+
+
+def create_batch_job(
+    template_id: int,
+    created_by_id: int,
+    district_name: str = DEFAULT_DISTRICT_NAME,
+    canary_email: Optional[str] = None,
+    cooldown_minutes: int = 10,
+    tenant_id: Optional[int] = None,
+) -> BatchEmailJob:
+    """
+    Create a new batch email job in DRAFT state.
+
+    Gate 1: Job is created with a preview — no emails sent yet.
+    Counts recipients and generates a confirmation code.
+
+    Args:
+        template_id: ID of the email template to use
+        created_by_id: User ID of the admin creating the job
+        district_name: District name for email branding
+        canary_email: Override canary address (defaults to DAILY_IMPORT_RECIPIENT)
+        cooldown_minutes: Minutes before auto-cancel after canary send
+        tenant_id: Optional tenant ID to scope recipients
+
+    Returns:
+        The created BatchEmailJob in DRAFT status
+    """
+    if not canary_email:
+        canary_email = get_canary_email()
+
+    if not canary_email:
+        raise ValueError(
+            "No canary email configured. Set DAILY_IMPORT_RECIPIENT in .env."
+        )
+
+    # Count eligible recipients
+    teachers = get_active_teachers(tenant_id=tenant_id)
+
+    job = BatchEmailJob(
+        template_id=template_id,
+        status=BatchEmailJobStatus.DRAFT,
+        confirmation_code=generate_confirmation_code(),
+        canary_email=canary_email,
+        cooldown_minutes=cooldown_minutes,
+        district_name=district_name,
+        tenant_id=tenant_id,
+        total_recipients=len(teachers),
+        created_by_id=created_by_id,
+    )
+    db.session.add(job)
+    db.session.commit()
+
+    logger.info(
+        "Batch job %s created: %s recipients, canary → %s",
+        job.id,
+        job.total_recipients,
+        job.canary_email,
+    )
+    return job
+
+
+def send_canary_email(job: BatchEmailJob) -> bool:
+    """
+    Send ONE canary email and start the cooldown timer.
+
+    Gate 3: Sends a single email to the canary address for visual verification.
+    Sets the cooldown deadline (auto-cancel after N minutes).
+
+    Args:
+        job: BatchEmailJob in DRAFT status
+
+    Returns:
+        True if canary was sent successfully
+    """
+    if job.status != BatchEmailJobStatus.DRAFT:
+        raise ValueError(
+            f"Cannot send canary: job is {BatchEmailJobStatus(job.status).name}, "
+            f"expected DRAFT"
+        )
+
+    template = EmailTemplate.query.get(job.template_id)
+    if not template:
+        raise ValueError("Template not found")
+
+    # Get sessions for the canary preview
+    sessions = get_upcoming_virtual_sessions(tenant_id=job.tenant_id)
+
+    # Build a sample context using mock teacher data for the canary
+    context = {
+        "teacher_name": "[CANARY TEST] Sample Teacher",
+        "building_name": "Sample Building",
+        "district_name": job.district_name,
+        "session_list": build_session_list_html(sessions),
+        "session_list_text": build_session_list_text(sessions),
+        "completed_count": 0,
+        "target_sessions": 1,
+    }
+
+    # Create and send canary email
+    message = create_email_message(
+        template=template,
+        recipients=[job.canary_email],
+        context=context,
+        created_by_id=job.created_by_id,
+    )
+    db.session.commit()
+    create_delivery_attempt(message)
+
+    # Update job state — start the timer
+    now = datetime.now(timezone.utc)
+    job.status = BatchEmailJobStatus.CANARY_SENT
+    job.canary_sent_at = now
+    job.expires_at = now + timedelta(minutes=job.cooldown_minutes)
+    db.session.commit()
+
+    logger.info(
+        "Batch job %s: canary sent to %s, expires at %s",
+        job.id,
+        job.canary_email,
+        job.expires_at.isoformat(),
+    )
+    return True
+
+
+def check_and_cancel_expired(job: BatchEmailJob) -> bool:
+    """
+    Check if a batch job has expired and auto-cancel it.
+
+    Gate 4 (Dead Man's Switch): If the cooldown timer has passed without
+    confirmation, the job is auto-cancelled. Inaction = cancellation.
+
+    Args:
+        job: BatchEmailJob to check
+
+    Returns:
+        True if the job was auto-cancelled, False otherwise
+    """
+    if job.status != BatchEmailJobStatus.CANARY_SENT:
+        return False
+
+    if not job.is_expired:
+        return False
+
+    job.status = BatchEmailJobStatus.CANCELLED
+    job.cancelled_at = datetime.now(timezone.utc)
+    job.cancel_reason = "timeout"
+    db.session.commit()
+
+    logger.info(
+        "Batch job %s auto-cancelled: cooldown expired at %s",
+        job.id,
+        job.expires_at.isoformat(),
+    )
+    return True
+
+
+def confirm_batch_job(job: BatchEmailJob, code: str) -> bool:
+    """
+    Validate the confirmation code and mark job as confirmed.
+
+    Gate 5: Admin must enter the exact confirmation code to proceed.
+    Also checks that the job hasn't expired.
+
+    Args:
+        job: BatchEmailJob in CANARY_SENT status
+        code: Confirmation code entered by the admin
+
+    Returns:
+        True if confirmed successfully
+
+    Raises:
+        ValueError: If code is wrong, job expired, or wrong status
+    """
+    # Check expiry first (dead man's switch)
+    if check_and_cancel_expired(job):
+        raise ValueError(
+            "Batch job has expired and was auto-cancelled. "
+            "Create a new batch job to try again."
+        )
+
+    if job.status != BatchEmailJobStatus.CANARY_SENT:
+        raise ValueError(
+            f"Cannot confirm: job is {BatchEmailJobStatus(job.status).name}, "
+            f"expected CANARY_SENT"
+        )
+
+    # Validate confirmation code (case-insensitive)
+    if code.upper().strip() != job.confirmation_code.upper():
+        logger.warning("Batch job %s: wrong confirmation code entered", job.id)
+        raise ValueError("Incorrect confirmation code. Please try again.")
+
+    job.status = BatchEmailJobStatus.CONFIRMED
+    job.confirmed_at = datetime.now(timezone.utc)
+    db.session.commit()
+
+    logger.info("Batch job %s confirmed, ready to send", job.id)
+    return True
+
+
+def execute_batch_send(job: BatchEmailJob) -> Dict:
+    """
+    Execute the batch send for a confirmed job.
+
+    Iterates through all active teachers and sends personalized reminder
+    emails. Updates progress counters as it goes.
+
+    Args:
+        job: BatchEmailJob in CONFIRMED status
+
+    Returns:
+        Summary dict with final counts
+    """
+    if job.status != BatchEmailJobStatus.CONFIRMED:
+        raise ValueError(
+            f"Cannot execute: job is {BatchEmailJobStatus(job.status).name}, "
+            f"expected CONFIRMED"
+        )
+
+    template = EmailTemplate.query.get(job.template_id)
+    if not template:
+        raise ValueError("Template not found")
+
+    sessions = get_upcoming_virtual_sessions(tenant_id=job.tenant_id)
+    teachers = get_active_teachers(tenant_id=job.tenant_id)
+
+    logger.info(
+        "Batch job %s: starting send to %s teachers",
+        job.id,
+        len(teachers),
+    )
+
+    for teacher in teachers:
+        # Check if job was cancelled mid-send
+        db.session.refresh(job)
+        if job.status == BatchEmailJobStatus.CANCELLED:
+            logger.info("Batch job %s cancelled mid-send", job.id)
+            break
+
+        try:
+            completed = get_completed_session_count(teacher)
+            context = build_teacher_reminder_context(
+                teacher=teacher,
+                sessions=sessions,
+                completed_count=completed,
+                district_name=job.district_name,
+            )
+
+            message = create_email_message(
+                template=template,
+                recipients=[teacher.email],
+                context=context,
+                created_by_id=job.created_by_id,
+            )
+            db.session.commit()
+            create_delivery_attempt(message)
+
+            job.sent_count += 1
+            db.session.commit()
+
+            logger.info(
+                "Batch job %s: sent %s/%s (%s)",
+                job.id,
+                job.sent_count,
+                job.total_recipients,
+                teacher.email,
+            )
+
+        except Exception as e:
+            job.error_count += 1
+            db.session.commit()
+            logger.error(
+                "Batch job %s: error for %s: %s",
+                job.id,
+                teacher.email,
+                e,
+            )
+
+    # Mark completed (unless cancelled mid-send)
+    db.session.refresh(job)
+    if job.status == BatchEmailJobStatus.CONFIRMED:
+        job.status = BatchEmailJobStatus.COMPLETED
+        job.completed_at = datetime.now(timezone.utc)
+        db.session.commit()
+
+    logger.info(
+        "Batch job %s finished: sent=%s, skipped=%s, errors=%s",
+        job.id,
+        job.sent_count,
+        job.skipped_count,
+        job.error_count,
+    )
+
+    return {
+        "sent_count": job.sent_count,
+        "skipped_count": job.skipped_count,
+        "error_count": job.error_count,
+        "status": BatchEmailJobStatus(job.status).name,
+    }
+
+
+def cancel_batch_job(job: BatchEmailJob, reason: str = "manual") -> bool:
+    """
+    Cancel a batch job at any stage before completion.
+
+    Args:
+        job: BatchEmailJob to cancel
+        reason: Cancel reason ("manual", "timeout", "error")
+
+    Returns:
+        True if cancelled successfully
+    """
+    if job.status in (
+        BatchEmailJobStatus.COMPLETED,
+        BatchEmailJobStatus.CANCELLED,
+    ):
+        return False
+
+    job.status = BatchEmailJobStatus.CANCELLED
+    job.cancelled_at = datetime.now(timezone.utc)
+    job.cancel_reason = reason
+    db.session.commit()
+
+    logger.info("Batch job %s cancelled: reason=%s", job.id, reason)
+    return True
