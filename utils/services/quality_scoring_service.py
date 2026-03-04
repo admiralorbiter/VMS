@@ -165,7 +165,7 @@ class QualityScoringService:
             return result
 
         except Exception as e:
-            self.logger.error(
+            self.logger.exception(
                 "Error calculating quality score for %s: %s", entity_type, e
             )
             return {
@@ -269,7 +269,9 @@ class QualityScoringService:
             return report
 
         except Exception as e:
-            self.logger.error("Error generating comprehensive quality report: %s", e)
+            self.logger.exception(
+                "Error generating comprehensive quality report: %s", e
+            )
             return {
                 "error": str(e),
                 "report_date": datetime.now(timezone.utc).isoformat(),
@@ -399,7 +401,7 @@ class QualityScoringService:
             return dimension_scores
 
         except Exception as e:
-            self.logger.error("Error calculating dimension scores: %s", e)
+            self.logger.exception("Error calculating dimension scores: %s", e)
             return {
                 "field_completeness": 0.0,
                 "data_types": 0.0,
@@ -676,7 +678,7 @@ class QualityScoringService:
             return dimension_scores
 
         except Exception as e:
-            self.logger.error("Error calculating aggregate dimension scores: %s", e)
+            self.logger.exception("Error calculating aggregate dimension scores: %s", e)
             return {
                 "field_completeness": 0.0,
                 "data_types": 0.0,
@@ -733,7 +735,7 @@ class QualityScoringService:
             return {"trend": "insufficient_data", "data_points": len(scores)}
 
         except Exception as e:
-            self.logger.error("Error calculating quality trend: %s", e)
+            self.logger.exception("Error calculating quality trend: %s", e)
             return {"trend": "error", "error": str(e)}
 
     def _calculate_quality_distribution(self, entity_scores: Dict) -> Dict:
@@ -805,5 +807,5 @@ class QualityScoringService:
             return overall_trends
 
         except Exception as e:
-            self.logger.error("Error calculating overall trends: %s", e)
+            self.logger.exception("Error calculating overall trends: %s", e)
             return {"error": str(e)}

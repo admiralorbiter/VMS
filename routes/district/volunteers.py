@@ -38,6 +38,7 @@ from models.district_participation import DistrictParticipation
 from models.district_volunteer import DistrictVolunteer
 from models.recruitment_note import RecruitmentNote
 from models.volunteer import Volunteer
+from routes.decorators import handle_route_errors
 from routes.district import district_bp
 
 
@@ -239,6 +240,7 @@ def list_volunteers():
 @district_bp.route("/volunteers/new", methods=["GET"])
 @login_required
 @require_district_admin
+@handle_route_errors
 def new_volunteer():
     """Show new volunteer form."""
     return render_template("district/volunteers/form.html", volunteer=None)
@@ -253,112 +255,106 @@ def create_volunteer():
 
     FR-SELFSERV-301: Add volunteer with contact info and skills
     """
-    try:
-        # Get form data
-        first_name = request.form.get("first_name", "").strip()
-        last_name = request.form.get("last_name", "").strip()
-        email = request.form.get("email", "").strip().lower()
-        phone = request.form.get("phone", "").strip()
-        organization_name = request.form.get("organization_name", "").strip()
-        title = request.form.get("title", "").strip()
-        notes = request.form.get("notes", "").strip()
+    # Get form data
+    first_name = request.form.get("first_name", "").strip()
+    last_name = request.form.get("last_name", "").strip()
+    email = request.form.get("email", "").strip().lower()
+    phone = request.form.get("phone", "").strip()
+    organization_name = request.form.get("organization_name", "").strip()
+    title = request.form.get("title", "").strip()
+    notes = request.form.get("notes", "").strip()
 
-        # Validate required fields
-        if not first_name or not last_name:
-            flash("First name and last name are required.", "error")
-            return redirect(url_for("district.new_volunteer"))
+    # Validate required fields
+    if not first_name or not last_name:
+        flash("First name and last name are required.", "error")
+        return redirect(url_for("district.new_volunteer"))
 
-        # Check for existing volunteer by email
-        existing = _find_volunteer_by_email(email)
+    # Check for existing volunteer by email
+    existing = _find_volunteer_by_email(email)
 
-        if existing:
-            # Check if already in this tenant
-            district_vol = DistrictVolunteer.query.filter_by(
-                volunteer_id=existing.id,
-                tenant_id=g.tenant_id,
-            ).first()
+    if existing:
+        # Check if already in this tenant
+        district_vol = DistrictVolunteer.query.filter_by(
+            volunteer_id=existing.id,
+            tenant_id=g.tenant_id,
+        ).first()
 
-            if district_vol:
-                if district_vol.status == "active":
-                    flash(
-                        f"Volunteer with email {email} already exists in your district.",
-                        "warning",
-                    )
-                    return redirect(
-                        url_for("district.view_volunteer", volunteer_id=existing.id)
-                    )
-                else:
-                    # Reactivate
-                    district_vol.status = "active"
-                    district_vol.added_by = current_user.id
-                    district_vol.added_at = datetime.now(timezone.utc)
-                    if notes:
-                        district_vol.notes = notes
-                    db.session.commit()
-                    flash("Volunteer reactivated in your district.", "success")
-                    return redirect(
-                        url_for("district.view_volunteer", volunteer_id=existing.id)
-                    )
-            else:
-                # Add existing volunteer to this tenant
-                district_vol = DistrictVolunteer(
-                    volunteer_id=existing.id,
-                    tenant_id=g.tenant_id,
-                    added_by=current_user.id,
-                    notes=notes,
+        if district_vol:
+            if district_vol.status == "active":
+                flash(
+                    f"Volunteer with email {email} already exists in your district.",
+                    "warning",
                 )
-                db.session.add(district_vol)
-                db.session.commit()
-                flash("Existing volunteer added to your district.", "success")
                 return redirect(
                     url_for("district.view_volunteer", volunteer_id=existing.id)
                 )
-
-        # Create new volunteer
-        volunteer = Volunteer(
-            first_name=first_name,
-            last_name=last_name,
-            organization_name=organization_name if organization_name else None,
-            title=title if title else None,
-        )
-        db.session.add(volunteer)
-        db.session.flush()  # Get the ID
-
-        # Add email if provided
-        if email:
-            email_record = Email(
-                contact_id=volunteer.id,
-                email=email,
-                primary=True,
+            else:
+                # Reactivate
+                district_vol.status = "active"
+                district_vol.added_by = current_user.id
+                district_vol.added_at = datetime.now(timezone.utc)
+                if notes:
+                    district_vol.notes = notes
+                db.session.commit()
+                flash("Volunteer reactivated in your district.", "success")
+                return redirect(
+                    url_for("district.view_volunteer", volunteer_id=existing.id)
+                )
+        else:
+            # Add existing volunteer to this tenant
+            district_vol = DistrictVolunteer(
+                volunteer_id=existing.id,
+                tenant_id=g.tenant_id,
+                added_by=current_user.id,
+                notes=notes,
             )
-            db.session.add(email_record)
-
-        # Add phone if provided
-        if phone:
-            phone_record = Phone(
-                contact_id=volunteer.id,
-                number=phone,
-                primary=True,
+            db.session.add(district_vol)
+            db.session.commit()
+            flash("Existing volunteer added to your district.", "success")
+            return redirect(
+                url_for("district.view_volunteer", volunteer_id=existing.id)
             )
-            db.session.add(phone_record)
 
-        # Add to tenant
-        district_vol = DistrictVolunteer(
-            volunteer_id=volunteer.id,
-            tenant_id=g.tenant_id,
-            added_by=current_user.id,
-            notes=notes if notes else None,
+    # Create new volunteer
+    volunteer = Volunteer(
+        first_name=first_name,
+        last_name=last_name,
+        organization_name=organization_name if organization_name else None,
+        title=title if title else None,
+    )
+    db.session.add(volunteer)
+    db.session.flush()  # Get the ID
+
+    # Add email if provided
+    if email:
+        email_record = Email(
+            contact_id=volunteer.id,
+            email=email,
+            primary=True,
         )
-        db.session.add(district_vol)
-        db.session.commit()
+        db.session.add(email_record)
 
-        flash("Volunteer created successfully.", "success")
-        return redirect(url_for("district.view_volunteer", volunteer_id=volunteer.id))
+    # Add phone if provided
+    if phone:
+        phone_record = Phone(
+            contact_id=volunteer.id,
+            number=phone,
+            primary=True,
+        )
+        db.session.add(phone_record)
 
-    except Exception as e:
-        db.session.rollback()
-        flash(f"Error creating volunteer: {str(e)}", "error")
-        return redirect(url_for("district.new_volunteer"))
+    # Add to tenant
+    district_vol = DistrictVolunteer(
+        volunteer_id=volunteer.id,
+        tenant_id=g.tenant_id,
+        added_by=current_user.id,
+        notes=notes if notes else None,
+    )
+    db.session.add(district_vol)
+    db.session.commit()
+
+    flash("Volunteer created successfully.", "success")
+    return redirect(url_for("district.view_volunteer", volunteer_id=volunteer.id))
 
 
 @district_bp.route("/volunteers/<int:volunteer_id>")
@@ -425,6 +421,7 @@ def edit_volunteer(volunteer_id):
 @district_bp.route("/volunteers/<int:volunteer_id>", methods=["POST"])
 @login_required
 @require_district_admin
+@handle_route_errors
 def update_volunteer(volunteer_id):
     """
     Update volunteer details.
@@ -439,37 +436,32 @@ def update_volunteer(volunteer_id):
 
     volunteer = Volunteer.query.get_or_404(volunteer_id)
 
-    try:
-        # Update fields
-        volunteer.first_name = request.form.get("first_name", "").strip()
-        volunteer.last_name = request.form.get("last_name", "").strip()
+    # Update fields
+    volunteer.first_name = request.form.get("first_name", "").strip()
+    volunteer.last_name = request.form.get("last_name", "").strip()
 
-        org = request.form.get("organization_name", "").strip()
-        volunteer.organization_name = org if org else None
+    org = request.form.get("organization_name", "").strip()
+    volunteer.organization_name = org if org else None
 
-        title = request.form.get("title", "").strip()
-        volunteer.title = title if title else None
+    title = request.form.get("title", "").strip()
+    volunteer.title = title if title else None
 
-        # Update email
-        email = request.form.get("email", "").strip().lower()
-        if email:
-            _set_volunteer_primary_email(volunteer, email)
+    # Update email
+    email = request.form.get("email", "").strip().lower()
+    if email:
+        _set_volunteer_primary_email(volunteer, email)
 
-        # Update phone
-        phone = request.form.get("phone", "").strip()
-        if phone:
-            _set_volunteer_primary_phone(volunteer, phone)
+    # Update phone
+    phone = request.form.get("phone", "").strip()
+    if phone:
+        _set_volunteer_primary_phone(volunteer, phone)
 
-        # Update district-specific notes
-        notes = request.form.get("notes", "").strip()
-        district_vol.notes = notes if notes else None
+    # Update district-specific notes
+    notes = request.form.get("notes", "").strip()
+    district_vol.notes = notes if notes else None
 
-        db.session.commit()
-        flash("Volunteer updated successfully.", "success")
-
-    except Exception as e:
-        db.session.rollback()
-        flash(f"Error updating volunteer: {str(e)}", "error")
+    db.session.commit()
+    flash("Volunteer updated successfully.", "success")
 
     return redirect(url_for("district.view_volunteer", volunteer_id=volunteer_id))
 
@@ -763,6 +755,7 @@ def search_volunteers_api():
 @district_bp.route("/volunteers/<int:volunteer_id>/notes", methods=["POST"])
 @login_required
 @require_tenant_context
+@handle_route_errors
 def create_recruitment_note(volunteer_id):
     """
     Create a recruitment note for a volunteer.
@@ -777,46 +770,36 @@ def create_recruitment_note(volunteer_id):
         tenant_id=g.tenant_id,
     ).first_or_404()
 
-    try:
-        note_text = request.form.get("note", "").strip()
-        outcome = request.form.get("outcome", "no_outcome")
+    note_text = request.form.get("note", "").strip()
+    outcome = request.form.get("outcome", "no_outcome")
 
-        if not note_text:
-            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                return (
-                    jsonify({"success": False, "error": "Note text is required"}),
-                    400,
-                )
-            flash("Note text is required.", "error")
-            return redirect(
-                url_for("district.view_volunteer", volunteer_id=volunteer_id)
+    if not note_text:
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return (
+                jsonify({"success": False, "error": "Note text is required"}),
+                400,
             )
+        flash("Note text is required.", "error")
+        return redirect(url_for("district.view_volunteer", volunteer_id=volunteer_id))
 
-        recruitment_note = RecruitmentNote.create_note(
-            volunteer_id=volunteer_id,
-            tenant_id=g.tenant_id,
-            note=note_text,
-            outcome=outcome,
-            created_by=current_user.id,
+    recruitment_note = RecruitmentNote.create_note(
+        volunteer_id=volunteer_id,
+        tenant_id=g.tenant_id,
+        note=note_text,
+        outcome=outcome,
+        created_by=current_user.id,
+    )
+
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return jsonify(
+            {
+                "success": True,
+                "note": recruitment_note.to_dict(),
+            }
         )
 
-        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-            return jsonify(
-                {
-                    "success": True,
-                    "note": recruitment_note.to_dict(),
-                }
-            )
-
-        flash("Recruitment note added successfully.", "success")
-        return redirect(url_for("district.view_volunteer", volunteer_id=volunteer_id))
-
-    except Exception as e:
-        db.session.rollback()
-        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-            return jsonify({"success": False, "error": str(e)}), 500
-        flash(f"Error adding note: {str(e)}", "error")
-        return redirect(url_for("district.view_volunteer", volunteer_id=volunteer_id))
+    flash("Recruitment note added successfully.", "success")
+    return redirect(url_for("district.view_volunteer", volunteer_id=volunteer_id))
 
 
 @district_bp.route("/volunteers/<int:volunteer_id>/notes", methods=["GET"])

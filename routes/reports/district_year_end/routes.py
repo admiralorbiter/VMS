@@ -37,7 +37,7 @@ from models.reports import DistrictManualInput, DistrictYearEndReport
 from models.school_model import School
 from models.student import Student
 from models.volunteer import EventParticipation
-from routes.decorators import district_scoped_required
+from routes.decorators import district_scoped_required, handle_route_errors
 from routes.reports.common import (
     DISTRICT_MAPPING,
     generate_district_stats,
@@ -178,6 +178,7 @@ def load_routes(bp):
 
     @bp.route("/reports/district/year-end/refresh", methods=["POST"])
     @login_required
+    @handle_route_errors
     def refresh_district_year_end():
         """Refresh the cached district year-end report data"""
         import time
@@ -185,53 +186,41 @@ def load_routes(bp):
         start_time = time.time()
         school_year = request.args.get("school_year", get_current_school_year())
         host_filter = request.args.get("host_filter", "all")
-        try:
-            # Delete existing cached reports for this school year and host_filter
-            deleted_count = DistrictYearEndReport.query.filter_by(
-                school_year=school_year, host_filter=host_filter
-            ).delete()
-            db.session.commit()
-            print(f"Deleted {deleted_count} cached reports")
+        # Delete existing cached reports for this school year and host_filter
+        deleted_count = DistrictYearEndReport.query.filter_by(
+            school_year=school_year, host_filter=host_filter
+        ).delete()
+        db.session.commit()
+        print(f"Deleted {deleted_count} cached reports")
 
-            # Generate new stats (this already does a lot of work)
-            print(f"Starting district stats generation for {school_year}...")
-            gen_start = time.time()
-            district_stats = generate_district_stats(
-                school_year, host_filter=host_filter
-            )
-            gen_time = time.time() - gen_start
-            print(
-                f"Generated stats for {len(district_stats)} districts in {gen_time:.2f}s"
-            )
+        # Generate new stats (this already does a lot of work)
+        print(f"Starting district stats generation for {school_year}...")
+        gen_start = time.time()
+        district_stats = generate_district_stats(school_year, host_filter=host_filter)
+        gen_time = time.time() - gen_start
+        print(f"Generated stats for {len(district_stats)} districts in {gen_time:.2f}s")
 
-            # Cache the stats and events data (this does additional processing)
-            print(f"Starting cache with events for {len(district_stats)} districts...")
-            cache_start = time.time()
-            cache_district_stats_with_events(
-                school_year, district_stats, host_filter=host_filter
-            )
-            cache_time = time.time() - cache_start
-            print(f"Cached stats with events in {cache_time:.2f}s")
+        # Cache the stats and events data (this does additional processing)
+        print(f"Starting cache with events for {len(district_stats)} districts...")
+        cache_start = time.time()
+        cache_district_stats_with_events(
+            school_year, district_stats, host_filter=host_filter
+        )
+        cache_time = time.time() - cache_start
+        print(f"Cached stats with events in {cache_time:.2f}s")
 
-            total_time = time.time() - start_time
-            print(f"Total refresh time: {total_time:.2f}s")
+        total_time = time.time() - start_time
+        print(f"Total refresh time: {total_time:.2f}s")
 
-            return jsonify(
-                {
-                    "success": True,
-                    "message": f"Successfully refreshed data for {school_year[:2]}-{school_year[2:]} school year",
-                    "stats_generation_time": f"{gen_time:.2f}s",
-                    "cache_time": f"{cache_time:.2f}s",
-                    "total_time": f"{total_time:.2f}s",
-                }
-            )
-        except Exception as e:
-            db.session.rollback()
-            print(f"Error refreshing district year-end report: {str(e)}")
-            import traceback
-
-            traceback.print_exc()
-            return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Successfully refreshed data for {school_year[:2]}-{school_year[2:]} school year",
+                "stats_generation_time": f"{gen_time:.2f}s",
+                "cache_time": f"{cache_time:.2f}s",
+                "total_time": f"{total_time:.2f}s",
+            }
+        )
 
     @bp.route("/reports/district/year-end/detail/<district_name>")
     @login_required
@@ -1097,6 +1086,7 @@ def load_routes(bp):
 
     @bp.route("/reports/district/year-end/google-sheets/add", methods=["POST"])
     @login_required
+    @handle_route_errors
     def add_google_sheet():
         """Add a new Google Sheet for the academic year"""
         school_year = request.form.get("school_year", get_current_school_year())
@@ -1107,33 +1097,29 @@ def load_routes(bp):
         if not sheet_id:
             return jsonify({"success": False, "error": "Sheet ID is required"}), 400
 
-        try:
-            # Always create a new sheet (multiple sheets per academic year allowed for district reports)
-            new_sheet = GoogleSheet(
-                academic_year=academic_year,
-                sheet_id=sheet_id,
-                created_by=current_user.id,
-                purpose="district_reports",
-                sheet_name=sheet_name if sheet_name else None,
-            )
-            db.session.add(new_sheet)
-            db.session.commit()
-            message = f"Added Google Sheet for {academic_year}"
+        # Always create a new sheet (multiple sheets per academic year allowed for district reports)
+        new_sheet = GoogleSheet(
+            academic_year=academic_year,
+            sheet_id=sheet_id,
+            created_by=current_user.id,
+            purpose="district_reports",
+            sheet_name=sheet_name if sheet_name else None,
+        )
+        db.session.add(new_sheet)
+        db.session.commit()
+        message = f"Added Google Sheet for {academic_year}"
 
-            return jsonify(
-                {
-                    "success": True,
-                    "message": message,
-                    "sheet": {
-                        "academic_year": academic_year,
-                        "sheet_id": sheet_id,
-                        "created_by": current_user.username,
-                    },
-                }
-            )
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify(
+            {
+                "success": True,
+                "message": message,
+                "sheet": {
+                    "academic_year": academic_year,
+                    "sheet_id": sheet_id,
+                    "created_by": current_user.username,
+                },
+            }
+        )
 
     @bp.route("/reports/district/year-end/google-sheets/remove", methods=["POST"])
     @login_required

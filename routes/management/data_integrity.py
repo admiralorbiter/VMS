@@ -8,7 +8,7 @@ from flask import flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from models import db
-from routes.decorators import admin_required
+from routes.decorators import admin_required, handle_route_errors
 
 
 def register_data_integrity_routes(bp):
@@ -133,6 +133,7 @@ def register_data_integrity_routes(bp):
     @bp.route("/dedupe-student-participations", methods=["POST"])
     @login_required
     @admin_required
+    @handle_route_errors
     def dedupe_student_participations():
         """
         Admin action: deduplicate EventStudentParticipation by (event_id, student_id).
@@ -193,10 +194,6 @@ def register_data_integrity_routes(bp):
                 summary["deleted"] += 1
             summary["updated"] += 1
 
-        try:
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({"error": str(e), "summary": summary}), 500
+        db.session.commit()
 
         return jsonify({"success": True, "summary": summary})

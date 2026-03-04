@@ -11,7 +11,7 @@ from flask_login import current_user, login_required
 
 from models import db
 from models.google_sheet import GoogleSheet
-from routes.decorators import admin_required
+from routes.decorators import admin_required, handle_route_errors
 from routes.utils import log_audit_action
 from utils.academic_year import get_academic_year_range
 
@@ -59,6 +59,7 @@ def register_google_sheets_routes(bp):
     @bp.route("/google-sheets", methods=["POST"])
     @login_required
     @admin_required
+    @handle_route_errors
     def create_google_sheet():
         """
         Create a new Google Sheet configuration.
@@ -86,117 +87,82 @@ def register_google_sheets_routes(bp):
             403: Unauthorized access attempt
             500: Database or encryption error
         """
-        print("GOOGLE SHEETS ROUTE HIT")
-        try:
-            # Debug environment variable
-            encryption_key = os.getenv("ENCRYPTION_KEY")
-            print(f"DEBUG: ENCRYPTION_KEY exists: {encryption_key is not None}")
-            if encryption_key:
-                print(f"DEBUG: ENCRYPTION_KEY length: {len(encryption_key)}")
-            else:
-                print("DEBUG: ENCRYPTION_KEY is None or empty")
+        from utils.errors import ValidationError as AppValidationError
 
-            data = request.get_json()
-            print("GOT DATA:", data)
-            academic_year = data.get("academic_year")
-            sheet_id = data.get("sheet_id")
-            print("ACADEMIC YEAR:", academic_year, "SHEET ID:", sheet_id)
+        data = request.get_json()
+        academic_year = data.get("academic_year")
+        sheet_id = data.get("sheet_id")
 
-            if not all([academic_year, sheet_id]):
-                return (
-                    jsonify({"error": "Academic year and sheet ID are required"}),
-                    400,
-                )
+        if not all([academic_year, sheet_id]):
+            raise AppValidationError("Academic year and sheet ID are required")
 
-            existing = GoogleSheet.query.filter_by(
-                academic_year=academic_year, purpose="virtual_sessions"
-            ).first()
-            if existing:
-                return (
-                    jsonify(
-                        {
-                            "error": f"Virtual sessions sheet for academic year {academic_year} already exists"
-                        }
-                    ),
-                    400,
-                )
-
-            print(f"DEBUG: About to create GoogleSheet with sheet_id: {sheet_id}")
-            new_sheet = GoogleSheet(
-                academic_year=academic_year,
-                sheet_id=sheet_id,
-                created_by=current_user.id,
-                purpose="virtual_sessions",
+        existing = GoogleSheet.query.filter_by(
+            academic_year=academic_year, purpose="virtual_sessions"
+        ).first()
+        if existing:
+            raise AppValidationError(
+                f"Virtual sessions sheet for academic year {academic_year} already exists"
             )
-            print("DEBUG: GoogleSheet created successfully")
 
-            db.session.add(new_sheet)
-            db.session.commit()
+        new_sheet = GoogleSheet(
+            academic_year=academic_year,
+            sheet_id=sheet_id,
+            created_by=current_user.id,
+            purpose="virtual_sessions",
+        )
 
-            return jsonify(
-                {
-                    "success": True,
-                    "message": f"Google Sheet for {academic_year} created successfully",
-                    "sheet": new_sheet.to_dict(),
-                }
-            )
-        except Exception as e:
-            print("EXCEPTION:", e)
-            import traceback
+        db.session.add(new_sheet)
+        db.session.commit()
 
-            traceback.print_exc()
-            db.session.rollback()
-            return jsonify({"error": str(e)}), 500
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Google Sheet for {academic_year} created successfully",
+                "sheet": new_sheet.to_dict(),
+            }
+        )
 
     @bp.route("/google-sheets/<int:sheet_id>", methods=["PUT"])
     @login_required
     @admin_required
+    @handle_route_errors
     def update_google_sheet(sheet_id):
-        try:
-            sheet = GoogleSheet.query.get_or_404(sheet_id)
-            data = request.get_json()
-            if "sheet_id" in data:
-                sheet.update_sheet_id(data["sheet_id"])
-            db.session.commit()
-            return jsonify(
-                {
-                    "success": True,
-                    "message": f"Google Sheet updated successfully",
-                    "sheet": sheet.to_dict(),
-                }
-            )
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({"error": str(e)}), 500
+        sheet = GoogleSheet.query.get_or_404(sheet_id)
+        data = request.get_json()
+        if "sheet_id" in data:
+            sheet.update_sheet_id(data["sheet_id"])
+        db.session.commit()
+        return jsonify(
+            {
+                "success": True,
+                "message": "Google Sheet updated successfully",
+                "sheet": sheet.to_dict(),
+            }
+        )
 
     @bp.route("/google-sheets/<int:sheet_id>", methods=["DELETE"])
     @login_required
     @admin_required
+    @handle_route_errors
     def delete_google_sheet(sheet_id):
-        try:
-            sheet = GoogleSheet.query.get_or_404(sheet_id)
-            academic_year = sheet.academic_year
-            db.session.delete(sheet)
-            db.session.commit()
-            log_audit_action(
-                action="delete", resource_type="google_sheet", resource_id=sheet_id
-            )
-            return jsonify(
-                {
-                    "success": True,
-                    "message": f"Google Sheet for {academic_year} deleted successfully",
-                }
-            )
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({"error": str(e)}), 500
+        sheet = GoogleSheet.query.get_or_404(sheet_id)
+        academic_year = sheet.academic_year
+        db.session.delete(sheet)
+        db.session.commit()
+        log_audit_action(
+            action="delete", resource_type="google_sheet", resource_id=sheet_id
+        )
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Google Sheet for {academic_year} deleted successfully",
+            }
+        )
 
     @bp.route("/google-sheets/<int:sheet_id>", methods=["GET"])
     @login_required
     @admin_required
+    @handle_route_errors
     def get_google_sheet(sheet_id):
-        try:
-            sheet = GoogleSheet.query.get_or_404(sheet_id)
-            return jsonify({"success": True, "sheet": sheet.to_dict()})
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+        sheet = GoogleSheet.query.get_or_404(sheet_id)
+        return jsonify({"success": True, "sheet": sheet.to_dict()})

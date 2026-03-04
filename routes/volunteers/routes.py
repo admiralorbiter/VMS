@@ -68,7 +68,7 @@ from models.volunteer import (
     Volunteer,
     VolunteerSkill,
 )
-from routes.decorators import admin_required, global_users_only
+from routes.decorators import admin_required, global_users_only, handle_route_errors
 from routes.utils import (
     get_email_addresses,
     get_phone_numbers,
@@ -493,101 +493,95 @@ def volunteers():
 @volunteers_bp.route("/volunteers/add", methods=["GET", "POST"])
 @login_required
 @global_users_only
+@handle_route_errors
 def add_volunteer():
     form = VolunteerForm()
 
     if form.validate_on_submit():
-        try:
-            # Create and add volunteer first
-            volunteer = Volunteer(
-                salutation=form.salutation.data if form.salutation.data else None,
-                first_name=form.first_name.data,
-                middle_name=form.middle_name.data,
-                last_name=form.last_name.data,
-                suffix=form.suffix.data if form.suffix.data else None,
-                organization_name=form.organization_name.data,
-                title=form.title.data,
-                department=form.department.data,
-                industry=form.industry.data,
-                notes=form.notes.data,
+        # Create and add volunteer first
+        volunteer = Volunteer(
+            salutation=form.salutation.data if form.salutation.data else None,
+            first_name=form.first_name.data,
+            middle_name=form.middle_name.data,
+            last_name=form.last_name.data,
+            suffix=form.suffix.data if form.suffix.data else None,
+            organization_name=form.organization_name.data,
+            title=form.title.data,
+            department=form.department.data,
+            industry=form.industry.data,
+            notes=form.notes.data,
+        )
+
+        # Handle enums properly
+        if form.gender.data:
+            volunteer.gender = GenderEnum[form.gender.data]
+        if form.local_status.data:
+            volunteer.local_status = LocalStatusEnum[form.local_status.data]
+        if form.race_ethnicity.data:
+            volunteer.race_ethnicity = RaceEthnicityEnum[form.race_ethnicity.data]
+        if form.education.data:
+            volunteer.education = EducationEnum[form.education.data]
+
+        db.session.add(volunteer)
+        db.session.flush()  # This ensures volunteer has an ID before adding relationships
+
+        # Add skills
+        if form.skills.data:
+            # Parse skills from textarea (assume comma-separated)
+            skill_names = [
+                skill.strip() for skill in form.skills.data.split(",") if skill.strip()
+            ]
+            for skill_name in set(skill_names):
+                skill = Skill.query.filter_by(name=skill_name).first()
+                if not skill:
+                    skill = Skill(name=skill_name)
+                    db.session.add(skill)
+                    db.session.flush()
+                volunteer.skills.append(skill)
+
+        # Add email
+        if form.email.data:
+            email_type = (
+                ContactTypeEnum.personal
+                if form.email_type.data == "personal"
+                else ContactTypeEnum.professional
             )
+            email = Email(
+                email=form.email.data,
+                type=email_type,
+                primary=True,
+                contact_id=volunteer.id,
+            )
+            db.session.add(email)
 
-            # Handle enums properly
-            if form.gender.data:
-                volunteer.gender = GenderEnum[form.gender.data]
-            if form.local_status.data:
-                volunteer.local_status = LocalStatusEnum[form.local_status.data]
-            if form.race_ethnicity.data:
-                volunteer.race_ethnicity = RaceEthnicityEnum[form.race_ethnicity.data]
-            if form.education.data:
-                volunteer.education = EducationEnum[form.education.data]
+        # Add phone
+        if form.phone.data:
+            phone_type = (
+                ContactTypeEnum.personal
+                if form.phone_type.data == "personal"
+                else ContactTypeEnum.professional
+            )
+            phone = Phone(
+                number=form.phone.data,
+                type=phone_type,
+                primary=True,
+                contact_id=volunteer.id,
+            )
+            db.session.add(phone)
 
-            db.session.add(volunteer)
-            db.session.flush()  # This ensures volunteer has an ID before adding relationships
+        # Link to organization if provided
+        if form.organization_name.data:
+            vol_org = VolunteerOrganization.link_volunteer_to_org(
+                volunteer=volunteer,
+                org_name=form.organization_name.data,
+                role=form.title.data,  # Use title as role for now
+                is_primary=True,
+            )
+            db.session.flush()
 
-            # Add skills
-            if form.skills.data:
-                # Parse skills from textarea (assume comma-separated)
-                skill_names = [
-                    skill.strip()
-                    for skill in form.skills.data.split(",")
-                    if skill.strip()
-                ]
-                for skill_name in set(skill_names):
-                    skill = Skill.query.filter_by(name=skill_name).first()
-                    if not skill:
-                        skill = Skill(name=skill_name)
-                        db.session.add(skill)
-                        db.session.flush()
-                    volunteer.skills.append(skill)
-
-            # Add email
-            if form.email.data:
-                email_type = (
-                    ContactTypeEnum.personal
-                    if form.email_type.data == "personal"
-                    else ContactTypeEnum.professional
-                )
-                email = Email(
-                    email=form.email.data,
-                    type=email_type,
-                    primary=True,
-                    contact_id=volunteer.id,
-                )
-                db.session.add(email)
-
-            # Add phone
-            if form.phone.data:
-                phone_type = (
-                    ContactTypeEnum.personal
-                    if form.phone_type.data == "personal"
-                    else ContactTypeEnum.professional
-                )
-                phone = Phone(
-                    number=form.phone.data,
-                    type=phone_type,
-                    primary=True,
-                    contact_id=volunteer.id,
-                )
-                db.session.add(phone)
-
-            # Link to organization if provided
-            if form.organization_name.data:
-                vol_org = VolunteerOrganization.link_volunteer_to_org(
-                    volunteer=volunteer,
-                    org_name=form.organization_name.data,
-                    role=form.title.data,  # Use title as role for now
-                    is_primary=True,
-                )
-                db.session.flush()
-
-            db.session.commit()
-            flash("Volunteer added successfully!", "success")
-            return redirect(url_for("volunteers.volunteers"))
-
-        except Exception as e:
-            db.session.rollback()
-            flash(f"Error adding volunteer: {str(e)}", "error")
+        db.session.commit()
+        flash("Volunteer added successfully!", "success")
+        return redirect(url_for("volunteers.volunteers"))
 
     return render_template("volunteers/add_volunteer.html", form=form)
 
@@ -1103,108 +1097,95 @@ def purge_volunteers():
 @volunteers_bp.route("/volunteers/delete/<int:id>", methods=["DELETE"])
 @login_required
 @admin_required
+@handle_route_errors
 def delete_volunteer(id):
 
-    try:
-        volunteer = db.session.get(Volunteer, id)
-        if not volunteer:
-            abort(404)
+    volunteer = db.session.get(Volunteer, id)
+    if not volunteer:
+        abort(404)
 
-        # Delete all related records first (in correct order due to foreign key constraints)
-        Email.query.filter_by(contact_id=id).delete()
-        Phone.query.filter_by(contact_id=id).delete()
-        Address.query.filter_by(contact_id=id).delete()
-        VolunteerSkill.query.filter_by(volunteer_id=id).delete()
-        History.query.filter_by(volunteer_id=id).delete()
-        EventParticipation.query.filter_by(volunteer_id=id).delete()
-        VolunteerOrganization.query.filter_by(volunteer_id=id).delete()
+    # Delete all related records first (in correct order due to foreign key constraints)
+    Email.query.filter_by(contact_id=id).delete()
+    Phone.query.filter_by(contact_id=id).delete()
+    Address.query.filter_by(contact_id=id).delete()
+    VolunteerSkill.query.filter_by(volunteer_id=id).delete()
+    History.query.filter_by(volunteer_id=id).delete()
+    EventParticipation.query.filter_by(volunteer_id=id).delete()
+    VolunteerOrganization.query.filter_by(volunteer_id=id).delete()
 
-        # Delete the volunteer
-        db.session.delete(volunteer)
-        db.session.commit()
-        log_audit_action(
-            action="delete",
-            resource_type="volunteer",
-            resource_id=id,
-        )
+    # Delete the volunteer
+    db.session.delete(volunteer)
+    db.session.commit()
+    log_audit_action(
+        action="delete",
+        resource_type="volunteer",
+        resource_id=id,
+    )
 
-        return jsonify({"success": True, "message": "Volunteer deleted successfully"})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"success": False, "error": str(e)}), 500
+    return jsonify({"success": True, "message": "Volunteer deleted successfully"})
 
 
 @volunteers_bp.route("/volunteers/toggle-exclude-reports/<int:id>", methods=["POST"])
 @login_required
 @global_users_only
 @admin_required
+@handle_route_errors
 def toggle_exclude_reports(id):
     """Toggle the exclude_from_reports field for a volunteer - Admin only"""
 
-    try:
-        volunteer = db.session.get(Volunteer, id)
-        if not volunteer:
-            return jsonify({"success": False, "message": "Volunteer not found"}), 404
+    volunteer = db.session.get(Volunteer, id)
+    if not volunteer:
+        return jsonify({"success": False, "message": "Volunteer not found"}), 404
 
-        # Get the new value from the request
-        data = request.get_json()
-        exclude_from_reports = data.get("exclude_from_reports", False)
+    # Get the new value from the request
+    data = request.get_json()
+    exclude_from_reports = data.get("exclude_from_reports", False)
 
-        # Update the field
-        volunteer.exclude_from_reports = exclude_from_reports
-        db.session.commit()
+    # Update the field
+    volunteer.exclude_from_reports = exclude_from_reports
+    db.session.commit()
 
-        status = "excluded from" if exclude_from_reports else "included in"
-        return jsonify(
-            {"success": True, "message": f"Volunteer {status} reports successfully"}
-        )
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"success": False, "message": str(e)}), 500
+    status = "excluded from" if exclude_from_reports else "included in"
+    return jsonify(
+        {"success": True, "message": f"Volunteer {status} reports successfully"}
+    )
 
 
 @volunteers_bp.route("/volunteers/update-local-status/<int:id>", methods=["POST"])
 @login_required
 @global_users_only
+@handle_route_errors
 def update_local_status(id):
     """Update the local status for a volunteer - Available to all global users"""
 
-    try:
-        volunteer = db.session.get(Volunteer, id)
-        if not volunteer:
-            return jsonify({"success": False, "message": "Volunteer not found"}), 404
+    volunteer = db.session.get(Volunteer, id)
+    if not volunteer:
+        return jsonify({"success": False, "message": "Volunteer not found"}), 404
 
-        # Get the new status from the request
-        data = request.get_json()
-        new_status = data.get("local_status", None)
+    # Get the new status from the request
+    data = request.get_json()
+    new_status = data.get("local_status", None)
 
-        # Validate the status
-        if new_status not in [e.name for e in LocalStatusEnum]:
-            return jsonify({"success": False, "message": "Invalid local status"}), 400
+    # Validate the status
+    if new_status not in [e.name for e in LocalStatusEnum]:
+        return jsonify({"success": False, "message": "Invalid local status"}), 400
 
-        # Update the field
-        old_status = volunteer.local_status.name if volunteer.local_status else "None"
-        volunteer.local_status = LocalStatusEnum[new_status]
-        volunteer.local_status_last_updated = datetime.now(timezone.utc)
-        db.session.commit()
+    # Update the field
+    old_status = volunteer.local_status.name if volunteer.local_status else "None"
+    volunteer.local_status = LocalStatusEnum[new_status]
+    volunteer.local_status_last_updated = datetime.now(timezone.utc)
+    db.session.commit()
 
-        return jsonify(
-            {
-                "success": True,
-                "message": f"Local status updated from {old_status} to {new_status}",
-                "new_status": new_status,
-                "new_status_display": (
-                    volunteer.local_status.value
-                    if volunteer.local_status
-                    else "Unknown"
-                ),
-            }
-        )
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"success": False, "message": str(e)}), 500
+    return jsonify(
+        {
+            "success": True,
+            "message": f"Local status updated from {old_status} to {new_status}",
+            "new_status": new_status,
+            "new_status_display": (
+                volunteer.local_status.value if volunteer.local_status else "Unknown"
+            ),
+        }
+    )
 
 
 @volunteers_bp.route("/volunteers/update-local-statuses", methods=["POST"])
@@ -1378,29 +1359,27 @@ def update_local_statuses():
 @volunteers_bp.route("/volunteers/<int:volunteer_id>/organizations")
 @login_required
 @global_users_only
+@handle_route_errors
 def get_organizations_json(volunteer_id):
     """Get organizations data for a specific volunteer as JSON"""
-    try:
-        from models import eagerload_volunteer_bundle
+    from models import eagerload_volunteer_bundle
 
-        volunteer = eagerload_volunteer_bundle(Volunteer.query).get_or_404(volunteer_id)
-        organizations_data = []
+    volunteer = eagerload_volunteer_bundle(Volunteer.query).get_or_404(volunteer_id)
+    organizations_data = []
 
-        for vol_org in volunteer.volunteer_organizations:
-            org_data = {
-                "organization": {
-                    "id": vol_org.organization.id,
-                    "name": vol_org.organization.name,
-                },
-                "role": vol_org.role,
-                "status": vol_org.status,
-                "is_primary": vol_org.is_primary,
-            }
-            organizations_data.append(org_data)
+    for vol_org in volunteer.volunteer_organizations:
+        org_data = {
+            "organization": {
+                "id": vol_org.organization.id,
+                "name": vol_org.organization.name,
+            },
+            "role": vol_org.role,
+            "status": vol_org.status,
+            "is_primary": vol_org.is_primary,
+        }
+        organizations_data.append(org_data)
 
-        return jsonify(organizations_data)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify(organizations_data)
 
 
 # =============================================================================
@@ -1411,6 +1390,7 @@ def get_organizations_json(volunteer_id):
 @volunteers_bp.route("/volunteers/<int:volunteer_id>/notes", methods=["POST"])
 @login_required
 @global_users_only
+@handle_route_errors
 def add_volunteer_note(volunteer_id):
     """Add a recruitment note to a volunteer."""
     volunteer = db.session.get(Volunteer, volunteer_id)
@@ -1424,19 +1404,15 @@ def add_volunteer_note(volunteer_id):
         flash("Note text is required.", "error")
         return redirect(url_for("volunteers.view_volunteer", id=volunteer_id))
 
-    try:
-        note = RecruitmentNote(
-            volunteer_id=volunteer_id,
-            note=note_text,
-            outcome=outcome,
-            created_by=current_user.id,
-        )
-        db.session.add(note)
-        db.session.commit()
-        flash("Note added successfully.", "success")
-    except Exception as e:
-        db.session.rollback()
-        flash(f"Error adding note: {str(e)}", "error")
+    note = RecruitmentNote(
+        volunteer_id=volunteer_id,
+        note=note_text,
+        outcome=outcome,
+        created_by=current_user.id,
+    )
+    db.session.add(note)
+    db.session.commit()
+    flash("Note added successfully.", "success")
 
     return redirect(url_for("volunteers.view_volunteer", id=volunteer_id))
 
@@ -1446,16 +1422,13 @@ def add_volunteer_note(volunteer_id):
 )
 @login_required
 @global_users_only
+@handle_route_errors
 def delete_volunteer_note(volunteer_id, note_id):
     """Delete a recruitment note."""
     note = db.session.get(RecruitmentNote, note_id)
     if not note or note.volunteer_id != volunteer_id:
         return jsonify({"success": False, "message": "Note not found"}), 404
 
-    try:
-        db.session.delete(note)
-        db.session.commit()
-        return jsonify({"success": True, "message": "Note deleted"})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"success": False, "message": str(e)}), 500
+    db.session.delete(note)
+    db.session.commit()
+    return jsonify({"success": True, "message": "Note deleted"})

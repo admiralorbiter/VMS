@@ -105,6 +105,12 @@ def dashboard_data(app):
         )
 
         db.session.add_all([tp_alice, tp_ian, tp_evan, tp_nora, tp_zack])
+
+        # Set district_name for non-tenant filtering (compute_teacher_progress_tracking fallback)
+        for tp in [tp_alice, tp_ian, tp_evan, tp_nora]:
+            tp.district_name = "Test District"
+        tp_zack.district_name = "Other District"
+
         db.session.commit()
 
         # 4. Create Events

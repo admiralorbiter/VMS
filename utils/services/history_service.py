@@ -98,7 +98,7 @@ class ValidationHistoryService:
             return history_records
 
         except Exception as e:
-            self.logger.error("Error creating history from run %s: %s", run_id, e)
+            self.logger.exception("Error creating history from run %s: %s", run_id, e)
             db.session.rollback()
             return []
 
@@ -185,7 +185,7 @@ class ValidationHistoryService:
             return history_record
 
         except Exception as e:
-            self.logger.error(
+            self.logger.exception(
                 "Error creating entity history for %s: %s", entity_type, e
             )
             return None
@@ -358,7 +358,7 @@ class ValidationHistoryService:
             return total_created
 
         except Exception as e:
-            self.logger.error("Error populating history from recent runs: %s", e)
+            self.logger.exception("Error populating history from recent runs: %s", e)
             return 0
 
     def get_quality_trends(

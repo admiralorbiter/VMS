@@ -15,8 +15,11 @@ Usage:
     results = safe_query_all(sf, "SELECT Id FROM Account")
 """
 
+import logging
 import time
 from functools import wraps
+
+logger = logging.getLogger(__name__)
 
 from simple_salesforce import Salesforce
 from simple_salesforce.exceptions import SalesforceAuthenticationFailed
@@ -97,15 +100,20 @@ def retry_on_failure(
                 except Exception as e:
                     last_exception = e
                     if attempt < max_attempts:
-                        print(
-                            f"Salesforce API error (attempt {attempt}/{max_attempts}): {e}. "
-                            f"Retrying in {delay:.1f}s..."
+                        logger.warning(
+                            "Salesforce API error (attempt %s/%s): %s. Retrying in %.1fs...",
+                            attempt,
+                            max_attempts,
+                            e,
+                            delay,
                         )
                         time.sleep(delay)
                         delay *= backoff
                     else:
-                        print(
-                            f"Salesforce API error after {max_attempts} attempts: {e}"
+                        logger.exception(
+                            "Salesforce API error after %s attempts: %s",
+                            max_attempts,
+                            e,
                         )
                         raise
 

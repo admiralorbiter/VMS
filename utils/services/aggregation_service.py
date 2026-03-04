@@ -127,7 +127,7 @@ class DataAggregationService:
             }
 
         except Exception as e:
-            self.logger.error("Error calculating rolling averages: %s", e)
+            self.logger.exception("Error calculating rolling averages: %s", e)
             return {
                 "error": str(e),
                 "metric_name": metric_name,
@@ -281,7 +281,7 @@ class DataAggregationService:
             }
 
         except Exception as e:
-            self.logger.error("Error detecting trend patterns: %s", e)
+            self.logger.exception("Error detecting trend patterns: %s", e)
             return {
                 "error": str(e),
                 "metric_name": metric_name,
@@ -566,7 +566,7 @@ class DataAggregationService:
             return summary
 
         except Exception as e:
-            self.logger.error("Error generating data summary: %s", e)
+            self.logger.exception("Error generating data summary: %s", e)
             return {
                 "error": str(e),
                 "entity_type": entity_type,
@@ -627,7 +627,7 @@ class DataAggregationService:
             return recommendations
 
         except Exception as e:
-            self.logger.error("Error optimizing aggregation performance: %s", e)
+            self.logger.exception("Error optimizing aggregation performance: %s", e)
             return {"error": str(e)}
 
     def _estimate_response_time(self, dataset_size: int, strategy: str) -> float:

@@ -91,7 +91,7 @@ from models.organization import Organization, VolunteerOrganization
 from models.school_model import School  # Add this import at the top
 from models.teacher import Teacher  # Add this import at the top
 from models.volunteer import EventParticipation
-from routes.decorators import admin_required, global_users_only
+from routes.decorators import admin_required, global_users_only, handle_route_errors
 from routes.utils import log_audit_action, parse_date
 
 # Create the organizations blueprint

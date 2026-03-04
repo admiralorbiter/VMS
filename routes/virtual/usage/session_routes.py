@@ -29,7 +29,11 @@ from models.organization import Organization, VolunteerOrganization
 from models.school_model import School
 from models.teacher import Teacher
 from models.volunteer import EventParticipation, Volunteer
-from routes.decorators import admin_required, district_scoped_required
+from routes.decorators import (
+    admin_required,
+    district_scoped_required,
+    handle_route_errors,
+)
 from routes.reports.common import (
     generate_school_year_options,
     get_current_virtual_year,

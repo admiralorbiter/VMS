@@ -25,7 +25,7 @@ from config import Config
 from models import db
 from models.district_model import District
 from models.school_model import School
-from routes.decorators import admin_required, global_users_only
+from routes.decorators import admin_required, global_users_only, handle_route_errors
 from routes.utils import log_audit_action
 
 
@@ -73,88 +73,70 @@ def register_import_data_routes(bp):
     @bp.route("/management/import-districts", methods=["POST"])
     @login_required
     @admin_required
+    @handle_route_errors
     def import_districts():
 
-        try:
-            # Define Salesforce query
-            salesforce_query = """
-            SELECT Id, Name, School_Code_External_ID__c
-            FROM Account
-            WHERE Type = 'School District'
-            """
+        # Define Salesforce query
+        salesforce_query = """
+        SELECT Id, Name, School_Code_External_ID__c
+        FROM Account
+        WHERE Type = 'School District'
+        """
 
-            # Connect to Salesforce
-            sf = Salesforce(
-                username=Config.SF_USERNAME,
-                password=Config.SF_PASSWORD,
-                security_token=Config.SF_SECURITY_TOKEN,
-                domain="login",
-            )
+        # Connect to Salesforce
+        sf = Salesforce(
+            username=Config.SF_USERNAME,
+            password=Config.SF_PASSWORD,
+            security_token=Config.SF_SECURITY_TOKEN,
+            domain="login",
+        )
 
-            # Execute the query
-            result = sf.query_all(salesforce_query)
-            sf_rows = result.get("records", [])
+        # Execute the query
+        result = sf.query_all(salesforce_query)
+        sf_rows = result.get("records", [])
 
-            success_count = 0
-            error_count = 0
-            errors = []
+        success_count = 0
+        error_count = 0
+        errors = []
 
-            # Process each row from Salesforce
-            for row in sf_rows:
-                try:
-                    # Check if district exists
-                    existing_district = District.query.filter_by(
-                        salesforce_id=row["Id"]
-                    ).first()
+        # Process each row from Salesforce
+        for row in sf_rows:
+            try:
+                # Check if district exists
+                existing_district = District.query.filter_by(
+                    salesforce_id=row["Id"]
+                ).first()
 
-                    if existing_district:
-                        # Update existing district
-                        existing_district.name = row["Name"]
-                        existing_district.district_code = row[
-                            "School_Code_External_ID__c"
-                        ]
-                    else:
-                        # Create new district
-                        new_district = District(
-                            salesforce_id=row["Id"],
-                            name=row["Name"],
-                            district_code=row["School_Code_External_ID__c"],
-                        )
-                        db.session.add(new_district)
-
-                    success_count += 1
-                except Exception as e:
-                    error_count += 1
-                    errors.append(
-                        f"Error processing district {row.get('Name')}: {str(e)}"
+                if existing_district:
+                    # Update existing district
+                    existing_district.name = row["Name"]
+                    existing_district.district_code = row["School_Code_External_ID__c"]
+                else:
+                    # Create new district
+                    new_district = District(
+                        salesforce_id=row["Id"],
+                        name=row["Name"],
+                        district_code=row["School_Code_External_ID__c"],
                     )
+                    db.session.add(new_district)
 
-            # Commit changes
-            db.session.commit()
+                success_count += 1
+            except Exception as e:
+                error_count += 1
+                errors.append(f"Error processing district {row.get('Name')}: {str(e)}")
 
-            return jsonify(
-                {
-                    "success": True,
-                    "message": f"Successfully processed {success_count} districts with {error_count} errors",
-                    "processed_count": success_count,
-                    "error_count": error_count,
-                    "errors": errors,
-                }
-            )
+        # Commit changes
+        db.session.commit()
 
-        except SalesforceAuthenticationFailed:
-            return (
-                jsonify(
-                    {
-                        "success": False,
-                        "message": "Failed to authenticate with Salesforce",
-                    }
-                ),
-                401,
-            )
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({"error": str(e)}), 500
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Successfully processed {success_count} districts with {error_count} errors",
+                "processed_count": success_count,
+                "error_count": error_count,
+                "errors": errors,
+            }
+        )
 
     @bp.route("/schools")
     @login_required
@@ -229,41 +211,33 @@ def register_import_data_routes(bp):
     @bp.route("/management/schools/<school_id>", methods=["DELETE"])
     @login_required
     @admin_required
+    @handle_route_errors
     def delete_school(school_id):
 
-        try:
-            school = School.query.get_or_404(school_id)
-            db.session.delete(school)
-            db.session.commit()
-            log_audit_action(
-                action="delete", resource_type="school", resource_id=school_id
-            )
-            return jsonify({"success": True, "message": "School deleted successfully"})
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({"success": False, "message": str(e)}), 500
+        school = School.query.get_or_404(school_id)
+        db.session.delete(school)
+        db.session.commit()
+        log_audit_action(action="delete", resource_type="school", resource_id=school_id)
+        return jsonify({"success": True, "message": "School deleted successfully"})
 
     @bp.route("/management/districts/<district_id>", methods=["DELETE"])
     @login_required
     @admin_required
+    @handle_route_errors
     def delete_district(district_id):
 
-        try:
-            district = District.query.get_or_404(district_id)
-            db.session.delete(district)  # This will cascade delete associated schools
-            db.session.commit()
-            log_audit_action(
-                action="delete", resource_type="district", resource_id=district_id
-            )
-            return jsonify(
-                {
-                    "success": True,
-                    "message": "District and associated schools deleted successfully",
-                }
-            )
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({"success": False, "message": str(e)}), 500
+        district = District.query.get_or_404(district_id)
+        db.session.delete(district)  # This will cascade delete associated schools
+        db.session.commit()
+        log_audit_action(
+            action="delete", resource_type="district", resource_id=district_id
+        )
+        return jsonify(
+            {
+                "success": True,
+                "message": "District and associated schools deleted successfully",
+            }
+        )
 
     @bp.route("/management/update-school-levels", methods=["POST"])
     @login_required

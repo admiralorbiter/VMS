@@ -229,3 +229,83 @@ def global_users_only(func):
         return func(*args, **kwargs)
 
     return wrapper
+
+
+def handle_route_errors(func):
+    """
+    Decorator that wraps a route handler with centralized error handling.
+
+    Catches common exception types and converts them to AppError subclasses,
+    which are then handled by the Flask error handler middleware. Automatically
+    rolls back the database session on SQLAlchemy errors.
+
+    This replaces the need for try/except blocks in individual route handlers:
+
+    Before:
+        @route("/foo")
+        def foo():
+            try:
+                ...
+            except Exception as e:
+                db.session.rollback()
+                flash(f"Error: {e}", "error")
+                return redirect(...)
+
+    After:
+        @route("/foo")
+        @handle_route_errors
+        def foo():
+            ...  # just the happy path
+    """
+    from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
+    from werkzeug.exceptions import HTTPException
+
+    from utils.errors import AppError, DatabaseError, ExternalServiceError
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except AppError:
+            # Already a structured error — let middleware handle it
+            raise
+        except HTTPException:
+            # Werkzeug HTTP exceptions (404, 415, etc.) — Flask handles these
+            raise
+        except IntegrityError as e:
+            from models import db
+
+            db.session.rollback()
+            raise DatabaseError(
+                "A data conflict occurred. The record may already exist.",
+                detail=str(e),
+            ) from e
+        except OperationalError as e:
+            from models import db
+
+            db.session.rollback()
+            raise DatabaseError(
+                "A database connection error occurred.",
+                detail=str(e),
+            ) from e
+        except SQLAlchemyError as e:
+            from models import db
+
+            db.session.rollback()
+            raise DatabaseError(detail=str(e)) from e
+        except Exception as e:
+            # Check for Salesforce-specific errors
+            error_type = type(e).__name__
+            if "Salesforce" in error_type:
+                raise ExternalServiceError(
+                    "Salesforce is temporarily unavailable.",
+                    detail=str(e),
+                ) from e
+
+            # Unknown error — wrap and let the 500 handler deal with it
+            from flask import current_app
+
+            current_app.logger.exception("Unhandled error in %s: %s", func.__name__, e)
+            raise AppError(detail=str(e)) from e
+
+    return wrapper

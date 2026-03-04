@@ -86,6 +86,11 @@ from utils.rate_limiter import init_rate_limiter
 
 init_rate_limiter(app)
 
+# Register centralized error handlers (AppError hierarchy + SQLAlchemy + catch-all 500)
+from utils.error_handlers import register_error_handlers
+
+register_error_handlers(app)
+
 
 # User loader callback for Flask-Login
 @login_manager.user_loader
@@ -159,19 +164,17 @@ app.jinja_env.filters["from_json"] = from_json_filter
 # =============================================================================
 # Global Error Handlers (Production Hardening)
 # =============================================================================
+# NOTE: The 500 handler is now in utils/error_handlers.py (registered above via
+# register_error_handlers). The 404/403/413 handlers remain here because they
+# handle standard HTTP errors with HTML templates, while the middleware handles
+# AppError subclasses and SQLAlchemy errors.
+
+
 @app.errorhandler(404)
 def not_found_error(error):
     """Handle 404 Not Found errors."""
     app.logger.warning("404 error: %s", request.url)
     return render_template("errors/404.html"), 404
-
-
-@app.errorhandler(500)
-def internal_error(error):
-    """Handle 500 Internal Server errors."""
-    app.logger.error("500 error: %s", error)
-    db.session.rollback()  # Rollback any failed transactions
-    return render_template("errors/500.html"), 500
 
 
 @app.errorhandler(403)

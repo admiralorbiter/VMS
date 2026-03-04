@@ -138,7 +138,7 @@ class CacheRefreshScheduler:
                     self._refresh_all_caches()
 
             except Exception as e:
-                logger.error("Error in cache refresh scheduler: %s", str(e))
+                logger.exception("Error in cache refresh scheduler: %s", str(e))
                 self.refresh_stats["failed_refreshes"] += 1
                 self.refresh_stats["last_error"] = str(e)
 
@@ -167,7 +167,7 @@ class CacheRefreshScheduler:
         except Exception as e:
             self.refresh_stats["failed_refreshes"] += 1
             self.refresh_stats["last_error"] = str(e)
-            logger.error("Cache refresh failed: %s", str(e))
+            logger.exception("Cache refresh failed: %s", str(e))
             raise
 
     def _refresh_district_caches(self):
@@ -198,7 +198,7 @@ class CacheRefreshScheduler:
                 logger.info("Refreshed district caches for school year %s", school_year)
 
             except Exception as e:
-                logger.error(
+                logger.exception(
                     "Failed to refresh district caches for %s: %s", school_year, str(e)
                 )
 
@@ -226,7 +226,7 @@ class CacheRefreshScheduler:
             )
 
         except Exception as e:
-            logger.error("Failed to refresh organization caches: %s", str(e))
+            logger.exception("Failed to refresh organization caches: %s", str(e))
             db.session.rollback()
 
     def _refresh_virtual_session_caches(self):
@@ -256,7 +256,7 @@ class CacheRefreshScheduler:
             )
 
         except Exception as e:
-            logger.error("Failed to refresh virtual session caches: %s", str(e))
+            logger.exception("Failed to refresh virtual session caches: %s", str(e))
             db.session.rollback()
 
     def _refresh_volunteer_caches(self):
@@ -286,7 +286,7 @@ class CacheRefreshScheduler:
             )
 
         except Exception as e:
-            logger.error("Failed to refresh volunteer caches: %s", str(e))
+            logger.exception("Failed to refresh volunteer caches: %s", str(e))
             db.session.rollback()
 
     def _refresh_recruitment_caches(self):
@@ -304,7 +304,7 @@ class CacheRefreshScheduler:
             logger.info("Cleared recruitment caches - will regenerate on next access")
 
         except Exception as e:
-            logger.error("Failed to refresh recruitment caches: %s", str(e))
+            logger.exception("Failed to refresh recruitment caches: %s", str(e))
             db.session.rollback()
 
     def _get_school_year_date_range(

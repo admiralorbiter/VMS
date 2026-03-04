@@ -12,7 +12,7 @@ from sqlalchemy import or_
 
 from models import db
 from models.bug_report import BugReport, BugReportType
-from routes.decorators import admin_required
+from routes.decorators import admin_required, handle_route_errors
 from routes.utils import log_audit_action
 
 
@@ -78,46 +78,40 @@ def register_bug_report_routes(bp):
     @bp.route("/bug-reports/<int:report_id>/resolve", methods=["POST"])
     @login_required
     @admin_required
+    @handle_route_errors
     def resolve_bug_report(report_id):
 
-        try:
-            report = BugReport.query.get_or_404(report_id)
-            report.resolved = True
-            report.resolved_by_id = current_user.id
-            report.resolved_at = datetime.now(timezone.utc)
-            report.resolution_notes = request.form.get("notes", "")
+        report = BugReport.query.get_or_404(report_id)
+        report.resolved = True
+        report.resolved_by_id = current_user.id
+        report.resolved_at = datetime.now(timezone.utc)
+        report.resolution_notes = request.form.get("notes", "")
 
-            db.session.commit()
+        db.session.commit()
 
-            # If HTMX request, return redirect response
-            if request.headers.get("HX-Request"):
-                from flask import make_response
+        # If HTMX request, return redirect response
+        if request.headers.get("HX-Request"):
+            from flask import make_response
 
-                response = make_response()
-                response.headers["HX-Redirect"] = url_for("management.bug_reports")
-                return response
+            response = make_response()
+            response.headers["HX-Redirect"] = url_for("management.bug_reports")
+            return response
 
-            return jsonify({"success": True})
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({"error": str(e)}), 500
+        return jsonify({"success": True})
 
     @bp.route("/bug-reports/<int:report_id>", methods=["DELETE"])
     @login_required
     @admin_required
+    @handle_route_errors
     def delete_bug_report(report_id):
 
-        try:
-            report = BugReport.query.get_or_404(report_id)
-            db.session.delete(report)
-            db.session.commit()
-            log_audit_action(
-                action="delete", resource_type="bug_report", resource_id=report_id
-            )
-            return jsonify({"success": True})
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({"error": str(e)}), 500
+        report = BugReport.query.get_or_404(report_id)
+        db.session.delete(report)
+        db.session.commit()
+        log_audit_action(
+            action="delete", resource_type="bug_report", resource_id=report_id
+        )
+        return jsonify({"success": True})
 
     @bp.route("/bug-reports/<int:report_id>/resolve-form")
     @login_required

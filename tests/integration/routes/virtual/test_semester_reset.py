@@ -73,6 +73,7 @@ def sample_teacher_progress(kckps_district):
         building="Test School",
         target_sessions=10,
     )
+    tp.district_name = "Kansas City Kansas Public Schools"
     db.session.add(tp)
     db.session.commit()
     return tp

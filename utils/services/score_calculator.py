@@ -64,7 +64,7 @@ class ScoreCalculator:
                 return self._calculate_default_score(validation_type, results)
 
         except Exception as e:
-            self.logger.error("Error calculating %s score: %s", validation_type, e)
+            self.logger.exception("Error calculating %s score: %s", validation_type, e)
             return 0.0
 
     def _get_scoring_algorithm(self, validation_type: str) -> str:
@@ -107,7 +107,7 @@ class ScoreCalculator:
             return max(0.0, min(100.0, score))
 
         except Exception as e:
-            self.logger.error("Error calculating percentage-based score: %s", e)
+            self.logger.exception("Error calculating percentage-based score: %s", e)
             return 0.0
 
     def _calculate_penalty_based_score(
@@ -150,7 +150,7 @@ class ScoreCalculator:
             return final_score
 
         except Exception as e:
-            self.logger.error("Error calculating penalty-based score: %s", e)
+            self.logger.exception("Error calculating penalty-based score: %s", e)
             return 0.0
 
     def _calculate_severity_weighted_score(
@@ -188,7 +188,7 @@ class ScoreCalculator:
             return max(0.0, min(100.0, final_score))
 
         except Exception as e:
-            self.logger.error("Error calculating severity-weighted score: %s", e)
+            self.logger.exception("Error calculating severity-weighted score: %s", e)
             return 0.0
 
     def _calculate_default_score(
@@ -217,7 +217,7 @@ class ScoreCalculator:
             return max(0.0, min(100.0, score))
 
         except Exception as e:
-            self.logger.error("Error calculating default score: %s", e)
+            self.logger.exception("Error calculating default score: %s", e)
             return 0.0
 
     def _calculate_penalty_for_result(
@@ -283,7 +283,7 @@ class ScoreCalculator:
             return base_penalty
 
         except Exception as e:
-            self.logger.error("Error calculating penalty for result: %s", e)
+            self.logger.exception("Error calculating penalty for result: %s", e)
             return 1.0
 
     def _apply_validation_type_penalties(
@@ -337,7 +337,7 @@ class ScoreCalculator:
             return max(0.0, base_score)
 
         except Exception as e:
-            self.logger.error("Error applying validation type penalties: %s", e)
+            self.logger.exception("Error applying validation type penalties: %s", e)
             return base_score
 
     def calculate_composite_score(
@@ -373,7 +373,7 @@ class ScoreCalculator:
             return max(0.0, min(100.0, composite_score))
 
         except Exception as e:
-            self.logger.error("Error calculating composite score: %s", e)
+            self.logger.exception("Error calculating composite score: %s", e)
             return 0.0
 
     def get_score_breakdown(
@@ -442,5 +442,5 @@ class ScoreCalculator:
             return breakdown
 
         except Exception as e:
-            self.logger.error("Error getting score breakdown: %s", e)
+            self.logger.exception("Error getting score breakdown: %s", e)
             return {"validation_type": validation_type, "error": str(e)}

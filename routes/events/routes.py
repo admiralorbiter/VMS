@@ -66,7 +66,7 @@ from models.student import Student
 from models.sync_log import SyncLog, SyncStatus
 from models.teacher import Teacher
 from models.volunteer import EventParticipation, Skill, Volunteer
-from routes.decorators import admin_required, global_users_only
+from routes.decorators import admin_required, global_users_only, handle_route_errors
 from routes.utils import (
     log_audit_action,
     map_cancellation_reason,
@@ -661,6 +661,7 @@ def events():
 @events_bp.route("/events/add", methods=["GET", "POST"])
 @login_required
 @global_users_only
+@handle_route_errors
 def add_event():
     """
     Create a new event
@@ -675,35 +676,30 @@ def add_event():
     form = EventForm()
 
     if form.validate_on_submit():
-        try:
-            print("Form validation successful")  # Debug
-            print(f"Form data: {form.data}")  # Debug
+        print("Form validation successful")  # Debug
+        print(f"Form data: {form.data}")  # Debug
 
-            # Create new event from form data
-            event = Event(
-                title=form.title.data,
-                type=EventType(form.type.data),
-                format=EventFormat(form.format.data),
-                start_date=form.start_date.data,
-                end_date=form.end_date.data,
-                location=form.location.data or "",
-                status=EventStatus(form.status.data),
-                description=form.description.data or "",
-                volunteers_needed=form.volunteers_needed.data or 0,
-            )
+        # Create new event from form data
+        event = Event(
+            title=form.title.data,
+            type=EventType(form.type.data),
+            format=EventFormat(form.format.data),
+            start_date=form.start_date.data,
+            end_date=form.end_date.data,
+            location=form.location.data or "",
+            status=EventStatus(form.status.data),
+            description=form.description.data or "",
+            volunteers_needed=form.volunteers_needed.data or 0,
+        )
 
-            print(f"Created event: {event}")  # Debug
+        print(f"Created event: {event}")  # Debug
 
-            db.session.add(event)
-            db.session.commit()
+        db.session.add(event)
+        db.session.commit()
 
-            flash("Event added successfully!", "success")
-            return redirect(url_for("events.view_event", id=event.id))
+        flash("Event added successfully!", "success")
+        return redirect(url_for("events.view_event", id=event.id))
 
-        except Exception as e:
-            db.session.rollback()
-            print(f"Error adding event: {str(e)}")  # Debug
-            flash(f"Error adding event: {str(e)}", "danger")
     else:
         # Print form validation errors for debugging
         if request.method == "POST":
@@ -1177,6 +1173,7 @@ def delete_event(id):
 @events_bp.route("/api/skills/find-or-create", methods=["POST"])
 @login_required
 @global_users_only
+@handle_route_errors
 def find_or_create_skill():
     """
     Find or create a skill by name
@@ -1187,25 +1184,19 @@ def find_or_create_skill():
     Returns:
         JSON response with skill information
     """
-    try:
-        data = request.get_json()
-        skill_name = data.get("name").strip()
+    data = request.get_json()
+    skill_name = data.get("name").strip()
 
-        # Look for existing skill
-        skill = Skill.query.filter(
-            func.lower(Skill.name) == func.lower(skill_name)
-        ).first()
+    # Look for existing skill
+    skill = Skill.query.filter(func.lower(Skill.name) == func.lower(skill_name)).first()
 
-        # Create new skill if it doesn't exist
-        if not skill:
-            skill = Skill(name=skill_name)
-            db.session.add(skill)
-            db.session.commit()
+    # Create new skill if it doesn't exist
+    if not skill:
+        skill = Skill(name=skill_name)
+        db.session.add(skill)
+        db.session.commit()
 
-        return jsonify({"success": True, "skill": {"id": skill.id, "name": skill.name}})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"success": False, "error": str(e)}), 500
+    return jsonify({"success": True, "skill": {"id": skill.id, "name": skill.name}})
 
 
 @events_bp.route("/events/export/<int:id>")
@@ -1329,104 +1320,101 @@ def export_event_excel(id):
 @events_bp.route("/events/debug-counts", methods=["GET"])
 @login_required
 @admin_required
+@handle_route_errors
 def debug_event_counts():
     """
     Debug route to check event counts and identify missing events
     """
+    from simple_salesforce import Salesforce
+
+    from config import Config
+
+    # Database counts
+    db_total = Event.query.count()
+    db_by_status = {}
+    db_by_type = {}
+
+    for event in Event.query.all():
+        status = event.status or "Unknown"
+        event_type = event.type.value if event.type else "Unknown"
+        db_by_status[status] = db_by_status.get(status, 0) + 1
+        db_by_type[event_type] = db_by_type.get(event_type, 0) + 1
+
+    # Salesforce counts (without importing)
     try:
-        from simple_salesforce import Salesforce
-
-        from config import Config
-
-        # Database counts
-        db_total = Event.query.count()
-        db_by_status = {}
-        db_by_type = {}
-
-        for event in Event.query.all():
-            status = event.status or "Unknown"
-            event_type = event.type.value if event.type else "Unknown"
-            db_by_status[status] = db_by_status.get(status, 0) + 1
-            db_by_type[event_type] = db_by_type.get(event_type, 0) + 1
-
-        # Salesforce counts (without importing)
-        try:
-            sf = Salesforce(
-                username=Config.SF_USERNAME,
-                password=Config.SF_PASSWORD,
-                security_token=Config.SF_SECURITY_TOKEN,
-                domain="login",
-            )
-
-            # Count total events
-            total_query = "SELECT COUNT() FROM Session__c"
-            total_result = sf.query(total_query)
-            sf_total = total_result["totalSize"]
-
-            # Count by status
-            status_query = """
-            SELECT Session_Status__c, COUNT(Id) total
-            FROM Session__c
-            GROUP BY Session_Status__c
-            """
-            status_result = sf.query(status_query)
-            sf_by_status = {
-                record["Session_Status__c"]: record["total"]
-                for record in status_result["records"]
-            }
-
-            # Count by session type
-            type_query = """
-            SELECT Session_Type__c, COUNT(Id) total
-            FROM Session__c
-            GROUP BY Session_Type__c
-            """
-            type_result = sf.query(type_query)
-            sf_by_type = {
-                record["Session_Type__c"]: record["total"]
-                for record in type_result["records"]
-            }
-
-            # Count filtered events (what we actually import)
-            filtered_query = """
-            SELECT COUNT()
-            FROM Session__c
-            WHERE Session_Status__c != 'Draft' AND Session_Type__c != 'Connector Session'
-            """
-            filtered_result = sf.query(filtered_query)
-            sf_filtered = filtered_result["totalSize"]
-
-        except Exception as e:
-            sf_total = f"Error: {str(e)}"
-            sf_by_status = {}
-            sf_by_type = {}
-            sf_filtered = "Error"
-
-        return jsonify(
-            {
-                "database": {
-                    "total": db_total,
-                    "by_status": db_by_status,
-                    "by_type": db_by_type,
-                },
-                "salesforce": {
-                    "total": sf_total,
-                    "filtered": sf_filtered,
-                    "by_status": sf_by_status,
-                    "by_type": sf_by_type,
-                },
-                "analysis": {
-                    "missing_total": (
-                        sf_total - db_total if isinstance(sf_total, int) else "Unknown"
-                    ),
-                    "missing_filtered": (
-                        sf_filtered - db_total
-                        if isinstance(sf_filtered, int)
-                        else "Unknown"
-                    ),
-                },
-            }
+        sf = Salesforce(
+            username=Config.SF_USERNAME,
+            password=Config.SF_PASSWORD,
+            security_token=Config.SF_SECURITY_TOKEN,
+            domain="login",
         )
 
+        # Count total events
+        total_query = "SELECT COUNT() FROM Session__c"
+        total_result = sf.query(total_query)
+        sf_total = total_result["totalSize"]
+
+        # Count by status
+        status_query = """
+        SELECT Session_Status__c, COUNT(Id) total
+        FROM Session__c
+        GROUP BY Session_Status__c
+        """
+        status_result = sf.query(status_query)
+        sf_by_status = {
+            record["Session_Status__c"]: record["total"]
+            for record in status_result["records"]
+        }
+
+        # Count by session type
+        type_query = """
+        SELECT Session_Type__c, COUNT(Id) total
+        FROM Session__c
+        GROUP BY Session_Type__c
+        """
+        type_result = sf.query(type_query)
+        sf_by_type = {
+            record["Session_Type__c"]: record["total"]
+            for record in type_result["records"]
+        }
+
+        # Count filtered events (what we actually import)
+        filtered_query = """
+        SELECT COUNT()
+        FROM Session__c
+        WHERE Session_Status__c != 'Draft' AND Session_Type__c != 'Connector Session'
+        """
+        filtered_result = sf.query(filtered_query)
+        sf_filtered = filtered_result["totalSize"]
+
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        sf_total = f"Error: {str(e)}"
+        sf_by_status = {}
+        sf_by_type = {}
+        sf_filtered = "Error"
+
+    return jsonify(
+        {
+            "database": {
+                "total": db_total,
+                "by_status": db_by_status,
+                "by_type": db_by_type,
+            },
+            "salesforce": {
+                "total": sf_total,
+                "filtered": sf_filtered,
+                "by_status": sf_by_status,
+                "by_type": sf_by_type,
+            },
+            "analysis": {
+                "missing_total": (
+                    sf_total - db_total if isinstance(sf_total, int) else "Unknown"
+                ),
+                "missing_filtered": (
+                    sf_filtered - db_total
+                    if isinstance(sf_filtered, int)
+                    else "Unknown"
+                ),
+            },
+        }
+    )

@@ -21,8 +21,11 @@ Usage:
         success, error, skipped = process_event_row(row, ...)
 """
 
+import logging
 from datetime import datetime
 from typing import Dict, List, Optional, Set, Tuple
+
+logger = logging.getLogger(__name__)
 
 from models import db
 from models.district_model import District
@@ -243,7 +246,7 @@ def process_participation_row(
 
     except Exception as e:
         error_msg = f"Error processing participation row: {str(e)}"
-        print(error_msg)
+        logger.exception("Error processing participation row: %s", e)
         db.session.rollback()
         errors.append(error_msg)
         return success_count, error_count + 1
@@ -457,4 +460,4 @@ def fix_missing_participation_records(event: Event) -> None:
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        print(f"Error committing participation fixes: {str(e)}")
+        logger.exception("Error committing participation fixes: %s", e)

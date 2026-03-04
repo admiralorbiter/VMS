@@ -19,7 +19,7 @@ from simple_salesforce.exceptions import SalesforceAuthenticationFailed
 
 from models import db
 from models.teacher import Teacher
-from routes.decorators import global_users_only
+from routes.decorators import global_users_only, handle_route_errors
 from services.salesforce import get_salesforce_client, safe_query_all
 from services.salesforce.errors import (
     ImportErrorCode,

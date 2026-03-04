@@ -78,7 +78,7 @@ class RelationshipValidator(DataValidator):
             return results
 
         except Exception as e:
-            logger.error("Relationship validation failed: %s", e)
+            logger.exception("Relationship validation failed: %s", e)
             raise
 
     def _validate_entity_relationships(
@@ -129,7 +129,9 @@ class RelationshipValidator(DataValidator):
                 results.extend(circular_results)
 
         except Exception as e:
-            logger.error("Error validating relationships for %s: %s", entity_type, e)
+            logger.exception(
+                "Error validating relationships for %s: %s", entity_type, e
+            )
             results.append(
                 ValidationResult(
                     run_id=self.run_id,
@@ -381,7 +383,9 @@ class RelationshipValidator(DataValidator):
                     )
 
         except Exception as e:
-            logger.error("Error detecting orphaned records for %s: %s", entity_type, e)
+            logger.exception(
+                "Error detecting orphaned records for %s: %s", entity_type, e
+            )
 
         return results
 
@@ -451,7 +455,7 @@ class RelationshipValidator(DataValidator):
                     )
 
         except Exception as e:
-            logger.error(
+            logger.exception(
                 "Error detecting circular references for %s: %s", entity_type, e
             )
 
@@ -480,7 +484,9 @@ class RelationshipValidator(DataValidator):
                 logger.warning("Unknown entity type for sampling: %s", entity_type)
                 return []
         except Exception as e:
-            logger.error("Error getting Salesforce sample for %s: %s", entity_type, e)
+            logger.exception(
+                "Error getting Salesforce sample for %s: %s", entity_type, e
+            )
             return []
 
     def _is_valid_salesforce_id(self, value: Any) -> bool:
@@ -538,4 +544,4 @@ class RelationshipValidator(DataValidator):
             self.add_metric(summary_metric)
 
         except Exception as e:
-            logger.error("Error adding summary metrics: %s", e)
+            logger.exception("Error adding summary metrics: %s", e)

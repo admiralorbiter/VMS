@@ -79,30 +79,26 @@ Replaced all `datetime.utcnow()` calls with `datetime.now(timezone.utc)` across 
 
 ---
 
-## TD-008: Blanket `except Exception` in 50+ Files
+## ~~TD-008: Blanket `except Exception` in 50+ Files~~ ✅ RESOLVED
 
 **Created:** 2026-03-01
+**Resolved:** 2026-03-03
 **Priority:** High
 **Category:** Reliability / Debuggability
 
-### Description
+### Resolution
 
-Bare `except Exception` handlers found across every layer — routes, services, utils, scripts. These silently swallow bugs, hide corrupted state, and make production debugging extremely difficult. Often catch-and-continue without re-raising or logging the traceback.
+Built error handling infrastructure and migrated exception handlers across 4 phases:
 
-### Impact
+- **Infrastructure:** Error hierarchy (`AppError` + 6 subclasses in `utils/errors.py`), Flask middleware (`utils/error_handlers.py` — auto-detects JSON/HTML, logs tracebacks), `@handle_route_errors` decorator (`routes/decorators.py`), 17 unit tests.
+- **Phase A:** Upgraded 113 `logger.error()` → `logger.exception()` across 15 files in `utils/` and `services/` for full traceback capture.
+- **Phase B:** Migrated 48 API route handlers across 22 files — replaced `try/except Exception` + `jsonify(error), 500` with `@handle_route_errors`.
+- **Phase C:** Migrated 7 HTML route handlers across 4 files — replaced `try/except Exception` + `flash(error)` with `@handle_route_errors`.
+- **Phase D:** Replaced 4 `print()` calls with `logger.exception()`/`logger.warning()` in `services/salesforce/`.
 
-- Bugs are hidden during development
-- Production issues are nearly impossible to trace
-- Exception types like `SQLAlchemyError`, `SalesforceExpiredSession`, `ValueError` are all treated identically
+Remaining `except Exception` blocks are intentional per-record resilience patterns (import loops, retry decorators, validator isolation).
 
-### Proposed Fix
-
-Audit each handler individually:
-1. Replace with specific exception types
-2. Add `raise` or explicit error responses where needed
-3. Ensure full traceback is logged via `app.logger.exception()`
-
-**Risk:** Medium — requires per-handler analysis, not a blanket replacement.
+**Risk:** Low — verified with full test suite after each phase.
 
 ---
 
@@ -479,7 +475,7 @@ Ordered by **what best unblocks future work** — structural improvements first,
 | Order | ID | Item | Rationale |
 |:-----:|----|------|-----------|
 | ~~5~~ | ~~**TD-018**~~ | ~~Inline `is_admin` → decorators~~ ✅ | Resolved 2026-03-03. 37 checks replaced across 13 files. |
-| 6 | **TD-008** | Audit `except Exception` handlers | Per-handler analysis in 200-line files is feasible; in 7,000-line files it's not. |
+| ~~6~~ | ~~**TD-008**~~ | ~~Audit `except Exception` handlers~~ ✅ | Resolved 2026-03-03. Infrastructure + 4-phase migration (55 handlers, 113 logger upgrades). |
 | 7 | **TD-009** | Centralize transaction management | Service-layer pattern requires clear route boundaries — only possible after extraction. |
 | 8 | **TD-016** | Generic `ReportCache` model | Reduces boilerplate for new reports; depends on model files being cleaned up (TD-012). |
 

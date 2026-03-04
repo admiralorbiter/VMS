@@ -29,7 +29,7 @@ from models.bug_report import BugReport, BugReportType
 from models.event import Event, EventTeacher, EventType
 from models.teacher import Teacher
 from models.teacher_progress import TeacherProgress
-from routes.decorators import district_scoped_required
+from routes.decorators import district_scoped_required, handle_route_errors
 from routes.virtual.routes import virtual_bp
 
 

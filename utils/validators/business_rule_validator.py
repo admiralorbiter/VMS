@@ -91,7 +91,7 @@ class BusinessRuleValidator(DataValidator):
             return results
 
         except Exception as e:
-            logger.error("Business rule validation failed: %s", e)
+            logger.exception("Business rule validation failed: %s", e)
             results.append(
                 ValidationResult(
                     run_id=self.run_id,
@@ -139,7 +139,9 @@ class BusinessRuleValidator(DataValidator):
                 results.extend(rule_results)
 
         except Exception as e:
-            logger.error("Error validating business rules for %s: %s", entity_type, e)
+            logger.exception(
+                "Error validating business rules for %s: %s", entity_type, e
+            )
             results.append(
                 ValidationResult(
                     run_id=self.run_id,
@@ -197,7 +199,7 @@ class BusinessRuleValidator(DataValidator):
             results.extend(rule_results)
 
         except Exception as e:
-            logger.error("Error validating business rule %s: %s", rule_name, e)
+            logger.exception("Error validating business rule %s: %s", rule_name, e)
             results.append(
                 ValidationResult(
                     run_id=self.run_id,
@@ -392,7 +394,7 @@ class BusinessRuleValidator(DataValidator):
                         )
 
                 except Exception as e:
-                    logger.error(
+                    logger.exception(
                         f"Error validating date range for {entity_type} record {record.get('Id')}: {e}"
                     )
                     results.append(
@@ -1569,7 +1571,7 @@ class BusinessRuleValidator(DataValidator):
                 return []
 
         except Exception as e:
-            logger.error("Error getting sample data for %s: %s", entity_type, e)
+            logger.exception("Error getting sample data for %s: %s", entity_type, e)
             return []
 
     def _load_custom_rules(self) -> Dict[str, Any]:
@@ -1599,7 +1601,7 @@ class BusinessRuleValidator(DataValidator):
             return custom_rules
 
         except Exception as e:
-            logger.error("Error loading custom rules: %s", e)
+            logger.exception("Error loading custom rules: %s", e)
             return {}
 
     def _apply_rule_templates(self, rule_config: Dict[str, Any]) -> Dict[str, Any]:

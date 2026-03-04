@@ -50,7 +50,7 @@ class TestSyncErrorHandling:
     def test_auth_failure_returns_error(self, client, auth_headers):
         """
         TC-200: Verify that Salesforce authentication failure returns
-        appropriate error status (401 Unauthorized).
+        appropriate error status (502 External Service Error).
         """
         with patch(
             "routes.salesforce.event_import.get_salesforce_client"
@@ -60,15 +60,17 @@ class TestSyncErrorHandling:
                 "https://test.salesforce.com", "Auth Failed"
             )
 
+            json_headers = {**auth_headers, "Accept": "application/json"}
             response = client.post(
                 "/events/import-from-salesforce",
-                headers=auth_headers,
+                headers=json_headers,
             )
 
-            assert response.status_code == 401
+            # @handle_route_errors wraps Salesforce* exceptions as ExternalServiceError (502)
+            assert response.status_code == 502
             data = response.get_json()
-            assert data["success"] is False
-            assert "authenticate" in data["message"]
+            assert data["type"] == "ExternalServiceError"
+            assert "unavailable" in data["error"].lower()
 
     def test_general_api_error_returns_failure(self, client, auth_headers):
         """
@@ -80,12 +82,14 @@ class TestSyncErrorHandling:
             # Mock general exception
             mock_get_sf.side_effect = Exception("General connection error")
 
+            json_headers = {**auth_headers, "Accept": "application/json"}
             response = client.post(
                 "/events/import-from-salesforce",
-                headers=auth_headers,
+                headers=json_headers,
             )
 
+            # @handle_route_errors wraps unknown exceptions as AppError (500)
             assert response.status_code == 500
             data = response.get_json()
-            assert data["success"] is False
-            assert "connection error" in data["error"]
+            assert data["type"] == "AppError"
+            assert "error" in data

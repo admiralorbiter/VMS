@@ -86,7 +86,7 @@ from sqlalchemy import func
 
 from models import db
 from models.client_project_model import ClientProject, ProjectStatus
-from routes.decorators import admin_required
+from routes.decorators import admin_required, handle_route_errors
 
 client_projects_bp = Blueprint(
     "client_projects", __name__, url_prefix="/management/client-projects"

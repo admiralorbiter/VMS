@@ -42,7 +42,7 @@ from models.email import (
     EmailMessageStatus,
     EmailTemplate,
 )
-from routes.decorators import security_level_required
+from routes.decorators import handle_route_errors, security_level_required
 from routes.utils import log_audit_action
 from utils.email import (
     create_delivery_attempt,
@@ -639,6 +639,7 @@ def queue_message(message_id):
 @email_bp.route("/management/email/outbox/<int:message_id>/send", methods=["POST"])
 @login_required
 @security_level_required(3)  # ADMIN only
+@handle_route_errors
 def send_message(message_id):
     """
     Send an email message immediately.
@@ -654,21 +655,18 @@ def send_message(message_id):
         )
         return redirect(url_for("email.email_message_detail", message_id=message_id))
 
-    try:
-        is_dry_run = request.form.get("dry_run", "false").lower() == "true"
-        attempt = create_delivery_attempt(message, is_dry_run=is_dry_run)
-        log_audit_action(
-            action="send_email",
-            resource_type="email_message",
-            resource_id=str(message_id),
-            metadata={"attempt_id": attempt.id, "dry_run": is_dry_run},
-        )
-        if is_dry_run:
-            flash("Dry-run completed (no actual delivery)", "info")
-        else:
-            flash("Message sent successfully", "success")
-    except Exception as e:
-        flash(f"Error sending message: {str(e)}", "error")
+    is_dry_run = request.form.get("dry_run", "false").lower() == "true"
+    attempt = create_delivery_attempt(message, is_dry_run=is_dry_run)
+    log_audit_action(
+        action="send_email",
+        resource_type="email_message",
+        resource_id=str(message_id),
+        metadata={"attempt_id": attempt.id, "dry_run": is_dry_run},
+    )
+    if is_dry_run:
+        flash("Dry-run completed (no actual delivery)", "info")
+    else:
+        flash("Message sent successfully", "success")
 
     return redirect(url_for("email.email_message_detail", message_id=message_id))
 

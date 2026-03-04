@@ -190,6 +190,11 @@ def app():
 
     init_routes(test_app)
 
+    # Register error handlers (matches app.py — required for @handle_route_errors)
+    from utils.error_handlers import register_error_handlers
+
+    register_error_handlers(test_app)
+
     # Register custom Jinja2 filters (same as in app.py)
     import json
 

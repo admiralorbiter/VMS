@@ -38,7 +38,7 @@ from models.school_model import School
 from models.teacher_progress import TeacherProgress
 from models.tenant import Tenant
 from models.volunteer import Volunteer
-from routes.decorators import admin_required
+from routes.decorators import admin_required, handle_route_errors
 from services.scoping import get_user_district_name, is_tenant_user, scope_events_query
 
 # Import from sibling modules

@@ -82,7 +82,7 @@ class CountValidator(DataValidator):
             return self.results
 
         except Exception as e:
-            logger.error("Count validation failed: %s", e)
+            logger.exception("Count validation failed: %s", e)
             raise
         finally:
             if self.salesforce_client:
@@ -214,7 +214,7 @@ class CountValidator(DataValidator):
             )
 
         except Exception as e:
-            logger.error(
+            logger.exception(
                 f"Failed to validate count with context for {entity_type}: {e}"
             )
 
@@ -579,7 +579,7 @@ class CountValidator(DataValidator):
             return count
 
         except Exception as e:
-            logger.error("Failed to get VMS count for %s: %s", entity_type, e)
+            logger.exception("Failed to get VMS count for %s: %s", entity_type, e)
             raise
 
     def _get_salesforce_count(self, entity_type: str) -> int:
@@ -606,7 +606,9 @@ class CountValidator(DataValidator):
                 raise ValueError(f"Unknown entity type: {entity_type}")
 
         except Exception as e:
-            logger.error("Failed to get Salesforce count for %s: %s", entity_type, e)
+            logger.exception(
+                "Failed to get Salesforce count for %s: %s", entity_type, e
+            )
             raise
 
     def _determine_severity(self, percentage_diff: float) -> str:
@@ -682,7 +684,7 @@ class CountValidator(DataValidator):
             )
 
         except Exception as e:
-            logger.error("Failed to add summary metrics: %s", e)
+            logger.exception("Failed to add summary metrics: %s", e)
 
     def get_validation_summary(self) -> Dict[str, Any]:
         """Get a summary of the count validation results."""

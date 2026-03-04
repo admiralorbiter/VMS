@@ -59,7 +59,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from forms import LoginForm  # Adjust import path as needed
 from models import User, db  # Adjust import path as needed
-from routes.decorators import admin_required
+from routes.decorators import admin_required, handle_route_errors
 
 auth_bp = Blueprint("auth", __name__)
 

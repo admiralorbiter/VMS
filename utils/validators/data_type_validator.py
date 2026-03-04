@@ -92,7 +92,7 @@ class DataTypeValidator(DataValidator):
             return self.results
 
         except Exception as e:
-            logger.error("Data type validation failed: %s", e)
+            logger.exception("Data type validation failed: %s", e)
             raise
         finally:
             if self.salesforce_client:
@@ -174,7 +174,7 @@ class DataTypeValidator(DataValidator):
             )
 
         except Exception as e:
-            logger.error("Failed to validate data types for %s: %s", entity_type, e)
+            logger.exception("Failed to validate data types for %s: %s", entity_type, e)
             self.add_result(
                 self.create_result(
                     entity_type=entity_type,
@@ -209,7 +209,9 @@ class DataTypeValidator(DataValidator):
                 return []
 
         except Exception as e:
-            logger.error("Failed to get Salesforce sample for %s: %s", entity_type, e)
+            logger.exception(
+                "Failed to get Salesforce sample for %s: %s", entity_type, e
+            )
             return []
 
     def _validate_record_data_types(
@@ -552,7 +554,9 @@ class DataTypeValidator(DataValidator):
             )
 
         except Exception as e:
-            logger.error("Failed to add data type validation summary metrics: %s", e)
+            logger.exception(
+                "Failed to add data type validation summary metrics: %s", e
+            )
 
     def get_validation_summary(self) -> Dict[str, Any]:
         """Get a summary of the data type validation results."""

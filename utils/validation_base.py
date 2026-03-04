@@ -243,7 +243,7 @@ class DataValidator(ABC):
             self.end_validation()
             return results
         except Exception as e:
-            logger.error("Validation failed in %s: %s", self.__class__.__name__, e)
+            logger.exception("Validation failed in %s: %s", self.__class__.__name__, e)
             self.end_validation()
 
             # Add error result

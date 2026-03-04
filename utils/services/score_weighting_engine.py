@@ -64,7 +64,7 @@ class ScoreWeightingEngine:
             return normalized_weights
 
         except Exception as e:
-            self.logger.error("Error getting weights for %s: %s", entity_type, e)
+            self.logger.exception("Error getting weights for %s: %s", entity_type, e)
             return self._get_fallback_weights()
 
     def get_validation_type_weight(
@@ -91,7 +91,7 @@ class ScoreWeightingEngine:
             return weight
 
         except Exception as e:
-            self.logger.error(
+            self.logger.exception(
                 f"Error getting weight for {validation_type} in {entity_type}: {e}"
             )
             return 1.0
@@ -109,7 +109,9 @@ class ScoreWeightingEngine:
         try:
             return self.severity_weights.get(severity, 1.0)
         except Exception as e:
-            self.logger.error("Error getting severity weight for %s: %s", severity, e)
+            self.logger.exception(
+                "Error getting severity weight for %s: %s", severity, e
+            )
             return 1.0
 
     def set_entity_weight_override(self, entity_type: str, weights: Dict[str, float]):
@@ -134,7 +136,7 @@ class ScoreWeightingEngine:
             )
 
         except Exception as e:
-            self.logger.error(
+            self.logger.exception(
                 "Error setting weight override for %s: %s", entity_type, e
             )
 
@@ -157,7 +159,7 @@ class ScoreWeightingEngine:
             )
 
         except Exception as e:
-            self.logger.error(
+            self.logger.exception(
                 f"Error setting validation type override for {validation_type}: {e}"
             )
 
@@ -178,7 +180,7 @@ class ScoreWeightingEngine:
                 self.logger.info("Reset all entity weight overrides")
 
         except Exception as e:
-            self.logger.error("Error resetting entity weights: %s", e)
+            self.logger.exception("Error resetting entity weights: %s", e)
 
     def reset_validation_type_overrides(self):
         """Reset all validation type weight overrides."""
@@ -187,7 +189,7 @@ class ScoreWeightingEngine:
             self.logger.info("Reset all validation type weight overrides")
 
         except Exception as e:
-            self.logger.error("Error resetting validation type overrides: %s", e)
+            self.logger.exception("Error resetting validation type overrides: %s", e)
 
     def get_weight_summary(self) -> Dict:
         """
@@ -210,7 +212,7 @@ class ScoreWeightingEngine:
             return summary
 
         except Exception as e:
-            self.logger.error("Error getting weight summary: %s", e)
+            self.logger.exception("Error getting weight summary: %s", e)
             return {"error": str(e)}
 
     def validate_weights(self, weights: Dict[str, float]) -> bool:
@@ -267,7 +269,7 @@ class ScoreWeightingEngine:
             return normalized
 
         except Exception as e:
-            self.logger.error("Error normalizing weights: %s", e)
+            self.logger.exception("Error normalizing weights: %s", e)
             return self._get_fallback_weights()
 
     def _validate_weights(self, weights: Dict[str, float]) -> Dict[str, float]:
@@ -296,7 +298,7 @@ class ScoreWeightingEngine:
             return validated
 
         except Exception as e:
-            self.logger.error("Error validating weights: %s", e)
+            self.logger.exception("Error validating weights: %s", e)
             return self._get_fallback_weights()
 
     def _get_fallback_weights(self) -> Dict[str, float]:
@@ -362,7 +364,7 @@ class ScoreWeightingEngine:
             return weighted_score
 
         except Exception as e:
-            self.logger.error("Error calculating weighted score: %s", e)
+            self.logger.exception("Error calculating weighted score: %s", e)
             return 0.0
 
     def get_scoring_algorithm(self, validation_type: str) -> str:
@@ -387,7 +389,7 @@ class ScoreWeightingEngine:
             return algorithms.get(validation_type, "default")
 
         except Exception as e:
-            self.logger.error(
+            self.logger.exception(
                 f"Error getting scoring algorithm for {validation_type}: {e}"
             )
             return "default"

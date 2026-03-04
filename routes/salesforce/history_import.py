@@ -24,7 +24,7 @@ from models.event import Event
 from models.history import History
 from models.teacher import Teacher
 from models.volunteer import Volunteer
-from routes.decorators import global_users_only
+from routes.decorators import global_users_only, handle_route_errors
 from routes.utils import parse_date
 from services.salesforce import get_salesforce_client, safe_query_all
 from services.salesforce.errors import ImportErrorCode, create_import_error
