@@ -1038,3 +1038,192 @@ def search_sessions():
         )
 
     return jsonify({"sessions": results})
+
+
+# ── Audit Log Viewer (Admin-only) ─────────────────────────────────────
+
+
+@teacher_usage_bp.route("/audit")
+@login_required
+@virtual_admin_required
+def audit_log():
+    """View audit log entries related to teacher usage changes.
+
+    Scoped to attendance_override resource_type. Admin-only.
+    Query params: start_date, end_date, action, per_page, page.
+    """
+    if not current_user.is_admin:
+        flash("Access denied. Admin privileges required.", "error")
+        return redirect(url_for("teacher_usage.index"))
+
+    from models.user import User
+
+    admin_tenant_id = request.args.get("tenant_id", type=int)
+
+    # Build query scoped to teacher-usage audit entries
+    q = AuditLog.query.filter(
+        AuditLog.resource_type == "attendance_override",
+    ).order_by(AuditLog.created_at.desc())
+
+    # Filters
+    action_filter = request.args.get("action", "").strip()
+    start_date = request.args.get("start_date", "").strip()
+    end_date = request.args.get("end_date", "").strip()
+    page = request.args.get("page", default=1, type=int)
+    per_page = request.args.get("per_page", default=50, type=int)
+
+    if action_filter:
+        q = q.filter(AuditLog.action == action_filter)
+    if start_date:
+        try:
+            from datetime import datetime
+
+            q = q.filter(AuditLog.created_at >= datetime.fromisoformat(start_date))
+        except Exception:
+            pass
+    if end_date:
+        try:
+            from datetime import datetime
+
+            q = q.filter(AuditLog.created_at <= datetime.fromisoformat(end_date))
+        except Exception:
+            pass
+
+    pagination = q.paginate(page=page, per_page=per_page, error_out=False)
+    logs = pagination.items
+
+    # Pre-load user names for display
+    user_ids = {log.user_id for log in logs if log.user_id}
+    users_map = {}
+    if user_ids:
+        users = User.query.filter(User.id.in_(user_ids)).all()
+        users_map = {
+            u.id: f"{u.first_name or ''} {u.last_name or ''}".strip() or u.username
+            for u in users
+        }
+
+    # Get distinct actions for the filter dropdown
+    action_choices = (
+        db.session.query(AuditLog.action)
+        .filter(AuditLog.resource_type == "attendance_override")
+        .distinct()
+        .all()
+    )
+    action_choices = sorted([a[0] for a in action_choices])
+
+    return render_template(
+        "district/teacher_usage/audit_log.html",
+        logs=logs,
+        pagination=pagination,
+        users_map=users_map,
+        action_choices=action_choices,
+        admin_tenant_id=admin_tenant_id,
+        filters={
+            "action": action_filter,
+            "start_date": start_date,
+            "end_date": end_date,
+            "page": page,
+            "per_page": per_page,
+        },
+    )
+
+
+@teacher_usage_bp.route("/audit/export")
+@login_required
+@virtual_admin_required
+def audit_export_csv():
+    """Export teacher usage audit log entries as CSV.
+
+    Same filters as the audit viewer. Admin-only.
+    """
+    import csv
+    import io
+
+    from flask import Response
+
+    if not current_user.is_admin:
+        return jsonify({"error": "Access denied"}), 403
+
+    from models.user import User
+
+    # Build query (same as audit_log route)
+    q = AuditLog.query.filter(
+        AuditLog.resource_type == "attendance_override",
+    ).order_by(AuditLog.created_at.desc())
+
+    action_filter = request.args.get("action", "").strip()
+    start_date = request.args.get("start_date", "").strip()
+    end_date = request.args.get("end_date", "").strip()
+
+    if action_filter:
+        q = q.filter(AuditLog.action == action_filter)
+    if start_date:
+        try:
+            from datetime import datetime
+
+            q = q.filter(AuditLog.created_at >= datetime.fromisoformat(start_date))
+        except Exception:
+            pass
+    if end_date:
+        try:
+            from datetime import datetime
+
+            q = q.filter(AuditLog.created_at <= datetime.fromisoformat(end_date))
+        except Exception:
+            pass
+
+    logs = q.all()
+
+    # Pre-load user names
+    user_ids = {log.user_id for log in logs if log.user_id}
+    users_map = {}
+    if user_ids:
+        users = User.query.filter(User.id.in_(user_ids)).all()
+        users_map = {
+            u.id: f"{u.first_name or ''} {u.last_name or ''}".strip() or u.username
+            for u in users
+        }
+
+    # Build CSV
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(
+        [
+            "Timestamp (UTC)",
+            "User",
+            "Action",
+            "Teacher",
+            "Event/Session",
+            "Reason",
+            "IP Address",
+            "Resource ID",
+        ]
+    )
+
+    for log in logs:
+        meta = log.meta or {}
+        writer.writerow(
+            [
+                log.created_at.strftime("%Y-%m-%d %H:%M:%S") if log.created_at else "",
+                users_map.get(
+                    log.user_id, f"User #{log.user_id}" if log.user_id else "System"
+                ),
+                log.action or "",
+                meta.get("teacher_name", ""),
+                meta.get("event_title", ""),
+                meta.get("reason", meta.get("reversal_reason", "")),
+                log.ip or "",
+                log.resource_id or "",
+            ]
+        )
+
+    csv_content = output.getvalue()
+    output.close()
+
+    return Response(
+        csv_content,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=teacher_usage_audit_log.csv"
+        },
+    )
