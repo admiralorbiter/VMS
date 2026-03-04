@@ -730,12 +730,19 @@
                 class="export-btn" style="background: #467599;">
                 <i class="fas fa-file-import"></i> Import / Manage Teachers
             </a>
-                        {% if teacher_progress_data %}
+            {% if teacher_progress_data %}
             <a href="{{ url_for('teacher_usage.export_excel', year=academic_year, semester=semester, tenant_id=admin_tenant_id) if admin_tenant_id is defined and admin_tenant_id else url_for('teacher_usage.export_excel', year=academic_year, semester=semester) }}"
                 class="export-btn">
                 <i class="fas fa-file-excel"></i> Export to Excel
             </a>
             {% endif %}
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('teacher_usage.audit_log', tenant_id=admin_tenant_id) if admin_tenant_id is defined and admin_tenant_id else url_for('teacher_usage.audit_log') }}"
+                class="export-btn" style="background: #495057;">
+                <i class="fas fa-clipboard-list"></i> Audit Log
+            </a>
+            {% endif %}
+
         </form>
     </div>
 
