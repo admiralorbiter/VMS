@@ -69,6 +69,11 @@ with app.app_context():
     try:
         # Always call create_all; it only creates tables that don't exist
         db.create_all()
+
+        # Auto-sync file-based email templates to the database
+        from utils.template_sync import sync_file_templates
+
+        sync_file_templates()
     except Exception as e:
         # Fallback/diagnostic output if something goes wrong creating tables
         inspector = db.inspect(db.engine)

@@ -215,8 +215,8 @@ class TestBuildTeacherReminderContext:
             assert context["teacher_name"] == "Tahra Arnold"
             assert context["building_name"] == "Banneker Elementary"
             assert context["district_name"] == "Kansas City Kansas Public Schools"
-            assert context["completed_count"] == 0
-            assert context["target_sessions"] == 1
+            assert "login_url" in context
+            assert "contact_email" in context
             assert "<table" in context["session_list"]
             assert "Healthcare" in context["session_list_text"]
 
@@ -235,8 +235,8 @@ class TestBuildTeacherReminderContext:
                 "district_name",
                 "session_list",
                 "session_list_text",
-                "completed_count",
-                "target_sessions",
+                "login_url",
+                "contact_email",
             ]
             for key in required_keys:
                 assert key in context, f"Missing required key: {key}"
@@ -246,15 +246,20 @@ class TestTemplateRendering:
     """Tests for template rendering with the session reminder template."""
 
     def test_template_renders_without_missing_placeholders(self, app, sample_teacher):
-        """The seed template should render cleanly with a complete context."""
+        """The file-synced template should render cleanly with a complete context."""
         with app.app_context():
-            # Seed the template
-            from scripts.daily_imports.test_email_templates import (
-                ensure_teacher_session_reminder_template,
-            )
+            # Sync templates from file definitions
             from utils.email import render_template as email_render
+            from utils.template_sync import sync_file_templates
 
-            template = ensure_teacher_session_reminder_template()
+            sync_file_templates()
+
+            template = EmailTemplate.query.filter_by(
+                purpose_key="teacher_session_reminder", is_active=True
+            ).first()
+            assert (
+                template is not None
+            ), "teacher_session_reminder template not found after sync"
 
             # Build a context
             context = build_teacher_reminder_context(
@@ -272,5 +277,7 @@ class TestTemplateRendering:
 
             # Personalized content should be present
             assert "Tahra Arnold" in html_body
-            assert "Banneker Elementary" in html_body
             assert "Kansas City Kansas Public Schools" in subject
+            # Login URL and contact info should be rendered
+            assert "/login" in html_body
+            assert "Log in to the VMS portal" in html_body

@@ -223,6 +223,8 @@ def build_teacher_reminder_context(
     sessions: List[Event],
     completed_count: int = 0,
     district_name: str = DEFAULT_DISTRICT_NAME,
+    login_url: Optional[str] = None,
+    contact_email: Optional[str] = None,
 ) -> Dict:
     """
     Build the full placeholder context dict for one teacher.
@@ -232,18 +234,31 @@ def build_teacher_reminder_context(
         sessions: List of upcoming Event objects
         completed_count: Number of completed sessions for this teacher
         district_name: District name for branding
+        login_url: URL to the VMS login page
+        contact_email: Contact email for corrections/questions
 
     Returns:
         Dictionary of placeholder values for template rendering
     """
+    if login_url is None:
+        login_url = (
+            os.environ.get("APP_BASE_URL", "http://localhost:5050").rstrip("/")
+            + "/login"
+        )
+    if contact_email is None:
+        contact_email = os.environ.get(
+            "CONTACT_EMAIL",
+            os.environ.get("MAIL_FROM", "support@example.com"),
+        )
+
     return {
         "teacher_name": teacher.name,
-        "building_name": teacher.building,
+        "building_name": teacher.building or "",
         "district_name": district_name,
         "session_list": build_session_list_html(sessions),
         "session_list_text": build_session_list_text(sessions),
-        "completed_count": completed_count,
-        "target_sessions": teacher.target_sessions,
+        "login_url": login_url,
+        "contact_email": contact_email,
     }
 
 
@@ -501,14 +516,21 @@ def send_canary_email(job: BatchEmailJob) -> bool:
     sessions = get_upcoming_virtual_sessions(tenant_id=job.tenant_id)
 
     # Build a sample context using mock teacher data for the canary
+    login_url = (
+        os.environ.get("APP_BASE_URL", "http://localhost:5050").rstrip("/") + "/login"
+    )
+    contact_email = os.environ.get(
+        "CONTACT_EMAIL",
+        os.environ.get("MAIL_FROM", "support@example.com"),
+    )
     context = {
         "teacher_name": "[CANARY TEST] Sample Teacher",
         "building_name": "Sample Building",
         "district_name": job.district_name,
         "session_list": build_session_list_html(sessions),
         "session_list_text": build_session_list_text(sessions),
-        "completed_count": 0,
-        "target_sessions": 1,
+        "login_url": login_url,
+        "contact_email": contact_email,
     }
 
     # Create and send canary email
