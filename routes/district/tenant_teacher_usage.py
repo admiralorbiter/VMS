@@ -760,7 +760,9 @@ def create_override(teacher_progress_id):
 
     Expects JSON: {action: "add"|"remove", event_id: int, reason: str}
     """
-    from models.event import Event, EventStatus, EventType
+    from datetime import datetime, timezone
+
+    from models.event import Event, EventStatus, EventTeacher, EventType
 
     tp = TeacherProgress.query.get_or_404(teacher_progress_id)
 
@@ -824,6 +826,32 @@ def create_override(teacher_progress_id):
         created_by=current_user.id,
     )
     db.session.add(override)
+
+    # Sync EventTeacher record when teacher has a linked teacher_id
+    if tp.teacher_id:
+        et = EventTeacher.query.filter_by(
+            event_id=event_id, teacher_id=tp.teacher_id
+        ).first()
+        if action == OverrideAction.ADD:
+            if et:
+                # Update existing record to 'attended'
+                et.status = "attended"
+                et.attendance_confirmed_at = datetime.now(timezone.utc)
+                et.notes = f"Override add: {reason}"
+            else:
+                # Create new EventTeacher with 'attended' status
+                et = EventTeacher(
+                    event_id=event_id,
+                    teacher_id=tp.teacher_id,
+                    status="attended",
+                    attendance_confirmed_at=datetime.now(timezone.utc),
+                    notes=f"Override add: {reason}",
+                )
+                db.session.add(et)
+        elif action == OverrideAction.REMOVE:
+            if et:
+                et.status = "no_show"
+                et.notes = f"Override remove: {reason}"
 
     # Create audit log entry (FR-VIRTUAL-241)
     audit = AuditLog(

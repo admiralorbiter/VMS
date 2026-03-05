@@ -1100,6 +1100,10 @@ def load_pathful_routes():
         db.session.flush()  # Get the event ID
 
         # Link teachers if provided
+        # Use 'attended' for completed events, 'registered' otherwise
+        teacher_status = (
+            "attended" if status in (EventStatus.COMPLETED,) else "registered"
+        )
         linked_teachers = 0
         if teacher_ids_str:
             for tid_str in teacher_ids_str.split(","):
@@ -1113,7 +1117,7 @@ def load_pathful_routes():
                         et = EventTeacher(
                             event_id=event.id,
                             teacher_id=teacher.id,
-                            status="registered",
+                            status=teacher_status,
                         )
                         db.session.add(et)
                         linked_teachers += 1
@@ -1305,7 +1309,7 @@ def load_pathful_routes():
     @admin_required
     def add_session_teacher(session_id):
         """Add a teacher to a virtual session via AJAX."""
-        from models.event import EventTeacher
+        from models.event import EventStatus, EventTeacher
         from models.teacher import Teacher
 
         event = db.session.get(Event, session_id)
@@ -1328,8 +1332,12 @@ def load_pathful_routes():
         if existing:
             return jsonify({"success": False, "error": "Teacher already linked"}), 409
 
+        # Set status based on event completion: 'attended' for completed, 'registered' otherwise
+        teacher_status = (
+            "attended" if event.status == EventStatus.COMPLETED else "registered"
+        )
         et = EventTeacher(
-            event_id=session_id, teacher_id=teacher_id, status="registered"
+            event_id=session_id, teacher_id=teacher_id, status=teacher_status
         )
         db.session.add(et)
         db.session.commit()
