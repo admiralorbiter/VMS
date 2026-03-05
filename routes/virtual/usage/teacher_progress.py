@@ -122,9 +122,16 @@ def compute_teacher_school_breakdown(district_name, virtual_year, date_from, dat
                 "teacher did not attend" in original_status
             )
             tr_status = _sanitize(getattr(teacher_reg, "status", None))
+            tr_status_raw = (getattr(teacher_reg, "status", "") or "").strip().lower()
 
+            # Primary signal: EventTeacher.status set by Pathful import
+            is_teacher_no_show_by_status = tr_status_raw in ("no_show", "no-show")
+            is_teacher_attended_by_status = tr_status_raw in ("attended", "completed")
+
+            # Secondary signal: text-based detection for legacy data
             is_teacher_no_show = (
-                "teacher no show" in tr_status
+                is_teacher_no_show_by_status
+                or "teacher no show" in tr_status
                 or "no show" in tr_status
                 or "did not attend" in tr_status
             )
@@ -134,8 +141,10 @@ def compute_teacher_school_breakdown(district_name, virtual_year, date_from, dat
                 or "inclement weather" in tr_status
                 or "technical" in tr_status
             )
-            completed_by_status = ("attended" in tr_status) or (
-                "completed" in tr_status
+            completed_by_status = (
+                is_teacher_attended_by_status
+                or ("attended" in tr_status)
+                or ("completed" in tr_status)
             )
 
             counted_completed = False
@@ -413,14 +422,24 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
                     event_status_is_no_show = event.status == EventStatus.NO_SHOW
 
                     # Comprehensive no-show detection
-                    # Check teacher registration status first (most specific)
-                    is_teacher_no_show = (
-                        "teacher no show" in teacher_reg_status
-                        or "no show" in teacher_reg_status
-                        or "did not attend" in teacher_reg_status
+                    # Primary signal: EventTeacher.status set by Pathful import
+                    teacher_reg_status_raw = (
+                        (getattr(teacher_reg, "status", "") or "").strip().lower()
+                    )
+                    is_teacher_no_show = teacher_reg_status_raw in (
+                        "no_show",
+                        "no-show",
                     )
 
-                    # If teacher registration doesn't have no-show, check event-level status
+                    # Secondary: Check teacher registration status text (most specific)
+                    if not is_teacher_no_show:
+                        is_teacher_no_show = (
+                            "teacher no show" in teacher_reg_status
+                            or "no show" in teacher_reg_status
+                            or "did not attend" in teacher_reg_status
+                        )
+
+                    # Tertiary: check event-level status for teacher no-shows
                     if not is_teacher_no_show:
                         is_teacher_no_show = (
                             "teacher no show" in event_original_status

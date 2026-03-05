@@ -33,6 +33,8 @@ OPTIONAL_SESSION_COLUMNS = [
     "Partner",
     "Registered Student Count",
     "Attended Student Count",
+    "Registered Educator Count",
+    "Attended Educator Count",
     "Career Cluster",
     "Work Based Learning",
     "Series or Event Title",

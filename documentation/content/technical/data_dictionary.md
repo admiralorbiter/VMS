@@ -122,6 +122,9 @@ This is the authoritative reference for all entity definitions. Other documents 
 | `participant_count` | Integer | SF/POL | Internal | Total participants |
 | `registered_count` | Integer | SF/POL | Internal | Registered participants (indexed) |
 | `attended_count` | Integer | SF/POL | Internal | Attended participants |
+| `registered_student_count` | Integer | PATH | Internal | From Pathful `Registered Student Count`; max() across rows |
+| `attended_student_count` | Integer | PATH | Internal | From Pathful `Attended Student Count`; max() across rows |
+| `attended_educator_count` | Integer | PATH | Internal | From Pathful `Attended Educator Count`; max() across rows; used for auditing teacher attendance |
 | `scheduled_participants_count` | Integer | POL | Internal | Scheduled participants |
 | `total_requested_volunteer_jobs` | Integer | POL | Internal | Total requested volunteer positions |
 | `additional_information` | Text | SF/POL | Public | Additional event details |
@@ -274,12 +277,20 @@ Route: `/virtual/usage/recruitment` (implemented in `routes/virtual/usage.py`)
 |-------|------|--------|-------------|-------|
 | `event_id` | Integer (FK to event.id) | POL | Internal | Primary key (composite) |
 | `teacher_id` | Integer (FK to teacher.id) | POL | Sensitive | Primary key (composite) |
-| `status` | String(50) | POL | Internal | registered, attended, no_show, cancelled |
+| `status` | String(50) | POL/PATH | Internal | `registered`, `attended`, `no_show`, `cancelled` — see derivation rules below |
 | `is_simulcast` | Boolean | POL | Internal | Simulcast participation flag |
 | `attendance_confirmed_at` | DateTime(timezone=True) | POL | Internal | When attendance was confirmed |
-| `notes` | Text | POL | Internal | Additional notes |
+| `notes` | Text | POL | Internal | Admin notes; **when set, protects record from re-import overwrite** |
 | `created_at` | DateTime(timezone=True) | POL | Internal | Auto-set on creation |
 | `updated_at` | DateTime(timezone=True) | POL | Internal | Auto-updated on modification |
+
+**Status Derivation** (during Pathful import):
+- `attended` — Event Status = Completed AND `Attended Educator Count` ≥ 1
+- `no_show` — Event Status = Completed AND `Attended Educator Count` = n/a/missing, OR Event Status = Cancelled/No Show
+- `registered` — Event Status = Draft, Requested, Published, or any non-completed status
+
+> [!NOTE]
+> **Admin Override**: If `EventTeacher.notes` is populated, re-imports will NOT overwrite the status. This allows admins to manually correct attendance records (e.g., verifying attendance via sign-in sheets).
 
 **Relationships**:
 - Many-to-one with `Event` (via `event_id`)
@@ -612,5 +623,5 @@ Managed in one place and validated everywhere. All enums are defined in `models/
 
 ---
 
-*Last updated: February 2026*
-*Version: 1.1*
+*Last updated: March 2026*
+*Version: 1.2*

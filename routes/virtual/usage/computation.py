@@ -1462,14 +1462,22 @@ def compute_virtual_session_district_data(
             # moved to in-person (counted as successful)
             tr_status_norm = (getattr(teacher_reg, "status", "") or "").lower()
             is_no_show = (
-                "no-show" in tr_status_norm
+                "no_show" in tr_status_norm
+                or "no-show" in tr_status_norm
                 or "no show" in tr_status_norm
                 or "did not attend" in tr_status_norm
             )
             is_cancel = "cancel" in tr_status_norm or "withdraw" in tr_status_norm
             if not moved_to_in_person:
-                # For regular virtual events, require confirmed attendance and not a no-show/cancel
-                if teacher_reg.attendance_confirmed_at is None:
+                # For regular virtual events, require attended/completed/count status
+                # Skip registered, no_show, cancelled, and unknown statuses
+                if tr_status_norm in (
+                    "registered",
+                    "no_show",
+                    "no-show",
+                    "cancelled",
+                    "",
+                ):
                     continue
                 if is_no_show or is_cancel:
                     continue

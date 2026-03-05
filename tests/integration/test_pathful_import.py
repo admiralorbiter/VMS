@@ -68,6 +68,8 @@ def sample_session_report_df():
                 "Partner": "PREP-KC",
                 "Registered Student Count": 25,
                 "Attended Student Count": 22,
+                "Registered Educator Count": 1,
+                "Attended Educator Count": 1,
                 "Career Cluster": "Information Technology",
             },
             {
@@ -84,6 +86,8 @@ def sample_session_report_df():
                 "Partner": "PREP-KC",
                 "Registered Student Count": 25,
                 "Attended Student Count": 22,
+                "Registered Educator Count": 1,
+                "Attended Educator Count": 1,
                 "Career Cluster": "Information Technology",
             },
         ]
@@ -112,8 +116,12 @@ def test_teacher_with_progress(app):
         db.session.flush()
 
         progress = TeacherProgress(
+            academic_year="2025-2026",
+            virtual_year="2025-2026",
+            building="Test School",
+            name="Jane Educator",
+            email="jane.educator@test.com",
             teacher_id=teacher.id,
-            status="not_started",
         )
         db.session.add(progress)
         db.session.commit()
@@ -589,6 +597,8 @@ def test_import_completed_sets_event_teacher_attended(client, pathful_admin_logi
                 "Partner": "PREP-KC",
                 "Registered Student Count": 20,
                 "Attended Student Count": 18,
+                "Registered Educator Count": 1,
+                "Attended Educator Count": 1,
                 "Career Cluster": "Science",
             }
         ]
@@ -609,9 +619,7 @@ def test_import_completed_sets_event_teacher_attended(client, pathful_admin_logi
     )
 
     with app.app_context():
-        event = Event.query.filter_by(
-            pathful_session_id="sess-et-attended-001"
-        ).first()
+        event = Event.query.filter_by(pathful_session_id="sess-et-attended-001").first()
         assert event is not None
 
         # Find EventTeacher record for this event
@@ -715,9 +723,7 @@ def test_reimport_updates_event_teacher_status(client, pathful_admin_login, app)
     )
 
     with app.app_context():
-        event = Event.query.filter_by(
-            pathful_session_id="sess-et-reimport-001"
-        ).first()
+        event = Event.query.filter_by(pathful_session_id="sess-et-reimport-001").first()
         assert event is not None
         et = EventTeacher.query.filter_by(event_id=event.id).first()
         assert et is not None
@@ -740,6 +746,8 @@ def test_reimport_updates_event_teacher_status(client, pathful_admin_login, app)
                 "Partner": "PREP-KC",
                 "Registered Student Count": 25,
                 "Attended Student Count": 22,
+                "Registered Educator Count": 1,
+                "Attended Educator Count": 1,
                 "Career Cluster": "Technology",
             }
         ]
@@ -760,9 +768,7 @@ def test_reimport_updates_event_teacher_status(client, pathful_admin_login, app)
     )
 
     with app.app_context():
-        event = Event.query.filter_by(
-            pathful_session_id="sess-et-reimport-001"
-        ).first()
+        event = Event.query.filter_by(pathful_session_id="sess-et-reimport-001").first()
         assert event is not None
         assert event.status == EventStatus.COMPLETED, "Event status should be Completed"
 
@@ -873,3 +879,196 @@ def test_unmatched_list_view(client, pathful_admin_login, app):
     """Verify unmatched records view is accessible."""
     response = client.get("/virtual/pathful/unmatched", headers=pathful_admin_login)
     assert response.status_code == 200
+
+
+# --- Attendance Edge Case Tests ---
+
+
+def test_completed_attended_na_sets_no_show(client, pathful_admin_login, app):
+    """Verify Completed + Attended Educator Count=n/a -> EventTeacher.status='no_show'."""
+    from models.event import EventTeacher
+
+    df = pd.DataFrame(
+        [
+            {
+                "Session ID": "sess-no-show-001",
+                "Title": "No Show Session",
+                "Date": "2026-06-01 10:00:00",
+                "Status": "Completed",
+                "Duration": 60,
+                "User Auth Id": "user-no-show-1",
+                "Name": "Anthony Johnson",
+                "SignUp Role": "Educator",
+                "School": "No Show School",
+                "District or Company": "No Show District",
+                "Partner": "PREP-KC",
+                "Registered Student Count": 25,
+                "Attended Student Count": 22,
+                "Registered Educator Count": "n/a",
+                "Attended Educator Count": "n/a",
+                "Career Cluster": "Business",
+            }
+        ]
+    )
+
+    output = io.BytesIO()
+    df.to_excel(output, index=False, engine="openpyxl")
+    output.seek(0)
+
+    client.post(
+        "/virtual/pathful/import",
+        headers=pathful_admin_login,
+        data={
+            "file": (output, "no_show_test.xlsx"),
+            "report_type": "session_report",
+        },
+        content_type="multipart/form-data",
+    )
+
+    with app.app_context():
+        event = Event.query.filter_by(pathful_session_id="sess-no-show-001").first()
+        assert event is not None
+
+        et = EventTeacher.query.filter_by(event_id=event.id).first()
+        assert et is not None, "EventTeacher should have been created"
+        assert et.status == "no_show", (
+            f"EventTeacher.status should be 'no_show' when Attended Educator Count "
+            f"is 'n/a', got '{et.status}'"
+        )
+
+
+def test_missing_attended_educator_count_column_succeeds(
+    client, pathful_admin_login, app
+):
+    """Verify import succeeds when Attended Educator Count column is absent.
+
+    Falls back to event-status-only logic (Completed without column -> no_show).
+    """
+    from models.event import EventTeacher
+
+    df = pd.DataFrame(
+        [
+            {
+                "Session ID": "sess-no-col-001",
+                "Title": "No Column Session",
+                "Date": "2026-06-15 10:00:00",
+                "Status": "Completed",
+                "Duration": 60,
+                "User Auth Id": "user-no-col-1",
+                "Name": "No Column Teacher",
+                "SignUp Role": "Educator",
+                "School": "No Col School",
+                "District or Company": "No Col District",
+                "Partner": "PREP-KC",
+                "Registered Student Count": 20,
+                "Attended Student Count": 18,
+                "Career Cluster": "Health",
+                # Note: Attended Educator Count column is intentionally absent
+            }
+        ]
+    )
+
+    output = io.BytesIO()
+    df.to_excel(output, index=False, engine="openpyxl")
+    output.seek(0)
+
+    response = client.post(
+        "/virtual/pathful/import",
+        headers=pathful_admin_login,
+        data={
+            "file": (output, "no_column_test.xlsx"),
+            "report_type": "session_report",
+        },
+        content_type="multipart/form-data",
+    )
+
+    # Import should succeed (no crash)
+    assert response.status_code in [200, 302]
+
+    with app.app_context():
+        event = Event.query.filter_by(pathful_session_id="sess-no-col-001").first()
+        assert (
+            event is not None
+        ), "Event should have been created even without the column"
+
+
+def test_admin_override_survives_reimport(client, pathful_admin_login, app):
+    """Verify that admin overrides (notes set) survive re-imports."""
+    from models.event import EventTeacher
+
+    # First import: Completed session → no_show (Att Edu = n/a)
+    df_first = pd.DataFrame(
+        [
+            {
+                "Session ID": "sess-override-001",
+                "Title": "Override Session",
+                "Date": "2026-07-01 10:00:00",
+                "Status": "Completed",
+                "Duration": 60,
+                "User Auth Id": "user-override-1",
+                "Name": "Override Teacher",
+                "SignUp Role": "Educator",
+                "School": "Override School",
+                "District or Company": "Override District",
+                "Partner": "PREP-KC",
+                "Registered Student Count": 25,
+                "Attended Student Count": 22,
+                "Registered Educator Count": "n/a",
+                "Attended Educator Count": "n/a",
+                "Career Cluster": "Technology",
+            }
+        ]
+    )
+
+    output1 = io.BytesIO()
+    df_first.to_excel(output1, index=False, engine="openpyxl")
+    output1.seek(0)
+
+    client.post(
+        "/virtual/pathful/import",
+        headers=pathful_admin_login,
+        data={
+            "file": (output1, "override_first.xlsx"),
+            "report_type": "session_report",
+        },
+        content_type="multipart/form-data",
+    )
+
+    # Admin manually overrides the status and sets notes
+    with app.app_context():
+        event = Event.query.filter_by(pathful_session_id="sess-override-001").first()
+        assert event is not None
+
+        et = EventTeacher.query.filter_by(event_id=event.id).first()
+        assert et is not None
+        assert et.status == "no_show"  # correct initial status
+
+        # Simulate admin override
+        et.status = "attended"
+        et.notes = "Verified attendance via sign-in sheet"
+        db.session.commit()
+        teacher_id_to_check = et.teacher_id
+
+    # Second import: same data (would normally set no_show again)
+    output2 = io.BytesIO()
+    df_first.to_excel(output2, index=False, engine="openpyxl")
+    output2.seek(0)
+
+    client.post(
+        "/virtual/pathful/import",
+        headers=pathful_admin_login,
+        data={
+            "file": (output2, "override_second.xlsx"),
+            "report_type": "session_report",
+        },
+        content_type="multipart/form-data",
+    )
+
+    with app.app_context():
+        event = Event.query.filter_by(pathful_session_id="sess-override-001").first()
+        et = EventTeacher.query.filter_by(event_id=event.id).first()
+        assert et is not None
+        assert (
+            et.status == "attended"
+        ), f"Admin override should have been preserved, got '{et.status}'"
+        assert et.notes == "Verified attendance via sign-in sheet"

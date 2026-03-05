@@ -445,6 +445,9 @@ class Event(db.Model):
     attended_student_count = db.Column(
         db.Integer, default=0
     )  # Actual student attendance from Pathful
+    attended_educator_count = db.Column(
+        db.Integer, default=0
+    )  # Actual educator attendance from Pathful (Attended Educator Count column)
 
     # Participant details - Consider moving to separate tables for better normalization
     educators = db.Column(

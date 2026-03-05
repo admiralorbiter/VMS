@@ -10,9 +10,8 @@ from flask import current_app
 from sqlalchemy import func
 
 from models import db
-from models.school_model import School
-
 from models.event import EventStatus
+from models.school_model import School
 
 from .matching import (
     match_or_create_event,
@@ -28,6 +27,26 @@ from .parsing import (
     safe_str,
     serialize_row_for_json,
 )
+
+
+def _parse_pathful_count(value):
+    """Parse Pathful count columns (e.g. Attended Educator Count).
+
+    Returns int if the value is a valid number, None for 'n/a', NaN, empty, etc.
+    """
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        if pd.isna(value):
+            return None
+        return int(value)
+    s = str(value).strip().lower()
+    if s in ("n/a", "na", "nan", "none", "nat", ""):
+        return None
+    try:
+        return int(float(s))
+    except (ValueError, TypeError):
+        return None
 
 
 def process_session_report_row(
@@ -127,6 +146,13 @@ def process_session_report_row(
                 event.attended_student_count or 0, attended_students
             )
 
+        # Update educator attendance count on event (for auditing)
+        att_edu_raw = _parse_pathful_count(row.get("Attended Educator Count"))
+        if att_edu_raw is not None and att_edu_raw > 0:
+            event.attended_educator_count = max(
+                event.attended_educator_count or 0, att_edu_raw
+            )
+
         # Extract participant data
         name = safe_str(row.get("Name"))
         user_auth_id = row.get("User Auth Id")
@@ -182,13 +208,26 @@ def process_session_report_row(
 
                     # Backfill teacher_id onto TeacherProgress so future
                     # counting can use the EventTeacher FK path (prevents drift)
-                    if teacher_id_to_link and teacher_progress and not teacher_progress.teacher_id:
+                    if (
+                        teacher_id_to_link
+                        and teacher_progress
+                        and not teacher_progress.teacher_id
+                    ):
                         teacher_progress.teacher_id = teacher_id_to_link
 
-            # Derive teacher attendance status from the row's event status
+            # Derive teacher attendance status from Attended Educator Count
+            # and the event status.  Attended Educator Count is the primary
+            # signal for completed events:
+            #   1 (or any positive int) → teacher attended
+            #   n/a / None              → teacher registered but never showed
             mapped_event_status = EventStatus.map_status(status)
+            att_edu = _parse_pathful_count(row.get("Attended Educator Count"))
+
             if mapped_event_status == EventStatus.COMPLETED:
-                et_status = "attended"
+                if att_edu is not None and att_edu >= 1:
+                    et_status = "attended"
+                else:
+                    et_status = "no_show"
             elif mapped_event_status in (
                 EventStatus.CANCELLED,
                 EventStatus.NO_SHOW,
@@ -211,18 +250,18 @@ def process_session_report_row(
                     if caches:
                         caches["event_teacher_set"].add(et_key)
                 else:
-                    # Update existing EventTeacher status if it progressed
-                    # (e.g., re-import where session went from Draft→Completed)
+                    # Update existing EventTeacher status on re-import.
+                    # This allows correcting wrong statuses (e.g., old import
+                    # set "attended" but should be "no_show").
+                    # Respect admin overrides: skip records where notes is set.
                     if et_status in ("attended", "no_show"):
                         existing_et = _ET.query.filter_by(
                             event_id=event.id, teacher_id=teacher_id_to_link
                         ).first()
-                        if existing_et and existing_et.status in (
-                            "registered",
-                            None,
-                            "",
-                        ):
-                            existing_et.status = et_status
+                        if existing_et and existing_et.status != et_status:
+                            # Skip if admin has overridden (notes field set)
+                            if not existing_et.notes:
+                                existing_et.status = et_status
 
             # Text cache (Event.educators) is regenerated post-import
             # by sync_event_participant_fields — no manual accumulation needed
