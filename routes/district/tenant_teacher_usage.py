@@ -80,6 +80,54 @@ def get_tenant_district_name(tenant_id=None):
     return tenant.name if tenant else None
 
 
+def _backfill_teacher_ids(teachers):
+    """Resolve null teacher_id on TeacherProgress records by name/email matching.
+
+    TeacherProgress records imported before FK backfill logic was added (or
+    where the Pathful import couldn't resolve a Teacher match at import time)
+    may have teacher_id = None even though a matching Teacher record exists.
+
+    This function attempts to link them by:
+    1. Email match (exact, case-insensitive) — most reliable
+    2. Name match (first+last, case-insensitive) — fallback
+    """
+    from sqlalchemy import func as sqla_func
+
+    from models.teacher import Teacher
+
+    orphans = [t for t in teachers if t.teacher_id is None]
+    if not orphans:
+        return
+
+    linked = 0
+    for tp in orphans:
+        teacher = None
+
+        # 1. Try email match
+        if tp.email:
+            teacher = Teacher.query.filter(
+                sqla_func.lower(Teacher.email) == tp.email.strip().lower()
+            ).first()
+
+        # 2. Fallback: name match
+        if not teacher and tp.name:
+            parts = tp.name.strip().split()
+            if len(parts) >= 2:
+                first_name = parts[0]
+                last_name = parts[-1]
+                teacher = Teacher.query.filter(
+                    sqla_func.lower(Teacher.first_name) == first_name.lower(),
+                    sqla_func.lower(Teacher.last_name) == last_name.lower(),
+                ).first()
+
+        if teacher:
+            tp.teacher_id = teacher.id
+            linked += 1
+
+    if linked:
+        db.session.commit()
+
+
 def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=None):
     """
     Compute teacher progress data for a tenant.
@@ -107,6 +155,11 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
 
     if not teachers:
         return {}
+
+    # ── Backfill null teacher_id values ────────────────────────────────
+    # TeacherProgress records imported before FK backfill logic was added
+    # may have teacher_id = None.  Resolve by name/email matching.
+    _backfill_teacher_ids(teachers)
 
     # Get the tenant's linked district name(s) for filtering sessions.
     # We use ALL known variants (canonical name + aliases) because

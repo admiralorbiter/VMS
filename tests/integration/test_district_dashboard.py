@@ -350,7 +350,9 @@ def test_compute_teacher_progress_filters_by_attendance(app):
         db.session.add(d)
         db.session.commit()
 
-        tenant = Tenant(name="Attendance Tenant", district_id=d.id, slug="attendance-tenant")
+        tenant = Tenant(
+            name="Attendance Tenant", district_id=d.id, slug="attendance-tenant"
+        )
         db.session.add(tenant)
         db.session.commit()
 
@@ -359,15 +361,11 @@ def test_compute_teacher_progress_filters_by_attendance(app):
         db.session.commit()
 
         # Three teachers
-        t_attended = Teacher(
-            first_name="Attended", last_name="Teacher", school_id=s.id
-        )
+        t_attended = Teacher(first_name="Attended", last_name="Teacher", school_id=s.id)
         t_registered = Teacher(
             first_name="Registered", last_name="Teacher", school_id=s.id
         )
-        t_noshow = Teacher(
-            first_name="NoShow", last_name="Teacher", school_id=s.id
-        )
+        t_noshow = Teacher(first_name="NoShow", last_name="Teacher", school_id=s.id)
         db.session.add_all([t_attended, t_registered, t_noshow])
         db.session.commit()
 
@@ -427,19 +425,13 @@ def test_compute_teacher_progress_filters_by_attendance(app):
 
         # Link teachers with different statuses
         db.session.add(
-            EventTeacher(
-                event_id=e.id, teacher_id=t_attended.id, status="attended"
-            )
+            EventTeacher(event_id=e.id, teacher_id=t_attended.id, status="attended")
         )
         db.session.add(
-            EventTeacher(
-                event_id=e.id, teacher_id=t_registered.id, status="registered"
-            )
+            EventTeacher(event_id=e.id, teacher_id=t_registered.id, status="registered")
         )
         db.session.add(
-            EventTeacher(
-                event_id=e.id, teacher_id=t_noshow.id, status="no_show"
-            )
+            EventTeacher(event_id=e.id, teacher_id=t_noshow.id, status="no_show")
         )
         db.session.commit()
 
@@ -482,3 +474,103 @@ def test_compute_teacher_progress_filters_by_attendance(app):
             f"Teacher with status='no_show' should have 0 completed sessions, "
             f"got {noshow_info['completed_sessions']}"
         )
+
+
+def test_compute_teacher_progress_null_teacher_id_backfill(app):
+    """
+    Verify compute_teacher_progress backfills null teacher_id on
+    TeacherProgress and then correctly counts the teacher's sessions.
+
+    Scenario: A TeacherProgress record exists with teacher_id=None, but a
+    matching Teacher record exists in the DB with an EventTeacher link to a
+    completed event.  After backfill, the session should be counted.
+    """
+    from models.teacher_progress import TeacherProgress
+    from models.tenant import Tenant
+    from routes.district.tenant_teacher_usage import compute_teacher_progress
+
+    with app.app_context():
+        # Setup: district, tenant, school, teacher
+        d = District(name="Backfill Test District")
+        db.session.add(d)
+        db.session.commit()
+
+        tenant = Tenant(
+            name="Backfill Tenant", district_id=d.id, slug="backfill-tenant"
+        )
+        db.session.add(tenant)
+        db.session.commit()
+
+        s = School(id="BF_SCHOOL_01", name="Backfill School", district_id=d.id)
+        db.session.add(s)
+        db.session.commit()
+
+        # Teacher record exists in DB
+        t = Teacher(
+            first_name="Elizabeth",
+            last_name="Arteberry",
+            email="elizabeth.arteberry@test.com",
+            school_id=s.id,
+        )
+        db.session.add(t)
+        db.session.commit()
+
+        # TeacherProgress with teacher_id=None (the bug condition)
+        tp = TeacherProgress(
+            academic_year="2025-2026",
+            virtual_year="2025-2026",
+            building=s.name,
+            name="Elizabeth Arteberry",
+            email="elizabeth.arteberry@test.com",
+            teacher_id=None,  # <-- null, the bug
+            target_sessions=1,
+        )
+        tp.tenant_id = tenant.id
+        tp.is_active = True
+        db.session.add(tp)
+        db.session.commit()
+
+        # Verify teacher_id is None before calling compute
+        assert tp.teacher_id is None
+
+        # Create a completed event linked to the Teacher via EventTeacher
+        from models.event import EventFormat
+
+        e = Event(
+            title="Backfill Test Session",
+            type=EventType.VIRTUAL_SESSION,
+            status=EventStatus.COMPLETED,
+            format=EventFormat.VIRTUAL,
+            start_date=datetime.now() - timedelta(days=3),
+            districts=[d],
+            district_partner=d.name,
+        )
+        db.session.add(e)
+        db.session.commit()
+
+        db.session.add(EventTeacher(event_id=e.id, teacher_id=t.id, status="attended"))
+        db.session.commit()
+
+        # Call compute_teacher_progress — should backfill and count
+        result = compute_teacher_progress(tenant.id, "2025-2026")
+
+        # teacher_id should now be set
+        db.session.refresh(tp)
+        assert (
+            tp.teacher_id == t.id
+        ), f"Backfill should have set teacher_id to {t.id}, got {tp.teacher_id}"
+
+        # The teacher should have 1 completed session
+        all_teachers = []
+        for building_data in result.values():
+            all_teachers.extend(building_data.get("teachers", []))
+
+        teacher_info = next(
+            (t for t in all_teachers if t["name"] == "Elizabeth Arteberry"), None
+        )
+        assert teacher_info is not None, "Teacher should appear in results"
+        assert teacher_info["completed_sessions"] == 1, (
+            f"After backfill, teacher should have 1 completed session, "
+            f"got {teacher_info['completed_sessions']}"
+        )
+        assert teacher_info["goal_status_text"] == "Goal Achieved"

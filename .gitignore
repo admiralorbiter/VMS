@@ -99,3 +99,19 @@ scripts/populate_play_data.py
 scripts/populate_simple_data.py
 scripts/populate_synthetic_data.py
 scripts/verify_admin.py
+
+# Log files
+logs/
+instance/logs/
+scripts/daily_imports/logs/
+scripts/daily_imports/instance/
+
+# Test output
+pytest.log
+pytest_debug.log
+
+# Data artifacts (PII risk)
+scripts/data/*.xlsx
+scripts/data/*.csv
+scripts/data/*.txt
+scripts/dedup_*.csv

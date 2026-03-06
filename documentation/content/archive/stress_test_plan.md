@@ -25,7 +25,7 @@
 
 ### Locust
 
-- **With UI:** `locust -f locustfile.py --host=http://127.0.0.1:5050`  
+- **With UI:** `locust -f locustfile.py --host=http://127.0.0.1:5050`
   Then open http://localhost:8089, set users and spawn rate, click "Start swarming."
 - **Headless:** `locust -f locustfile.py --host=http://127.0.0.1:5050 --headless -u 10 -r 2 -t 1m`
 - **Staging:** `locust -f locustfile.py --host=https://romulus-jlane.pythonanywhere.com`
@@ -34,13 +34,13 @@ Use two terminals: one for the app, one for Locust.
 
 ### Pytest stress suite (API break + Hypothesis fuzz)
 
-- **Local (in-process, no server):**  
+- **Local (in-process, no server):**
   `pytest tests/stress/ -v`
-- **Run only API-break tests:**  
+- **Run only API-break tests:**
   `pytest tests/stress/test_api_break.py -v`
-- **Run only Hypothesis fuzz tests:**  
+- **Run only Hypothesis fuzz tests:**
   `pytest tests/stress/test_input_fuzz.py -v`
-- **Exclude stress tests from normal runs:**  
+- **Exclude stress tests from normal runs:**
   `pytest -m "not stress"`
 
 These tests use the same in-process app as the rest of the test suite. For optional live runs against a running server or staging, set `VMS_STRESS_BASE_URL` (e.g. `http://127.0.0.1:5050` or `https://romulus-jlane.pythonanywhere.com`); the current tests are written for the in-process client.
