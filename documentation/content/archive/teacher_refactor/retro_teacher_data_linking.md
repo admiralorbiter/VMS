@@ -77,7 +77,7 @@ The teacher usage dashboard (`tenant_teacher_usage.py`) only matched sessions us
    - Name duplicates (two teachers with same name — `.first()` picks one arbitrarily)
    - Middle names or suffixes — not currently handled
 
-4. **`event.educators` vs `EventTeacher` duality** — Tracked as [TD-005](../developer/tech_debt.md#td-005). Currently using text-primary + EventTeacher-supplementary counting. EventTeacher-only simplification deferred until backfill.
+4. **`event.educators` vs `EventTeacher` duality** — TD-005 (resolved). EventTeacher is now the primary source of truth; text fields are derived caches regenerated via `sync_event_participant_fields()`.
 
 5. ~~**Dashboard counting accuracy**~~ ✅ **Resolved.** Dedup via `matched_event_ids` prevents double-counting between text and EventTeacher paths.
 
