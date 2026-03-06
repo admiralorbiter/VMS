@@ -1,6 +1,6 @@
 # Tech Debt Tracker
 
-This document tracks active technical debt. Resolved items are summarized in the [Resolved Archive](#resolved-archive) at the bottom.
+This document tracks active technical debt. Resolved items are summarized in the [Resolved Archive](#resolved-archive) at the bottom. For the phased plan to address these items, see the [Development Roadmap](development_roadmap.md).
 
 ---
 
@@ -40,9 +40,9 @@ ADR G-002 accepted this tradeoff for simplicity, but as multi-tenant usage grows
 ### Proposed Fix
 
 - **Short term:** Enable WAL mode (`PRAGMA journal_mode=WAL`) for better read concurrency.
-- **Long term:** Migrate to PostgreSQL. Requires testing all raw SQL, SOQL queries, and SQLite-specific patterns.
+- **Long term:** Migrate to MySQL (PythonAnywhere). Requires testing all raw SQL, SOQL queries, and SQLite-specific patterns. See [Development Roadmap — Phase 5](development_roadmap.md#phase-5-mysql-migration-separate-branch).
 
-**Risk:** Very high for PostgreSQL migration — largest infrastructure change possible.
+**Risk:** Very high for MySQL migration — largest infrastructure change possible.
 
 ---
 
