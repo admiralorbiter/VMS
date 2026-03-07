@@ -176,7 +176,7 @@ flowchart LR
 - [x] **4.1 — Harden `teacher_detail` counting (text-primary, EventTeacher-supplementary)**
   - Text-based matching handles 100% of existing event data (3,793 events)
   - EventTeacher supplements for future FK-linked sessions not in text
-   - Deduplication via `matched_event_ids`
+  - Deduplication via `all_et_event_ids` (all ET-linked events) + `counted_events_per_tp` (attended/completed only)
 
 - [x] **4.2 — Harden `compute_teacher_progress` counting (same strategy)**
   - Completed, planned, and in-planning counts all use EventTeacher-primary
@@ -212,16 +212,60 @@ Originally deferred as a "data task". Analysis revealed:
 
 ---
 
+## Sprint 5: Identity Resolution & Override Hardening ✅
+
+**Created:** 2026-03-06
+**Status:** ✅ Completed (2026-03-06)
+**Goal:** Centralize all teacher identity resolution, fix override double-counting, and reconcile existing unlinked data.
+
+### Tasks
+
+- [x] **5.1 — Centralized Identity Resolution Service**
+  - Added `resolve_teacher_for_tp()` and `match_tp_to_profile()` to `teacher_matching_service.py`
+  - Priority chain: email → profile bridge → normalized name → first+last name → create new
+  - All callers refactored: `_backfill_teacher_ids`, `_reverse_link_teacher_progress`, user report import
+
+- [x] **5.2 — Fix override double-counting (TD-030)**
+  - ADD overrides now event-aware — skip if event already counted via EventTeacher
+  - Stale ADD overrides auto-resolved with logged reason
+
+- [x] **5.3 — Fix no-show text-match leak (TD-031)**
+  - Split `matched_event_ids` into semantic sets: `all_et_event_ids` + `counted_events_per_tp`
+  - No-show EventTeacher records now excluded from supplementary text-matching
+
+- [x] **5.4 — Data Reconciliation**
+  - Created `scripts/reconcile_teacher_links.py` (one-time)
+  - Results: 42 profiles linked, 35 TPs resolved (31 new Teachers), 0 unresolved
+
+### Files Changed
+
+| File | Action |
+|------|--------|
+| `services/teacher_matching_service.py` | MODIFY — add `resolve_teacher_for_tp()`, `match_tp_to_profile()`, first+last name matching |
+| `routes/district/tenant_teacher_usage.py` | MODIFY — semantic set split, event-aware ADD overrides, auto-resolve stale ADDs |
+| `routes/virtual/pathful_import/processing.py` | MODIFY — refactor `_reverse_link_teacher_progress()` |
+| `routes/virtual/pathful_import/routes.py` | MODIFY — refactor user report auto-linking |
+| `scripts/reconcile_teacher_links.py` | **NEW** — one-time reconciliation |
+
+### Verification
+- [x] 1,173/1,173 tests pass (0 regressions)
+- [x] Cassandra Hamilton: 5/1 → 3/1 (correct)
+- [x] Kristina Wendt Scott: correctly linked and showing 1/1
+- [x] 0 unresolved TeacherProgress records
+
+---
+
 ## Definition of Done (All Sprints)
 
 - [x] No inline `Teacher()` construction outside of `teacher_service.py`
-- [x] `EventTeacher` is the single source of truth for teacher-session links — **resolved: all 464 TeacherProgress linked, EventTeacher-primary counting**
+- [x] `EventTeacher` is the single source of truth for teacher-session links
 - [x] `event.educators` is regenerated automatically (never manually maintained)
 - [x] All teacher matching goes through `teacher_matching_service.py`
-- [x] `TeacherProgress` → `Teacher` linking uses email-first matching
-- [x] Dashboard numbers are correct for all teacher views
+- [x] `TeacherProgress` → `Teacher` linking uses email-first matching with fallbacks
+- [x] Dashboard numbers are correct for all teacher views (no double-counting)
+- [x] Attendance overrides are event-aware (both ADD and REMOVE)
 - [x] KCKPS schools exist and match correctly
 - [x] All changes documented in ADR + import playbook
 
 > [!NOTE]
-> Tech debt items discovered during this refactor are tracked in [Tech Debt Tracker](tech_debt.md) (TD-003 through TD-005).
+> Tech debt items discovered during this refactor are tracked in [Tech Debt Tracker](tech_debt.md) (TD-003 through TD-031).

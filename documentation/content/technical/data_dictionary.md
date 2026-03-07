@@ -185,6 +185,8 @@ This is the authoritative reference for all entity definitions. Other documents 
 | `last_mailchimp_date` | Date | SF/POL | Internal | Last Mailchimp email date |
 | `salesforce_contact_id` | String(18) | SF | Sensitive | Unique when present; indexed |
 | `salesforce_school_id` | String(18) | SF | Internal | School reference in Salesforce |
+| `cached_email` | String(255) | POL | Sensitive | Indexed; denormalized email for identity resolution matching |
+| `import_source` | String(50) | POL | Internal | Origin: `salesforce`, `pathful`, `csv_import`, `manual`, `session_edit` |
 | `created_at` | DateTime(timezone=True) | POL | Internal | Auto-set on creation |
 | `updated_at` | DateTime(timezone=True) | POL | Internal | Auto-updated on modification |
 
@@ -295,6 +297,38 @@ Route: `/virtual/usage/recruitment` (implemented in `routes/virtual/usage.py`)
 **Relationships**:
 - Many-to-one with `Event` (via `event_id`)
 - Many-to-one with `Teacher` (via `teacher_id`)
+
+## Entity: AttendanceOverride
+
+**Admin corrections to virtual session attendance tracking**
+
+**Table**: `attendance_override`
+
+| Field | Type | Source | Sensitivity | Notes |
+|-------|------|--------|----------------|-------|
+| `id` | Integer | POL | Internal | Primary key |
+| `teacher_progress_id` | Integer (FK to teacher_progress.id) | POL | Internal | Required; cascading delete |
+| `event_id` | Integer (FK to event.id) | POL | Internal | Required; cascading delete |
+| `action` | String(10) | POL | Internal | `add` or `remove` |
+| `reason` | Text | POL | Internal | Required; admin-provided justification |
+| `is_active` | Boolean | POL | Internal | Default: True; False when reversed |
+| `created_at` | DateTime(timezone=True) | POL | Internal | Auto-set on creation |
+| `created_by` | Integer (FK to users.id) | POL | Internal | Admin who created override |
+| `reversed_at` | DateTime(timezone=True) | POL | Internal | Set when override is reversed |
+| `reversed_by` | Integer (FK to users.id) | POL | Internal | Admin who reversed override |
+| `reversal_reason` | Text | POL | Internal | Reason for reversal |
+
+**Event-Aware Override Logic:**
+- **ADD**: Only increments count if event not already counted via EventTeacher
+- **REMOVE**: Only decrements count if event was counted as attended
+- **Auto-resolution**: Stale ADD overrides (where EventTeacher already records attendance) are auto-resolved with logged reason
+
+**Relationships**:
+- Many-to-one with `TeacherProgress` (via `teacher_progress_id`)
+- Many-to-one with `Event` (via `event_id`)
+- Many-to-one with `User` (via `created_by`, `reversed_by`)
+
+**Reference:** [FR-VIRTUAL-234](requirements-virtual#fr-virtual-234) through [FR-VIRTUAL-243](requirements-virtual#fr-virtual-243), [FR-DISTRICT-550](requirements-district#fr-district-550) through [FR-DISTRICT-553](requirements-district#fr-district-553)
 
 ## Entity: EventStudentParticipation
 

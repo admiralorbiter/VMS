@@ -509,9 +509,9 @@ def test_compute_teacher_progress_null_teacher_id_backfill(app):
         t = Teacher(
             first_name="Elizabeth",
             last_name="Arteberry",
-            email="elizabeth.arteberry@test.com",
             school_id=s.id,
         )
+        t.cached_email = "elizabeth.arteberry@test.com"
         db.session.add(t)
         db.session.commit()
 
@@ -574,3 +574,118 @@ def test_compute_teacher_progress_null_teacher_id_backfill(app):
             f"got {teacher_info['completed_sessions']}"
         )
         assert teacher_info["goal_status_text"] == "Goal Achieved"
+
+
+def test_remove_override_for_noshow_event_does_not_decrement(app):
+    """Verify REMOVE override for a no-show event doesn't subtract from the count.
+
+    Scenario: Teacher attended event A, was no-show for event B, and a
+    REMOVE override exists for event B.  The override should NOT reduce the
+    count because event B was never counted as attended.
+    """
+    from models.attendance_override import AttendanceOverride, OverrideAction
+    from models.teacher_progress import TeacherProgress
+    from models.tenant import Tenant
+    from routes.district.tenant_teacher_usage import compute_teacher_progress
+
+    with app.app_context():
+        d = District(name="Override Test District")
+        db.session.add(d)
+        db.session.commit()
+
+        tenant = Tenant(
+            name="Override Tenant", district_id=d.id, slug="override-tenant"
+        )
+        db.session.add(tenant)
+        db.session.commit()
+
+        s = School(id="OV_SCHOOL_01", name="Override School", district_id=d.id)
+        db.session.add(s)
+        db.session.commit()
+
+        t = Teacher(first_name="Lauren", last_name="Sosinski", school_id=s.id)
+        db.session.add(t)
+        db.session.commit()
+
+        tp = TeacherProgress(
+            academic_year="2025-2026",
+            virtual_year="2025-2026",
+            building=s.name,
+            name="Lauren Sosinski",
+            email="lauren@test.com",
+            teacher_id=t.id,
+            target_sessions=1,
+        )
+        tp.tenant_id = tenant.id
+        tp.is_active = True
+        db.session.add(tp)
+        db.session.commit()
+
+        from models.event import EventFormat
+
+        # Event A: teacher attended
+        event_attended = Event(
+            title="Attended Session",
+            type=EventType.VIRTUAL_SESSION,
+            status=EventStatus.COMPLETED,
+            format=EventFormat.VIRTUAL,
+            start_date=datetime.now() - timedelta(days=5),
+            district_partner=d.name,
+        )
+        db.session.add(event_attended)
+        db.session.commit()
+        db.session.add(
+            EventTeacher(event_id=event_attended.id, teacher_id=t.id, status="attended")
+        )
+
+        # Event B: teacher was no-show
+        event_noshow = Event(
+            title="No Show Session",
+            type=EventType.VIRTUAL_SESSION,
+            status=EventStatus.COMPLETED,
+            format=EventFormat.VIRTUAL,
+            start_date=datetime.now() - timedelta(days=3),
+            district_partner=d.name,
+        )
+        db.session.add(event_noshow)
+        db.session.commit()
+        db.session.add(
+            EventTeacher(event_id=event_noshow.id, teacher_id=t.id, status="no_show")
+        )
+
+        # REMOVE override for the no-show event
+        from werkzeug.security import generate_password_hash
+
+        from models.user import User
+
+        admin_user = User(
+            username="override_admin",
+            email="admin@override.test",
+        )
+        admin_user.password_hash = generate_password_hash("pass")
+        db.session.add(admin_user)
+        db.session.commit()
+
+        ov = AttendanceOverride(
+            teacher_progress_id=tp.id,
+            event_id=event_noshow.id,
+            action=OverrideAction.REMOVE,
+            reason="Teacher did not attend",
+            created_by=admin_user.id,
+        )
+        db.session.add(ov)
+        db.session.commit()
+
+        # Compute progress — should still count 1 (event A)
+        result = compute_teacher_progress(tenant.id, "2025-2026")
+
+        all_teachers = []
+        for building_data in result.values():
+            all_teachers.extend(building_data.get("teachers", []))
+
+        info = next((t for t in all_teachers if t["name"] == "Lauren Sosinski"), None)
+        assert info is not None, "Teacher should appear in results"
+        assert info["completed_sessions"] == 1, (
+            f"REMOVE override for a no-show event should NOT decrement the count. "
+            f"Expected 1, got {info['completed_sessions']}"
+        )

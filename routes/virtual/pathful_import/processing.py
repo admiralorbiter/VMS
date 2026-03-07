@@ -49,6 +49,56 @@ def _parse_pathful_count(value):
         return None
 
 
+def _reverse_link_teacher_progress(teacher_id):
+    """Link an unlinked TeacherProgress to a Teacher when match_teacher failed.
+
+    Delegates to the centralized ``resolve_teacher_for_tp`` in
+    ``teacher_matching_service`` for consistent matching across the system.
+
+    This closes the ordering-dependency gap where session data is imported
+    before user-profile data.
+    """
+    from models.teacher import Teacher
+    from models.teacher_progress import TeacherProgress
+    from services.teacher_matching_service import normalize_name
+
+    teacher = db.session.get(Teacher, teacher_id)
+    if not teacher:
+        return
+
+    # Find unlinked TPs that could match this teacher by email or name
+    candidates = TeacherProgress.query.filter(
+        TeacherProgress.teacher_id.is_(None),
+    ).all()
+
+    # Build Teacher's normalized name and first+last name
+    teacher_full = f"{teacher.first_name or ''} {teacher.last_name or ''}"
+    teacher_normalized = normalize_name(teacher_full)
+    teacher_email = (teacher.cached_email or "").strip().lower()
+    # For first+last matching (ignores middle names in TP)
+    teacher_first_last = normalize_name(
+        f"{teacher.first_name or ''} {teacher.last_name or ''}"
+    )
+
+    for tp in candidates:
+        # Match by email
+        if teacher_email and tp.email and tp.email.strip().lower() == teacher_email:
+            tp.teacher_id = teacher_id
+            return
+        # Match by normalized full name
+        if tp.name and normalize_name(tp.name) == teacher_normalized:
+            tp.teacher_id = teacher_id
+            return
+        # Match by first+last (skip middle names)
+        if tp.name:
+            parts = tp.name.strip().split()
+            if len(parts) >= 2:
+                tp_first_last = normalize_name(f"{parts[0]} {parts[-1]}")
+                if tp_first_last == teacher_first_last:
+                    tp.teacher_id = teacher_id
+                    return
+
+
 def process_session_report_row(
     row, row_index, import_log, processed_events, caches=None
 ):
@@ -214,6 +264,15 @@ def process_session_report_row(
                         and not teacher_progress.teacher_id
                     ):
                         teacher_progress.teacher_id = teacher_id_to_link
+
+                    # ── Option C: Reverse backfill ─────────────────────────
+                    # When match_teacher() returned None (no TeacherProgress
+                    # found), but we resolved a Teacher record, try to find
+                    # an unlinked TeacherProgress by the Teacher's email and
+                    # link them.  This closes the gap when session data is
+                    # imported before user data.
+                    if teacher_id_to_link and not teacher_progress:
+                        _reverse_link_teacher_progress(teacher_id_to_link)
 
             # Derive teacher attendance status from Attended Educator Count
             # and the event status.  Attended Educator Count is the primary

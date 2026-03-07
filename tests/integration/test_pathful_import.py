@@ -1072,3 +1072,99 @@ def test_admin_override_survives_reimport(client, pathful_admin_login, app):
             et.status == "attended"
         ), f"Admin override should have been preserved, got '{et.status}'"
         assert et.notes == "Verified attendance via sign-in sheet"
+
+
+# --- Reverse Backfill Tests (Option C) ---
+
+
+def test_reverse_backfill_links_unlinked_teacher_progress(app):
+    """Verify _reverse_link_teacher_progress links an orphaned TeacherProgress.
+
+    Scenario: TeacherProgress exists with teacher_id=None, then a Teacher
+    record is created during Pathful session import.  The reverse backfill
+    should find and link the TeacherProgress via name matching.
+    """
+    from models.teacher import Teacher
+    from models.teacher_progress import TeacherProgress
+    from routes.virtual.pathful_import.processing import _reverse_link_teacher_progress
+
+    with app.app_context():
+        # Create an unlinked TeacherProgress record
+        tp = TeacherProgress(
+            academic_year="2025-2026",
+            virtual_year="2025-2026",
+            building="Test School",
+            name="Elizabeth Arteberry",
+            email="elizabeth.arteberry@test.com",
+            teacher_id=None,
+        )
+        tp.is_active = True
+        db.session.add(tp)
+        db.session.commit()
+
+        assert tp.teacher_id is None
+
+        # Create a Teacher record (simulating Pathful import)
+        t = Teacher(
+            first_name="Elizabeth",
+            last_name="Arteberry",
+        )
+        t.cached_email = "elizabeth.arteberry@test.com"
+        db.session.add(t)
+        db.session.commit()
+
+        # Call the reverse backfill
+        _reverse_link_teacher_progress(t.id)
+        db.session.commit()
+
+        # TeacherProgress should now be linked
+        db.session.refresh(tp)
+        assert tp.teacher_id == t.id, (
+            f"Reverse backfill should have set teacher_id to {t.id}, "
+            f"got {tp.teacher_id}"
+        )
+
+
+def test_reverse_backfill_name_match_with_middle_name(app):
+    """Verify reverse backfill matches 'Elizabeth Carroll Arteberry' to 'Elizabeth Arteberry'.
+
+    The TeacherProgress name has a middle name but the Teacher record
+    only has first+last.  The backfill should match first + last parts.
+    """
+    from models.teacher import Teacher
+    from models.teacher_progress import TeacherProgress
+    from routes.virtual.pathful_import.processing import _reverse_link_teacher_progress
+
+    with app.app_context():
+        # TeacherProgress with middle name, no email match possible
+        tp = TeacherProgress(
+            academic_year="2025-2026",
+            virtual_year="2025-2026",
+            building="Test School",
+            name="Sarah Jean Williams",
+            email="sjw@different-domain.com",
+            teacher_id=None,
+        )
+        tp.is_active = True
+        db.session.add(tp)
+        db.session.commit()
+
+        # Teacher record with just first+last and different email
+        t = Teacher(
+            first_name="Sarah",
+            last_name="Williams",
+        )
+        t.cached_email = "sarah.williams@another.com"
+        db.session.add(t)
+        db.session.commit()
+
+        # Call reverse backfill
+        _reverse_link_teacher_progress(t.id)
+        db.session.commit()
+
+        # Should match via name (first="Sarah", last="Williams")
+        db.session.refresh(tp)
+        assert tp.teacher_id == t.id, (
+            f"Name match should link 'Sarah Jean Williams' to Teacher "
+            f"'Sarah Williams', got teacher_id={tp.teacher_id}"
+        )

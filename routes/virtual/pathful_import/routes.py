@@ -872,16 +872,52 @@ def load_pathful_routes():
                         str(row.get("ActiveSubscriptionName", "")).strip() or None
                     )
 
-                    # Auto-link to existing pathful_user_id records
+                    # Auto-link to existing records
                     if not profile.is_linked:
                         if signup_role == "Educator":
-                            # Try to find TeacherProgress with this pathful_user_id
+                            # Try pathful_user_id first (fastest)
                             teacher_progress = TeacherProgress.query.filter_by(
                                 pathful_user_id=pathful_user_id
                             ).first()
                             if teacher_progress:
                                 profile.link_to_teacher_progress(teacher_progress.id)
                                 linked_count += 1
+                            else:
+                                # Fallback: email/name matching via centralized service
+                                from services.teacher_matching_service import (
+                                    normalize_name,
+                                )
+
+                                if profile.login_email:
+                                    tp = TeacherProgress.query.filter(
+                                        func.lower(TeacherProgress.email)
+                                        == profile.login_email.strip().lower()
+                                    ).first()
+                                    if tp:
+                                        profile.link_to_teacher_progress(tp.id)
+                                        if not tp.pathful_user_id:
+                                            tp.pathful_user_id = pathful_user_id
+                                        linked_count += 1
+                                    elif profile.name:
+                                        prof_norm = normalize_name(profile.name)
+                                        if prof_norm:
+                                            tps = TeacherProgress.query.filter(
+                                                TeacherProgress.name.isnot(None)
+                                            ).all()
+                                            for cand in tps:
+                                                if (
+                                                    normalize_name(cand.name)
+                                                    == prof_norm
+                                                ):
+                                                    profile.link_to_teacher_progress(
+                                                        cand.id
+                                                    )
+                                                    if not cand.pathful_user_id:
+                                                        cand.pathful_user_id = (
+                                                            pathful_user_id
+                                                        )
+                                                    linked_count += 1
+                                                    break
                         elif signup_role == "Professional":
                             # Try to find Volunteer with this pathful_user_id
                             volunteer = Volunteer.query.filter_by(

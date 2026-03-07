@@ -574,7 +574,7 @@
                     </div>
                     <div class="session-status">
                         {% if session.status in ['Confirmed', 'Published', 'Requested', 'Draft'] %}
-                        <span class="status-badge status-in-planning">In Planning</span>
+                        <span class="status-badge status-in-planning">Needs Review</span>
                         {% else %}
                         <span class="status-badge status-{{ session.status }}">{{ session.status }}</span>
                         {% endif %}

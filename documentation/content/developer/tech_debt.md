@@ -132,3 +132,6 @@ All resolved items, for historical reference:
 | TD-026 | DB Commit Patterns in SF Imports | 2026-03-02 | 3 files fixed with consistent batch commit patterns. |
 | TD-027 | N+1 Queries in Volunteer Import | 2026-03-02 | Pre-loaded 4 lookup caches, eliminating ~15,000+ individual queries. |
 | TD-028 | Model Cleanup (Duplicates, Ordering) | 2026-03-02 | Duplicate assignments removed, missing imports added, deterministic ordering. |
+| TD-029 | Unlinked TeacherProgress Records | 2026-03-06 | Centralized identity resolution in `teacher_matching_service.py` (`resolve_teacher_for_tp`, `match_tp_to_profile`). Reconciliation script linked 42 profiles, resolved 35 TPs. |
+| TD-030 | Override Double-Counting | 2026-03-06 | ADD overrides now event-aware — skip if event already counted via EventTeacher. Stale ADDs auto-resolved with logging. |
+| TD-031 | No-Show Text-Match Leak | 2026-03-06 | Split `matched_event_ids` into `all_et_event_ids` + `counted_events_per_tp`. No-show EventTeacher records now excluded from supplementary text-matching. |

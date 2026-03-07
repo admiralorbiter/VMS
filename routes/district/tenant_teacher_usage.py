@@ -81,19 +81,12 @@ def get_tenant_district_name(tenant_id=None):
 
 
 def _backfill_teacher_ids(teachers):
-    """Resolve null teacher_id on TeacherProgress records by name/email matching.
+    """Resolve null teacher_id on TeacherProgress records.
 
-    TeacherProgress records imported before FK backfill logic was added (or
-    where the Pathful import couldn't resolve a Teacher match at import time)
-    may have teacher_id = None even though a matching Teacher record exists.
-
-    This function attempts to link them by:
-    1. Email match (exact, case-insensitive) — most reliable
-    2. Name match (first+last, case-insensitive) — fallback
+    Delegates to the centralized ``resolve_teacher_for_tp`` in
+    ``teacher_matching_service`` for consistent matching across the system.
     """
-    from sqlalchemy import func as sqla_func
-
-    from models.teacher import Teacher
+    from services.teacher_matching_service import resolve_teacher_for_tp
 
     orphans = [t for t in teachers if t.teacher_id is None]
     if not orphans:
@@ -101,27 +94,7 @@ def _backfill_teacher_ids(teachers):
 
     linked = 0
     for tp in orphans:
-        teacher = None
-
-        # 1. Try email match
-        if tp.email:
-            teacher = Teacher.query.filter(
-                sqla_func.lower(Teacher.email) == tp.email.strip().lower()
-            ).first()
-
-        # 2. Fallback: name match
-        if not teacher and tp.name:
-            parts = tp.name.strip().split()
-            if len(parts) >= 2:
-                first_name = parts[0]
-                last_name = parts[-1]
-                teacher = Teacher.query.filter(
-                    sqla_func.lower(Teacher.first_name) == first_name.lower(),
-                    sqla_func.lower(Teacher.last_name) == last_name.lower(),
-                ).first()
-
-        if teacher:
-            tp.teacher_id = teacher.id
+        if resolve_teacher_for_tp(tp):
             linked += 1
 
     if linked:
@@ -188,28 +161,42 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
 
     # ── COMPLETED sessions ─────────────────────────────────────────────
     # Primary: EventTeacher FK links
-    matched_event_ids = set()
+    #
+    # Two sets track different things:
+    #   all_et_event_ids     – every event linked via EventTeacher (any status)
+    #                          used to exclude events from supplementary text-matching
+    #   counted_events_per_tp – (tp_id, event_id) pairs that were actually counted
+    #                          (attended/completed) — used for override logic
+    all_et_event_ids = set()
+    counted_events_per_tp = set()  # {(tp_id, event_id), ...}
     if teacher_id_to_tp:
-        et_query = EventTeacher.query.join(Event).filter(
+        # Query ALL EventTeacher records (including no_show) to build exclusion set
+        all_et_query = EventTeacher.query.join(Event).filter(
             EventTeacher.teacher_id.in_(teacher_id_to_tp.keys()),
             Event.type == EventType.VIRTUAL_SESSION,
             Event.status == EventStatus.COMPLETED,
-            EventTeacher.status.in_(["attended", "completed"]),
         )
         if district_names:
-            et_query = et_query.filter(Event.district_partner.in_(district_names))
+            all_et_query = all_et_query.filter(
+                Event.district_partner.in_(district_names)
+            )
         if date_from:
-            et_query = et_query.filter(Event.start_date >= date_from)
+            all_et_query = all_et_query.filter(Event.start_date >= date_from)
         if date_to:
-            et_query = et_query.filter(Event.start_date <= date_to)
+            all_et_query = all_et_query.filter(Event.start_date <= date_to)
 
-        for et in et_query.all():
-            for tp_id in teacher_id_to_tp.get(et.teacher_id, []):
-                if tp_id in teacher_progress_map:
-                    teacher_progress_map[tp_id] += 1
-                    matched_event_ids.add(et.event_id)
+        for et in all_et_query.all():
+            all_et_event_ids.add(et.event_id)
+            # Only count attended/completed toward progress
+            if et.status in ("attended", "completed"):
+                for tp_id in teacher_id_to_tp.get(et.teacher_id, []):
+                    if tp_id in teacher_progress_map:
+                        teacher_progress_map[tp_id] += 1
+                        counted_events_per_tp.add((tp_id, et.event_id))
 
-    # Supplementary: text matching for events NOT counted via EventTeacher
+    # Supplementary: text matching for events NOT linked via EventTeacher.
+    # Uses all_et_event_ids (not just counted) so that no_show events
+    # are excluded from text-matching and don't get double-counted.
     events_query = Event.query.filter(
         Event.type == EventType.VIRTUAL_SESSION, Event.status == EventStatus.COMPLETED
     )
@@ -221,13 +208,20 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
         events_query = events_query.filter(Event.start_date <= date_to)
     events = events_query.all()
 
-    supplementary_events = [e for e in events if e.id not in matched_event_ids]
+    supplementary_events = [e for e in events if e.id not in all_et_event_ids]
     if supplementary_events:
         teacher_progress_map = count_sessions_for_teachers(
             supplementary_events, teacher_alias_map, teacher_progress_map
         )
 
     # ── Apply attendance overrides (FR-VIRTUAL-234, FR-VIRTUAL-238) ────
+    # Both ADD and REMOVE overrides are event-aware:
+    # - ADD:    only increment if this event was NOT already counted
+    # - REMOVE: only decrement if this event WAS counted as attended
+    # Stale ADD overrides (event already counted via import) are auto-resolved.
+    import logging
+
+    logger = logging.getLogger(__name__)
     active_overrides = AttendanceOverride.query.filter(
         AttendanceOverride.teacher_progress_id.in_([t.id for t in teachers]),
         AttendanceOverride.is_active == True,  # noqa: E712
@@ -236,9 +230,24 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
         tid = ov.teacher_progress_id
         if tid in teacher_progress_map:
             if ov.action == OverrideAction.ADD:
-                teacher_progress_map[tid] += 1
+                if (tid, ov.event_id) not in counted_events_per_tp:
+                    teacher_progress_map[tid] += 1
+                    counted_events_per_tp.add((tid, ov.event_id))
+                else:
+                    # Stale ADD — event already counted via import data
+                    ov.reverse(
+                        reason="Auto-resolved: event already counted via import data"
+                    )
+                    logger.info(
+                        "Auto-resolved stale ADD override %d " "(tp=%d, event=%d)",
+                        ov.id,
+                        tid,
+                        ov.event_id,
+                    )
             elif ov.action == OverrideAction.REMOVE:
-                teacher_progress_map[tid] = max(0, teacher_progress_map[tid] - 1)
+                # Only subtract if this event was actually counted
+                if (tid, ov.event_id) in counted_events_per_tp:
+                    teacher_progress_map[tid] = max(0, teacher_progress_map[tid] - 1)
 
     # ── PLANNED sessions (upcoming: confirmed/published/requested) ─────
     from datetime import datetime, timezone
@@ -263,7 +272,8 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
         planned_events, teacher_alias_map, planned_progress_map
     )
 
-    # ── IN-PLANNING sessions (past date, not completed) ────────────────
+    # ── NEEDS REVIEW sessions (past date, not completed) ───────────────
+    # These are events that already happened but were never marked as
     in_planning_statuses = [
         EventStatus.CONFIRMED,
         EventStatus.PUBLISHED,
@@ -324,7 +334,7 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
             bd["goals_in_progress"] += 1
         elif in_planning > 0:
             status_class = "in_planning"
-            status_text = "In Planning"
+            status_text = "Needs Review"
             bd["goals_in_progress"] += 1
         else:
             status_class = "not_started"
