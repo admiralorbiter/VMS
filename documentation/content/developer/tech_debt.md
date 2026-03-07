@@ -10,6 +10,9 @@ This document tracks active technical debt. Resolved items are summarized in the
 
 Used in 60+ locations for `ILIKE` fuzzy matching, string splitting, and direct display. Events already have a proper `Event.districts` M2M relationship for relational work. Converting to FK would require a full rewrite of reporting and scoping layers. The field remains a **denormalized text cache** prioritized for its flexibility in fuzzy querying.
 
+> [!NOTE]
+> **Downstream consequence (TD-032):** Because `district_partner` is a single text value per event, multi-district sessions (teachers from multiple districts attending one event) get tagged with only one district's name. This caused under-counting for 17 KCKPS teachers. Mitigated by removing the `district_partner` filter from FK-based EventTeacher counting. Upstream fix: ask Pathful to correctly tag multi-district events.
+
 ---
 
 ## TD-009: `db.session.commit()` Scattered in 44 Route Files

@@ -12,7 +12,7 @@ Provides unified permission decorators for the application:
 
 from functools import wraps
 
-from flask import flash, jsonify, redirect, request, url_for
+from flask import flash, g, jsonify, redirect, request, url_for
 from flask_login import current_user
 
 
@@ -56,6 +56,22 @@ def admin_required(func):
         return func(*args, **kwargs)
 
     return wrapper
+
+
+def require_tenant_context(func):
+    """Decorator to require tenant context for district routes."""
+
+    @wraps(func)
+    def decorated_function(*args, **kwargs):
+        if not g.get("tenant"):
+            flash(
+                "You must be logged in with a district account to access this page.",
+                "error",
+            )
+            return redirect(url_for("index"))
+        return func(*args, **kwargs)
+
+    return decorated_function
 
 
 def global_admin_required(func):

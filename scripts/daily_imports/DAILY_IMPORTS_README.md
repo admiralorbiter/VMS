@@ -5,6 +5,7 @@ Scripts for running daily imports on PythonAnywhere. These scripts directly call
 ## Scripts
 
 - **`daily_imports.py`** - Main daily Salesforce import script
+- **`backup_database.py`** - Automated SQLite backup with timestamped copies and 7-day auto-prune
 - **`run_virtual_import_2025_26_standalone.py`** - Virtual session import for 2025-2026 academic year
 
 ## Quick Start

@@ -120,7 +120,7 @@ flowchart LR
 
 - [x] **2.5 — Update dashboard counting to use `EventTeacher`**
   - `tenant_teacher_usage.py` — refactored to EventTeacher-first counting with text fallback
-  - Added district filter to EventTeacher query (was missing)
+  - Added district filter to EventTeacher query *(later removed in TD-032 — FK path doesn't need district scoping)*
 
 ### Files Changed
 
@@ -268,4 +268,4 @@ Originally deferred as a "data task". Analysis revealed:
 - [x] All changes documented in ADR + import playbook
 
 > [!NOTE]
-> Tech debt items discovered during this refactor are tracked in [Tech Debt Tracker](tech_debt.md) (TD-003 through TD-031).
+> Tech debt items discovered during this refactor are tracked in [Tech Debt Tracker](tech_debt.md) (TD-003 through TD-032).

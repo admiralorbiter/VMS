@@ -38,24 +38,8 @@ from models.district_participation import DistrictParticipation
 from models.district_volunteer import DistrictVolunteer
 from models.recruitment_note import RecruitmentNote
 from models.volunteer import Volunteer
-from routes.decorators import handle_route_errors
+from routes.decorators import handle_route_errors, require_tenant_context
 from routes.district import district_bp
-
-
-def require_tenant_context(f):
-    """Decorator to require tenant context for district routes."""
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not g.get("tenant"):
-            flash(
-                "You must be logged in with a district account to access this page.",
-                "error",
-            )
-            return redirect(url_for("index"))
-        return f(*args, **kwargs)
-
-    return decorated_function
 
 
 def require_district_admin(f):

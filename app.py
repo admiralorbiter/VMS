@@ -32,6 +32,11 @@ if flask_env == "production":
             "CRITICAL: SECRET_KEY must be set in production. "
             "Do not use the default development key."
         )
+    if app.config.get("WTF_CSRF_SECRET_KEY") == "csrf-secret-key-change-in-production":
+        raise RuntimeError(
+            "CRITICAL: WTF_CSRF_SECRET_KEY must be set in production. "
+            "Do not use the default development key."
+        )
 else:
     app.config.from_object(DevelopmentConfig)
 

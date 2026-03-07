@@ -56,8 +56,8 @@ The dashboard route runs `_backfill_teacher_ids()` on each page load, catching a
 
 Session counts use a two-tier approach (in `compute_teacher_progress()`):
 
-1. **EventTeacher path (primary):** Count FK-linked events where `EventTeacher.status IN ('attended', 'completed')`
-2. **Text path (supplementary):** Match teacher names in `Event.educators` for events NOT linked via EventTeacher
+1. **EventTeacher path (primary):** Count FK-linked events where `EventTeacher.status IN ('attended', 'completed')` — does **not** filter by `Event.district_partner` (the FK link itself proves attendance; see TD-032)
+2. **Text path (supplementary):** Match teacher names in `Event.educators` for events NOT linked via EventTeacher — **does** filter by `district_partner` since there's no FK to prove attendance
 
 ### Deduplication
 

@@ -8,43 +8,32 @@
 
 ---
 
-## Phase 1: Safety Net *(Pre-merge / Current Branch)*
+## Phase 1: Safety Net *(Pre-merge / Current Branch)* ✅
 
 Quick wins that reduce risk before any architectural changes.
 
-### 1.1 — Automated SQLite Backup
+### 1.1 — Automated SQLite Backup ✅
 
-- [ ] Create `scripts/daily_imports/backup_database.py` — copies `instance/*.db` to `instance/backups/` with timestamped names
-- [ ] Call it at the start of daily import scripts (before any writes)
-- [ ] Add `instance/backups/` to `.gitignore`
+- [x] Create `scripts/daily_imports/backup_database.py` — copies `instance/*.db` to `instance/backups/` with timestamped names, auto-prunes after 7 days
+- [x] Add `instance/backups/` to `.gitignore`
 
-### 1.2 — Clean Up Repo Artifacts
+### 1.2 — Clean Up Repo Artifacts ✅ *(Already done)*
 
-- [ ] `git rm scripts/dedup_audit_*.csv` — 2.4MB of potential PII
-- [ ] Add `scripts/*.csv` to `.gitignore`
-- [ ] Audit `bandit_baseline.json` — regenerate if it contains literal secrets
+- [x] `*.csv` in `.gitignore`, 0 tracked CSVs remain
+- [x] `scripts/dedup_*.csv` pattern in `.gitignore`
 
-### 1.3 — CSRF Secret Guard
+### 1.3 — CSRF Secret Guard ✅
 
-- [ ] Add fail-fast check for `WTF_CSRF_SECRET_KEY` in production (mirror the `SECRET_KEY` guard in `app.py`)
+- [x] Add fail-fast check for `WTF_CSRF_SECRET_KEY` in production (mirrors the `SECRET_KEY` guard in `app.py`)
 
-### 1.4 — Enable WAL Mode
+### 1.4 — Enable WAL Mode ✅ *(Already done)*
 
-- [ ] Add SQLAlchemy event listener in `config/__init__.py`:
-  ```python
-  @event.listens_for(Engine, "connect")
-  def set_sqlite_pragma(dbapi_conn, connection_record):
-      if "sqlite" in str(dbapi_conn.__class__):
-          cursor = dbapi_conn.cursor()
-          cursor.execute("PRAGMA journal_mode=WAL")
-          cursor.execute("PRAGMA synchronous=NORMAL")
-          cursor.close()
-  ```
+- [x] SQLAlchemy event listener in `config/__init__.py` enables WAL mode + NORMAL synchronous for SQLite
 
-### 1.5 — Consolidate `require_tenant_context`
+### 1.5 — Consolidate `require_tenant_context` ✅
 
-- [ ] Move `require_tenant_context` from `district/volunteers.py` and `district/events.py` into `routes/decorators.py`
-- [ ] Update imports in both files
+- [x] Move `require_tenant_context` from `district/volunteers.py` and `district/events.py` into `routes/decorators.py`
+- [x] Update imports in both files
 
 ---
 

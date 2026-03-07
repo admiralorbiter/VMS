@@ -42,6 +42,7 @@ from models.district_participation import DistrictParticipation
 from models.district_volunteer import DistrictVolunteer
 from models.event import Event, EventFormat, EventStatus, EventType
 from models.volunteer import Volunteer
+from routes.decorators import require_tenant_context  # Canonical location
 from routes.district import district_bp
 
 # District event types (simplified subset)
@@ -53,22 +54,6 @@ DISTRICT_EVENT_TYPES = [
     (EventType.MENTORING.value, "Mentoring"),
     (EventType.WORKPLACE_VISIT.value, "Workplace Visit"),
 ]
-
-
-def require_tenant_context(f):
-    """Decorator to require tenant context for district routes."""
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not g.get("tenant"):
-            flash(
-                "You must be logged in with a district account to access this page.",
-                "error",
-            )
-            return redirect(url_for("index"))
-        return f(*args, **kwargs)
-
-    return decorated_function
 
 
 def require_district_admin(f):
