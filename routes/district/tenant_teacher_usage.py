@@ -176,10 +176,14 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
             Event.type == EventType.VIRTUAL_SESSION,
             Event.status == EventStatus.COMPLETED,
         )
-        if district_names:
-            all_et_query = all_et_query.filter(
-                Event.district_partner.in_(district_names)
-            )
+        # NOTE: We intentionally do NOT filter by district_partner here.
+        # The EventTeacher FK already proves the teacher attended the event,
+        # and TeacherProgress scopes them to the correct tenant.  Pathful
+        # sometimes assigns the wrong district_partner to multi-district
+        # sessions (e.g. a KCKPS event labelled "Hogan Preparatory Academy"),
+        # which would cause attended sessions to be silently dropped.
+        # The district_partner filter is only applied on the supplementary
+        # text-matching path below where there is no FK proof of attendance.
         if date_from:
             all_et_query = all_et_query.filter(Event.start_date >= date_from)
         if date_to:
@@ -1106,6 +1110,250 @@ def search_sessions():
         )
 
     return jsonify({"sessions": results})
+
+
+# ── No Shows Report ───────────────────────────────────────────────────
+
+
+@teacher_usage_bp.route("/no-shows")
+@login_required
+@virtual_admin_required
+def no_shows():
+    """View all teacher no-shows for a semester, grouped by school then teacher.
+
+    Respects the same year/semester/tenant_id filters as the main dashboard.
+    """
+    from collections import defaultdict
+
+    from models.event import Event, EventStatus, EventTeacher, EventType
+    from services.district_service import get_district_name_variants
+
+    academic_year = request.args.get("year", get_current_academic_year())
+    semester = request.args.get("semester", get_current_semester())
+
+    # Admin users can specify a tenant via query param
+    admin_tenant_id = request.args.get("tenant_id", type=int)
+    if current_user.is_admin and admin_tenant_id:
+        tenant_id = admin_tenant_id
+        tenant = Tenant.query.get(tenant_id)
+        if not tenant:
+            flash("Tenant not found.", "error")
+            return redirect(url_for("virtual.virtual_sessions"))
+        district_name = tenant.district.name if tenant.district else tenant.name
+    else:
+        tenant_id = current_user.tenant_id
+        district_name = get_tenant_district_name()
+
+    if not tenant_id:
+        flash("Please select a tenant to view no-shows.", "warning")
+        return redirect(url_for("virtual.virtual_sessions"))
+
+    # Get tenant's district name variants for filtering
+    tenant = Tenant.query.get(tenant_id)
+    district_names = set()
+    if tenant:
+        if tenant.district:
+            district_names = get_district_name_variants(tenant.district)
+        else:
+            linked = tenant.get_setting("linked_district_name")
+            if linked:
+                district_names = {linked}
+
+    # Calculate semester date range
+    date_from, date_to = get_semester_dates(academic_year, semester)
+
+    # Query EventTeacher records with no_show status, joined to Event
+    no_show_query = (
+        db.session.query(EventTeacher, Event)
+        .join(Event, EventTeacher.event_id == Event.id)
+        .filter(
+            EventTeacher.status == "no_show",
+            Event.type == EventType.VIRTUAL_SESSION,
+            Event.status == EventStatus.COMPLETED,
+        )
+    )
+    if district_names:
+        no_show_query = no_show_query.filter(Event.district_partner.in_(district_names))
+    if date_from:
+        no_show_query = no_show_query.filter(Event.start_date >= date_from)
+    if date_to:
+        no_show_query = no_show_query.filter(Event.start_date <= date_to)
+
+    no_show_records = no_show_query.order_by(Event.start_date.desc()).all()
+
+    # Get all active TeacherProgress for this tenant/year for building lookup
+    tp_entries = TeacherProgress.query.filter_by(
+        tenant_id=tenant_id, academic_year=academic_year, is_active=True
+    ).all()
+    teacher_id_to_building = {}
+    teacher_id_to_tp_name = {}
+    for tp in tp_entries:
+        if tp.teacher_id:
+            teacher_id_to_building[tp.teacher_id] = tp.building or "Unknown"
+            teacher_id_to_tp_name[tp.teacher_id] = tp.name
+
+    # Group by school -> teacher -> sessions
+    # Structure: {school: {teacher_name: [session_dicts]}}
+    school_data = defaultdict(lambda: defaultdict(list))
+    total_no_shows = 0
+
+    for et, event in no_show_records:
+        # Only include teachers that belong to this tenant
+        if et.teacher_id not in teacher_id_to_building:
+            continue
+
+        building = teacher_id_to_building[et.teacher_id]
+        teacher_name = teacher_id_to_tp_name.get(et.teacher_id, "Unknown Teacher")
+
+        start_date = event.start_date
+        school_data[building][teacher_name].append(
+            {
+                "event_id": event.id,
+                "title": event.title or "Untitled Session",
+                "date": start_date.strftime("%B %d, %Y") if start_date else "Unknown",
+                "date_sort": start_date.isoformat() if start_date else "",
+                "series": event.series or "",
+            }
+        )
+        total_no_shows += 1
+
+    # Sort schools alphabetically
+    sorted_school_data = dict(sorted(school_data.items()))
+    # Sort teachers within each school
+    for school in sorted_school_data:
+        sorted_school_data[school] = dict(sorted(sorted_school_data[school].items()))
+
+    total_teachers = sum(len(teachers) for teachers in sorted_school_data.values())
+
+    return render_template(
+        "district/teacher_usage/no_shows.html",
+        school_data=sorted_school_data,
+        total_no_shows=total_no_shows,
+        total_schools=len(sorted_school_data),
+        total_teachers=total_teachers,
+        district_name=district_name or "Your District",
+        academic_year=academic_year,
+        semester=semester,
+        admin_tenant_id=admin_tenant_id,
+    )
+
+
+@teacher_usage_bp.route("/no-shows/export")
+@login_required
+@virtual_admin_required
+def no_shows_export_csv():
+    """Export no-shows data as CSV.
+
+    Same filters as the no-shows viewer.
+    """
+    import csv
+    import io
+    from collections import defaultdict
+
+    from flask import Response
+
+    from models.event import Event, EventStatus, EventTeacher, EventType
+    from services.district_service import get_district_name_variants
+
+    academic_year = request.args.get("year", get_current_academic_year())
+    semester = request.args.get("semester", get_current_semester())
+
+    admin_tenant_id = request.args.get("tenant_id", type=int)
+    if current_user.is_admin and admin_tenant_id:
+        tenant_id = admin_tenant_id
+        tenant = Tenant.query.get(tenant_id)
+        district_name = (
+            tenant.district.name
+            if tenant and tenant.district
+            else tenant.name if tenant else "District"
+        )
+    else:
+        tenant_id = current_user.tenant_id
+        district_name = get_tenant_district_name() or "District"
+
+    if not tenant_id:
+        flash("No tenant assigned.", "error")
+        return redirect(url_for("virtual.virtual_sessions"))
+
+    # Get tenant's district name variants
+    tenant = Tenant.query.get(tenant_id)
+    district_names = set()
+    if tenant:
+        if tenant.district:
+            district_names = get_district_name_variants(tenant.district)
+        else:
+            linked = tenant.get_setting("linked_district_name")
+            if linked:
+                district_names = {linked}
+
+    date_from, date_to = get_semester_dates(academic_year, semester)
+
+    # Query no-show records
+    no_show_query = (
+        db.session.query(EventTeacher, Event)
+        .join(Event, EventTeacher.event_id == Event.id)
+        .filter(
+            EventTeacher.status == "no_show",
+            Event.type == EventType.VIRTUAL_SESSION,
+            Event.status == EventStatus.COMPLETED,
+        )
+    )
+    if district_names:
+        no_show_query = no_show_query.filter(Event.district_partner.in_(district_names))
+    if date_from:
+        no_show_query = no_show_query.filter(Event.start_date >= date_from)
+    if date_to:
+        no_show_query = no_show_query.filter(Event.start_date <= date_to)
+
+    no_show_records = no_show_query.order_by(Event.start_date.desc()).all()
+
+    # Build building/name lookups from TeacherProgress
+    tp_entries = TeacherProgress.query.filter_by(
+        tenant_id=tenant_id, academic_year=academic_year, is_active=True
+    ).all()
+    teacher_id_to_building = {}
+    teacher_id_to_tp_name = {}
+    for tp in tp_entries:
+        if tp.teacher_id:
+            teacher_id_to_building[tp.teacher_id] = tp.building or "Unknown"
+            teacher_id_to_tp_name[tp.teacher_id] = tp.name
+
+    # Build CSV
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["School", "Teacher", "Session Date", "Session Title", "Series"])
+
+    for et, event in no_show_records:
+        if et.teacher_id not in teacher_id_to_building:
+            continue
+
+        building = teacher_id_to_building[et.teacher_id]
+        teacher_name = teacher_id_to_tp_name.get(et.teacher_id, "Unknown")
+        start_date = event.start_date
+
+        writer.writerow(
+            [
+                building,
+                teacher_name,
+                start_date.strftime("%Y-%m-%d") if start_date else "",
+                event.title or "Untitled Session",
+                event.series or "",
+            ]
+        )
+
+    csv_content = output.getvalue()
+    output.close()
+
+    import re
+
+    safe_name = re.sub(r"[^\w]+", "_", district_name).strip("_")
+    filename = f"{safe_name}_No_Shows_{academic_year}_{semester}.csv"
+
+    return Response(
+        csv_content,
+        mimetype="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ── Audit Log Viewer (Admin-only) ─────────────────────────────────────
