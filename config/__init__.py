@@ -6,9 +6,30 @@ Configuration package for VMS.
 import os
 
 from dotenv import load_dotenv
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 
 # Load environment variables from .env file
 load_dotenv()
+
+
+# ---------------------------------------------------------------------------
+# SQLite WAL Mode (TD-011 short-term fix)
+# ---------------------------------------------------------------------------
+# WAL (Write-Ahead Logging) allows concurrent readers while a write is in
+# progress. NORMAL synchronous is safe with WAL and reduces fsync overhead.
+# This listener only fires for SQLite connections; it's a no-op on MySQL.
+# ---------------------------------------------------------------------------
+@event.listens_for(Engine, "connect")
+def _set_sqlite_pragma(dbapi_conn, connection_record):
+    """Enable WAL journal mode for SQLite connections."""
+    # Only apply to SQLite connections
+    module_name = type(dbapi_conn).__module__
+    if "sqlite" in module_name:
+        cursor = dbapi_conn.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.close()
 
 
 def _normalize_sqlite_uri(uri):
@@ -18,10 +39,10 @@ def _normalize_sqlite_uri(uri):
     """
     if not uri or not uri.startswith("sqlite:///"):
         return uri
-    
+
     # Extract the path part after sqlite:///
     path = uri.replace("sqlite:///", "")
-    
+
     # If it's a relative path, convert to absolute
     if not os.path.isabs(path):
         # Get the base directory (project root)
@@ -31,7 +52,7 @@ def _normalize_sqlite_uri(uri):
         # Convert backslashes to forward slashes for SQLite URI (Windows compatibility)
         abs_path = abs_path.replace("\\", "/")
         return f"sqlite:///{abs_path}"
-    
+
     # Already absolute, just normalize slashes
     path = path.replace("\\", "/")
     return f"sqlite:///{path}"

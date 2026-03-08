@@ -62,7 +62,7 @@ def setup_flask_app():
 
         return app
     except Exception as e:
-        logger.error(f"Failed to import Flask app: {e}")
+        logger.error("Failed to import Flask app: %s", e)
         return None
 
 
@@ -77,17 +77,17 @@ def refresh_all_caches():
         refresh_caches()
 
         duration = (datetime.now(timezone.utc) - start_time).total_seconds()
-        logger.info(f"Cache refresh completed successfully in {duration:.2f} seconds")
+        logger.info("Cache refresh completed successfully in %.2f seconds", duration)
         return True
 
     except Exception as e:
-        logger.error(f"Cache refresh failed: {str(e)}")
+        logger.error("Cache refresh failed: %s", str(e))
         return False
 
 
 def refresh_specific_cache(cache_type):
     """Refresh a specific cache type."""
-    logger.info(f"Refreshing {cache_type} caches...")
+    logger.info("Refreshing %s caches...", cache_type)
     start_time = datetime.now(timezone.utc)
 
     try:
@@ -104,7 +104,7 @@ def refresh_specific_cache(cache_type):
         return True
 
     except Exception as e:
-        logger.error(f"{cache_type.title()} cache refresh failed: {str(e)}")
+        logger.error("%s cache refresh failed: %s", cache_type.title(), str(e))
         return False
 
 
@@ -131,7 +131,7 @@ def get_cache_status():
         return status
 
     except Exception as e:
-        logger.error(f"Failed to get cache status: {str(e)}")
+        logger.error("Failed to get cache status: %s", str(e))
         return None
 
 
@@ -161,7 +161,7 @@ def health_check():
                 health_status["database"] = True
                 logger.info("Flask app and database connection OK")
     except Exception as e:
-        logger.error(f"Flask app or database check failed: {e}")
+        logger.error("Flask app or database check failed: %s", e)
 
     # Check cache system
     try:
@@ -170,7 +170,7 @@ def health_check():
             health_status["cache_system"] = True
             logger.info("Cache system OK")
     except Exception as e:
-        logger.error(f"Cache system check failed: {e}")
+        logger.error("Cache system check failed: %s", e)
 
     # Overall health
     health_status["overall"] = all(
@@ -213,14 +213,16 @@ def should_refresh_cache():
         should_refresh = time_since_refresh > timedelta(hours=20)
 
         if should_refresh:
-            logger.info(f"Last refresh was {time_since_refresh} ago, refreshing caches")
+            logger.info(
+                "Last refresh was %s ago, refreshing caches", time_since_refresh
+            )
         else:
-            logger.info(f"Last refresh was {time_since_refresh} ago, skipping refresh")
+            logger.info("Last refresh was %s ago, skipping refresh", time_since_refresh)
 
         return should_refresh
 
     except Exception as e:
-        logger.error(f"Error checking refresh status: {e}")
+        logger.error("Error checking refresh status: %s", e)
         # If we can't determine, err on the side of refreshing
         return True
 

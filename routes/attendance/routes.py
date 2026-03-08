@@ -15,8 +15,8 @@ from models.attendance import EventAttendanceDetail
 from models.event import Event, EventTeacher, EventType
 from models.student import Student
 from models.teacher import Teacher
-from routes.decorators import global_users_only
-from routes.utils import admin_required, log_audit_action
+from routes.decorators import admin_required, global_users_only
+from routes.utils import log_audit_action
 
 # Create Blueprint for attendance routes
 attendance = Blueprint("attendance", __name__)
@@ -167,10 +167,9 @@ def purge_attendance():
     "/attendance/toggle-teacher-exclude-reports/<int:id>", methods=["POST"]
 )
 @login_required
+@admin_required
 def toggle_teacher_exclude_reports(id):
     """Toggle the exclude_from_reports field for a teacher - Admin only"""
-    if not current_user.is_admin:
-        return jsonify({"success": False, "message": "Admin access required"}), 403
 
     try:
         teacher = db.session.get(Teacher, id)

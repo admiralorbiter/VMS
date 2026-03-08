@@ -6,9 +6,12 @@ Run with: pytest tests/stress/test_input_fuzz.py -v
 """
 
 import pytest
+
+hypothesis = pytest.importorskip(
+    "hypothesis", reason="hypothesis not installed — skipping fuzz tests"
+)
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
-
 
 pytestmark = pytest.mark.stress
 
@@ -40,13 +43,17 @@ def test_update_local_status_fuzz_no_500(
         json=payload,
         headers={**auth_headers, "Content-Type": "application/json"},
     )
-    assert response.status_code != 500, (
-        f"Fuzz input {payload!r} caused 500. Body: {response.data}"
-    )
+    assert (
+        response.status_code != 500
+    ), f"Fuzz input {payload!r} caused 500. Body: {response.data}"
     # Valid enum -> 200; invalid -> 400
-    assert response.status_code in (200, 400, 404, 415, 422), (
-        f"Unexpected status {response.status_code} for {payload!r}. Body: {response.data}"
-    )
+    assert response.status_code in (
+        200,
+        400,
+        404,
+        415,
+        422,
+    ), f"Unexpected status {response.status_code} for {payload!r}. Body: {response.data}"
 
 
 @given(
@@ -72,6 +79,6 @@ def test_update_local_status_fuzz_keys_no_500(
         json=payload,
         headers={**auth_headers, "Content-Type": "application/json"},
     )
-    assert response.status_code != 500, (
-        f"Fuzz payload {payload!r} caused 500. Body: {response.data}"
-    )
+    assert (
+        response.status_code != 500
+    ), f"Fuzz payload {payload!r} caused 500. Body: {response.data}"

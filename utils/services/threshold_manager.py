@@ -67,11 +67,11 @@ class ThresholdManager:
             if self.dynamic_adjustment_enabled:
                 threshold = self._apply_dynamic_adjustment(entity_type, threshold)
 
-            self.logger.debug(f"Threshold for {entity_type}: {threshold}")
+            self.logger.debug("Threshold for %s: %s", entity_type, threshold)
             return threshold
 
         except Exception as e:
-            self.logger.error(f"Error getting threshold for {entity_type}: {e}")
+            self.logger.exception("Error getting threshold for %s: %s", entity_type, e)
             return 75.0  # Fallback threshold
 
     def get_validation_type_threshold(
@@ -102,7 +102,7 @@ class ThresholdManager:
             return max(50.0, min(100.0, adjusted_threshold))
 
         except Exception as e:
-            self.logger.error(f"Error getting validation type threshold: {e}")
+            self.logger.exception("Error getting validation type threshold: %s", e)
             return 75.0
 
     def set_entity_threshold_override(self, entity_type: str, threshold: float):
@@ -119,10 +119,12 @@ class ThresholdManager:
 
             self.entity_threshold_overrides[entity_type] = float(threshold)
 
-            self.logger.info(f"Set threshold override for {entity_type}: {threshold}")
+            self.logger.info(
+                "Set threshold override for %s: %s", entity_type, threshold
+            )
 
         except Exception as e:
-            self.logger.error(
+            self.logger.exception(
                 f"Error setting threshold override for {entity_type}: {e}"
             )
 
@@ -145,7 +147,7 @@ class ThresholdManager:
             )
 
         except Exception as e:
-            self.logger.error(
+            self.logger.exception(
                 f"Error setting validation type threshold for {validation_type}: {e}"
             )
 
@@ -160,13 +162,13 @@ class ThresholdManager:
             if entity_type:
                 if entity_type in self.entity_threshold_overrides:
                     del self.entity_threshold_overrides[entity_type]
-                    self.logger.info(f"Reset threshold for {entity_type}")
+                    self.logger.info("Reset threshold for %s", entity_type)
             else:
                 self.entity_threshold_overrides.clear()
                 self.logger.info("Reset all entity threshold overrides")
 
         except Exception as e:
-            self.logger.error(f"Error resetting entity thresholds: {e}")
+            self.logger.exception("Error resetting entity thresholds: %s", e)
 
     def reset_validation_type_thresholds(self):
         """Reset all validation type threshold overrides."""
@@ -175,7 +177,7 @@ class ThresholdManager:
             self.logger.info("Reset all validation type threshold overrides")
 
         except Exception as e:
-            self.logger.error(f"Error resetting validation type thresholds: {e}")
+            self.logger.exception("Error resetting validation type thresholds: %s", e)
 
     def get_quality_status(self, score: float, entity_type: str = None) -> str:
         """
@@ -203,7 +205,7 @@ class ThresholdManager:
             return "poor"
 
         except Exception as e:
-            self.logger.error(f"Error getting quality status: {e}")
+            self.logger.exception("Error getting quality status: %s", e)
             return "unknown"
 
     def get_quality_color(self, status: str) -> str:
@@ -275,7 +277,7 @@ class ThresholdManager:
             return summary
 
         except Exception as e:
-            self.logger.error(f"Error getting threshold summary: {e}")
+            self.logger.exception("Error getting threshold summary: %s", e)
             return {"error": str(e)}
 
     def enable_dynamic_adjustment(self, enabled: bool = True):
@@ -292,7 +294,7 @@ class ThresholdManager:
             )
 
         except Exception as e:
-            self.logger.error(f"Error setting dynamic adjustment: {e}")
+            self.logger.exception("Error setting dynamic adjustment: %s", e)
 
     def set_adjustment_factors(self, factors: Dict[str, float]):
         """
@@ -310,10 +312,10 @@ class ThresholdManager:
                 )
 
             self.adjustment_factors.update(factors)
-            self.logger.info(f"Updated adjustment factors: {factors}")
+            self.logger.info("Updated adjustment factors: %s", factors)
 
         except Exception as e:
-            self.logger.error(f"Error setting adjustment factors: {e}")
+            self.logger.exception("Error setting adjustment factors: %s", e)
 
     def _apply_dynamic_adjustment(
         self, entity_type: str, base_threshold: float
@@ -365,7 +367,7 @@ class ThresholdManager:
             return adjusted_threshold
 
         except Exception as e:
-            self.logger.error(f"Error applying dynamic adjustment: {e}")
+            self.logger.exception("Error applying dynamic adjustment: %s", e)
             return base_threshold
 
     def _get_validation_type_importance(self, validation_type: str) -> float:

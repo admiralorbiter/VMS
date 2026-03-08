@@ -73,7 +73,7 @@ Public Signup (Form Assembly) ──API──► Salesforce ──Sync──► 
 - **SF → VolunTeach**: Event sync (idempotent on `salesforce_id`)
 - **VolunTeach → Website**: API for event listings, volunteer signup
 - **SF → Polaris**: Daily ETL imports (events, volunteers, students, organizations, history)
-- **Pathful → Polaris**: Virtual session data via Google Sheets import
+- **Pathful → Polaris**: Virtual session data via direct Pathful import (.xlsx upload)
 - **Website (Form Assembly) → Salesforce**: Volunteer signup creates Contact/Participation in SF
 - **Salesforce → Polaris**: Daily sync imports new volunteer records
 
@@ -87,7 +87,7 @@ Public Signup (Form Assembly) ──API──► Salesforce ──Sync──► 
 | In-person page visibility | VolunTeach | Website | `Event.inperson_page_visible` field |
 | District event linking | VolunTeach | Website | `Event.district_links[]` array |
 | Virtual event definition | Polaris | — | Created/managed in Polaris |
-| Virtual attendance/signup | Pathful | Polaris (derived) | Imported via Google Sheets. Pathful sends all reminder emails to prevent duplication. |
+| Virtual attendance/signup | Pathful | Polaris (derived) | Imported via direct Pathful export upload (.xlsx). Pathful sends all reminder emails to prevent duplication. |
 | Teacher roster (eligible set) | Polaris (import) | Dashboards, magic links | `TeacherProgress` table |
 | Student attendance | Salesforce | Polaris (aggregates) | Row-level data in SF, aggregates in Polaris |
 | Communication logs | Salesforce | Polaris | Email logs via Gmail add-on |
@@ -205,7 +205,7 @@ Pathful owns session data (title, date, student counts, attendance). Polaris own
 | SF Students → Polaris | Daily | Yes | `routes/salesforce/student_import.py` `/students/import-from-salesforce` |
 | SF Organizations → Polaris | Daily | Yes | `routes/salesforce/organization_import.py` `/organizations/import-from-salesforce` |
 | SF Schools/Classes → Polaris | Weekly | Yes | `routes/salesforce/school_import.py` import routes |
-| Pathful → Polaris | Daily | Yes | `routes/virtual/routes.py` `/virtual/import-sheet` |
+| Pathful → Polaris | Weekly (manual) | Yes | `routes/virtual/pathful_import.py` `/virtual/pathful/import` |
 | Roster → Polaris | Manual (2 week cadence) | Yes | `routes/virtual/usage.py` teacher progress import |
 | API Health Monitor | Hourly | Yes (Script) | `scripts/monitor_api.py` checks signup API |
 
@@ -219,10 +219,10 @@ Pathful owns session data (title, date, student counts, attendance). Polaris own
 - Same script with `--weekly` flag
 - Includes: Daily imports + Schools + Classes + Teachers
 
-**Virtual Session Import:**
-- Script: `scripts/daily_imports/run_virtual_import_2025_26_standalone.py`
-- Schedule: As needed (often daily or weekly)
-- Source: Google Sheets (configured in admin panel)
+**Virtual Session Import (Pathful Direct):**
+- Route: `routes/virtual/pathful_import.py` `/virtual/pathful/import`
+- Schedule: Weekly (manual upload)
+- Source: Pathful export files (.xlsx) uploaded directly
 
 **Reference:** [Import Playbook](import_playbook) for detailed procedures
 
@@ -298,17 +298,18 @@ Pathful owns session data (title, date, student counts, attendance). Polaris own
 **Purpose:** Import virtual session attendance and update teacher progress
 
 **Flow:**
-1. Pathful exports session data
-2. Data formatted in Google Sheet
-3. Polaris imports via `/virtual/import-sheet`
-4. Creates/updates EventTeacher records
-5. Teacher progress statuses recalculated
+1. Staff downloads Session Report from Pathful (.xlsx)
+2. Staff uploads file to Polaris via **Virtual → Pathful Imports**
+3. System matches sessions by Pathful Session ID or Title + Date
+4. Creates/updates Event and EventTeacher records
+5. Unmatched teachers/volunteers queued for manual resolution
+6. Teacher progress statuses recalculated
 
 **Implementation:**
-- Route: `routes/virtual/routes.py` `/virtual/import-sheet`
+- Route: `routes/virtual/pathful_import.py` `/virtual/pathful/import`
 - Contract: [Contract D: Pathful Export → Polaris](contract_d)
 - Reference: [Field Mappings - Pathful Export](field_mappings#6-pathful-export--polaris)
-- Reference: [Import Playbook - Pathful Import](import_playbook#playbook-a-pathful-export--polaris-via-virtual-session-import)
+- Reference: [Pathful Import Guide](user_guide/pathful_import)
 
 ### Gmail Add-on → Salesforce → Polaris
 
@@ -366,7 +367,7 @@ graph LR
     SF -->|Hourly Sync| VT[VolunTeach]
     VT -->|API| WEB[Public Website]
     WEB -->|Signup| POL
-    PATH[Pathful Export] -->|Google Sheets| POL
+    PATH[Pathful Export] -->|Direct Import| POL
     ROSTER[District Roster] -->|Import| POL
 ```
 
@@ -374,7 +375,7 @@ graph LR
 
 ```mermaid
 graph LR
-    PATH[Pathful Export] -->|Google Sheets| IMPORT[Polaris Import]
+    PATH[Pathful Export] -->|Direct Import| IMPORT[Polaris Import]
     IMPORT -->|Create/Update| ET[EventTeacher Records]
     ET -->|Calculate| TP[Teacher Progress]
     TP -->|Display| DASH[Dashboards]

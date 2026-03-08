@@ -223,18 +223,67 @@ Events are imported only if they meet ALL criteria:
 
 **Sync Behavior**: Idempotent on `SessionId + teacher_email` composite key. Unknown teacher/event → row flagged unmatched, not auto-created.
 
-**Implementation**: Referenced in [Data Dictionary](data_dictionary#entity-eventparticipation) and requirements.
+**Implementation**: `routes/virtual/pathful_import/processing.py`, `routes/virtual/pathful_import/parsing.py`
 
 **Contract**: [Contract D: Pathful Export → Polaris](contract_d)
 
-| Pathful Column | POL Target | Transform | Idempotency | Notes |
-|----------------|------------|-----------|-------------|-------|
-| `SessionId` | `EventParticipation.external_row_id` | direct | Primary key | For idempotent imports |
-| `EventId` | `Event.session_id` or match by `Event.pathful_event_id` | direct | Must match known event | Must match existing Event record |
-| `TeacherEmail` | `Teacher.email` | normalize: lowercase | Join key for roster | Primary join key; must match TeacherProgress or Teacher record |
-| `SessionStart` | `EventParticipation` datetime fields | ISO-8601 | — | Session start datetime |
-| `AttendanceStatus` | `EventParticipation.status` | Map to enum | — | Maps to attendance status enum |
-| `ParticipantType` | `EventParticipation.participant_type` | direct | — | Default: "Volunteer"; also "Presenter" for virtual events |
+### Column Mapping
+
+| Pathful Column | POL Target | Transform | Required | Notes |
+|----------------|------------|-----------|----------|-------|
+| `Session ID` | `Event.pathful_session_id` | direct | Yes | Primary key for idempotent imports |
+| `Title` | `Event.title` | direct | Yes | Session title |
+| `Date` | `Event.start_date` | `parse_pathful_date()` | Yes | Format: `YYYY-MM-DD HH:MM:SS` |
+| `Status` | `Event.status` | `EventStatus.map_status()` | Yes | Completed, Draft, Cancelled, No Show, etc. |
+| `Duration` | `Event.duration` | int(), minutes | No | Session duration |
+| `User Auth Id` | `TeacherProgress.pathful_user_id` | str() | No | Pathful user identifier |
+| `Name` | `Teacher` name matching | `parse_name()` first/last | Yes | Used for teacher identity resolution |
+| `SignUp Role` | — | Filter: Educator vs Professional | Yes | Only `Educator` rows create EventTeacher |
+| `School` | Teacher school matching | direct | No | Used for teacher matching |
+| `District or Company` | `Event.district_partner` | direct | No | District name |
+| `Partner` | — | Filter: must match `PARTNER_FILTER` | Yes | e.g., "PREP-KC" |
+| `Registered Student Count` | `Event.registered_student_count` | `safe_int()`, max() | No | Highest value across rows wins |
+| `Attended Student Count` | `Event.attended_student_count` | `safe_int()`, max() | No | Highest value across rows wins |
+| `Registered Educator Count` | — (informational) | `_parse_pathful_count()` | No | Not stored; for reference |
+| `Attended Educator Count` | `Event.attended_educator_count` + `EventTeacher.status` | `_parse_pathful_count()` | No | **Primary signal for attendance** — see below |
+| `Career Cluster` | `Event.career_cluster` | direct | No | Career cluster classification |
+| `Work Based Learning` | `Event.work_based_learning` | direct | No | WBL type |
+| `Series or Event Title` | `Event.series` | direct | No | Series name |
+| `State` | — | informational | No | State code |
+
+### Attendance Status Derivation
+
+> [!IMPORTANT]
+> **The `Attended Educator Count` column is the primary signal** for determining whether a teacher actually attended a completed session. The event-level `Status` column alone is insufficient — a session can be "Completed" even if the registered educator never showed up.
+
+The import derives `EventTeacher.status` using this logic:
+
+| Event Status | Attended Educator Count | → EventTeacher.status | Explanation |
+|-------------|------------------------|----------------------|-------------|
+| Completed | `1` (or any positive int) | `attended` | Teacher attended the session |
+| Completed | `n/a`, `NaN`, empty, or column absent | `no_show` | Session completed but teacher didn't attend |
+| Cancelled | any | `no_show` | Session was cancelled |
+| No Show | any | `no_show` | Session-level no-show |
+| Draft | any | `registered` | Session not yet completed |
+| Requested | any | `registered` | Session not yet completed |
+| Published | any | `registered` | Session not yet completed |
+
+**Implementation**: `_parse_pathful_count()` in `processing.py` safely handles `"1"`, `1`, `"n/a"`, `None`, `NaN`, `""` → `int | None`.
+
+### Edge Cases
+
+| Scenario | Behavior |
+|----------|----------|
+| `Attended Educator Count` column missing from file | Import succeeds; Completed events default to `no_show` (conservative) |
+| Re-import same file | Idempotent — no duplicates; statuses updated to reflect latest data |
+| Re-import corrects wrong status | Old `attended` → `no_show` (or vice versa) updated automatically |
+| Admin override (notes field set) | Re-import **does not** overwrite status if `EventTeacher.notes` is populated |
+| Professional role rows | Skipped for EventTeacher creation (only Educator rows create EventTeacher) |
+| Teacher not found in system | Row flagged as unmatched in `PathfulUnmatchedRecord` table |
+
+### Admin Override Protection
+
+When an admin manually corrects an `EventTeacher.status` and adds a note (via the event detail page), re-imports will preserve that manual correction. This is detected by checking `EventTeacher.notes IS NOT NULL`.
 
 **Failure Handling**:
 - Unknown teacher: Row flagged as unmatched; teacher not auto-created
@@ -272,5 +321,5 @@ Events are imported only if they meet ALL criteria:
 
 ---
 
-*Last updated: February 2026*
-*Version: 1.2*
+*Last updated: March 2026*
+*Version: 1.3*

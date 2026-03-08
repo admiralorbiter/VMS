@@ -23,7 +23,7 @@ from models.contact import Contact
 from models.district_model import District
 from models.organization import Organization, VolunteerOrganization
 from models.school_model import School
-from routes.decorators import global_users_only
+from routes.decorators import global_users_only, handle_route_errors
 from routes.utils import parse_date
 from services.salesforce import get_salesforce_client, safe_query_all
 from services.salesforce.errors import classify_exception, create_import_error
@@ -276,6 +276,7 @@ def import_organizations_from_salesforce():
     "/organizations/import-affiliations-from-salesforce", methods=["POST"]
 )
 @login_required
+@global_users_only
 def import_affiliations_from_salesforce():
     """
     Import volunteer-organization affiliations from Salesforce.

@@ -441,40 +441,46 @@ class Student(Contact):
         """
         try:
             # Handle email
-            email_address = str(sf_data.get("Email", "")).strip()
-            if email_address:
-                existing_email = Email.query.filter_by(
-                    contact_id=self.id, type=ContactTypeEnum.personal
-                ).first()
+            # NOTE: Do NOT use str() — str(None) == "None" which stores garbage.
+            # Use isinstance guard (matching teacher import pattern).
+            email_address = sf_data.get("Email")
+            if email_address and isinstance(email_address, str):
+                email_address = email_address.strip()
+                if email_address:
+                    existing_email = Email.query.filter_by(
+                        contact_id=self.id, type=ContactTypeEnum.personal
+                    ).first()
 
-                if existing_email:
-                    existing_email.email = email_address
-                else:
-                    email_record = Email(
-                        contact_id=self.id,
-                        email=email_address,
-                        type=ContactTypeEnum.personal,
-                        primary=True,
-                    )
-                    db_session.add(email_record)
+                    if existing_email:
+                        existing_email.email = email_address
+                    else:
+                        email_record = Email(
+                            contact_id=self.id,
+                            email=email_address,
+                            type=ContactTypeEnum.personal,
+                            primary=True,
+                        )
+                        db_session.add(email_record)
 
             # Handle phone
-            phone_number = str(sf_data.get("Phone", "")).strip()
-            if phone_number:
-                existing_phone = Phone.query.filter_by(
-                    contact_id=self.id, type=ContactTypeEnum.personal
-                ).first()
+            phone_number = sf_data.get("Phone")
+            if phone_number and isinstance(phone_number, str):
+                phone_number = phone_number.strip()
+                if phone_number:
+                    existing_phone = Phone.query.filter_by(
+                        contact_id=self.id, type=ContactTypeEnum.personal
+                    ).first()
 
-                if existing_phone:
-                    existing_phone.number = phone_number
-                else:
-                    phone_record = Phone(
-                        contact_id=self.id,
-                        number=phone_number,
-                        type=ContactTypeEnum.personal,
-                        primary=True,
-                    )
-                    db_session.add(phone_record)
+                    if existing_phone:
+                        existing_phone.number = phone_number
+                    else:
+                        phone_record = Phone(
+                            contact_id=self.id,
+                            number=phone_number,
+                            type=ContactTypeEnum.personal,
+                            primary=True,
+                        )
+                        db_session.add(phone_record)
 
             return True, None
 

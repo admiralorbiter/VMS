@@ -65,7 +65,7 @@ class RelationshipValidator(DataValidator):
 
             for entity_type in entity_types:
                 if entity_type in self.entity_relationships:
-                    logger.info(f"Validating relationships for {entity_type}...")
+                    logger.info("Validating relationships for %s...", entity_type)
                     entity_results = self._validate_entity_relationships(entity_type)
                     results.extend(entity_results)
 
@@ -78,7 +78,7 @@ class RelationshipValidator(DataValidator):
             return results
 
         except Exception as e:
-            logger.error(f"Relationship validation failed: {e}")
+            logger.exception("Relationship validation failed: %s", e)
             raise
 
     def _validate_entity_relationships(
@@ -97,7 +97,7 @@ class RelationshipValidator(DataValidator):
             sample_data = self._get_salesforce_sample(entity_type, limit=100)
 
             if not sample_data:
-                logger.warning(f"No sample data found for {entity_type}")
+                logger.warning("No sample data found for %s", entity_type)
                 return results
 
             # Validate required relationships
@@ -129,7 +129,9 @@ class RelationshipValidator(DataValidator):
                 results.extend(circular_results)
 
         except Exception as e:
-            logger.error(f"Error validating relationships for {entity_type}: {e}")
+            logger.exception(
+                "Error validating relationships for %s: %s", entity_type, e
+            )
             results.append(
                 ValidationResult(
                     run_id=self.run_id,
@@ -381,7 +383,9 @@ class RelationshipValidator(DataValidator):
                     )
 
         except Exception as e:
-            logger.error(f"Error detecting orphaned records for {entity_type}: {e}")
+            logger.exception(
+                "Error detecting orphaned records for %s: %s", entity_type, e
+            )
 
         return results
 
@@ -451,7 +455,9 @@ class RelationshipValidator(DataValidator):
                     )
 
         except Exception as e:
-            logger.error(f"Error detecting circular references for {entity_type}: {e}")
+            logger.exception(
+                "Error detecting circular references for %s: %s", entity_type, e
+            )
 
         return results
 
@@ -475,10 +481,12 @@ class RelationshipValidator(DataValidator):
             elif entity_type == "district":
                 return self.salesforce_client.get_district_sample(limit)
             else:
-                logger.warning(f"Unknown entity type for sampling: {entity_type}")
+                logger.warning("Unknown entity type for sampling: %s", entity_type)
                 return []
         except Exception as e:
-            logger.error(f"Error getting Salesforce sample for {entity_type}: {e}")
+            logger.exception(
+                "Error getting Salesforce sample for %s: %s", entity_type, e
+            )
             return []
 
     def _is_valid_salesforce_id(self, value: Any) -> bool:
@@ -536,4 +544,4 @@ class RelationshipValidator(DataValidator):
             self.add_metric(summary_metric)
 
         except Exception as e:
-            logger.error(f"Error adding summary metrics: {e}")
+            logger.exception("Error adding summary metrics: %s", e)

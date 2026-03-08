@@ -44,12 +44,22 @@ Template Dependencies:
 - management/admin.html: Admin panel template
 """
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from flask_login import current_user, login_required, login_user, logout_user
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from forms import LoginForm  # Adjust import path as needed
 from models import User, db  # Adjust import path as needed
+from routes.decorators import admin_required, handle_route_errors
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -78,7 +88,16 @@ def login():
     if form.validate_on_submit():
         user = User.find_by_username_or_email(form.username.data)
         if user and check_password_hash(user.password_hash, form.password.data):
-            login_user(user)
+            # Check if user account is active (FR-TENANT-108 soft deactivation)
+            if hasattr(user, "is_active") and not user.is_active:
+                flash(
+                    "Your account has been deactivated. Please contact an administrator.",
+                    "danger",
+                )
+                return render_template("login.html", form=form)
+
+            login_user(user, remember=True)
+            session.permanent = True  # Use PERMANENT_SESSION_LIFETIME (8h)
             flash("Logged in successfully.", "success")
 
             # Redirect district-scoped users to their first assigned district
@@ -134,6 +153,7 @@ def logout():
 
 @auth_bp.route("/admin/users", methods=["POST"])
 @login_required
+@admin_required
 def create_user():
     """
     Create a new user account.
@@ -157,9 +177,6 @@ def create_user():
     Returns:
         Redirect to admin panel with success/error message
     """
-    if not current_user.is_admin:
-        flash("Permission denied", "danger")
-        return redirect(url_for("management.admin"))
 
     username = request.form.get("username")
     email = request.form.get("email")

@@ -24,7 +24,7 @@ from models.event import Event
 from models.history import History
 from models.teacher import Teacher
 from models.volunteer import Volunteer
-from routes.decorators import global_users_only
+from routes.decorators import global_users_only, handle_route_errors
 from routes.utils import parse_date
 from services.salesforce import get_salesforce_client, safe_query_all
 from services.salesforce.errors import ImportErrorCode, create_import_error
@@ -172,7 +172,7 @@ def import_history_from_salesforce():
 
         # Use no_autoflush to prevent premature flushing
         with db.session.no_autoflush:
-            for row in all_records:
+            for i, row in enumerate(all_records):
                 try:
                     record_type = row.get("record_type", "Task")
                     contact = None
@@ -254,10 +254,12 @@ def import_history_from_salesforce():
                     db.session.add(history)
                     success_count += 1
 
-                    # Commit every 100 records
-                    if success_count % 100 == 0:
+                    # Batch commit every 100 records for resumability
+                    if (i + 1) % 100 == 0:
                         db.session.commit()
-                        print(f"Processed {success_count} records...")
+                        print(
+                            f"  → Committed history batch {(i+1) // 100} ({success_count} successful)"
+                        )
 
                 except Exception as e:
                     error_count += 1

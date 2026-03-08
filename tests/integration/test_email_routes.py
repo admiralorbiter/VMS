@@ -21,7 +21,6 @@ from models.email import (
 )
 from models.user import User
 from tests.conftest import assert_route_response, safe_route_test
-from utils.email import get_email_allowlist, is_email_delivery_enabled
 
 
 @pytest.fixture
@@ -803,97 +802,6 @@ class TestEmailAccessControl:
             assert_route_response(response, expected_statuses=[403, 404, 500])
 
 
-class TestEmailRealSending:
-    """
-    Tests for REAL email sending (only runs if explicitly enabled).
-
-    WARNING: These tests will send REAL emails if:
-    - EMAIL_DELIVERY_ENABLED=true in environment
-    - EMAIL_ALLOWLIST is configured
-    - RUN_REAL_EMAIL_TESTS environment variable is set to 'true'
-
-    To run these tests:
-        RUN_REAL_EMAIL_TESTS=true pytest tests/integration/test_email_routes.py::TestEmailRealSending -v
-
-    These tests will ONLY send to emails in EMAIL_ALLOWLIST.
-    """
-
-    @pytest.mark.skipif(
-        os.environ.get("RUN_REAL_EMAIL_TESTS", "").lower() != "true",
-        reason="Real email tests require RUN_REAL_EMAIL_TESTS=true",
-    )
-    def test_send_real_email_end_to_end(self, app, test_email_template, test_admin):
-        """
-        End-to-end test that sends a REAL email.
-
-        This test will:
-        1. Create a message
-        2. Queue it
-        3. Send it via Mailjet (REAL EMAIL)
-
-        Only runs if RUN_REAL_EMAIL_TESTS=true and EMAIL_DELIVERY_ENABLED=true
-        """
-        # Check prerequisites
-        if not is_email_delivery_enabled():
-            pytest.skip("EMAIL_DELIVERY_ENABLED is not true")
-
-        allowlist = get_email_allowlist()
-        if not allowlist:
-            pytest.skip("EMAIL_ALLOWLIST is not configured")
-
-        # Use first allowlisted email
-        test_recipient = allowlist[0]
-        if test_recipient.startswith("@"):
-            pytest.skip(
-                "Domain allowlist not supported for this test - use specific email"
-            )
-
-        with app.app_context():
-            from utils.email import (
-                create_delivery_attempt,
-                create_email_message,
-                queue_message_for_delivery,
-            )
-
-            # Create message
-            message = create_email_message(
-                template=test_email_template,
-                recipients=[test_recipient],
-                context={
-                    "user_name": "Pytest Test User",
-                    "district_name": "Test District",
-                    "test_mode": "AUTOMATED_TEST",
-                },
-                created_by_id=test_admin.id,
-                status=EmailMessageStatus.DRAFT,
-            )
-            db.session.commit()
-
-            assert message.id is not None
-            assert message.recipient_count == 1
-            assert message.recipients[0] == test_recipient
-
-            # Queue message
-            message = queue_message_for_delivery(message.id)
-            assert message.status == EmailMessageStatus.QUEUED
-
-            # Send for real (no dry-run, no mocks)
-            attempt = create_delivery_attempt(message, is_dry_run=False)
-
-            # Verify attempt was created
-            assert attempt.id is not None
-            assert attempt.status in [
-                DeliveryAttemptStatus.SUCCESS,
-                DeliveryAttemptStatus.FAILED,
-            ]
-
-            if attempt.status == DeliveryAttemptStatus.SUCCESS:
-                assert attempt.mailjet_message_id is not None
-                print(f"\n✓ REAL EMAIL SENT SUCCESSFULLY")
-                print(f"  Recipient: {test_recipient}")
-                print(f"  Mailjet Message ID: {attempt.mailjet_message_id}")
-                print(f"  Check your inbox!")
-            else:
-                print(f"\n✗ Email send failed: {attempt.error_message}")
-                # Don't fail the test - we want to see what happened
-                pytest.fail(f"Email send failed: {attempt.error_message}")
+# TestEmailRealSending removed — sent real emails via Mailjet which is
+# no longer available. All email delivery tests use mocks instead.
+# See TestEmailSending and TestEmailQualityAssurance for mock-based coverage.

@@ -116,6 +116,110 @@ ADRs are immutable records of significant technical decisions that capture conte
 
 ---
 
+### 2026-02-27: D-005 — Sprint 1: Centralized Teacher Service + Model Hardening
+
+**Context:** Teacher records were created inline across 5+ route files (`routes/virtual/routes.py`, `usage.py`, `pathful_import.py`, etc.) using inconsistent matching logic. This caused duplicates and made the system fragile. Name matching in `roster_import.py` used raw `func.lower()` instead of the shared `normalize_name()` function.
+
+**Decision:**
+1. Create `services/teacher_service.py` with a single `find_or_create_teacher()` entry point using prioritized matching: `salesforce_individual_id` → email → normalized name
+2. Add `cached_email` column to Teacher (named `cached_email` instead of `primary_email` to avoid shadowing the existing `Contact.primary_email` property)
+3. Add `import_source` column to Teacher for data provenance tracking
+4. Add `UniqueConstraint('tenant_id', 'email', 'academic_year')` to TeacherProgress
+5. Refactor `_link_progress_to_teachers()` to use email-first matching + shared `normalize_name()`
+
+**Consequences:**
+- ✅ Single entry point for all teacher creation — future sprints wire routes through the service
+- ✅ Email matching is now the primary strategy (higher confidence than name matching)
+- ✅ TeacherProgress duplicates prevented at the DB level
+- ✅ `MatchInfo` dataclass provides transparency for debugging matches
+- ⚠️ Existing routes still create teachers inline (Sprint 3 will redirect them)
+- ⚠️ `cached_email` needs backfill from Email model records via `backfill_primary_emails()`
+
+**Files Changed:**
+- `services/teacher_service.py` — **NEW**: `find_or_create_teacher()`, `backfill_primary_emails()`, `MatchInfo`
+- `models/teacher.py` — `cached_email`, `import_source` columns
+- `models/teacher_progress.py` — `UniqueConstraint`
+- `utils/roster_import.py` — email-first + normalized matching
+- `tests/unit/services/test_teacher_service.py` — **NEW**: 13 tests
+- `scripts/migrations/sprint1_teacher_foundation.py` — **NEW**: migration script
+
+---
+
+### 2026-02-27: D-006 — Sprint 2: EventTeacher as Single Source of Truth
+
+**Context:** Teacher-session links were stored in two disconnected ways: (1) `event.educators` text field (semicolon-separated names from Pathful import), and (2) `EventTeacher` FK records (from session edit UI). The dashboard used a fragile dual-path counting merge that could double-count or miss sessions.
+
+**Decision:**
+1. Make `EventTeacher` the canonical source of truth for teacher-session links
+2. Create `sync_event_participant_fields()` to regenerate all 4 text cache fields from FK tables
+3. Create `ensure_event_teacher()` for idempotent EventTeacher creation
+4. Wire Pathful import to create EventTeacher records (previously only set text)
+5. Add sync calls to session edit/create handlers
+6. Refactor dashboard counting to EventTeacher-first with text fallback
+
+**Consequences:**
+- ✅ Single authoritative path for teacher-session relationships
+- ✅ Text fields are now a cache, not a source of truth
+- ✅ Dashboard counting simplified — EventTeacher-first with text fallback
+- ✅ Backfill completed (15,838+ EventTeacher records)
+- ✅ Text fields are now a cache, not a source of truth
+- ✅ EventTeacher is primary data source (D-008)
+
+**Files Changed:**
+- `services/teacher_service.py` — `sync_event_participant_fields()`, `ensure_event_teacher()`
+- EventTeacher backfill — **completed**: 15,838+ records created from educators text (one-time operation)
+- `routes/virtual/pathful_import.py` — create EventTeacher on teacher match
+- `routes/virtual/usage.py` — sync cache in edit + create
+- `routes/district/tenant_teacher_usage.py` — EventTeacher-first counting
+
+---
+
+### 2026-02-27: D-007 — Sprint 3: All Teacher Creation Through Service Layer
+
+**Context:** 7 inline `Teacher()` constructor calls in route files bypassed the centralized matching logic (Salesforce ID, email, normalized name). This meant duplicate-prone name-only matching and no `import_source` provenance tracking.
+
+**Decision:** Replace all 7 inline sites with `find_or_create_teacher()` from `teacher_service.py`. Delete obsolete `fix_duplicate_teachers.py`.
+
+**Consequences:**
+- ✅ All Teacher creation uses the full matching chain (SF ID → email → normalized name)
+- ✅ `import_source` tracked on every creation (`"spreadsheet"`, `"manual"`)
+- ✅ Zero inline `Teacher()` calls remain in routes
+- ✅ `fix_duplicate_teachers.py` deleted — Sprint 1 constraints prevent duplicates
+
+---
+
+### 2026-02-28: D-008 — Sprint 4: EventTeacher-Primary Counting (Resolved)
+
+**Context:** Sprint 4 tried three counting approaches:
+1. EventTeacher-only (failed: 0 EventTeacher records existed)
+2. EventTeacher-primary after backfill (failed: only 60% of TeacherProgress had `teacher_id`, global `matched_event_ids` excluded events from unlinked teachers)
+3. Text-primary + EventTeacher-supplementary (worked but fragile)
+
+**Decision:** Created 184 missing Teacher records from TeacherProgress data, linking all 464 records (100%). Re-ran backfill (15,838+ EventTeacher records, 97.5% coverage). Switched to EventTeacher-primary, text-supplementary.
+
+**Lesson:** EventTeacher-primary requires ALL TeacherProgress → Teacher links. The root cause of under-counting wasn't the counting logic — it was missing Teacher records.
+
+**Consequences:**
+- ✅ Dashboard counts verified: 162 goals achieved (matches pre-refactor ±1)
+- ✅ EventTeacher is primary data source — reliable FK lookups, no fuzzy matching
+- ✅ Text-supplementary catches remaining 2.5% edge cases
+- ✅ EventTeacher backfill completed (15,838+ records, one-time operation)
+
+---
+
+### 2026-02-28: D-009 — Task 4.4: KCKPS Schools + District-Scoped Matching
+
+**Context:** KCKPS district (ID=23) had 0 School records. `_find_school_by_building_name()` searched all 177 schools globally, causing cross-district false matches (e.g. "Banneker" matching a Missouri school).
+
+**Decision:** Seed 28 School records from TeacherProgress building names with deterministic IDs (`kckps-{name}`). Add `district_id` parameter to `_find_school_by_building_name()` — search within district first, global fallback only if no match.
+
+**Consequences:**
+- ✅ All 28 KCKPS buildings match to correct, district-scoped schools
+- ✅ No cross-district false matches
+- ✅ All 28 KCKPS buildings have School records (seeded during Sprint 4.4)
+
+---
+
 ## Creating New ADRs
 
 ### When to Create

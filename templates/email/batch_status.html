@@ -1,0 +1,471 @@
+{% extends "base.html" %}
+
+{% block title %}Batch Job #{{ job.id }} - Email Management{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<style>
+    .batch-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+
+    .batch-card {
+        background: white;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1.5rem;
+    }
+
+    .batch-card h3 {
+        margin: 0 0 1rem 0;
+        color: var(--delft-blue);
+        font-size: 1.1rem;
+    }
+
+    /* Status badges */
+    .status-pill {
+        display: inline-block;
+        padding: 0.4rem 1rem;
+        border-radius: 20px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-pill.draft {
+        background: #e2e3e5;
+        color: #383d41;
+    }
+
+    .status-pill.canary-sent {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .status-pill.confirmed {
+        background: #cce5ff;
+        color: #004085;
+    }
+
+    .status-pill.completed {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-pill.cancelled {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .status-pill.failed {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    /* Timer */
+    .timer-box {
+        background: linear-gradient(135deg, #fff3cd, #ffe8a1);
+        border: 2px solid #ffc107;
+        border-radius: 8px;
+        padding: 1.5rem;
+        text-align: center;
+        margin: 1rem 0;
+    }
+
+    .timer-value {
+        font-size: 2.5rem;
+        font-weight: 800;
+        font-family: monospace;
+        color: #856404;
+    }
+
+    .timer-label {
+        font-size: 0.85rem;
+        color: #856404;
+        margin-top: 0.25rem;
+    }
+
+    /* Confirmation code display */
+    .code-display {
+        background: #f0f4f8;
+        border: 2px dashed #003366;
+        border-radius: 8px;
+        padding: 1.5rem;
+        text-align: center;
+        margin: 1rem 0;
+    }
+
+    .code-value {
+        font-size: 2.5rem;
+        font-weight: 800;
+        font-family: monospace;
+        letter-spacing: 8px;
+        color: #003366;
+    }
+
+    .code-label {
+        font-size: 0.85rem;
+        color: #666;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Confirmation input */
+    .confirm-input {
+        font-size: 1.5rem;
+        font-family: monospace;
+        letter-spacing: 6px;
+        text-align: center;
+        text-transform: uppercase;
+        padding: 0.75rem 1rem;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        width: 200px;
+    }
+
+    .confirm-input:focus {
+        border-color: #003366;
+        outline: none;
+    }
+
+    /* Progress bar */
+    .progress-bar-container {
+        background: #e9ecef;
+        border-radius: 8px;
+        overflow: hidden;
+        height: 30px;
+        margin: 1rem 0;
+    }
+
+    .progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(135deg, #003366, #004080);
+        transition: width 0.5s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    /* Gate indicators */
+    .gates {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    .gate {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.4rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .gate.passed {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .gate.active {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .gate.pending {
+        background: #e9ecef;
+        color: #6c757d;
+    }
+
+    .danger-zone {
+        border: 2px solid #dc3545;
+        border-radius: 8px;
+        padding: 1rem 1.5rem;
+        margin-top: 1rem;
+    }
+
+    .stat-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #eee;
+    }
+
+    .stat-row:last-child {
+        border-bottom: none;
+    }
+
+    .stat-label {
+        color: #666;
+    }
+
+    .stat-value {
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="batch-container">
+    <div class="section-header">
+        <h1>Batch Job #{{ job.id }}</h1>
+        <a href="{{ url_for('email.email_overview') }}" class="btn btn-secondary">← Back</a>
+    </div>
+
+    <!-- Status + Gate Progress -->
+    <div class="batch-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <h3 style="margin: 0;">Status</h3>
+                {% set status_name = BatchEmailJobStatus(job.status).name.lower() %}
+                <span class="status-pill {{ status_name | replace('_', '-') }}">
+                    {{ BatchEmailJobStatus(job.status).name }}
+                </span>
+            </div>
+        </div>
+
+        <!-- Gate Progress Indicators -->
+        <div class="gates" style="margin-top: 1rem;">
+            {% if job.status >= BatchEmailJobStatus.DRAFT and job.status < BatchEmailJobStatus.CANCELLED %} <div
+                class="gate passed">✅ Created</div>
+        {% else %}
+        <div class="gate pending">1. Create</div>
+        {% endif %}
+
+        {% if job.status >= BatchEmailJobStatus.CANARY_SENT and job.status < BatchEmailJobStatus.CANCELLED %} <div
+            class="gate passed">✅ Canary Sent
+    </div>
+    {% elif job.status == BatchEmailJobStatus.DRAFT %}
+    <div class="gate active">⏳ 2. Send Canary</div>
+    {% else %}
+    <div class="gate pending">2. Canary</div>
+    {% endif %}
+
+    {% if job.status >= BatchEmailJobStatus.CONFIRMED and job.status < BatchEmailJobStatus.CANCELLED %} <div
+        class="gate passed">✅ Confirmed
+</div>
+{% elif job.status == BatchEmailJobStatus.CANARY_SENT %}
+<div class="gate active">⏳ 3. Confirm</div>
+{% else %}
+<div class="gate pending">3. Confirm</div>
+{% endif %}
+
+{% if job.status == BatchEmailJobStatus.COMPLETED %}
+<div class="gate passed">✅ Complete</div>
+{% elif job.status == BatchEmailJobStatus.CONFIRMED %}
+<div class="gate active">⏳ 4. Sending</div>
+{% elif job.status == BatchEmailJobStatus.CANCELLED %}
+<div class="gate" style="background: #f8d7da; color: #721c24;">❌ Cancelled</div>
+{% else %}
+<div class="gate pending">4. Complete</div>
+{% endif %}
+</div>
+
+<!-- Job Details -->
+<div class="stat-row">
+    <span class="stat-label">Template</span>
+    <span class="stat-value">{{ job.template.name if job.template else 'Unknown' }}</span>
+</div>
+<div class="stat-row">
+    <span class="stat-label">District</span>
+    <span class="stat-value">{{ job.district_name }}</span>
+</div>
+<div class="stat-row">
+    <span class="stat-label">Total Recipients</span>
+    <span class="stat-value">{{ job.total_recipients }}</span>
+</div>
+<div class="stat-row">
+    <span class="stat-label">Canary Email</span>
+    <span class="stat-value">{{ job.canary_email }}</span>
+</div>
+<div class="stat-row">
+    <span class="stat-label">Created</span>
+    <span class="stat-value">{{ job.created_at.strftime('%Y-%m-%d %H:%M UTC') if job.created_at else 'N/A' }}</span>
+</div>
+<div class="stat-row">
+    <span class="stat-label">Created By</span>
+    <span class="stat-value">{{ job.created_by.username if job.created_by else 'Unknown' }}</span>
+</div>
+</div>
+
+<!-- GATE 2: Send Canary (only in DRAFT state) -->
+{% if job.status == BatchEmailJobStatus.DRAFT %}
+<div class="batch-card">
+    <h3>🐦 Gate 2: Send Canary Email</h3>
+    <p style="color: #555;">
+        This will send <strong>ONE</strong> test email to <strong>{{ job.canary_email }}</strong>.
+        No other emails will be sent. Check your inbox to verify the email looks correct before proceeding.
+    </p>
+    <form method="POST" action="{{ url_for('email.batch_canary', job_id=job.id) }}">
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-paper-plane"></i> Send Canary Email
+        </button>
+    </form>
+</div>
+{% endif %}
+
+<!-- GATE 3-5: Cooldown + Confirm (only in CANARY_SENT state) -->
+{% if job.status == BatchEmailJobStatus.CANARY_SENT %}
+<div class="batch-card">
+    <h3>⏱️ Gate 3-4: Cooldown & Confirmation</h3>
+    <p style="color: #555;">
+        A canary email was sent to <strong>{{ job.canary_email }}</strong>.
+        Check your inbox and verify it looks correct.
+    </p>
+
+    <!-- Countdown Timer -->
+    <div class="timer-box">
+        <div class="timer-label">TIME REMAINING BEFORE AUTO-CANCEL</div>
+        <div class="timer-value" id="countdown">{{ '%02d:%02d' | format(job.seconds_remaining // 60,
+            job.seconds_remaining % 60) }}</div>
+        <div class="timer-label">If you don't confirm, the job will be automatically cancelled.</div>
+    </div>
+
+    <!-- Confirmation Code -->
+    <div class="code-display">
+        <div class="code-label">YOUR CONFIRMATION CODE</div>
+        <div class="code-value">{{ job.confirmation_code }}</div>
+    </div>
+
+    <!-- Confirm Form -->
+    <form method="POST" action="{{ url_for('email.batch_confirm', job_id=job.id) }}"
+        style="text-align: center; margin-top: 1rem;">
+        <p style="font-weight: 600; color: #333; margin-bottom: 0.75rem;">
+            Type the code above to send <strong>{{ job.total_recipients }}</strong> emails:
+        </p>
+        <input type="text" name="confirmation_code" class="confirm-input" placeholder="______" maxlength="6"
+            autocomplete="off" required>
+        <br>
+        <button type="submit" class="btn btn-primary"
+            style="margin-top: 1rem; background: #dc3545; border-color: #dc3545;">
+            <i class="fas fa-check-double"></i> Confirm & Send All {{ job.total_recipients }} Emails
+        </button>
+    </form>
+</div>
+{% endif %}
+
+<!-- Progress (CONFIRMED/COMPLETED state) -->
+{% if job.status in (BatchEmailJobStatus.CONFIRMED, BatchEmailJobStatus.COMPLETED) %}
+<div class="batch-card">
+    <h3>📬 Send Progress</h3>
+    {% set pct = ((job.sent_count + job.error_count) / job.total_recipients * 100) if job.total_recipients > 0 else 0 %}
+    <div class="progress-bar-container">
+        <div class="progress-bar-fill" style="width: {{ pct }}%;">
+            {{ pct | int }}%
+        </div>
+    </div>
+    <div style="display: flex; gap: 2rem; margin-top: 0.75rem;">
+        <div>
+            <span style="color: #155724; font-weight: 700;">{{ job.sent_count }}</span>
+            <span style="color: #666;"> sent</span>
+        </div>
+        <div>
+            <span style="color: #856404; font-weight: 700;">{{ job.skipped_count }}</span>
+            <span style="color: #666;"> skipped</span>
+        </div>
+        <div>
+            <span style="color: #dc3545; font-weight: 700;">{{ job.error_count }}</span>
+            <span style="color: #666;"> errors</span>
+        </div>
+        <div>
+            <span style="font-weight: 700;">{{ job.total_recipients }}</span>
+            <span style="color: #666;"> total</span>
+        </div>
+    </div>
+    {% if job.completed_at %}
+    <p style="margin-top: 1rem; color: #155724; font-weight: 600;">
+        ✅ Completed at {{ job.completed_at.strftime('%Y-%m-%d %H:%M UTC') }}
+    </p>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Cancelled info -->
+{% if job.status == BatchEmailJobStatus.CANCELLED %}
+<div class="batch-card" style="border-left: 4px solid #dc3545;">
+    <h3 style="color: #721c24;">❌ Job Cancelled</h3>
+    <div class="stat-row">
+        <span class="stat-label">Reason</span>
+        <span class="stat-value">
+            {% if job.cancel_reason == 'timeout' %}
+            Auto-cancelled (cooldown expired)
+            {% elif job.cancel_reason == 'manual' %}
+            Manually cancelled by admin
+            {% else %}
+            {{ job.cancel_reason or 'Unknown' }}
+            {% endif %}
+        </span>
+    </div>
+    <div class="stat-row">
+        <span class="stat-label">Cancelled At</span>
+        <span class="stat-value">{{ job.cancelled_at.strftime('%Y-%m-%d %H:%M UTC') if job.cancelled_at else 'N/A'
+            }}</span>
+    </div>
+    {% if job.sent_count > 0 %}
+    <p style="color: #856404; margin-top: 0.75rem;">
+        ⚠️ {{ job.sent_count }} email(s) were already sent before cancellation.
+    </p>
+    {% else %}
+    <p style="color: #155724; margin-top: 0.75rem;">
+        ✅ No emails were sent. Zero impact.
+    </p>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Cancel Button (available in DRAFT and CANARY_SENT states) -->
+{% if job.status in (BatchEmailJobStatus.DRAFT, BatchEmailJobStatus.CANARY_SENT, BatchEmailJobStatus.CONFIRMED) %}
+<div class="danger-zone">
+    <h3 style="color: #dc3545; margin: 0 0 0.5rem 0;">Cancel Batch Job</h3>
+    <p style="color: #666; font-size: 0.9rem; margin: 0 0 0.75rem 0;">
+        Cancel this job immediately. Any unsent emails will not be delivered.
+    </p>
+    <form method="POST" action="{{ url_for('email.batch_cancel', job_id=job.id) }}"
+        onsubmit="return confirm('Are you sure you want to cancel this batch job?');">
+        <button type="submit" class="btn"
+            style="background: #dc3545; color: white; border: none; padding: 0.5rem 1.25rem; border-radius: 6px; cursor: pointer;">
+            <i class="fas fa-times"></i> Cancel Job
+        </button>
+    </form>
+</div>
+{% endif %}
+</div>
+
+{% if job.status == BatchEmailJobStatus.CANARY_SENT and job.seconds_remaining > 0 %}
+<script>
+    // Live countdown timer
+    let remaining = {{ job.seconds_remaining }};
+    const countdownEl = document.getElementById('countdown');
+
+    function updateTimer() {
+        if (remaining <= 0) {
+            countdownEl.textContent = '00:00';
+            countdownEl.style.color = '#dc3545';
+            // Reload to show auto-cancelled state
+            setTimeout(() => window.location.reload(), 1500);
+            return;
+        }
+        const mins = Math.floor(remaining / 60);
+        const secs = remaining % 60;
+        countdownEl.textContent = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+
+        if (remaining <= 60) {
+            countdownEl.style.color = '#dc3545';
+        }
+
+        remaining--;
+    }
+
+    setInterval(updateTimer, 1000);
+</script>
+{% endif %}
+
+{% endblock %}

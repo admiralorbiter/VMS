@@ -47,7 +47,7 @@ Author: VMS Development Team
 Last Updated: 2024
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import declared_attr, relationship, validates
@@ -63,26 +63,11 @@ from models.contact import (
 )
 from models.history import History
 
-
-class ConnectorSubscriptionEnum(FormEnum):
-    """
-    Enum representing the subscription status of a connector.
-
-    Used to track whether a volunteer is actively participating in the connector program.
-    This is a specialized program within the volunteer system that has additional
-    requirements and tracking mechanisms.
-
-    Values:
-    - NONE: No subscription status (default)
-    - ACTIVE: Currently active in connector program
-    - INACTIVE: Previously active but currently inactive
-    - PENDING: Awaiting activation or approval
-    """
-
-    NONE = ""
-    ACTIVE = "Active"
-    INACTIVE = "Inactive"
-    PENDING = "Pending"
+# Enums extracted to volunteer_enums.py (TD-012)
+from models.volunteer_enums import (  # noqa: F401 — re-exported for backward compat
+    ConnectorSubscriptionEnum,
+    VolunteerStatus,
+)
 
 
 class ConnectorData(db.Model):
@@ -124,12 +109,14 @@ class ConnectorData(db.Model):
 
     # Automatic timestamp tracking (timezone-aware, Python-side defaults)
     created_at = db.Column(
-        DateTime(timezone=True), default=datetime.utcnow, nullable=True
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=True,
     )
     updated_at = db.Column(
         DateTime(timezone=True),
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
         nullable=True,
     )
 
@@ -343,47 +330,6 @@ class Volunteer(Contact):
     def _check_local_status_from_events(self):
         """
         Check local status based on event participation for volunteers.
-
-        If a volunteer has participated in any in-person events (non-virtual),
-        they are very likely local since they physically attended.
-
-        Returns:
-            LocalStatusEnum or None: Local status if determinable from events
-        """
-        try:
-            from models.event import Event, EventFormat, EventType
-
-            # Check for participation in non-virtual events with attended status
-            in_person_participation = (
-                EventParticipation.query.filter(
-                    EventParticipation.volunteer_id == self.id,
-                    EventParticipation.status.in_(
-                        ["Attended", "Completed", "Successfully Completed"]
-                    ),
-                )
-                .join(Event, EventParticipation.event_id == Event.id)
-                .filter(
-                    Event.type != EventType.VIRTUAL_SESSION,
-                    Event.format != EventFormat.VIRTUAL,
-                )
-                .first()
-            )
-
-            if in_person_participation:
-                # Strong indicator they are local - they attended in-person
-                return LocalStatusEnum.local
-
-            return None
-
-        except Exception as e:
-            print(
-                f"Error checking local status from events for volunteer {self.id}: {str(e)}"
-            )
-            return None
-
-    def _check_local_status_from_events(self):
-        """
-        Check local status based on event participation.
 
         If a volunteer has participated in any in-person events (non-virtual),
         they are very likely local since they physically attended.

@@ -112,6 +112,15 @@ from sqlalchemy import String
 from sqlalchemy.orm import validates
 
 from models import db
+
+# Enums extracted to event_enums.py (TD-012)
+from models.event_enums import (  # noqa: F401 — re-exported for backward compat
+    AttendanceStatus,
+    CancellationReason,
+    EventFormat,
+    EventStatus,
+    EventType,
+)
 from models.volunteer import EventParticipation
 
 # Define the association table first
@@ -138,95 +147,6 @@ event_skills = db.Table(
     db.Column("event_id", db.Integer, db.ForeignKey("event.id"), primary_key=True),
     db.Column("skill_id", db.Integer, db.ForeignKey("skill.id"), primary_key=True),
 )
-
-
-class EventType(str, Enum):
-    """
-    Event Type Enumeration
-
-    Defines all possible types of events in the system. Each type represents
-    a different category of educational or career development activity.
-
-    The enum values are used for filtering, reporting, and organizing events
-    by their primary purpose or format.
-
-    Event Categories:
-        - Career Development: CAREER_FAIR, CAREER_SPEAKER, CAREER_JUMPING
-        - Educational: CLASSROOM_SPEAKER, CLASSROOM_ACTIVITY, MATH_RELAYS
-        - Virtual Programs: VIRTUAL_SESSION, CONNECTOR_SESSION
-        - College Preparation: COLLEGE_OPTIONS, COLLEGE_APPLICATION_FAIR, FAFSA
-        - Workplace Exposure: WORKPLACE_VISIT, INTERNSHIP
-        - Campus Visits: CAMPUS_VISIT, PATHWAY_CAMPUS_VISITS
-        - Mentoring: MENTORING, ADVISORY_SESSIONS
-        - Financial Education: FINANCIAL_LITERACY
-        - Special Programs: IGNITE, DIA, P2GD, SLA, HEALTHSTART, P2T, BFI
-        - Volunteer Management: VOLUNTEER_ORIENTATION, VOLUNTEER_ENGAGEMENT
-        - Historical: HISTORICAL, DATA_VIZ
-    """
-
-    IN_PERSON = "in_person"
-    VIRTUAL_SESSION = "virtual_session"
-    CONNECTOR_SESSION = "connector_session"
-    CAREER_JUMPING = "career_jumping"
-    CAREER_SPEAKER = "career_speaker"
-    EMPLOYABILITY_SKILLS = "employability_skills"
-    IGNITE = "ignite"
-    CAREER_FAIR = "career_fair"
-    CLIENT_CONNECTED_PROJECT = "client_connected_project"
-    PATHWAY_CAMPUS_VISITS = "pathway_campus_visits"
-    WORKPLACE_VISIT = "workplace_visit"
-    PATHWAY_WORKPLACE_VISITS = "pathway_workplace_visits"
-    COLLEGE_OPTIONS = "college_options"
-    DIA_CLASSROOM_SPEAKER = "dia_classroom_speaker"
-    DIA = "dia"
-    CAMPUS_VISIT = "campus_visit"
-    ADVISORY_SESSIONS = "advisory_sessions"
-    VOLUNTEER_ORIENTATION = "volunteer_orientation"
-    VOLUNTEER_ENGAGEMENT = "volunteer_engagement"
-    MENTORING = "mentoring"
-    FINANCIAL_LITERACY = "financial_literacy"
-    MATH_RELAYS = "math_relays"
-    CLASSROOM_SPEAKER = "classroom_speaker"
-    INTERNSHIP = "internship"
-    COLLEGE_APPLICATION_FAIR = "college_application_fair"
-    FAFSA = "fafsa"
-    CLASSROOM_ACTIVITY = "classroom_activity"
-    HISTORICAL = "historical"
-    DATA_VIZ = "data_viz"
-    P2GD = "p2gd"
-    SLA = "sla"
-    HEALTHSTART = "healthstart"
-    P2T = "p2t"
-    BFI = "bfi"
-
-
-class CancellationReason(str, Enum):
-    """
-    Cancellation Reason Enumeration (DEC-008)
-
-    Defines the possible reasons why an event might be cancelled.
-    Used for tracking and reporting on event cancellations, particularly
-    for virtual sessions imported from Pathful.
-
-    Reasons:
-        - WEATHER: Weather / Snow Day - School closed due to weather
-        - PRESENTER_CANCELLED: Presenter Cancelled - Volunteer/presenter unable to attend
-        - TEACHER_CANCELLED: Teacher Cancelled - Teacher unable to host session
-        - SCHOOL_CONFLICT: School Conflict - Assembly, testing, or other school event
-        - TECHNICAL_ISSUES: Technical Issues - Platform or connectivity problems
-        - LOW_ENROLLMENT: Low Enrollment - Not enough student signups
-        - SCHEDULING_ERROR: Scheduling Error - Double-booked or incorrectly scheduled
-        - OTHER: Other - See notes for details
-    """
-
-    WEATHER = "Weather / Snow Day"
-    PRESENTER_CANCELLED = "Presenter Cancelled"
-    TEACHER_CANCELLED = "Teacher Cancelled"
-    SCHOOL_CONFLICT = "School Conflict"
-    TECHNICAL_ISSUES = "Technical Issues"
-    LOW_ENROLLMENT = "Low Enrollment"
-    SCHEDULING_ERROR = "Scheduling Error"
-    OTHER = "Other"
 
 
 class EventComment(db.Model):
@@ -525,6 +445,9 @@ class Event(db.Model):
     attended_student_count = db.Column(
         db.Integer, default=0
     )  # Actual student attendance from Pathful
+    attended_educator_count = db.Column(
+        db.Integer, default=0
+    )  # Actual educator attendance from Pathful (Attended Educator Count column)
 
     # Participant details - Consider moving to separate tables for better normalization
     educators = db.Column(
@@ -539,13 +462,13 @@ class Event(db.Model):
     # Timestamps for auditing (timezone-aware, Python-side defaults)
     created_at = db.Column(
         db.DateTime(timezone=True),
-        default=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
     updated_at = db.Column(
         db.DateTime(timezone=True),
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
 

@@ -80,17 +80,41 @@ def get_tenant_district_name(tenant_id=None):
     return tenant.name if tenant else None
 
 
+def _backfill_teacher_ids(teachers):
+    """Resolve null teacher_id on TeacherProgress records.
+
+    Delegates to the centralized ``resolve_teacher_for_tp`` in
+    ``teacher_matching_service`` for consistent matching across the system.
+    """
+    from services.teacher_matching_service import resolve_teacher_for_tp
+
+    orphans = [t for t in teachers if t.teacher_id is None]
+    if not orphans:
+        return
+
+    linked = 0
+    for tp in orphans:
+        if resolve_teacher_for_tp(tp):
+            linked += 1
+
+    if linked:
+        db.session.commit()
+
+
 def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=None):
     """
     Compute teacher progress data for a tenant.
 
-    Matches imported teachers against completed virtual sessions using
-    the Event.educators field (semicolon-separated teacher names).
+    Counting strategy (EventTeacher-primary, text-supplementary):
+    1. EventTeacher path (primary): count FK-linked events (all TeacherProgress
+       have teacher_id, so this catches everything)
+    2. Text path (supplementary): match teacher names in event.educators for
+       events NOT already counted (catches edge cases with unresolvable names)
 
     Returns dict of building -> {teachers: [], stats}
     """
     from models import Event
-    from models.event import EventStatus, EventType
+    from models.event import EventStatus, EventTeacher, EventType
     from models.tenant import Tenant
 
     # Get all active teachers for this tenant/year
@@ -105,70 +129,103 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
     if not teachers:
         return {}
 
-    # Get the tenant's linked district name for filtering sessions
+    # ── Backfill null teacher_id values ────────────────────────────────
+    # TeacherProgress records imported before FK backfill logic was added
+    # may have teacher_id = None.  Resolve by name/email matching.
+    _backfill_teacher_ids(teachers)
+
+    # Get the tenant's linked district name(s) for filtering sessions.
+    # We use ALL known variants (canonical name + aliases) because
+    # Event.district_partner stores Pathful-imported strings that may
+    # not match the canonical District.name.
+    from services.district_service import get_district_name_variants
+
     tenant = Tenant.query.get(tenant_id)
-    district_name = None
+    district_names = set()
     if tenant:
         if tenant.district:
-            district_name = tenant.district.name
+            district_names = get_district_name_variants(tenant.district)
         else:
-            district_name = tenant.get_setting("linked_district_name")
+            linked = tenant.get_setting("linked_district_name")
+            if linked:
+                district_names = {linked}
 
-    # Build teacher name aliases using shared service
-    teacher_progress_map, teacher_alias_map = build_teacher_alias_map(teachers)
-
-    # Query completed virtual sessions for this district
-    events_query = Event.query.filter(
-        Event.type == EventType.VIRTUAL_SESSION, Event.status == EventStatus.COMPLETED
-    )
-
-    if district_name:
-        events_query = events_query.filter(Event.district_partner == district_name)
-
-    # Apply date filters if provided
-    if date_from:
-        events_query = events_query.filter(Event.start_date >= date_from)
-    if date_to:
-        events_query = events_query.filter(Event.start_date <= date_to)
-
-    events = events_query.all()
-
-    # Match sessions to teachers using shared service (via educators text field)
-    teacher_progress_map = count_sessions_for_teachers(
-        events, teacher_alias_map, teacher_progress_map
-    )
-
-    # Also count sessions linked via EventTeacher (from session edit / manual add)
-    from models.event import EventTeacher
-
-    # Build a reverse map: teacher_id -> [teacher_progress_ids]
+    # Map teacher_id -> list of TeacherProgress IDs (for EventTeacher lookups)
     teacher_id_to_tp = {}
     for t in teachers:
         if t.teacher_id:
             teacher_id_to_tp.setdefault(t.teacher_id, []).append(t.id)
 
+    # Build text alias map for supplementary matching
+    teacher_progress_map, teacher_alias_map = build_teacher_alias_map(teachers)
+
+    # ── COMPLETED sessions ─────────────────────────────────────────────
+    # Primary: EventTeacher FK links
+    #
+    # Two sets track different things:
+    #   all_et_event_ids     – every event linked via EventTeacher (any status)
+    #                          used to exclude events from supplementary text-matching
+    #   counted_events_per_tp – (tp_id, event_id) pairs that were actually counted
+    #                          (attended/completed) — used for override logic
+    all_et_event_ids = set()
+    counted_events_per_tp = set()  # {(tp_id, event_id), ...}
     if teacher_id_to_tp:
-        # Query all EventTeacher links for these teacher IDs on completed virtual sessions
-        et_links = EventTeacher.query.join(Event).filter(
+        # Query ALL EventTeacher records (including no_show) to build exclusion set
+        all_et_query = EventTeacher.query.join(Event).filter(
             EventTeacher.teacher_id.in_(teacher_id_to_tp.keys()),
             Event.type == EventType.VIRTUAL_SESSION,
             Event.status == EventStatus.COMPLETED,
         )
+        # NOTE: We intentionally do NOT filter by district_partner here.
+        # The EventTeacher FK already proves the teacher attended the event,
+        # and TeacherProgress scopes them to the correct tenant.  Pathful
+        # sometimes assigns the wrong district_partner to multi-district
+        # sessions (e.g. a KCKPS event labelled "Hogan Preparatory Academy"),
+        # which would cause attended sessions to be silently dropped.
+        # The district_partner filter is only applied on the supplementary
+        # text-matching path below where there is no FK proof of attendance.
         if date_from:
-            et_links = et_links.filter(Event.start_date >= date_from)
+            all_et_query = all_et_query.filter(Event.start_date >= date_from)
         if date_to:
-            et_links = et_links.filter(Event.start_date <= date_to)
+            all_et_query = all_et_query.filter(Event.start_date <= date_to)
 
-        # Track which events were already counted via educators text field
-        educators_event_ids = {e.id for e in events if e.educators}
-
-        for et in et_links.all():
-            if et.event_id not in educators_event_ids:
+        for et in all_et_query.all():
+            all_et_event_ids.add(et.event_id)
+            # Only count attended/completed toward progress
+            if et.status in ("attended", "completed"):
                 for tp_id in teacher_id_to_tp.get(et.teacher_id, []):
                     if tp_id in teacher_progress_map:
                         teacher_progress_map[tp_id] += 1
+                        counted_events_per_tp.add((tp_id, et.event_id))
+
+    # Supplementary: text matching for events NOT linked via EventTeacher.
+    # Uses all_et_event_ids (not just counted) so that no_show events
+    # are excluded from text-matching and don't get double-counted.
+    events_query = Event.query.filter(
+        Event.type == EventType.VIRTUAL_SESSION, Event.status == EventStatus.COMPLETED
+    )
+    if district_names:
+        events_query = events_query.filter(Event.district_partner.in_(district_names))
+    if date_from:
+        events_query = events_query.filter(Event.start_date >= date_from)
+    if date_to:
+        events_query = events_query.filter(Event.start_date <= date_to)
+    events = events_query.all()
+
+    supplementary_events = [e for e in events if e.id not in all_et_event_ids]
+    if supplementary_events:
+        teacher_progress_map = count_sessions_for_teachers(
+            supplementary_events, teacher_alias_map, teacher_progress_map
+        )
 
     # ── Apply attendance overrides (FR-VIRTUAL-234, FR-VIRTUAL-238) ────
+    # Both ADD and REMOVE overrides are event-aware:
+    # - ADD:    only increment if this event was NOT already counted
+    # - REMOVE: only decrement if this event WAS counted as attended
+    # Stale ADD overrides (event already counted via import) are auto-resolved.
+    import logging
+
+    logger = logging.getLogger(__name__)
     active_overrides = AttendanceOverride.query.filter(
         AttendanceOverride.teacher_progress_id.in_([t.id for t in teachers]),
         AttendanceOverride.is_active == True,  # noqa: E712
@@ -177,14 +234,30 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
         tid = ov.teacher_progress_id
         if tid in teacher_progress_map:
             if ov.action == OverrideAction.ADD:
-                teacher_progress_map[tid] += 1
+                if (tid, ov.event_id) not in counted_events_per_tp:
+                    teacher_progress_map[tid] += 1
+                    counted_events_per_tp.add((tid, ov.event_id))
+                else:
+                    # Stale ADD — event already counted via import data
+                    ov.reverse(
+                        reason="Auto-resolved: event already counted via import data"
+                    )
+                    logger.info(
+                        "Auto-resolved stale ADD override %d " "(tp=%d, event=%d)",
+                        ov.id,
+                        tid,
+                        ov.event_id,
+                    )
             elif ov.action == OverrideAction.REMOVE:
-                teacher_progress_map[tid] = max(0, teacher_progress_map[tid] - 1)
+                # Only subtract if this event was actually counted
+                if (tid, ov.event_id) in counted_events_per_tp:
+                    teacher_progress_map[tid] = max(0, teacher_progress_map[tid] - 1)
 
-    # Also count planned/upcoming sessions (confirmed, published, requested)
+    # ── PLANNED sessions (upcoming: confirmed/published/requested) ─────
     from datetime import datetime, timezone
 
     now = datetime.now(timezone.utc)
+
     planned_events_query = Event.query.filter(
         Event.type == EventType.VIRTUAL_SESSION,
         Event.status.in_(
@@ -192,20 +265,19 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
         ),
         Event.start_date >= now,
     )
-    if district_name:
+    if district_names:
         planned_events_query = planned_events_query.filter(
-            Event.district_partner == district_name
+            Event.district_partner.in_(district_names)
         )
     planned_events = planned_events_query.all()
 
-    # Build a separate map for planned session counts
     planned_progress_map = {t.id: 0 for t in teachers}
     planned_progress_map = count_sessions_for_teachers(
         planned_events, teacher_alias_map, planned_progress_map
     )
 
-    # Count "in planning" sessions: confirmed/published/requested but in the
-    # past (date has passed without being marked completed in Salesforce).
+    # ── NEEDS REVIEW sessions (past date, not completed) ───────────────
+    # These are events that already happened but were never marked as
     in_planning_statuses = [
         EventStatus.CONFIRMED,
         EventStatus.PUBLISHED,
@@ -216,9 +288,9 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
         Event.status.in_(in_planning_statuses),
         Event.start_date < now,
     )
-    if district_name:
+    if district_names:
         in_planning_query = in_planning_query.filter(
-            Event.district_partner == district_name
+            Event.district_partner.in_(district_names)
         )
     if date_from:
         in_planning_query = in_planning_query.filter(Event.start_date >= date_from)
@@ -266,7 +338,7 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
             bd["goals_in_progress"] += 1
         elif in_planning > 0:
             status_class = "in_planning"
-            status_text = "In Planning"
+            status_text = "Needs Review"
             bd["goals_in_progress"] += 1
         else:
             status_class = "not_started"
@@ -462,13 +534,16 @@ def export_excel():
 def teacher_detail(teacher_progress_id):
     """View a teacher's virtual session history from the usage dashboard.
 
-    Uses the same name-based matching against Event.educators that the
-    usage dashboard relies on, so results are consistent regardless of
-    whether the TeacherProgress record has a linked teacher_id.
+    Dual-path matching (EventTeacher-primary, text-supplementary):
+    1. EventTeacher path (primary): find FK-linked sessions (all TeacherProgress
+       have teacher_id, so this catches everything)
+    2. Text path (supplementary): match teacher name in event.educators for
+       events NOT found via EventTeacher (catches edge cases)
+    Deduplicates via matched_event_ids.
     """
     from datetime import datetime, timezone
 
-    from models.event import Event, EventStatus, EventType
+    from models.event import Event, EventStatus, EventTeacher, EventType
     from services.teacher_matching_service import (
         build_teacher_alias_map,
         match_educator_to_teacher,
@@ -485,100 +560,26 @@ def teacher_detail(teacher_progress_id):
 
     district_name = get_tenant_district_name(effective_tenant_id) or "Your District"
 
-    # Resolve the tenant's linked district name (same as compute_teacher_progress)
+    # Resolve the tenant's linked district name(s) — use all variants
+    from services.district_service import get_district_name_variants
+
     tenant = Tenant.query.get(effective_tenant_id)
-    linked_district = None
+    district_names = set()
     if tenant:
         if tenant.district:
-            linked_district = tenant.district.name
+            district_names = get_district_name_variants(tenant.district)
         else:
-            linked_district = tenant.get_setting("linked_district_name")
-
-    # Build alias map for just this one teacher
-    _, alias_map = build_teacher_alias_map([tp])
-
-    # Query ALL virtual sessions for this district (completed + future)
-    events_query = Event.query.filter(
-        Event.type == EventType.VIRTUAL_SESSION,
-    )
-    if linked_district:
-        events_query = events_query.filter(Event.district_partner == linked_district)
-    events = events_query.order_by(Event.start_date.desc()).all()
+            linked = tenant.get_setting("linked_district_name")
+            if linked:
+                district_names = {linked}
 
     now = datetime.now(timezone.utc)
     past_sessions = []
     upcoming_sessions = []
-    matched_event_ids = set()  # Track to avoid duplicates
+    matched_event_ids = set()
 
-    # --- Path 1: Match via EventTeacher (direct DB link) ---
-    # This picks up sessions added via the session edit page or manual creation
-    from models.event import EventTeacher
-
-    if tp.teacher_id:
-        et_links = EventTeacher.query.filter_by(teacher_id=tp.teacher_id).all()
-        for et in et_links:
-            event = et.event
-            if not event or event.type != EventType.VIRTUAL_SESSION:
-                continue
-            matched_event_ids.add(event.id)
-
-            presenter_name = ""
-            presenter_org = ""
-            if event.volunteers:
-                vol = event.volunteers[0]
-                presenter_name = f"{vol.first_name} {vol.last_name}".strip()
-                presenter_org = vol.organization_name or ""
-
-            start_date = event.start_date
-            if start_date and start_date.tzinfo is None:
-                start_date = start_date.replace(tzinfo=timezone.utc)
-
-            session_data = {
-                "id": event.id,
-                "title": event.title or "Untitled Session",
-                "date": start_date.date() if start_date else None,
-                "time": start_date.time() if start_date else None,
-                "datetime": start_date,
-                "status": event.status.value if event.status else "unknown",
-                "topic_theme": event.series or "",
-                "session_link": event.registration_link or "",
-                "presenter_name": presenter_name,
-                "presenter_org": presenter_org,
-                "is_simulcast": getattr(et, "is_simulcast", False),
-                "attendance_status": et.status or "",
-            }
-
-            if start_date and start_date < now:
-                past_sessions.append(session_data)
-            elif start_date and start_date >= now:
-                if event.status in [
-                    EventStatus.CONFIRMED,
-                    EventStatus.PUBLISHED,
-                    EventStatus.REQUESTED,
-                    EventStatus.COMPLETED,
-                ]:
-                    upcoming_sessions.append(session_data)
-
-    # --- Path 2: Match via educators text field (Pathful import data) ---
-    for event in events:
-        if event.id in matched_event_ids:
-            continue  # Already found via EventTeacher
-
-        if not event.educators:
-            continue
-
-        # Check if this teacher is listed in the educators field
-        educator_names = [n.strip() for n in event.educators.split(";") if n.strip()]
-        matched = any(
-            match_educator_to_teacher(name, alias_map) == tp.id
-            for name in educator_names
-        )
-        if not matched:
-            continue
-
-        matched_event_ids.add(event.id)
-
-        # Get presenter info from volunteers
+    def _build_session_data(event, et=None):
+        """Build session data dict from an Event, with optional EventTeacher metadata."""
         presenter_name = ""
         presenter_org = ""
         if event.volunteers:
@@ -590,7 +591,7 @@ def teacher_detail(teacher_progress_id):
         if start_date and start_date.tzinfo is None:
             start_date = start_date.replace(tzinfo=timezone.utc)
 
-        session_data = {
+        return {
             "id": event.id,
             "title": event.title or "Untitled Session",
             "date": start_date.date() if start_date else None,
@@ -601,10 +602,13 @@ def teacher_detail(teacher_progress_id):
             "session_link": event.registration_link or "",
             "presenter_name": presenter_name,
             "presenter_org": presenter_org,
-            "is_simulcast": False,
-            "attendance_status": "",
+            "is_simulcast": getattr(et, "is_simulcast", False) if et else False,
+            "attendance_status": (et.status or "") if et else "",
         }
 
+    def _classify_session(session_data, event):
+        """Add session to past or upcoming list based on date."""
+        start_date = session_data["datetime"]
         if start_date and start_date < now:
             past_sessions.append(session_data)
         elif start_date and start_date >= now:
@@ -615,6 +619,46 @@ def teacher_detail(teacher_progress_id):
                 EventStatus.COMPLETED,
             ]:
                 upcoming_sessions.append(session_data)
+
+    # --- Path 1 (primary): EventTeacher FK links ---
+    if tp.teacher_id:
+        et_links = EventTeacher.query.filter_by(teacher_id=tp.teacher_id).all()
+        for et in et_links:
+            event = et.event
+            if not event or event.type != EventType.VIRTUAL_SESSION:
+                continue
+
+            matched_event_ids.add(event.id)
+            session_data = _build_session_data(event, et)
+            _classify_session(session_data, event)
+
+    # --- Path 2 (supplementary): Text matching for unmatched events ---
+    _, alias_map = build_teacher_alias_map([tp])
+
+    events_query = Event.query.filter(
+        Event.type == EventType.VIRTUAL_SESSION,
+    )
+    if district_names:
+        events_query = events_query.filter(Event.district_partner.in_(district_names))
+    events = events_query.order_by(Event.start_date.desc()).all()
+
+    for event in events:
+        if event.id in matched_event_ids:
+            continue  # Already found via EventTeacher
+        if not event.educators:
+            continue
+
+        educator_names = [n.strip() for n in event.educators.split(";") if n.strip()]
+        matched = any(
+            match_educator_to_teacher(name, alias_map) == tp.id
+            for name in educator_names
+        )
+        if not matched:
+            continue
+
+        matched_event_ids.add(event.id)
+        session_data = _build_session_data(event)
+        _classify_session(session_data, event)
 
     # ── Merge attendance overrides into session lists ──────────────────
     add_overrides = AttendanceOverride.query.filter_by(
@@ -783,7 +827,9 @@ def create_override(teacher_progress_id):
 
     Expects JSON: {action: "add"|"remove", event_id: int, reason: str}
     """
-    from models.event import Event, EventStatus, EventType
+    from datetime import datetime, timezone
+
+    from models.event import Event, EventStatus, EventTeacher, EventType
 
     tp = TeacherProgress.query.get_or_404(teacher_progress_id)
 
@@ -847,6 +893,32 @@ def create_override(teacher_progress_id):
         created_by=current_user.id,
     )
     db.session.add(override)
+
+    # Sync EventTeacher record when teacher has a linked teacher_id
+    if tp.teacher_id:
+        et = EventTeacher.query.filter_by(
+            event_id=event_id, teacher_id=tp.teacher_id
+        ).first()
+        if action == OverrideAction.ADD:
+            if et:
+                # Update existing record to 'attended'
+                et.status = "attended"
+                et.attendance_confirmed_at = datetime.now(timezone.utc)
+                et.notes = f"Override add: {reason}"
+            else:
+                # Create new EventTeacher with 'attended' status
+                et = EventTeacher(
+                    event_id=event_id,
+                    teacher_id=tp.teacher_id,
+                    status="attended",
+                    attendance_confirmed_at=datetime.now(timezone.utc),
+                    notes=f"Override add: {reason}",
+                )
+                db.session.add(et)
+        elif action == OverrideAction.REMOVE:
+            if et:
+                et.status = "no_show"
+                et.notes = f"Override remove: {reason}"
 
     # Create audit log entry (FR-VIRTUAL-241)
     audit = AuditLog(
@@ -1038,6 +1110,250 @@ def search_sessions():
         )
 
     return jsonify({"sessions": results})
+
+
+# ── No Shows Report ───────────────────────────────────────────────────
+
+
+@teacher_usage_bp.route("/no-shows")
+@login_required
+@virtual_admin_required
+def no_shows():
+    """View all teacher no-shows for a semester, grouped by school then teacher.
+
+    Respects the same year/semester/tenant_id filters as the main dashboard.
+    """
+    from collections import defaultdict
+
+    from models.event import Event, EventStatus, EventTeacher, EventType
+    from services.district_service import get_district_name_variants
+
+    academic_year = request.args.get("year", get_current_academic_year())
+    semester = request.args.get("semester", get_current_semester())
+
+    # Admin users can specify a tenant via query param
+    admin_tenant_id = request.args.get("tenant_id", type=int)
+    if current_user.is_admin and admin_tenant_id:
+        tenant_id = admin_tenant_id
+        tenant = Tenant.query.get(tenant_id)
+        if not tenant:
+            flash("Tenant not found.", "error")
+            return redirect(url_for("virtual.virtual_sessions"))
+        district_name = tenant.district.name if tenant.district else tenant.name
+    else:
+        tenant_id = current_user.tenant_id
+        district_name = get_tenant_district_name()
+
+    if not tenant_id:
+        flash("Please select a tenant to view no-shows.", "warning")
+        return redirect(url_for("virtual.virtual_sessions"))
+
+    # Get tenant's district name variants for filtering
+    tenant = Tenant.query.get(tenant_id)
+    district_names = set()
+    if tenant:
+        if tenant.district:
+            district_names = get_district_name_variants(tenant.district)
+        else:
+            linked = tenant.get_setting("linked_district_name")
+            if linked:
+                district_names = {linked}
+
+    # Calculate semester date range
+    date_from, date_to = get_semester_dates(academic_year, semester)
+
+    # Query EventTeacher records with no_show status, joined to Event
+    no_show_query = (
+        db.session.query(EventTeacher, Event)
+        .join(Event, EventTeacher.event_id == Event.id)
+        .filter(
+            EventTeacher.status == "no_show",
+            Event.type == EventType.VIRTUAL_SESSION,
+            Event.status == EventStatus.COMPLETED,
+        )
+    )
+    if district_names:
+        no_show_query = no_show_query.filter(Event.district_partner.in_(district_names))
+    if date_from:
+        no_show_query = no_show_query.filter(Event.start_date >= date_from)
+    if date_to:
+        no_show_query = no_show_query.filter(Event.start_date <= date_to)
+
+    no_show_records = no_show_query.order_by(Event.start_date.desc()).all()
+
+    # Get all active TeacherProgress for this tenant/year for building lookup
+    tp_entries = TeacherProgress.query.filter_by(
+        tenant_id=tenant_id, academic_year=academic_year, is_active=True
+    ).all()
+    teacher_id_to_building = {}
+    teacher_id_to_tp_name = {}
+    for tp in tp_entries:
+        if tp.teacher_id:
+            teacher_id_to_building[tp.teacher_id] = tp.building or "Unknown"
+            teacher_id_to_tp_name[tp.teacher_id] = tp.name
+
+    # Group by school -> teacher -> sessions
+    # Structure: {school: {teacher_name: [session_dicts]}}
+    school_data = defaultdict(lambda: defaultdict(list))
+    total_no_shows = 0
+
+    for et, event in no_show_records:
+        # Only include teachers that belong to this tenant
+        if et.teacher_id not in teacher_id_to_building:
+            continue
+
+        building = teacher_id_to_building[et.teacher_id]
+        teacher_name = teacher_id_to_tp_name.get(et.teacher_id, "Unknown Teacher")
+
+        start_date = event.start_date
+        school_data[building][teacher_name].append(
+            {
+                "event_id": event.id,
+                "title": event.title or "Untitled Session",
+                "date": start_date.strftime("%B %d, %Y") if start_date else "Unknown",
+                "date_sort": start_date.isoformat() if start_date else "",
+                "series": event.series or "",
+            }
+        )
+        total_no_shows += 1
+
+    # Sort schools alphabetically
+    sorted_school_data = dict(sorted(school_data.items()))
+    # Sort teachers within each school
+    for school in sorted_school_data:
+        sorted_school_data[school] = dict(sorted(sorted_school_data[school].items()))
+
+    total_teachers = sum(len(teachers) for teachers in sorted_school_data.values())
+
+    return render_template(
+        "district/teacher_usage/no_shows.html",
+        school_data=sorted_school_data,
+        total_no_shows=total_no_shows,
+        total_schools=len(sorted_school_data),
+        total_teachers=total_teachers,
+        district_name=district_name or "Your District",
+        academic_year=academic_year,
+        semester=semester,
+        admin_tenant_id=admin_tenant_id,
+    )
+
+
+@teacher_usage_bp.route("/no-shows/export")
+@login_required
+@virtual_admin_required
+def no_shows_export_csv():
+    """Export no-shows data as CSV.
+
+    Same filters as the no-shows viewer.
+    """
+    import csv
+    import io
+    from collections import defaultdict
+
+    from flask import Response
+
+    from models.event import Event, EventStatus, EventTeacher, EventType
+    from services.district_service import get_district_name_variants
+
+    academic_year = request.args.get("year", get_current_academic_year())
+    semester = request.args.get("semester", get_current_semester())
+
+    admin_tenant_id = request.args.get("tenant_id", type=int)
+    if current_user.is_admin and admin_tenant_id:
+        tenant_id = admin_tenant_id
+        tenant = Tenant.query.get(tenant_id)
+        district_name = (
+            tenant.district.name
+            if tenant and tenant.district
+            else tenant.name if tenant else "District"
+        )
+    else:
+        tenant_id = current_user.tenant_id
+        district_name = get_tenant_district_name() or "District"
+
+    if not tenant_id:
+        flash("No tenant assigned.", "error")
+        return redirect(url_for("virtual.virtual_sessions"))
+
+    # Get tenant's district name variants
+    tenant = Tenant.query.get(tenant_id)
+    district_names = set()
+    if tenant:
+        if tenant.district:
+            district_names = get_district_name_variants(tenant.district)
+        else:
+            linked = tenant.get_setting("linked_district_name")
+            if linked:
+                district_names = {linked}
+
+    date_from, date_to = get_semester_dates(academic_year, semester)
+
+    # Query no-show records
+    no_show_query = (
+        db.session.query(EventTeacher, Event)
+        .join(Event, EventTeacher.event_id == Event.id)
+        .filter(
+            EventTeacher.status == "no_show",
+            Event.type == EventType.VIRTUAL_SESSION,
+            Event.status == EventStatus.COMPLETED,
+        )
+    )
+    if district_names:
+        no_show_query = no_show_query.filter(Event.district_partner.in_(district_names))
+    if date_from:
+        no_show_query = no_show_query.filter(Event.start_date >= date_from)
+    if date_to:
+        no_show_query = no_show_query.filter(Event.start_date <= date_to)
+
+    no_show_records = no_show_query.order_by(Event.start_date.desc()).all()
+
+    # Build building/name lookups from TeacherProgress
+    tp_entries = TeacherProgress.query.filter_by(
+        tenant_id=tenant_id, academic_year=academic_year, is_active=True
+    ).all()
+    teacher_id_to_building = {}
+    teacher_id_to_tp_name = {}
+    for tp in tp_entries:
+        if tp.teacher_id:
+            teacher_id_to_building[tp.teacher_id] = tp.building or "Unknown"
+            teacher_id_to_tp_name[tp.teacher_id] = tp.name
+
+    # Build CSV
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["School", "Teacher", "Session Date", "Session Title", "Series"])
+
+    for et, event in no_show_records:
+        if et.teacher_id not in teacher_id_to_building:
+            continue
+
+        building = teacher_id_to_building[et.teacher_id]
+        teacher_name = teacher_id_to_tp_name.get(et.teacher_id, "Unknown")
+        start_date = event.start_date
+
+        writer.writerow(
+            [
+                building,
+                teacher_name,
+                start_date.strftime("%Y-%m-%d") if start_date else "",
+                event.title or "Untitled Session",
+                event.series or "",
+            ]
+        )
+
+    csv_content = output.getvalue()
+    output.close()
+
+    import re
+
+    safe_name = re.sub(r"[^\w]+", "_", district_name).strip("_")
+    filename = f"{safe_name}_No_Shows_{academic_year}_{semester}.csv"
+
+    return Response(
+        csv_content,
+        mimetype="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ── Audit Log Viewer (Admin-only) ─────────────────────────────────────

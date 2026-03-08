@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask_login import current_user
 
@@ -520,7 +520,7 @@ def cache_district_stats(school_year, district_stats):
                 district_id=district.id, school_year=school_year
             )
             report.report_data = stats
-            report.last_updated = datetime.utcnow()
+            report.last_updated = datetime.now(timezone.utc)
             db.session.add(report)
 
             # Commit after each district to avoid long-running transactions

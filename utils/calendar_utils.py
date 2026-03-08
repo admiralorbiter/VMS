@@ -8,7 +8,7 @@ FR-SELFSERV-405: Public signup shall attach calendar invites to confirmation ema
 """
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 
@@ -56,7 +56,7 @@ def generate_event_ics(
 
     dtstart = format_datetime(start_date)
     dtend = format_datetime(end_date)
-    dtstamp = format_datetime(datetime.utcnow())
+    dtstamp = format_datetime(datetime.now(timezone.utc))
 
     # Escape special characters in text fields
     def escape_text(text: str) -> str:

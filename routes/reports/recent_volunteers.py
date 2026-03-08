@@ -534,7 +534,7 @@ def load_routes(bp: Blueprint):
 
         def log_info(message: str) -> None:
             if debug_timing:
-                current_app.logger.info(f"[RecentVolunteers] {message}")
+                current_app.logger.info("[RecentVolunteers] %s", message)
 
         route_start = perf_counter()
         # Params: event_types (multi), date_from, date_to, school_year, title, sort, order, page, per_page

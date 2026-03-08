@@ -42,7 +42,7 @@ from models.email import (
     EmailMessageStatus,
     EmailTemplate,
 )
-from routes.decorators import security_level_required
+from routes.decorators import handle_route_errors, security_level_required
 from routes.utils import log_audit_action
 from utils.email import (
     create_delivery_attempt,
@@ -639,6 +639,7 @@ def queue_message(message_id):
 @email_bp.route("/management/email/outbox/<int:message_id>/send", methods=["POST"])
 @login_required
 @security_level_required(3)  # ADMIN only
+@handle_route_errors
 def send_message(message_id):
     """
     Send an email message immediately.
@@ -654,21 +655,18 @@ def send_message(message_id):
         )
         return redirect(url_for("email.email_message_detail", message_id=message_id))
 
-    try:
-        is_dry_run = request.form.get("dry_run", "false").lower() == "true"
-        attempt = create_delivery_attempt(message, is_dry_run=is_dry_run)
-        log_audit_action(
-            action="send_email",
-            resource_type="email_message",
-            resource_id=str(message_id),
-            metadata={"attempt_id": attempt.id, "dry_run": is_dry_run},
-        )
-        if is_dry_run:
-            flash("Dry-run completed (no actual delivery)", "info")
-        else:
-            flash("Message sent successfully", "success")
-    except Exception as e:
-        flash(f"Error sending message: {str(e)}", "error")
+    is_dry_run = request.form.get("dry_run", "false").lower() == "true"
+    attempt = create_delivery_attempt(message, is_dry_run=is_dry_run)
+    log_audit_action(
+        action="send_email",
+        resource_type="email_message",
+        resource_id=str(message_id),
+        metadata={"attempt_id": attempt.id, "dry_run": is_dry_run},
+    )
+    if is_dry_run:
+        flash("Dry-run completed (no actual delivery)", "info")
+    else:
+        flash("Message sent successfully", "success")
 
     return redirect(url_for("email.email_message_detail", message_id=message_id))
 
@@ -1143,3 +1141,222 @@ def compose():
         is_production=is_prod,
         allowlist=allowlist,
     )
+
+
+# =============================================================================
+# Batch Email Routes (5-Gate Safety System)
+# =============================================================================
+
+
+@email_bp.route("/management/email/batch/new", methods=["GET", "POST"])
+@login_required
+@security_level_required(3)  # ADMIN only
+@handle_route_errors
+def batch_new():
+    """
+    Create a new batch email job (Gate 1).
+
+    GET: Show the batch creation form with preview.
+    POST: Create the batch job in DRAFT status.
+    """
+    from utils.email_reminders import (
+        create_batch_job,
+        get_active_teachers,
+        get_canary_email,
+    )
+
+    # Get the teacher_session_reminder template
+    template = EmailTemplate.query.filter_by(
+        purpose_key="teacher_session_reminder",
+        is_active=True,
+    ).first()
+
+    if not template:
+        flash(
+            "Teacher Session Reminder template not found. "
+            "Run the seed script first: python scripts/daily_imports/test_email_templates.py",
+            "error",
+        )
+        return redirect(url_for("email.email_overview"))
+
+    canary = get_canary_email()
+    teachers = get_active_teachers()
+
+    if request.method == "GET":
+        return render_template(
+            "email/batch_new.html",
+            template=template,
+            canary_email=canary,
+            teacher_count=len(teachers),
+            default_cooldown=10,
+        )
+
+    # POST: Create the batch job
+    district_name = request.form.get(
+        "district_name", "Kansas City Kansas Public Schools"
+    ).strip()
+    cooldown = request.form.get("cooldown_minutes", 10, type=int)
+    cooldown = max(5, min(60, cooldown))  # Clamp to 5-60 minutes
+
+    try:
+        job = create_batch_job(
+            template_id=template.id,
+            created_by_id=current_user.id,
+            district_name=district_name,
+            cooldown_minutes=cooldown,
+        )
+        log_audit_action(
+            action="create_batch_email_job",
+            resource_type="batch_email_job",
+            resource_id=str(job.id),
+            metadata={
+                "total_recipients": job.total_recipients,
+                "cooldown_minutes": cooldown,
+            },
+        )
+        flash(
+            f"Batch job #{job.id} created with {job.total_recipients} recipients. "
+            f"Review and send the canary email to proceed.",
+            "success",
+        )
+        return redirect(url_for("email.batch_status", job_id=job.id))
+
+    except ValueError as e:
+        flash(str(e), "error")
+        return redirect(url_for("email.batch_new"))
+
+
+@email_bp.route("/management/email/batch/<int:job_id>")
+@login_required
+@security_level_required(3)  # ADMIN only
+@handle_route_errors
+def batch_status(job_id):
+    """
+    View batch job status page (Gates 2-5).
+
+    Displays current state, canary result, countdown timer,
+    confirmation code input, and progress.
+    """
+    from models.email import BatchEmailJob, BatchEmailJobStatus
+    from utils.email_reminders import check_and_cancel_expired
+
+    job = BatchEmailJob.query.get_or_404(job_id)
+
+    # Auto-cancel expired jobs on view
+    if job.status == BatchEmailJobStatus.CANARY_SENT:
+        check_and_cancel_expired(job)
+
+    return render_template(
+        "email/batch_status.html",
+        job=job,
+        BatchEmailJobStatus=BatchEmailJobStatus,
+    )
+
+
+@email_bp.route("/management/email/batch/<int:job_id>/canary", methods=["POST"])
+@login_required
+@security_level_required(3)  # ADMIN only
+@handle_route_errors
+def batch_canary(job_id):
+    """
+    Send canary email (Gate 3).
+
+    Sends ONE email to the canary address and starts the cooldown timer.
+    """
+    from models.email import BatchEmailJob
+    from utils.email_reminders import send_canary_email
+
+    job = BatchEmailJob.query.get_or_404(job_id)
+
+    try:
+        send_canary_email(job)
+        log_audit_action(
+            action="send_batch_canary",
+            resource_type="batch_email_job",
+            resource_id=str(job.id),
+            metadata={"canary_email": job.canary_email},
+        )
+        flash(
+            f"Canary email sent to {job.canary_email}. "
+            f"You have {job.cooldown_minutes} minutes to review and confirm. "
+            f"The job will auto-cancel if you don't confirm in time.",
+            "warning",
+        )
+    except ValueError as e:
+        flash(str(e), "error")
+
+    return redirect(url_for("email.batch_status", job_id=job.id))
+
+
+@email_bp.route("/management/email/batch/<int:job_id>/confirm", methods=["POST"])
+@login_required
+@security_level_required(3)  # ADMIN only
+@handle_route_errors
+def batch_confirm(job_id):
+    """
+    Confirm batch send with code (Gate 5).
+
+    Validates the confirmation code and executes the batch send.
+    """
+    from models.email import BatchEmailJob
+    from utils.email_reminders import confirm_batch_job, execute_batch_send
+
+    job = BatchEmailJob.query.get_or_404(job_id)
+    code = request.form.get("confirmation_code", "").strip()
+
+    if not code:
+        flash("Please enter the confirmation code.", "error")
+        return redirect(url_for("email.batch_status", job_id=job.id))
+
+    try:
+        confirm_batch_job(job, code)
+        log_audit_action(
+            action="confirm_batch_email_job",
+            resource_type="batch_email_job",
+            resource_id=str(job.id),
+        )
+
+        # Execute the batch send
+        result = execute_batch_send(job)
+        log_audit_action(
+            action="execute_batch_email_send",
+            resource_type="batch_email_job",
+            resource_id=str(job.id),
+            metadata=result,
+        )
+
+        flash(
+            f"Batch send complete: {result['sent_count']} sent, "
+            f"{result['error_count']} errors.",
+            "success",
+        )
+    except ValueError as e:
+        flash(str(e), "error")
+
+    return redirect(url_for("email.batch_status", job_id=job.id))
+
+
+@email_bp.route("/management/email/batch/<int:job_id>/cancel", methods=["POST"])
+@login_required
+@security_level_required(3)  # ADMIN only
+@handle_route_errors
+def batch_cancel(job_id):
+    """
+    Cancel a batch job (available at any stage).
+    """
+    from models.email import BatchEmailJob
+    from utils.email_reminders import cancel_batch_job
+
+    job = BatchEmailJob.query.get_or_404(job_id)
+
+    if cancel_batch_job(job, reason="manual"):
+        log_audit_action(
+            action="cancel_batch_email_job",
+            resource_type="batch_email_job",
+            resource_id=str(job.id),
+        )
+        flash("Batch job cancelled.", "success")
+    else:
+        flash("Cannot cancel — job is already completed or cancelled.", "info")
+
+    return redirect(url_for("email.batch_status", job_id=job.id))

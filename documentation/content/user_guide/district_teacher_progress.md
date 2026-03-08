@@ -25,9 +25,12 @@ Users can be scoped to specific districts.
 ## 2. Teacher Progress Tracking
 
 ### Status Definitions
--   **Achieved**: Completed ≥ 1 virtual session.
--   **In Progress**: Has ≥ 1 future signup but 0 completed.
--   **Not Started**: No signups and no completed sessions.
+-   **Achieved**: Teacher attended ≥ 1 completed virtual session (verified via EventTeacher attendance status).
+-   **In Progress**: Has ≥ 1 future signup but 0 attended completed sessions.
+-   **Not Started**: No signups and no attended completed sessions.
+
+> [!NOTE]
+> **Attendance-Based Counting**: The system only counts sessions where the teacher's `EventTeacher.status` is `'attended'` or `'completed'`. Teachers who registered but did not attend (status `'registered'` or `'no_show'`) are not counted toward completion. Attendance status is set automatically during the daily Pathful import based on the CSV's `Status` column.
 
 ### Roster Import & Matching
 Teacher data is imported from district rosters via Google Sheets. This process ensures the "Teacher Progress" list matches the actual district staff.
@@ -74,4 +77,4 @@ This guide addresses the following scopes:
 
 ---
 
-*Last updated: February 2026*
+*Last updated: March 2026*

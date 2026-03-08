@@ -29,7 +29,7 @@ from models.bug_report import BugReport, BugReportType
 from models.event import Event, EventTeacher, EventType
 from models.teacher import Teacher
 from models.teacher_progress import TeacherProgress
-from routes.decorators import district_scoped_required
+from routes.decorators import district_scoped_required, handle_route_errors
 from routes.virtual.routes import virtual_bp
 
 
@@ -396,5 +396,5 @@ def report_district_issue():
         db.session.rollback()
         from flask import current_app
 
-        current_app.logger.error(f"Error reporting district issue: {e}", exc_info=True)
+        current_app.logger.error("Error reporting district issue: %s", e, exc_info=True)
         return jsonify({"success": False, "error": str(e)}), 500

@@ -33,28 +33,10 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from models import Tenant, User, db
+from routes.decorators import global_admin_required as admin_required
 
 # Create blueprint
 tenants_bp = Blueprint("tenants", __name__, url_prefix="/management/tenants")
-
-
-def admin_required(f):
-    """Decorator to require admin access and non-tenant scope."""
-    from functools import wraps
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated:
-            return redirect(url_for("auth.login"))
-        if not current_user.is_admin:
-            flash("Admin access required.", "error")
-            return redirect(url_for("index"))
-        if current_user.tenant_id is not None:
-            flash("Tenant management requires PrepKC admin access.", "error")
-            return redirect(url_for("index"))
-        return f(*args, **kwargs)
-
-    return decorated_function
 
 
 def validate_slug(slug):

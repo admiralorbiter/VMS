@@ -2,8 +2,14 @@ from datetime import date, datetime
 
 import pytest
 
-from app import db
-from models import District, School, Teacher, TeacherProgress, TeacherProgressArchive
+from models import (
+    District,
+    School,
+    Teacher,
+    TeacherProgress,
+    TeacherProgressArchive,
+    db,
+)
 from routes.virtual.usage import (
     get_current_virtual_year,
     get_semester_dates,
@@ -67,6 +73,7 @@ def sample_teacher_progress(kckps_district):
         building="Test School",
         target_sessions=10,
     )
+    tp.district_name = "Kansas City Kansas Public Schools"
     db.session.add(tp)
     db.session.commit()
     return tp

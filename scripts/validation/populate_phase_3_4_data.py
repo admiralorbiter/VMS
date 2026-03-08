@@ -10,7 +10,7 @@ import logging
 import os
 import random
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Add the project root to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -39,7 +39,7 @@ def create_test_validation_runs():
 
             # Create multiple validation runs over the past 30 days
             for i in range(30):
-                run_date = datetime.utcnow() - timedelta(days=i)
+                run_date = datetime.now(timezone.utc) - timedelta(days=i)
 
                 # Create validation run
                 run = ValidationRun(
@@ -70,7 +70,7 @@ def create_test_validation_runs():
             logger.info("🎉 All test validation runs created successfully!")
 
         except Exception as e:
-            logger.error(f"❌ Error creating test runs: {e}")
+            logger.error("❌ Error creating test runs: %s", e)
             db.session.rollback()
             raise
 
@@ -157,7 +157,7 @@ def create_test_metrics(run_id, run_date):
                 unit = "mb"
 
             # Add some trend variation (improving over time)
-            days_ago = (datetime.utcnow() - run_date).days
+            days_ago = (datetime.now(timezone.utc) - run_date).days
             trend_factor = 1 + (days_ago * 0.01)  # Slight improvement over time
             value = min(100, value * trend_factor) if unit == "percentage" else value
 
@@ -187,10 +187,10 @@ def populate_historical_data():
             # Create history from recent runs (last 30 days)
             total_created = history_service.populate_history_from_recent_runs(days=30)
 
-            logger.info(f"✅ Created {total_created} historical records")
+            logger.info("✅ Created %s historical records", total_created)
 
         except Exception as e:
-            logger.error(f"❌ Error populating historical data: {e}")
+            logger.error("❌ Error populating historical data: %s", e)
             raise
 
 
@@ -203,19 +203,19 @@ def verify_data_population():
 
             # Check validation runs
             total_runs = ValidationRun.query.count()
-            logger.info(f"   Total validation runs: {total_runs}")
+            logger.info("   Total validation runs: %s", total_runs)
 
             # Check validation results
             total_results = ValidationResult.query.count()
-            logger.info(f"   Total validation results: {total_results}")
+            logger.info("   Total validation results: %s", total_results)
 
             # Check validation metrics
             total_metrics = ValidationMetric.query.count()
-            logger.info(f"   Total validation metrics: {total_metrics}")
+            logger.info("   Total validation metrics: %s", total_metrics)
 
             # Check historical records
             total_history = ValidationHistory.query.count()
-            logger.info(f"   Total historical records: {total_history}")
+            logger.info("   Total historical records: %s", total_history)
 
             # Check data distribution
             entity_counts = (
@@ -228,12 +228,12 @@ def verify_data_population():
 
             logger.info("   Historical records by entity type:")
             for entity_type, count in entity_counts:
-                logger.info(f"     {entity_type}: {count}")
+                logger.info("     %s: %s", entity_type, count)
 
             logger.info("✅ Data population verification complete!")
 
         except Exception as e:
-            logger.error(f"❌ Error verifying data: {e}")
+            logger.error("❌ Error verifying data: %s", e)
             raise
 
 
@@ -265,7 +265,7 @@ def main():
         )
 
     except Exception as e:
-        logger.error(f"❌ Data population failed: {e}")
+        logger.error("❌ Data population failed: %s", e)
         sys.exit(1)
 
 

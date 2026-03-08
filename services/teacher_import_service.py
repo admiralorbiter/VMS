@@ -105,7 +105,7 @@ class TeacherImportService:
         """
         from flask import current_app
 
-        current_app.logger.info(f"Attempting to read Google Sheet: {sheet_id}")
+        current_app.logger.info("Attempting to read Google Sheet: %s", sheet_id)
 
         # Try multiple URL formats
         urls = [
@@ -117,16 +117,16 @@ class TeacherImportService:
         last_error = None
         for url in urls:
             try:
-                current_app.logger.info(f"Trying URL: {url}")
+                current_app.logger.info("Trying URL: %s", url)
                 df = pd.read_csv(url)
                 current_app.logger.info(
                     f"Successfully read {len(df)} rows from Google Sheet"
                 )
-                current_app.logger.info(f"Columns: {list(df.columns)}")
+                current_app.logger.info("Columns: %s", list(df.columns))
                 return df, None
             except Exception as e:
                 last_error = str(e)
-                current_app.logger.warning(f"Failed with URL {url}: {last_error}")
+                current_app.logger.warning("Failed with URL %s: %s", url, last_error)
                 continue
 
         return (
@@ -340,7 +340,7 @@ class TeacherImportService:
             from flask import current_app
 
             for warning in warnings:
-                current_app.logger.warning(f"Import warning: {warning}")
+                current_app.logger.warning("Import warning: %s", warning)
 
         try:
             # Use existing import logic

@@ -53,7 +53,7 @@ Database Schema:
 
 import secrets
 from datetime import datetime, timedelta, timezone
-from enum import IntEnum
+from enum import Enum, IntEnum
 
 from flask_login import UserMixin
 
@@ -78,7 +78,7 @@ class SecurityLevel(IntEnum):
     ADMIN = 3  # Full system access
 
 
-class TenantRole:
+class TenantRole(str, Enum):
     """
     Role within a tenant (distinct from global security level).
 
@@ -88,6 +88,9 @@ class TenantRole:
     - VIRTUAL_ADMIN: View virtual session data, flag issues (no event management)
     - USER: Read-only dashboards and reports
 
+    Uses str+Enum so members compare equal to their string values:
+        TenantRole.ADMIN == "admin"  # True
+
     FR-TENANT-110: Tenant role hierarchy
     """
 
@@ -96,7 +99,11 @@ class TenantRole:
     VIRTUAL_ADMIN = "virtual_admin"
     USER = "user"
 
-    CHOICES = [ADMIN, COORDINATOR, VIRTUAL_ADMIN, USER]
+    @classmethod
+    @property
+    def CHOICES(cls):
+        """Backward-compatible list of valid role values."""
+        return [role.value for role in cls]
 
 
 # User model
@@ -220,12 +227,14 @@ class User(db.Model, UserMixin):
 
     # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
     created_at = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, nullable=False
+        db.DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
     )
     updated_at = db.Column(
         db.DateTime(timezone=True),
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
 

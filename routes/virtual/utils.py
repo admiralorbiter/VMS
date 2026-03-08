@@ -142,11 +142,11 @@ def get_or_create_school(name, district=None):
                 db.session.add(school)
                 db.session.flush()
             except Exception as e:
-                current_app.logger.error(f"Error creating school {name}: {str(e)}")
+                current_app.logger.error("Error creating school %s: %s", name, str(e))
                 return None
 
         return school
 
     except Exception as e:
-        current_app.logger.error(f"Error in get_or_create_school: {str(e)}")
+        current_app.logger.error("Error in get_or_create_school: %s", str(e))
         return None

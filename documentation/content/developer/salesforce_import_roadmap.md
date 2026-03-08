@@ -78,6 +78,18 @@ This document tracks improvements to the Salesforce import system following the 
 
 ### Near Future (Next Quarter)
 
+- [ ] **Student data cleanup and reimport** *(TD-033)*
+  - Delete 158,923 email records and 158,925 phone records containing the literal string `"None"`
+  - Re-import students from Salesforce to back-fill real email/phone data
+  - **Root cause fixed:** `Student.update_contact_info` now uses `isinstance()` guard
+
+- [ ] **Salesforce data quality investigation** *(TD-034)*
+  - Audit skeleton addresses (4,587 records with all fields empty)
+  - Investigate truncated skills (`"Healthcare..."`, `"P..."`) — is this Salesforce field length?
+  - Decide on ALL CAPS name normalization (18,225 contacts)
+  - Check if Connector subscription data is active in Salesforce (currently all NONE)
+  - Review 983 organizations with NULL type
+
 - [ ] **Background task execution for large imports**
   - Move long-running imports to background worker (threading or Celery)
   - Add status polling endpoint (`GET /import-status/{id}`)
@@ -126,7 +138,8 @@ The following were considered but are **not currently feasible**:
 |--------|-------|--------|
 | Sprint 1 | Service layer extraction | ✅ Complete |
 | Sprint 2 | Error handling & savepoints | ✅ Complete |
-| Sprint 3 | Dashboard enhancements | ⬜ Not Started |
+| Sprint 3 | Dashboard enhancements | ✅ Complete |
+| Sprint 4 | Integration tests & data quality | ✅ Complete (79 tests, `str(None)` bug fix) |
 
 ---
 
@@ -138,4 +151,4 @@ The following were considered but are **not currently feasible**:
 
 ---
 
-*Last Updated: February 2026*
+*Last Updated: March 2026*

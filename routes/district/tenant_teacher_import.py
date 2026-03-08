@@ -266,7 +266,7 @@ def do_import():
 
     if import_type == "google_sheet":
         sheet_url = request.form.get("sheet_url", "").strip()
-        current_app.logger.info(f"Google Sheet URL: {sheet_url}")
+        current_app.logger.info("Google Sheet URL: %s", sheet_url)
         if not sheet_url:
             flash("Please provide a Google Sheet URL.", "error")
             return redirect(url_for("teacher_import.index", year=academic_year))

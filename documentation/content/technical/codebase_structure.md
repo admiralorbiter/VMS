@@ -116,8 +116,9 @@ Flask blueprints organized by feature domain. Each subdirectory contains a `rout
 ### Virtual Routes (`routes/virtual/`)
 
 The largest route module, handling:
-- `routes.py` - Session management, Google Sheets import
-- `usage.py` - District dashboards, teacher progress tracking, semester reset
+- `routes.py` - Session management, legacy Google Sheets import (deprecated — see `pathful_import.py`)
+- `pathful_import.py` - Pathful direct import (primary virtual session import)
+- `usage/` - District dashboards, teacher progress tracking, semester reset (extracted package)
 
 ---
 
@@ -181,7 +182,7 @@ Service layer modules for business logic and shared utilities.
 |------|---------|
 | `teacher_import_service.py` | Teacher roster import logic (CSV/Google Sheets) |
 | `academic_year_service.py` | Academic year, semester, and date range calculations |
-| `teacher_matching_service.py` | Teacher name matching and session counting |
+| `teacher_matching_service.py` | Centralized identity resolution (`resolve_teacher_for_tp`, `match_tp_to_profile`), name normalization, and session counting |
 
 ---
 

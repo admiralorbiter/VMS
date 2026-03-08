@@ -35,9 +35,8 @@ Contact Processing:
 - Duplicate contact prevention
 
 District Mapping:
-- DISTRICT_MAPPINGS: Standardized district name mapping
-- Salesforce to local district name conversion
-- Consistent district naming across the system
+- District name resolution is now DB-driven (see services/district_service.py)
+- Aliases stored in district_alias table
 
 Dependencies:
 - datetime for date parsing
@@ -61,58 +60,6 @@ from models import db
 from models.audit_log import AuditLog
 from models.contact import ContactTypeEnum, Email
 from models.event import CancellationReason, EventFormat, EventType
-
-# District name mapping for Salesforce integration
-DISTRICT_MAPPINGS = {
-    "KANSAS CITY USD 500": "KANSAS CITY USD 500",
-    "HICKMAN MILLS C-1": "HICKMAN MILLS C-1",
-    "GRANDVIEW C-4": "GRANDVIEW C-4",
-    "NORTH KANSAS CITY 74": "NORTH KANSAS CITY 74",
-    "REPUBLIC R-III": "REPUBLIC R-III",
-    "KANSAS CITY PUBLIC SCHOOL DISTRICT": "KANSAS CITY PUBLIC SCHOOL DISTRICT",
-    "INDEPENDENCE 30": "INDEPENDENCE 30",
-    "HOGAN PREPARATORY ACADEMY": "HOGAN PREPARATORY ACADEMY",
-    "PIPER-KANSAS CITY": "PIPER-KANSAS CITY",
-    "BELTON 124": "BELTON 124",
-    "CROSSROADS ACADEMY OF KANSAS CITY": "CROSSROADS ACADEMY OF KANSAS CITY",
-    "CENTER SCHOOL DISTRICT": "CENTER SCHOOL DISTRICT",
-    "GUADALUPE CENTERS SCHOOLS": "GUADALUPE CENTERS SCHOOLS",
-    "BLUE VALLEY": "BLUE VALLEY",
-    "BASEHOR-LINWOOD": "BASEHOR-LINWOOD",
-    "ALLEN VILLAGE": "ALLEN VILLAGE",
-    "SPRINGFIELD R-XII": "SPRINGFIELD R-XII",
-    "DE SOTO": "DE SOTO",
-    "INDEPENDENT": "INDEPENDENT",
-    "CENTER 58 SCHOOL DISTRICT": "CENTER 58 SCHOOL DISTRICT",
-    # Add missing districts from your database
-    "Kansas City Kansas Public Schools": "Kansas City Kansas Public Schools",
-    "Hickman Mills School District": "Hickman Mills School District",
-    "Grandview School District": "Grandview School District",
-    "Center School District": "Center School District",
-    "Kansas City Public Schools (MO)": "Kansas City Public Schools (MO)",
-    "Allen Village - District": "Allen Village - District",
-    # Add common variations and aliases
-    "KCKPS": "Kansas City Kansas Public Schools",
-    "KCPS": "Kansas City Public Schools (MO)",
-    "Hickman Mills": "Hickman Mills School District",
-    "Grandview": "Grandview School District",
-    "Center": "Center School District",
-    "Allen Village": "Allen Village - District",
-}
-
-
-def admin_required(func):
-    from functools import wraps
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        if not getattr(current_user, "is_authenticated", False) or not getattr(
-            current_user, "is_admin", False
-        ):
-            return jsonify({"error": "Unauthorized"}), 403
-        return func(*args, **kwargs)
-
-    return wrapper
 
 
 def parse_date(date_str):

@@ -224,7 +224,7 @@ def public_signup_submit(slug, event_id):
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Error processing signup: {e}")
+        current_app.logger.error("Error processing signup: %s", e)
         flash("An error occurred. Please try again.", "error")
         return redirect(
             url_for("district.public_signup_form", slug=slug, event_id=event_id)
@@ -357,5 +357,5 @@ Best regards,
             )
 
     except Exception as e:
-        current_app.logger.error(f"Error sending confirmation email: {e}")
+        current_app.logger.error("Error sending confirmation email: %s", e)
         # Don't fail the signup if email fails
