@@ -91,17 +91,58 @@ Add integration tests for `quality_bp` and `docs_bp`. Audit `reports/` test cove
 
 ---
 
+## TD-033: Student Import `str(None)` Data Cleanup
+
+**Created:** 2026-03-07 · **Priority:** High · **Category:** Data Integrity
+
+`Student.update_contact_info` used `str(sf_data.get("Email", ""))`, which converted Salesforce `None` values into the literal string `"None"`. This created **158,923 email records** and **158,925 phone records** containing the string `"None"` — all for student contacts.
+
+**Import code is fixed** (uses `isinstance()` guard now, matching the teacher pattern). The existing garbage records in the database still need cleanup.
+
+### Proposed Fix
+
+1. Write a one-time migration script to delete or null-out all `email` records where `email = 'None'` and `phone` records where `number = 'None'`.
+2. Re-import students from Salesforce to back-fill any real email/phone data that was masked.
+
+**Risk:** Low — the records are definitively garbage (literal string `"None"`).
+
+---
+
+## TD-034: Salesforce Data Quality Audit
+
+**Created:** 2026-03-07 · **Priority:** Medium · **Category:** Data Quality
+
+Production database analysis revealed several data patterns worth investigating in Salesforce:
+
+| Issue | Scale | Action Needed |
+|:---|:---|:---|
+| Skeleton addresses (all fields empty, only `country='United States'`) | 4,587 / 5,582 | Check if Salesforce has real address data that isn't being imported |
+| ALL CAPS names (`"RACHEL"`, `"MAYO"`) | 18,225 contacts | Decide whether to normalize to title case during import |
+| Truncated skills (`"Healthcare..."`, `"P..."`, `"..."`) | ~20 records | Check if this is Salesforce field length truncation; strip trailing `...` |
+| All Connector subscriptions = NONE | 12,533 / 12,533 | Determine if Connector feature is active in Salesforce |
+| 983 organizations with no type | 983 / 3,811 | Consider defaulting or back-filling from Salesforce |
+
+### Proposed Fix
+
+Investigate each item in Salesforce to determine if the data is dirty at the source or if the import is losing information. Prioritize items that affect user-facing features.
+
+**Risk:** Low — investigation only, no code changes until root cause confirmed.
+
+---
+
 ## Priority Order
 
 Ordered by **what best unblocks future work**:
 
 | Priority | ID | Item |
 |:--------:|----|------|
-| 1 | **TD-009** | Centralize transaction management |
-| 2 | **TD-013** | True application factory pattern |
-| 3 | **TD-016** | Generic `ReportCache` model |
-| 4 | **TD-022** | Add tests for extracted blueprints |
-| 5 | **TD-011** | SQLite → PostgreSQL *(do last when codebase is clean)* |
+| 1 | **TD-033** | Student `str(None)` data cleanup (159K garbage records) |
+| 2 | **TD-009** | Centralize transaction management |
+| 3 | **TD-013** | True application factory pattern |
+| 4 | **TD-016** | Generic `ReportCache` model |
+| 5 | **TD-022** | Add tests for extracted blueprints |
+| 6 | **TD-034** | Salesforce data quality audit |
+| 7 | **TD-011** | SQLite → PostgreSQL *(do last when codebase is clean)* |
 
 > TD-004 is intentionally deferred — the M2M relationship is the correct path forward.
 
