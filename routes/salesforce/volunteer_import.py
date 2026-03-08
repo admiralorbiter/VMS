@@ -772,8 +772,8 @@ def import_from_salesforce():
         if errors:
             print(f"\nERROR SUMMARY (showing first 10):")
             for i, error in enumerate(errors[:10]):
-                print(f"  {i+1:2d}. {error['name']} (ID: {error['salesforce_id']})")
-                print(f"      {error['error'][:80]}...")
+                print(f"  {i+1:2d}. {error['record_name']} (ID: {error['record_id']})")
+                print(f"      {error['message'][:80]}...")
             if len(errors) > 10:
                 print(f"  ... and {len(errors) - 10} more errors")
 
