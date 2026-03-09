@@ -446,13 +446,24 @@
             <h2 class="sessions-title">
                 <i class="fas fa-calendar-alt"></i>
                 Upcoming Sessions
+                <button class="btn-override btn-add-session" onclick="openSignUpModal()" style="margin-left: auto;">
+                    <i class="fas fa-plus"></i> Sign Up for Session
+                </button>
             </h2>
             {% if upcoming_sessions %}
             <div class="sessions-list">
                 {% for session in upcoming_sessions %}
                 <div class="session-card upcoming">
                     <div class="session-header">
-                        <h3 class="session-title">{{ session.title }}</h3>
+                        <h3 class="session-title">
+                            {{ session.title }}
+                            {% if session.is_override %}
+                            <span class="override-badge"
+                                title="Admin override: {{ session.override_reason|default('Signed up by admin') }}">
+                                <i class="fas fa-wrench"></i> Override
+                            </span>
+                            {% endif %}
+                        </h3>
                         {% if session.is_simulcast %}
                         <span class="simulcast-badge">Simulcast</span>
                         {% endif %}
@@ -497,6 +508,15 @@
                     <div class="session-status">
                         <span class="status-badge status-{{ session.status }}">{{ session.status }}</span>
                     </div>
+                    {% if session.is_override %}
+                    <div class="override-actions">
+                        <button class="btn-override btn-override-remove"
+                            onclick="openRemoveModal({{ session.id }}, '{{ session.title|e }}', {{ session.override_id|default(0) }})"
+                            title="Remove this teacher's sign-up for this session">
+                            <i class="fas fa-times"></i> Remove
+                        </button>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>
@@ -504,6 +524,9 @@
             <div class="no-sessions">
                 <i class="fas fa-calendar-times"></i>
                 <p>No upcoming sessions scheduled</p>
+                <button class="btn-override btn-add-session" onclick="openSignUpModal()" style="margin-top: 12px;">
+                    <i class="fas fa-plus"></i> Sign Up for Session
+                </button>
             </div>
             {% endif %}
         </div>
@@ -647,6 +670,29 @@
     </div>
 </div>
 
+<!-- Sign Up for Session Modal -->
+<div id="signUpModal" class="override-modal-overlay" onclick="if(event.target===this) closeModals()">
+    <div class="override-modal">
+        <h3><i class="fas fa-calendar-plus" style="color: #2b6cb0;"></i> Sign Up for Upcoming Session</h3>
+        <div class="form-group">
+            <label for="signUpSessionSearch">Search Upcoming Sessions</label>
+            <input type="text" id="signUpSessionSearch" placeholder="Search by title or topic..."
+                oninput="searchSignUpSessions(this.value)">
+            <div id="signUpSearchResults" class="session-search-results" style="display: none;"></div>
+        </div>
+        <div class="form-group">
+            <label for="signUpReason">Reason (required)</label>
+            <textarea id="signUpReason" placeholder="Why is this teacher being signed up for this session?"></textarea>
+        </div>
+        <div class="btn-group">
+            <button class="btn-cancel" onclick="closeModals()">Cancel</button>
+            <button id="signUpSubmitBtn" class="btn-submit add" onclick="submitSignUp()" disabled>
+                <i class="fas fa-calendar-check"></i> Sign Up
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Toast notification -->
 <div id="overrideToast" class="override-toast"></div>
 
@@ -673,6 +719,20 @@
         searchSessions('');
     }
 
+    let selectedSignUpEventId = null;
+    let signUpSearchTimeout = null;
+
+    function openSignUpModal() {
+        document.getElementById('signUpModal').classList.add('active');
+        document.getElementById('signUpSessionSearch').value = '';
+        document.getElementById('signUpReason').value = '';
+        document.getElementById('signUpSearchResults').style.display = 'none';
+        selectedSignUpEventId = null;
+        updateSignUpButton();
+        // Load upcoming sessions by default
+        searchSignUpSessions('');
+    }
+
     let removeOverrideId = null;
     function openRemoveModal(eventId, sessionTitle, overrideId) {
         removeOverrideId = overrideId || null;
@@ -686,6 +746,7 @@
     function closeModals() {
         document.getElementById('addModal').classList.remove('active');
         document.getElementById('removeModal').classList.remove('active');
+        document.getElementById('signUpModal').classList.remove('active');
     }
 
     // ── Session Search ──────────────────────────────────────────────
@@ -732,11 +793,58 @@
         document.getElementById('addSubmitBtn').disabled = !selectedEventId || !reason;
     }
 
+    // ── Sign Up Session Search ───────────────────────────────────────
+    function searchSignUpSessions(query) {
+        clearTimeout(signUpSearchTimeout);
+        signUpSearchTimeout = setTimeout(async () => {
+            try {
+                const resp = await fetch(SEARCH_URL + '?q=' + encodeURIComponent(query) + '&upcoming_only=1');
+                const data = await resp.json();
+                renderSignUpSearchResults(data.sessions);
+            } catch (err) {
+                console.error('Search failed:', err);
+            }
+        }, 300);
+    }
+
+    function renderSignUpSearchResults(sessions) {
+        const container = document.getElementById('signUpSearchResults');
+        if (!sessions.length) {
+            container.innerHTML = '<div style="padding: 12px; color: #999; text-align: center;">No upcoming sessions found</div>';
+            container.style.display = 'block';
+            return;
+        }
+        container.innerHTML = sessions.map(s => `
+        <div class="session-search-item ${s.id === selectedSignUpEventId ? 'selected' : ''}"
+             onclick="selectSignUpSession(${s.id}, this)">
+            <div class="session-search-title">${escapeHtml(s.title)}</div>
+            <div class="session-search-meta">${s.date_display} · <em>${s.status || 'Unknown'}</em> ${s.series ? '· ' + escapeHtml(s.series) : ''}</div>
+        </div>
+    `).join('');
+        container.style.display = 'block';
+    }
+
+    function selectSignUpSession(eventId, element) {
+        selectedSignUpEventId = eventId;
+        document.querySelectorAll('#signUpSearchResults .session-search-item').forEach(el => el.classList.remove('selected'));
+        element.classList.add('selected');
+        updateSignUpButton();
+    }
+
+    function updateSignUpButton() {
+        const reason = document.getElementById('signUpReason').value.trim();
+        document.getElementById('signUpSubmitBtn').disabled = !selectedSignUpEventId || !reason;
+    }
+
     // Keep button state updated as user types reason
     document.addEventListener('DOMContentLoaded', function () {
         const addReason = document.getElementById('addReason');
         if (addReason) {
             addReason.addEventListener('input', updateAddButton);
+        }
+        const signUpReason = document.getElementById('signUpReason');
+        if (signUpReason) {
+            signUpReason.addEventListener('input', updateSignUpButton);
         }
     });
 
@@ -823,6 +931,42 @@
             showToast('Network error. Please try again.', 'error');
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-times"></i> Remove from Session';
+        }
+    }
+
+    // ── Submit Sign Up ────────────────────────────────────────────────
+    async function submitSignUp() {
+        const reason = document.getElementById('signUpReason').value.trim();
+        if (!selectedSignUpEventId || !reason) return;
+
+        const btn = document.getElementById('signUpSubmitBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing Up...';
+
+        try {
+            const resp = await fetch(OVERRIDE_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'add',
+                    event_id: selectedSignUpEventId,
+                    reason: reason,
+                }),
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                showToast('Teacher signed up for session!', 'success');
+                closeModals();
+                setTimeout(() => location.reload(), 800);
+            } else {
+                showToast(data.error || 'Failed to sign up', 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-calendar-check"></i> Sign Up';
+            }
+        } catch (err) {
+            showToast('Network error. Please try again.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-calendar-check"></i> Sign Up';
         }
     }
 

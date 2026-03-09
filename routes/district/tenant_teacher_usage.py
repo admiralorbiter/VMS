@@ -682,8 +682,10 @@ def teacher_detail(teacher_progress_id):
         s for s in past_sessions if s["id"] not in remove_override_event_ids
     ]
 
-    # Add sessions credited via override that aren't already in the list
-    existing_event_ids = {s["id"] for s in past_sessions}
+    # Add sessions credited via override that aren't already in either list
+    existing_event_ids = {s["id"] for s in past_sessions} | {
+        s["id"] for s in upcoming_sessions
+    }
     for ov in add_overrides:
         if ov.event_id not in existing_event_ids:
             event = Event.query.get(ov.event_id)
@@ -699,33 +701,39 @@ def teacher_detail(teacher_progress_id):
                     presenter_name = f"{vol.first_name} {vol.last_name}".strip()
                     presenter_org = vol.organization_name or ""
 
-                past_sessions.append(
-                    {
-                        "id": event.id,
-                        "title": event.title or "Untitled Session",
-                        "date": start_date.date() if start_date else None,
-                        "time": start_date.time() if start_date else None,
-                        "datetime": start_date,
-                        "status": event.status.value if event.status else "unknown",
-                        "topic_theme": event.series or "",
-                        "session_link": event.registration_link or "",
-                        "presenter_name": presenter_name,
-                        "presenter_org": presenter_org,
-                        "is_simulcast": False,
-                        "attendance_status": "",
-                        "is_override": True,
-                        "override_id": ov.id,
-                        "override_reason": ov.reason,
-                    }
-                )
+                session_data = {
+                    "id": event.id,
+                    "title": event.title or "Untitled Session",
+                    "date": start_date.date() if start_date else None,
+                    "time": start_date.time() if start_date else None,
+                    "datetime": start_date,
+                    "status": event.status.value if event.status else "unknown",
+                    "topic_theme": event.series or "",
+                    "session_link": event.registration_link or "",
+                    "presenter_name": presenter_name,
+                    "presenter_org": presenter_org,
+                    "is_simulcast": False,
+                    "attendance_status": "",
+                    "is_override": True,
+                    "override_id": ov.id,
+                    "override_reason": ov.reason,
+                }
 
-    # Tag override sessions in existing list
+                # Classify into correct list based on event date
+                if start_date and start_date >= now:
+                    upcoming_sessions.append(session_data)
+                else:
+                    past_sessions.append(session_data)
+
+    # Tag override sessions in existing lists (both past and upcoming)
     override_add_map = {ov.event_id: ov.id for ov in add_overrides}
-    for session in past_sessions:
+    override_reason_map = {ov.event_id: ov.reason for ov in add_overrides}
+    for session in past_sessions + upcoming_sessions:
         if "is_override" not in session:
             session["is_override"] = session["id"] in override_add_map
             if session["is_override"]:
                 session["override_id"] = override_add_map[session["id"]]
+                session["override_reason"] = override_reason_map.get(session["id"], "")
 
     # Sort: past desc, upcoming asc
     past_sessions.sort(
@@ -900,18 +908,27 @@ def create_override(teacher_progress_id):
             event_id=event_id, teacher_id=tp.teacher_id
         ).first()
         if action == OverrideAction.ADD:
+            # Future events get 'registered' (signup), past events get 'attended'
+            event_date = event.start_date
+            if event_date and event_date.tzinfo is None:
+                event_date = event_date.replace(tzinfo=timezone.utc)
+            is_future = event_date and event_date >= datetime.now(timezone.utc)
+            new_status = "registered" if is_future else "attended"
+
             if et:
-                # Update existing record to 'attended'
-                et.status = "attended"
-                et.attendance_confirmed_at = datetime.now(timezone.utc)
+                et.status = new_status
+                if not is_future:
+                    et.attendance_confirmed_at = datetime.now(timezone.utc)
                 et.notes = f"Override add: {reason}"
             else:
-                # Create new EventTeacher with 'attended' status
+                # Create new EventTeacher
                 et = EventTeacher(
                     event_id=event_id,
                     teacher_id=tp.teacher_id,
-                    status="attended",
-                    attendance_confirmed_at=datetime.now(timezone.utc),
+                    status=new_status,
+                    attendance_confirmed_at=(
+                        datetime.now(timezone.utc) if not is_future else None
+                    ),
                     notes=f"Override add: {reason}",
                 )
                 db.session.add(et)
@@ -988,6 +1005,24 @@ def reverse_override(override_id):
 
     override.reverse(reason=reason, reversed_by=current_user.id)
 
+    # When reversing an ADD override, clean up the EventTeacher record
+    if override.action == OverrideAction.ADD:
+        from models.event import EventTeacher
+
+        tp = TeacherProgress.query.get(override.teacher_progress_id)
+        if tp and tp.teacher_id:
+            et = EventTeacher.query.filter_by(
+                event_id=override.event_id, teacher_id=tp.teacher_id
+            ).first()
+            if et:
+                if et.notes and "Override add:" in et.notes:
+                    # This EventTeacher was created/modified by the override — delete it
+                    db.session.delete(et)
+                else:
+                    # Pre-existing record (e.g. from Pathful import), revert status
+                    et.status = "no_show"
+                    et.notes = f"Reversed override: {reason}"
+
     # Audit log for reversal
     audit = AuditLog(
         user_id=current_user.id,
@@ -1023,12 +1058,13 @@ def search_sessions():
 
     Scoped to the current semester. Shows all sessions by default;
     optionally filtered by title/series search query.
-    Query params: q (search term), limit (default 50)
+    Query params: q (search term), limit (default 50), upcoming_only (if truthy, only future sessions)
     """
     from models.event import Event, EventStatus, EventType
 
     query_str = request.args.get("q", "").strip()
     limit = min(int(request.args.get("limit", 50)), 100)
+    upcoming_only = request.args.get("upcoming_only", "")
 
     # Get tenant's district
     tenant = Tenant.query.get(current_user.tenant_id)
@@ -1080,6 +1116,18 @@ def search_sessions():
 
     now = datetime.now(timezone.utc)
     all_sessions = sessions_query.all()
+
+    # Filter to upcoming-only if requested (for sign-up modal)
+    if upcoming_only:
+        filtered = []
+        for ev in all_sessions:
+            sd = ev.start_date
+            if sd:
+                if sd.tzinfo is None:
+                    sd = sd.replace(tzinfo=timezone.utc)
+                if sd >= now:
+                    filtered.append(ev)
+        all_sessions = filtered
 
     # Sort by proximity to current date (closest first)
     def proximity_key(event):

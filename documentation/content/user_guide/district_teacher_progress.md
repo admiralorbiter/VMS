@@ -32,6 +32,30 @@ Users can be scoped to specific districts.
 > [!NOTE]
 > **Attendance-Based Counting**: The system only counts sessions where the teacher's `EventTeacher.status` is `'attended'` or `'completed'`. Teachers who registered but did not attend (status `'registered'` or `'no_show'`) are not counted toward completion. Attendance status is set automatically during the daily Pathful import based on the CSV's `Status` column.
 
+### Revising No-Shows
+
+If a teacher is incorrectly marked as a no-show, virtual admins and global admins can correct it directly from the **No Shows Report** page:
+
+1.  Navigate to the **Teacher Usage Dashboard** → click the **No Shows** link.
+2.  Find the session in question under the teacher's school section.
+3.  Click the **Revise No-Show** button next to the session.
+4.  Enter a required reason explaining the correction (e.g., "Teacher was present but not recorded in system").
+5.  Click **Mark as Attended** — the teacher's `EventTeacher.status` changes from `no_show` to `attended`, and the session is removed from the no-show list.
+
+All revisions are logged in the [Audit Log](../requirements/virtual#fr-virtual-241) with the admin's identity, timestamp, and stated reason. Overrides can be reversed from the teacher's detail view if needed.
+
+### Signing Up for Upcoming Sessions
+
+Virtual admins and global admins can register a teacher for an upcoming virtual session directly from the **Teacher Detail** page:
+
+1.  Navigate to a teacher's detail view from the **Teacher Usage Dashboard**.
+2.  Click the **Sign Up for Session** button next to the **Upcoming Sessions** header.
+3.  Search for an upcoming session by title or topic.
+4.  Select the session and enter a required reason.
+5.  Click **Sign Up** — an `EventTeacher` record is created with `status='registered'`, and the session appears in the teacher's Upcoming Sessions list with an **Override** badge.
+
+Sign-ups can be removed using the **Remove** button that appears on override sessions. All actions are audit-logged.
+
 ### Roster Import & Matching
 Teacher data is imported from district rosters via Google Sheets. This process ensures the "Teacher Progress" list matches the actual district staff.
 
