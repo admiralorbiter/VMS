@@ -224,6 +224,12 @@
         border-left: 3px solid #e74c3c;
     }
 
+    .session-item.overridden {
+        background: #f0fdf4;
+        border-left: 3px solid #28a745;
+        opacity: 0.75;
+    }
+
     .session-date {
         font-weight: 600;
         color: #555;
@@ -240,6 +246,186 @@
         color: #888;
         font-size: 0.88em;
         font-style: italic;
+    }
+
+    /* Revise No-Show button */
+    .btn-revise {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 12px;
+        border-radius: 6px;
+        font-size: 0.82em;
+        font-weight: 500;
+        cursor: pointer;
+        border: 1px solid #c6efce;
+        background: #e8f5e9;
+        color: #2e7d32;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .btn-revise:hover {
+        background: #c8e6c9;
+        border-color: #a5d6a7;
+    }
+
+    .overridden-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+        border-radius: 12px;
+        padding: 2px 10px;
+        font-size: 0.78em;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .overridden-badge i {
+        font-size: 0.85em;
+    }
+
+    /* Override Modal */
+    .override-modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .override-modal-overlay.active {
+        display: flex;
+    }
+
+    .override-modal {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .override-modal h3 {
+        margin: 0 0 10px 0;
+        font-size: 1.2em;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .override-modal .modal-info {
+        margin-bottom: 16px;
+        padding: 10px 14px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        font-size: 0.9em;
+        color: #555;
+    }
+
+    .override-modal .modal-info strong {
+        color: #333;
+    }
+
+    .override-modal .form-group {
+        margin-bottom: 16px;
+    }
+
+    .override-modal label {
+        display: block;
+        font-weight: 600;
+        font-size: 0.9em;
+        margin-bottom: 6px;
+        color: #333;
+    }
+
+    .override-modal textarea {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 0.95em;
+        box-sizing: border-box;
+        min-height: 80px;
+        resize: vertical;
+    }
+
+    .override-modal .btn-group {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 20px;
+    }
+
+    .override-modal .btn-cancel {
+        padding: 8px 20px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background: white;
+        cursor: pointer;
+        font-size: 0.9em;
+    }
+
+    .override-modal .btn-submit {
+        padding: 8px 20px;
+        border: none;
+        border-radius: 6px;
+        color: white;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.9em;
+        background: #28a745;
+    }
+
+    .override-modal .btn-submit:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    /* Toast notification */
+    .override-toast {
+        display: none;
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        padding: 14px 24px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 2000;
+        animation: slideUp 0.3s ease;
+    }
+
+    .override-toast.success {
+        background: #28a745;
+    }
+
+    .override-toast.error {
+        background: #dc3545;
+    }
+
+    @keyframes slideUp {
+        from {
+            transform: translateY(20px);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
     }
 
     .no-data {
@@ -330,11 +516,20 @@
                 </div>
                 <div class="teacher-sessions">
                     {% for session in sessions %}
-                    <div class="session-item">
+                    <div class="session-item {{ 'overridden' if session.is_overridden }}" id="session-{{ session.teacher_progress_id }}-{{ session.event_id }}">
                         <span class="session-date">{{ session.date }}</span>
                         <span class="session-title">{{ session.title }}</span>
                         {% if session.series %}
                         <span class="session-series">{{ session.series }}</span>
+                        {% endif %}
+                        {% if session.is_overridden %}
+                        <span class="overridden-badge"><i class="fas fa-check-circle"></i> Revised</span>
+                        {% elif session.teacher_progress_id %}
+                        <button class="btn-revise"
+                            onclick="event.stopPropagation(); openReviseModal({{ session.teacher_progress_id }}, {{ session.event_id }}, '{{ session.title|e }}', '{{ session.date|e }}', '{{ teacher_name|e }}')"
+                            title="Override this no-show — mark teacher as attended">
+                            <i class="fas fa-undo"></i> Revise No-Show
+                        </button>
                         {% endif %}
                     </div>
                     {% endfor %}
@@ -351,6 +546,37 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Revise No-Show Modal -->
+<div id="reviseModal" class="override-modal-overlay" onclick="if(event.target===this) closeModal()">
+    <div class="override-modal">
+        <h3><i class="fas fa-undo" style="color: #28a745;"></i> Revise No-Show</h3>
+        <div class="modal-info">
+            <strong>Teacher:</strong> <span id="reviseTeacherName"></span><br>
+            <strong>Session:</strong> <span id="reviseSessionTitle"></span><br>
+            <strong>Date:</strong> <span id="reviseSessionDate"></span>
+        </div>
+        <p style="margin-bottom: 16px; color: #555; font-size: 0.9em;">
+            This will mark the teacher as <strong>attended</strong> instead of no-show. An audit log entry will be created.
+        </p>
+        <input type="hidden" id="reviseTeacherProgressId">
+        <input type="hidden" id="reviseEventId">
+        <div class="form-group">
+            <label for="reviseReason">Reason (required)</label>
+            <textarea id="reviseReason" placeholder="Why is this no-show being revised? (e.g., teacher was present but not recorded)"></textarea>
+        </div>
+        <div class="btn-group">
+            <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+            <button id="reviseSubmitBtn" class="btn-submit" onclick="submitRevise()" disabled>
+                <i class="fas fa-check"></i> Mark as Attended
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast notification -->
+<div id="overrideToast" class="override-toast"></div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -363,6 +589,90 @@
     function toggleTeacher(teacherId) {
         const row = document.getElementById(teacherId);
         row.classList.toggle('collapsed');
+    }
+
+    // ── Revise Modal ─────────────────────────────────────────────────
+    function openReviseModal(tpId, eventId, sessionTitle, sessionDate, teacherName) {
+        document.getElementById('reviseTeacherProgressId').value = tpId;
+        document.getElementById('reviseEventId').value = eventId;
+        document.getElementById('reviseTeacherName').textContent = teacherName;
+        document.getElementById('reviseSessionTitle').textContent = sessionTitle;
+        document.getElementById('reviseSessionDate').textContent = sessionDate;
+        document.getElementById('reviseReason').value = '';
+        updateSubmitButton();
+        document.getElementById('reviseModal').classList.add('active');
+    }
+
+    function closeModal() {
+        document.getElementById('reviseModal').classList.remove('active');
+    }
+
+    function updateSubmitButton() {
+        const reason = document.getElementById('reviseReason').value.trim();
+        document.getElementById('reviseSubmitBtn').disabled = !reason;
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const reasonField = document.getElementById('reviseReason');
+        if (reasonField) {
+            reasonField.addEventListener('input', updateSubmitButton);
+        }
+    });
+
+    // ── Submit Override ──────────────────────────────────────────────
+    async function submitRevise() {
+        const tpId = document.getElementById('reviseTeacherProgressId').value;
+        const eventId = document.getElementById('reviseEventId').value;
+        const reason = document.getElementById('reviseReason').value.trim();
+        if (!tpId || !eventId || !reason) return;
+
+        const btn = document.getElementById('reviseSubmitBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+        try {
+            const resp = await fetch('/district/teacher-usage/overrides/' + tpId, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'add',
+                    event_id: parseInt(eventId),
+                    reason: reason,
+                }),
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                showToast('No-show revised — teacher marked as attended.', 'success');
+                closeModal();
+                // Update the session row in-place to show "Revised" badge
+                const row = document.getElementById('session-' + tpId + '-' + eventId);
+                if (row) {
+                    row.classList.add('overridden');
+                    // Replace the button with the overridden badge
+                    const btn = row.querySelector('.btn-revise');
+                    if (btn) {
+                        btn.outerHTML = '<span class="overridden-badge"><i class="fas fa-check-circle"></i> Revised</span>';
+                    }
+                }
+            } else {
+                showToast(data.error || 'Failed to revise no-show.', 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check"></i> Mark as Attended';
+            }
+        } catch (err) {
+            showToast('Network error. Please try again.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check"></i> Mark as Attended';
+        }
+    }
+
+    // ── Toast ────────────────────────────────────────────────────────
+    function showToast(message, type) {
+        const toast = document.getElementById('overrideToast');
+        toast.textContent = message;
+        toast.className = 'override-toast ' + type;
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 3000);
     }
 </script>
 {% endblock %}

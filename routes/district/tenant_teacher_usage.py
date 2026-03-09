@@ -1187,10 +1187,24 @@ def no_shows():
     ).all()
     teacher_id_to_building = {}
     teacher_id_to_tp_name = {}
+    teacher_id_to_tp_id = {}
     for tp in tp_entries:
         if tp.teacher_id:
             teacher_id_to_building[tp.teacher_id] = tp.building or "Unknown"
             teacher_id_to_tp_name[tp.teacher_id] = tp.name
+            teacher_id_to_tp_id[tp.teacher_id] = tp.id
+
+    # Check for active "add" overrides so we can mark already-overridden sessions
+    active_add_overrides = set()
+    if teacher_id_to_tp_id:
+        tp_ids = list(teacher_id_to_tp_id.values())
+        existing_overrides = AttendanceOverride.query.filter(
+            AttendanceOverride.teacher_progress_id.in_(tp_ids),
+            AttendanceOverride.action == OverrideAction.ADD,
+            AttendanceOverride.is_active == True,
+        ).all()
+        for ov in existing_overrides:
+            active_add_overrides.add((ov.teacher_progress_id, ov.event_id))
 
     # Group by school -> teacher -> sessions
     # Structure: {school: {teacher_name: [session_dicts]}}
@@ -1206,6 +1220,8 @@ def no_shows():
         teacher_name = teacher_id_to_tp_name.get(et.teacher_id, "Unknown Teacher")
 
         start_date = event.start_date
+        tp_id = teacher_id_to_tp_id.get(et.teacher_id)
+        is_overridden = (tp_id, event.id) in active_add_overrides
         school_data[building][teacher_name].append(
             {
                 "event_id": event.id,
@@ -1213,6 +1229,8 @@ def no_shows():
                 "date": start_date.strftime("%B %d, %Y") if start_date else "Unknown",
                 "date_sort": start_date.isoformat() if start_date else "",
                 "series": event.series or "",
+                "teacher_progress_id": tp_id,
+                "is_overridden": is_overridden,
             }
         )
         total_no_shows += 1
