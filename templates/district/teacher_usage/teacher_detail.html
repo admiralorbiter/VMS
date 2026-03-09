@@ -511,7 +511,7 @@
                     {% if session.is_override %}
                     <div class="override-actions">
                         <button class="btn-override btn-override-remove"
-                            onclick="openRemoveModal({{ session.id }}, {{ session.title|tojson }}, {{ session.override_id|default(0) }})"
+                            onclick="openRemoveModal({{ session.id }}, {{ session.title|tojson|forceescape }}, {{ session.override_id|default(0) }})"
                             title="Remove this teacher's sign-up for this session">
                             <i class="fas fa-times"></i> Remove
                         </button>
@@ -607,7 +607,7 @@
                     </div>
                     <div class="override-actions">
                         <button class="btn-override btn-override-remove"
-                            onclick="openRemoveModal({{ session.id }}, {{ session.title|tojson }}, {{ session.override_id|default(0) }})"
+                            onclick="openRemoveModal({{ session.id }}, {{ session.title|tojson|forceescape }}, {{ session.override_id|default(0) }})"
                             title="Remove this teacher from this session">
                             <i class="fas fa-times"></i> Remove
                         </button>
