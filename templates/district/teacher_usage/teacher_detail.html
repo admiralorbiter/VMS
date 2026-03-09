@@ -169,6 +169,24 @@
         font-size: 0.85em;
     }
 
+    /* Awaiting Pathful Data badge */
+    .awaiting-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffc107;
+        border-radius: 12px;
+        padding: 2px 10px;
+        font-size: 0.78em;
+        font-weight: 600;
+    }
+
+    .awaiting-badge i {
+        font-size: 0.85em;
+    }
+
     /* Override action buttons */
     .override-actions {
         display: flex;
@@ -410,7 +428,9 @@
     </div>
 
     <!-- Progress Summary -->
-    {% set completed = past_sessions|length %}
+    {# Only count sessions where teacher actually attended (not no-shows or registered) #}
+    {% set attended_statuses = ['attended', 'completed'] %}
+    {% set completed = past_sessions|selectattr('attendance_status', 'in', attended_statuses)|list|length %}
     {% set target = teacher_progress.target_sessions or 1 %}
     {% set pct = [((completed / target) * 100), 100] | min %}
     {% if completed >= target %}
@@ -601,7 +621,12 @@
                         {% else %}
                         <span class="status-badge status-{{ session.status }}">{{ session.status }}</span>
                         {% endif %}
-                        {% if session.attendance_status %}
+                        {% if session.attendance_status == 'registered' %}
+                        <span class="awaiting-badge"
+                            title="Admin signed up this teacher; awaiting Pathful import confirmation">
+                            <i class="fas fa-clock"></i> Awaiting Pathful Data
+                        </span>
+                        {% elif session.attendance_status %}
                         <span class="attendance-badge">{{ session.attendance_status }}</span>
                         {% endif %}
                     </div>

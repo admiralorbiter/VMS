@@ -221,10 +221,13 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
     # ── Apply attendance overrides (FR-VIRTUAL-234, FR-VIRTUAL-238) ────
     # Both ADD and REMOVE overrides are event-aware:
     # - ADD:    only increment if this event was NOT already counted
+    #           AND the event is in the past (future sign-ups don't count)
     # - REMOVE: only decrement if this event WAS counted as attended
     # Stale ADD overrides (event already counted via import) are auto-resolved.
     import logging
+    from datetime import datetime, timezone
 
+    now = datetime.now(timezone.utc)
     logger = logging.getLogger(__name__)
     active_overrides = AttendanceOverride.query.filter(
         AttendanceOverride.teacher_progress_id.in_([t.id for t in teachers]),
@@ -235,6 +238,15 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
         if tid in teacher_progress_map:
             if ov.action == OverrideAction.ADD:
                 if (tid, ov.event_id) not in counted_events_per_tp:
+                    # Only count past sessions toward progress —
+                    # future sign-ups (registered) should NOT count
+                    event = Event.query.get(ov.event_id)
+                    if event and event.start_date:
+                        ev_date = event.start_date
+                        if ev_date.tzinfo is None:
+                            ev_date = ev_date.replace(tzinfo=timezone.utc)
+                        if ev_date >= now:
+                            continue  # Skip future events
                     teacher_progress_map[tid] += 1
                     counted_events_per_tp.add((tid, ov.event_id))
                 else:
@@ -254,9 +266,6 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
                     teacher_progress_map[tid] = max(0, teacher_progress_map[tid] - 1)
 
     # ── PLANNED sessions (upcoming: confirmed/published/requested) ─────
-    from datetime import datetime, timezone
-
-    now = datetime.now(timezone.utc)
 
     planned_events_query = Event.query.filter(
         Event.type == EventType.VIRTUAL_SESSION,
@@ -272,8 +281,34 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
     planned_events = planned_events_query.all()
 
     planned_progress_map = {t.id: 0 for t in teachers}
+
+    # Primary: count via EventTeacher FK links (picks up override sign-ups)
+    if teacher_id_to_tp:
+        planned_et_query = EventTeacher.query.join(Event).filter(
+            EventTeacher.teacher_id.in_(teacher_id_to_tp.keys()),
+            Event.type == EventType.VIRTUAL_SESSION,
+            Event.status.in_(
+                [EventStatus.CONFIRMED, EventStatus.PUBLISHED, EventStatus.REQUESTED]
+            ),
+            Event.start_date >= now,
+        )
+        planned_et_event_ids = set()
+        for et in planned_et_query.all():
+            planned_et_event_ids.add(et.event_id)
+            for tp_id in teacher_id_to_tp.get(et.teacher_id, []):
+                if tp_id in planned_progress_map:
+                    planned_progress_map[tp_id] += 1
+
+        # Text-matching fallback: only for events NOT already counted via FK
+        text_planned_events = [
+            e for e in planned_events if e.id not in planned_et_event_ids
+        ]
+    else:
+        text_planned_events = planned_events
+
+    # Supplementary: text matching
     planned_progress_map = count_sessions_for_teachers(
-        planned_events, teacher_alias_map, planned_progress_map
+        text_planned_events, teacher_alias_map, planned_progress_map
     )
 
     # ── NEEDS REVIEW sessions (past date, not completed) ───────────────
@@ -713,7 +748,6 @@ def teacher_detail(teacher_progress_id):
                     "presenter_name": presenter_name,
                     "presenter_org": presenter_org,
                     "is_simulcast": False,
-                    "attendance_status": "",
                     "is_override": True,
                     "override_id": ov.id,
                     "override_reason": ov.reason,
@@ -721,8 +755,10 @@ def teacher_detail(teacher_progress_id):
 
                 # Classify into correct list based on event date
                 if start_date and start_date >= now:
+                    session_data["attendance_status"] = "registered"
                     upcoming_sessions.append(session_data)
                 else:
+                    session_data["attendance_status"] = "attended"
                     past_sessions.append(session_data)
 
     # Tag override sessions in existing lists (both past and upcoming)
