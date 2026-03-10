@@ -275,6 +275,7 @@ curl -H "X-API-Key: YOUR_API_KEY" \
 - **User Stories:** [US-1201](user_stories#us-1201), [US-1202](user_stories#us-1202)
 - **Use Cases:** [UC-17](use_cases#uc-17)
 - **Architecture:** [Public Event API Architecture](architecture#public-event-api-architecture-district-suite)
+- **Intern Project:** [Virtual Events API](intern_virtual_events_api) — Guided project extending this API pattern to virtual sessions
 
 ---
 

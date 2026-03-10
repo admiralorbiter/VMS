@@ -276,3 +276,5 @@ flask run --port 5051
 - [Codebase Structure](codebase-structure) — Detailed code organization
 - [CLI Reference](cli-reference) — Common commands
 - [Architecture](architecture) — System design
+- [Public Event API Reference](api_reference) — Existing district event API docs
+- [Intern Project: Virtual Events API](intern_virtual_events_api) — Guided intern project for building the virtual sessions API
