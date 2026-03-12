@@ -21,6 +21,7 @@ These features are prioritized for upcoming development:
 
 | Feature | Status | Related Req |
 |---------|--------|-------------|
+| **District Suite Phase 4: Recruitment** | 🔧 Verification | FR-SELFSERV-401–405 |
 | **Automated Teacher Reminders** | 📋 Planned | FR-DISTRICT-504 |
 | **Automated Pathful Export Pulling** | 📋 Planned | FR-VIRTUAL-207 |
 | **Local Volunteer Auto-Communications** | 📋 Planned | FR-VIRTUAL-209 |
@@ -138,4 +139,4 @@ These features are prioritized for upcoming development:
 
 ---
 
-*Last updated: February 2026 · Version 1.2*
+*Last updated: March 2026 · Version 1.3*

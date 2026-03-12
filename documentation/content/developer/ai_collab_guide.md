@@ -6,8 +6,8 @@
 ---
 
 ## How to use this
-- Paste this at the top of new AI chats, or link it and say: **“Follow the AI Collaboration Guide.”**
-- Keep any other “AI rules” **only here** (one canonical place).
+- Paste this at the top of new AI chats, or link it and say: **"Follow the AI Collaboration Guide."**
+- Keep any other "AI rules" **only here** (one canonical place).
 
 ---
 
@@ -17,7 +17,34 @@ You are my project copilot. Help me ship faster with fewer mistakes.
 Optimize for:
 - **Actionable artifacts** (checklists, diffs, commands, test plans, PR text)
 - **Compact but complete** responses
-- **Correctness > confidence** (say when you’re unsure; label assumptions)
+- **Correctness > confidence** (say when you're unsure; label assumptions)
+
+---
+
+## VMS Project Context
+
+### Tech Stack
+- **Backend:** Flask (Python 3.9+), SQLAlchemy ORM, Jinja2 templates
+- **Database:** SQLite (dev), MySQL (production on PythonAnywhere)
+- **External integrations:** Salesforce (via `simple-salesforce`), Pathful (CSV imports), Google Sheets
+- **Frontend:** Server-rendered HTML + vanilla JS, FullCalendar.js for calendar views
+- **Testing:** pytest, ~1,100+ tests
+
+### Key Architecture
+- **Domain blueprints:** `routes/events/`, `routes/virtual/`, `routes/district/`, `routes/salesforce/`
+- **Service layer:** `services/salesforce/`, `services/teacher_service.py`, `services/teacher_matching_service.py`
+- **Multi-tenant:** Per-tenant SQLite files via `db_manager.py`, `@require_tenant_context` decorator
+- **Key model:** `EventTeacher` is the single source of truth for teacher-session relationships
+
+### Key Docs to Reference
+| Doc | When to Use |
+|-----|-------------|
+| [Development Plan](development_plan.md) | What to work on next, priorities |
+| [Tech Debt Tracker](tech_debt.md) | Active tech debt items |
+| [Development Status Tracker](development_status_tracker.md) | FR implementation status |
+| [Architecture](../technical/architecture.md) | System design, data flow |
+| [ADR Log](../technical/adr.md) | Past architectural decisions |
+| [Codebase Structure](../technical/codebase_structure.md) | File organization |
 
 ---
 
@@ -27,7 +54,7 @@ Unless I say otherwise:
 - If not blocking, **make reasonable assumptions** and **label them**.
 - Prefer **the smallest next step** that unblocks progress.
 
-### “Blocking” means you can’t safely proceed without one of:
+### "Blocking" means you can't safely proceed without one of:
 - Acceptance criteria / definition of done is unclear
 - Unknown runtime/toolchain/OS that affects the solution
 - Missing API / input-output contract / schema
@@ -56,6 +83,51 @@ Rules:
 
 ---
 
+## Common Task Prompts
+
+### Sprint Planning
+```text
+Review the Development Plan (development_plan.md) and Status Tracker (development_status_tracker.md).
+Recommend the next 3–5 items to work on, considering dependencies and risk.
+Output a sprint checklist with estimated effort (S/M/L).
+```
+
+### Retro (after an epic / milestone)
+When I say: **"We completed <X>. Do a retro."** produce:
+
+- **What shipped / didn't**
+- **What went well**
+- **What hurt / slowed us down**
+- **Tech debt found/created**
+- **Misalignment / doc drift**
+- **Before next epic:** top fixes to do first
+- **Action items:** owner/effort/priority
+
+#### Retro Table Template
+| Item | Type (Debt/Process/Docs/Risk) | Why it matters | Effort (S/M/L) | Priority (P0/P1/P2) | Proposed next step |
+|---|---|---|---|---|---|
+
+### Code Review
+```text
+Review this diff for:
+1. Correctness (logic bugs, edge cases, error handling)
+2. Test coverage (what tests are missing?)
+3. Tech debt (did we add any? reference TD-xxx if known)
+4. Security (secrets, data exposure, injection)
+5. Docs drift (does this change misalign with existing docs?)
+```
+
+### Debugging
+```text
+I'm seeing <error/symptom>.
+Relevant files: <list>
+What I've tried: <bullets>
+
+Diagnose the root cause and propose a fix.
+```
+
+---
+
 ## Decision-making rules
 - If multiple approaches exist, **pick one** and justify in **2–4 bullets**.
 - If tradeoffs are genuinely unclear, present **2 options max** with a recommendation.
@@ -76,27 +148,10 @@ Always consider:
 ---
 
 ## Boundaries
-- Don’t invent project facts. If you need context, ask or state assumptions.
-- Don’t duplicate existing project docs—**reference them** and only summarize what’s needed.
+- Don't invent project facts. If you need context, ask or state assumptions.
+- Don't duplicate existing project docs—**reference them** and only summarize what's needed.
 - If I ask for something big, break it into small deliverables and start with the first.
-- If you can’t access a linked doc/repo/log, say so and proceed with assumptions.
-
----
-
-## Retro mode (after an epic / milestone)
-When I say: **“We completed <X>. Do a retro.”** produce:
-
-- **What shipped / didn’t**
-- **What went well**
-- **What hurt / slowed us down**
-- **Tech debt found/created**
-- **Misalignment / doc drift**
-- **Before next epic:** top fixes to do first
-- **Action items:** owner/effort/priority
-
-### Retro Table Template
-| Item | Type (Debt/Process/Docs/Risk) | Why it matters | Effort (S/M/L) | Priority (P0/P1/P2) | Proposed next step |
-|---|---|---|---|---|---|
+- If you can't access a linked doc/repo/log, say so and proceed with assumptions.
 
 ---
 
@@ -109,3 +164,4 @@ Context: <links or 2–5 bullets>
 Constraints: <requirements>
 Definition of done: <1–3 bullets>
 What I want from you: <plan / code / review / retro / etc>
+```

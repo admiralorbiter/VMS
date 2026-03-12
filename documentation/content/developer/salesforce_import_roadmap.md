@@ -12,65 +12,18 @@ This document tracks improvements to the Salesforce import system following the 
 
 ---
 
-## Development Checklist
+## Completed Work (Feb–Mar 2026)
 
-### 🔴 High Priority
+All 4 sprint milestones are complete. Key outcomes:
 
-- [x] **Create centralized service layer** *(Complete)*
-  - ✅ Created `services/salesforce/` package structure
-  - ✅ Created `services/salesforce/utils.py` for shared utilities
-  - ✅ Created `services/salesforce/processors/event.py` with row processors
-  - ✅ Updated `routes/salesforce/event_import.py` to import from services
-  - **Verified**: Tests pass, route file reduced from 955 to 530 lines
+| Sprint | Focus | Key Result |
+|--------|-------|------------|
+| Sprint 1 | Service layer extraction | `services/salesforce/` package; route file 955 → 530 lines |
+| Sprint 2 | Error handling & savepoints | `ImportErrorCode` enum, savepoint recovery in all import files |
+| Sprint 3 | Dashboard enhancements | Health metrics API, 7-day trend chart, stale sync warnings |
+| Sprint 4 | Integration tests & data quality | 79 tests, 52 mapper tests, `str(None)` bug fix |
 
-- [x] **Consolidate duplicate helper functions** *(Complete)*
-  - ✅ Added `safe_parse_delivery_hours` to `services/salesforce/utils.py`
-  - ✅ Added `chunked_in_query` to `services/salesforce/utils.py`
-  - ✅ Updated `event_import.py` to import from centralized location
-  - **Verified**: Route imports from `services.salesforce.utils`
-
-- [x] **Migrate Teacher import to batch commits** *(Complete)*
-  - ✅ Replaced per-record `db.session.commit()` with Flush+Batch pattern
-  - ✅ Using 50-record commit windows (matching other imports)
-  - **Verified**: Uses `flush()` then batch commits, matching student_import.py
-
-- [x] **Implement savepoint recovery** *(Complete)*
-  - ✅ Wrapped record processing in `db.session.begin_nested()`
-  - ✅ Failures skip individual records without failing batch
-  - ✅ Logs skipped records with reason and Salesforce ID
-  - **Applied to**: All import files (teacher, student, organization, school, volunteer, history, pathway)
-  - **Note**: `event_import.py` uses processor pattern which already provides isolation
-
----
-
-### 🟡 Medium Priority
-
-- [x] **Implement structured error codes** *(Complete)*
-  - ✅ Created `services/salesforce/errors.py` with `ImportErrorCode` enum
-  - ✅ Created `ImportError` dataclass with code, record_id, record_name, field, message
-  - ✅ Added `classify_exception()` for auto-categorization
-  - **Applied to**: All import files
----
-
-### 🟢 Lower Priority
-
-- [x] **Standardize blueprint prefixes** *(Complete)*
-  - ✅ Renamed 7 SF blueprints to use `sf_` prefix
-  - ✅ Updated all route decorators and registrations
-  - **All 9 SF blueprints now**: `sf_volunteer_import_bp`, `sf_event_import_bp`, `sf_history_import_bp`, `sf_organization_import_bp`, `sf_pathway_import_bp`, `sf_dashboard_bp`, `sf_school_import_bp`, `sf_student_import_bp`, `sf_teacher_import_bp`
-
-- [x] **Integrate health metrics into dashboard** *(Complete)*
-  - ✅ Added 7-day success rate trend chart
-  - ✅ Added average duration by sync type table
-  - ✅ Added stale sync warnings (24h+ since last sync)
-  - **API**: `GET /admin/salesforce/health-metrics`
-  - **Visible on**: `/admin/salesforce`
-
-- [x] **Add unit tests for mapper functions** *(Complete)*
-  - ✅ Created `tests/unit/services/test_salesforce_mappers.py`
-  - ✅ 52 tests covering all 5 mapper functions
-  - ✅ Tests education, race/ethnicity, age group, grade level, participation status
-  - ✅ Covers null handling, case-insensitivity, whitespace, edge cases
+**Completed items:** Centralized service layer, duplicate helper consolidation, batch commits, savepoint recovery, structured error codes, blueprint prefix standardization (`sf_*`), health metrics dashboard, mapper unit tests.
 
 ---
 

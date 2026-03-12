@@ -1,6 +1,6 @@
 # Tech Debt Tracker
 
-This document tracks active technical debt. Resolved items are summarized in the [Resolved Archive](#resolved-archive) at the bottom. For the phased plan to address these items, see the [Development Roadmap](development_roadmap.md).
+This document tracks active technical debt. Resolved items are summarized in the [Resolved Archive](#resolved-archive) at the bottom. For the phased plan to address these items, see the [Development Plan](development_plan.md).
 
 ---
 
@@ -42,8 +42,8 @@ ADR G-002 accepted this tradeoff for simplicity, but as multi-tenant usage grows
 
 ### Proposed Fix
 
-- **Short term:** Enable WAL mode (`PRAGMA journal_mode=WAL`) for better read concurrency.
-- **Long term:** Migrate to MySQL (PythonAnywhere). Requires testing all raw SQL, SOQL queries, and SQLite-specific patterns. See [Development Roadmap — Phase 5](development_roadmap.md#phase-5-mysql-migration-separate-branch).
+- **Short term:** Enable WAL mode (`PRAGMA journal_mode=WAL`) for better read concurrency. *(Done — WAL mode enabled in `config/__init__.py`)*
+- **Long term:** Migrate production to **MySQL** (PythonAnywhere). Keep SQLite as the local development database with tooling for easy SQLite ↔ MySQL conversion. Requires testing all raw SQL, SOQL queries, and SQLite-specific patterns. See [Development Plan](development_plan.md).
 
 **Risk:** Very high for MySQL migration — largest infrastructure change possible.
 
@@ -142,7 +142,7 @@ Ordered by **what best unblocks future work**:
 | 4 | **TD-016** | Generic `ReportCache` model |
 | 5 | **TD-022** | Add tests for extracted blueprints |
 | 6 | **TD-034** | Salesforce data quality audit |
-| 7 | **TD-011** | SQLite → PostgreSQL *(do last when codebase is clean)* |
+| 7 | **TD-011** | SQLite → MySQL *(do last when codebase is clean)* |
 
 > TD-004 is intentionally deferred — the M2M relationship is the correct path forward.
 
