@@ -230,9 +230,9 @@
                             <i class="fa-solid fa-cloud"></i>
                         </a>
                         {% endif %}
-                        {% if volunteer.connector and volunteer.connector.connector_profile_url %}
-                        <a href="{{ volunteer.connector.connector_profile_url }}"
-                            class="btn btn-sm action-btn connector-btn" target="_blank" title="Connector Profile">
+                        {% if volunteer.pathful_profile and volunteer.pathful_profile.pathful_user_id %}
+                        <a href="https://prepkc.nepris.com/app/user/{{ volunteer.pathful_profile.pathful_user_id }}"
+                            class="btn btn-sm action-btn connector-btn" target="_blank" title="Pathful Profile">
                             <i class="fa-solid fa-plug"></i>
                         </a>
                         {% endif %}

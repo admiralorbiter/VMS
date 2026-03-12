@@ -14,6 +14,7 @@
 |------|--------|-------|
 | District Suite Phase 4 verification | 🔧 In Progress | Code complete, needs end-to-end testing. See [phases.md](../district_suite/phases.md) |
 | Documentation consolidation | 🔧 In Progress | Merging roadmaps, archiving completed sprints |
+| TD-034 Data Quality Dashboard | ✅ Complete | Dashboard live at `/admin/data-quality` with stats, filters, pagination, dismiss |
 
 ---
 
@@ -29,11 +30,16 @@ High-impact, low-risk items that should be done first.
 
 ### TD-034: Salesforce Data Quality Audit
 
-- [ ] Investigate skeleton addresses (4,587 / 5,582 with empty fields)
-- [ ] Decide on ALL CAPS name normalization (18,225 contacts)
-- [ ] Check truncated skills (`"Healthcare..."`, `"P..."`) — Salesforce field length?
-- [ ] Determine if Connector subscription data is active in Salesforce
-- [ ] Review 983 organizations with NULL type
+- [x] ~~Skeleton addresses~~ — 4,630 hollow addresses deleted; import fixed to skip empty addresses
+- [x] ~~ALL CAPS name normalization~~ — `smart_title_case()` added to import; 18,814 records normalized
+- [x] ~~Truncated skills~~ — `Skill.name` widened from 50→200 chars
+- [x] ~~Organizations with NULL type~~ — Defaulted to "Other" + flagged via Data Quality system
+- [x] ~~Connector → Pathful migration~~ — `ConnectorData` model removed; all UI/routes now use `PathfulUserProfile`
+  - **Post-deploy:** Drop the orphaned `connector_data` table (`DROP TABLE connector_data;` — 12,576 rows, no code references remain)
+- [x] ~~Data Quality Review Dashboard~~ — Live at `/admin/data-quality` with stats, filters, pagination, dismiss/bulk-dismiss
+- **New:** Data Quality Flag system (`data_quality_flag` table) — flags created during Salesforce imports
+
+> **Deploy note:** This commit is **code-only**. The name normalization and skeleton address fixes are in the import logic and will take effect on next Salesforce sync. Drop `connector_data` table post-deploy.
 
 ---
 
@@ -189,6 +195,7 @@ Remaining requirements from the [Status Tracker](development_status_tracker.md).
 | Virtual Local Volunteer Comms | FR-VIRTUAL-209 | Automated comms for local volunteers |
 | PrepKC Event Visibility | FR-SELFSERV-501–503 | District Suite Phase 5 |
 | District Reminder Emails | FR-DISTRICT-504 | Automated teacher reminders |
+| Data Quality Platform | *Epic* | Extend Data Quality Dashboard across all data sources; auto-detect dupes, orphans, stale records; resolution workflows; trend tracking |
 
 ---
 
@@ -197,7 +204,7 @@ Remaining requirements from the [Status Tracker](development_status_tracker.md).
 Pending items from the [Salesforce Import Roadmap](salesforce_import_roadmap.md):
 
 - [ ] **Student data cleanup and reimport** *(TD-033)* — see Tier 1
-- [ ] **Salesforce data quality investigation** *(TD-034)* — see Tier 1
+- [x] ~~Salesforce data quality investigation~~ *(TD-034)* — Resolved. See Tier 1
 - [ ] **Background task execution for large imports** — see Tier 3.4
 - [ ] **Resumable imports with checkpointing** — store last processed ID in SyncLog, add `?resume=true`
 - [ ] **Conflict detection dashboard** — visual display of Polaris vs Salesforce data conflicts
@@ -230,7 +237,8 @@ Items considered but not currently feasible:
 | Salesforce Import Improvements | Feb–Mar 2026 | 4 sprints: service layer extraction, error handling, dashboard, tests. See [SF Import Roadmap](salesforce_import_roadmap.md) |
 | District Suite Phases 1–3 | Jan 2026 | Foundation, events, volunteers. All complete with test coverage |
 | District Suite Phase 4 | Mar 2026 | Recruitment tools — code complete, verification in progress |
-| Tech Debt TD-001 through TD-032 | Feb–Mar 2026 | 19 items resolved. See [Tech Debt Tracker](tech_debt.md#resolved-archive) |
+| TD-034 Data Quality Audit | Mar 2026 | Skeleton addresses, ALL CAPS names, truncated skills, connector migration, Data Quality Dashboard. See [Tech Debt Tracker](tech_debt.md) |
+| Tech Debt TD-001 through TD-034 | Feb–Mar 2026 | 21 items resolved. See [Tech Debt Tracker](tech_debt.md#resolved-archive) |
 
 ---
 

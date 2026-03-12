@@ -25,8 +25,9 @@ from models.contact import (
     Phone,
     RaceEthnicityEnum,
 )
-from models.volunteer import ConnectorData, ConnectorSubscriptionEnum, Skill, Volunteer
+from models.volunteer import Skill, Volunteer
 from routes.decorators import global_users_only
+from routes.name_utils import is_all_caps_name, smart_title_case
 from routes.utils import parse_date, parse_skills
 from services.salesforce import (
     get_salesforce_client,
@@ -182,17 +183,33 @@ def import_from_salesforce():
                         volunteer.salesforce_account_id = row["AccountId"]
                         updates.append("acc")
 
-                    new_first_name = (row.get("FirstName") or "").strip()
+                    new_first_name = smart_title_case(
+                        (row.get("FirstName") or "").strip()
+                    )
+                    if is_all_caps_name((row.get("FirstName") or "").strip()):
+                        from models.data_quality_flag import flag_data_quality_issue
+
+                        flag_data_quality_issue(
+                            entity_type="contact",
+                            entity_id=volunteer.id if volunteer.id else 0,
+                            issue_type="all_caps_name",
+                            details=f"Name: {row.get('FirstName','')} {row.get('LastName','')}",
+                            salesforce_id=row["Id"],
+                        )
                     if volunteer.first_name != new_first_name:
                         volunteer.first_name = new_first_name
                         updates.append("fn")
 
-                    new_last_name = (row.get("LastName") or "").strip()
+                    new_last_name = smart_title_case(
+                        (row.get("LastName") or "").strip()
+                    )
                     if volunteer.last_name != new_last_name:
                         volunteer.last_name = new_last_name
                         updates.append("ln")
 
-                    new_middle_name = (row.get("MiddleName") or "").strip()
+                    new_middle_name = smart_title_case(
+                        (row.get("MiddleName") or "").strip()
+                    )
                     if volunteer.middle_name != new_middle_name:
                         volunteer.middle_name = new_middle_name
                         updates.append("mn")
@@ -551,41 +568,53 @@ def import_from_salesforce():
                     # Handle addresses
                     mailing_address = row.get("MailingAddress", {})
                     if isinstance(mailing_address, dict):
-                        # Find or create mailing address
-                        mailing = next(
-                            (
-                                addr
-                                for addr in volunteer.addresses
-                                if addr.type == ContactTypeEnum.personal
-                                and addr.primary
-                            ),
-                            None,
+                        # Only process if at least one address field has data
+                        has_address_data = any(
+                            mailing_address.get(f)
+                            for f in ["street", "city", "state", "postalCode"]
                         )
-                        if not mailing:
-                            mailing = Address(
-                                contact_id=volunteer.id,
-                                type=ContactTypeEnum.personal,
-                                primary=True,
+                        if has_address_data:
+                            # Find or create mailing address
+                            mailing = next(
+                                (
+                                    addr
+                                    for addr in volunteer.addresses
+                                    if addr.type == ContactTypeEnum.personal
+                                    and addr.primary
+                                ),
+                                None,
                             )
-                            volunteer.addresses.append(mailing)
-                            updates.append("ma")
+                            if not mailing:
+                                mailing = Address(
+                                    contact_id=volunteer.id,
+                                    type=ContactTypeEnum.personal,
+                                    primary=True,
+                                )
+                                volunteer.addresses.append(mailing)
+                                updates.append("ma")
 
-                        # Update mailing address fields
-                        if mailing.address_line1 != mailing_address.get("street", ""):
-                            mailing.address_line1 = mailing_address.get("street", "")
-                            updates.append("ms")
-                        if mailing.city != mailing_address.get("city", ""):
-                            mailing.city = mailing_address.get("city", "")
-                            updates.append("mc")
-                        if mailing.state != mailing_address.get("state", ""):
-                            mailing.state = mailing_address.get("state", "")
-                            updates.append("mst")
-                        if mailing.zip_code != mailing_address.get("postalCode", ""):
-                            mailing.zip_code = mailing_address.get("postalCode", "")
-                            updates.append("mz")
-                        if mailing.country != mailing_address.get("country", ""):
-                            mailing.country = mailing_address.get("country", "")
-                            updates.append("mco")
+                            # Update mailing address fields
+                            if mailing.address_line1 != mailing_address.get(
+                                "street", ""
+                            ):
+                                mailing.address_line1 = mailing_address.get(
+                                    "street", ""
+                                )
+                                updates.append("ms")
+                            if mailing.city != mailing_address.get("city", ""):
+                                mailing.city = mailing_address.get("city", "")
+                                updates.append("mc")
+                            if mailing.state != mailing_address.get("state", ""):
+                                mailing.state = mailing_address.get("state", "")
+                                updates.append("mst")
+                            if mailing.zip_code != mailing_address.get(
+                                "postalCode", ""
+                            ):
+                                mailing.zip_code = mailing_address.get("postalCode", "")
+                                updates.append("mz")
+                            if mailing.country != mailing_address.get("country", ""):
+                                mailing.country = mailing_address.get("country", "")
+                                updates.append("mco")
 
                     # Handle work address if present
                     work_address = row.get("npe01__Work_Address__c", "")
@@ -649,70 +678,8 @@ def import_from_salesforce():
                         ):
                             addr.primary = False
 
-                    # Handle Connector data
-                    connector_data = {
-                        "active_subscription": (
-                            row.get("Connector_Active_Subscription__c") or ""
-                        )
-                        .strip()
-                        .upper()
-                        or "NONE",
-                        "active_subscription_name": (
-                            row.get("Connector_Active_Subscription_Name__c") or ""
-                        ).strip(),
-                        "affiliations": (
-                            row.get("Connector_Affiliations__c") or ""
-                        ).strip(),
-                        "industry": (row.get("Connector_Industry__c") or "").strip(),
-                        "joining_date": (
-                            row.get("Connector_Joining_Date__c") or ""
-                        ).strip(),
-                        "last_login_datetime": (
-                            row.get("Connector_Last_Login_Date_Time__c") or ""
-                        ).strip(),
-                        "last_update_date": parse_date(
-                            row.get("Connector_Last_Update_Date__c")
-                        ),
-                        "profile_link": (
-                            row.get("Connector_Profile_Link__c") or ""
-                        ).strip(),
-                        "role": (row.get("Connector_Role__c") or "").strip(),
-                        "signup_role": (
-                            row.get("Connector_SignUp_Role__c") or ""
-                        ).strip(),
-                        "user_auth_id": (row.get("Connector_User_ID__c") or "").strip(),
-                    }
-
-                    # Create or update connector data
-                    if not volunteer.connector:
-                        volunteer.connector = ConnectorData(volunteer_id=volunteer.id)
-                        updates.append("con")
-
-                    # Update connector fields if they exist in Salesforce data
-                    if connector_data["active_subscription"] in [
-                        e.name for e in ConnectorSubscriptionEnum
-                    ]:
-                        if (
-                            volunteer.connector.active_subscription
-                            != ConnectorSubscriptionEnum[
-                                connector_data["active_subscription"]
-                            ]
-                        ):
-                            volunteer.connector.active_subscription = (
-                                ConnectorSubscriptionEnum[
-                                    connector_data["active_subscription"]
-                                ]
-                            )
-                            updates.append("cs")
-
-                    for field, value in connector_data.items():
-                        if (
-                            field != "active_subscription" and value
-                        ):  # Skip active_subscription as it's handled above
-                            current_value = getattr(volunteer.connector, field)
-                            if current_value != value:
-                                setattr(volunteer.connector, field, value)
-                                updates.append(f"c{field[:2]}")
+                    # ConnectorData import removed (TD-034 Phase 3)
+                    # Connector fields are now sourced from PathfulUserProfile
 
                     success_count += 1
                     created_count = created_count + 1 if is_new else created_count

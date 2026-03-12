@@ -12,13 +12,7 @@ from models.contact import LocalStatusEnum
 from models.event import Event, EventType
 from models.organization import Organization, VolunteerOrganization
 from models.reports import RecruitmentCandidatesCache
-from models.volunteer import (
-    ConnectorData,
-    EventParticipation,
-    Skill,
-    Volunteer,
-    VolunteerSkill,
-)
+from models.volunteer import EventParticipation, Skill, Volunteer, VolunteerSkill
 
 # Create blueprint
 recruitment_bp = Blueprint("recruitment", __name__)
@@ -274,8 +268,12 @@ def load_routes(bp):
 
         # Apply connector filter if requested
         if connector_only:
+            from models.pathful_import import PathfulUserProfile
+
             query = query.filter(
-                Volunteer.connector.has(ConnectorData.user_auth_id.isnot(None))
+                Volunteer.pathful_profile.has(
+                    PathfulUserProfile.pathful_user_id.isnot(None)
+                )
             )
 
         # Apply sorting

@@ -197,3 +197,127 @@ def register_data_integrity_routes(bp):
         db.session.commit()
 
         return jsonify({"success": True, "summary": summary})
+
+    # ── TD-034 Data Quality Dashboard ──────────────────────────────
+
+    @bp.route("/admin/data-quality")
+    @login_required
+    @admin_required
+    def data_quality_dashboard():
+        """
+        Admin dashboard to review DataQualityFlags from SF imports.
+
+        Query Parameters:
+            issue_type: Filter by issue type (all_caps_name, null_org_type, etc.)
+            status: open | dismissed | fixed_in_sf | auto_fixed | all (default: open)
+            entity_type: contact | organization | volunteer | all
+            page: Pagination page number (default: 1)
+        """
+        from sqlalchemy import func
+
+        from models.data_quality_flag import DataQualityFlag, DataQualityIssueType
+
+        # Filters
+        status = request.args.get("status", "open")
+        issue_type = request.args.get("issue_type", "")
+        entity_type = request.args.get("entity_type", "")
+        page = request.args.get("page", 1, type=int)
+        per_page = 50
+
+        q = DataQualityFlag.query
+
+        if status and status != "all":
+            q = q.filter_by(status=status)
+
+        if issue_type and issue_type in DataQualityIssueType.all_types():
+            q = q.filter_by(issue_type=issue_type)
+
+        if entity_type and entity_type != "all":
+            q = q.filter_by(entity_type=entity_type)
+
+        # Paginate
+        pagination = q.order_by(DataQualityFlag.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+
+        # Stats (always count open)
+        total_open = DataQualityFlag.query.filter_by(status="open").count()
+        total_all = DataQualityFlag.query.count()
+
+        count_by_type = {}
+        for it in DataQualityIssueType.all_types():
+            count_by_type[it] = DataQualityFlag.query.filter_by(
+                status="open", issue_type=it
+            ).count()
+
+        # Entity type breakdown
+        entity_types = [
+            r[0]
+            for r in db.session.query(DataQualityFlag.entity_type)
+            .distinct()
+            .order_by(DataQualityFlag.entity_type)
+            .all()
+        ]
+
+        return render_template(
+            "management/data_quality_dashboard.html",
+            flags=pagination.items,
+            pagination=pagination,
+            total_open=total_open,
+            total_all=total_all,
+            count_by_type=count_by_type,
+            issue_types=DataQualityIssueType.all_types(),
+            issue_type_display=DataQualityIssueType.display_name,
+            entity_types=entity_types,
+        )
+
+    @bp.route("/admin/data-quality/<int:flag_id>/dismiss", methods=["POST"])
+    @login_required
+    @admin_required
+    @handle_route_errors
+    def dismiss_data_quality_flag(flag_id):
+        """Dismiss a single DataQualityFlag."""
+        from models.data_quality_flag import DataQualityFlag
+
+        flag = DataQualityFlag.query.get_or_404(flag_id)
+        data = request.get_json(silent=True) or {}
+        status = data.get("status", "dismissed")
+        notes = data.get("notes", "")
+
+        flag.resolve(status=status, notes=notes, resolved_by=current_user.id)
+        db.session.commit()
+
+        return jsonify({"success": True, "id": flag_id, "status": status})
+
+    @bp.route("/admin/data-quality/bulk-dismiss", methods=["POST"])
+    @login_required
+    @admin_required
+    @handle_route_errors
+    def bulk_dismiss_data_quality_flags():
+        """Bulk-dismiss DataQualityFlags by issue type."""
+        from models.data_quality_flag import DataQualityFlag
+
+        data = request.get_json(silent=True) or {}
+        issue_type = data.get("issue_type")
+        status = data.get("status", "dismissed")
+        notes = data.get("notes", "")
+
+        if not issue_type:
+            return jsonify({"error": "issue_type required"}), 400
+
+        flags = DataQualityFlag.query.filter_by(
+            status="open", issue_type=issue_type
+        ).all()
+
+        from datetime import datetime, timezone
+
+        now = datetime.now(timezone.utc)
+        for f in flags:
+            f.status = status
+            f.resolved_at = now
+            f.resolved_by = current_user.id
+            f.resolution_notes = notes
+
+        db.session.commit()
+
+        return jsonify({"success": True, "count": len(flags), "issue_type": issue_type})

@@ -430,7 +430,11 @@ class PathfulUserProfile(db.Model):
     teacher_progress = relationship(
         "TeacherProgress", foreign_keys=[teacher_progress_id]
     )
-    volunteer = relationship("Volunteer", foreign_keys=[volunteer_id])
+    volunteer = relationship(
+        "Volunteer",
+        foreign_keys=[volunteer_id],
+        backref=db.backref("pathful_profile", uselist=False),
+    )
 
     # Timestamps
     created_at = Column(

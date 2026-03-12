@@ -36,12 +36,13 @@ All 4 sprint milestones are complete. Key outcomes:
   - Re-import students from Salesforce to back-fill real email/phone data
   - **Root cause fixed:** `Student.update_contact_info` now uses `isinstance()` guard
 
-- [ ] **Salesforce data quality investigation** *(TD-034)*
-  - Audit skeleton addresses (4,587 records with all fields empty)
-  - Investigate truncated skills (`"Healthcare..."`, `"P..."`) — is this Salesforce field length?
-  - Decide on ALL CAPS name normalization (18,225 contacts)
-  - Check if Connector subscription data is active in Salesforce (currently all NONE)
-  - Review 983 organizations with NULL type
+- [x] ~~Salesforce data quality investigation~~ *(TD-034)* — **Resolved Mar 2026**
+  - Skeleton addresses: 4,630 deleted, import guard added
+  - ALL CAPS names: `smart_title_case()` in import; 18,814 normalized on next sync
+  - Truncated skills: `Skill.name` widened 50→200 chars
+  - Connector data: `ConnectorData` model removed, `PathfulUserProfile` used instead
+  - Missing org type: defaulted to "Other" + flagged via Data Quality system
+  - Data Quality Dashboard: live at `/admin/data-quality`
 
 - [ ] **Background task execution for large imports**
   - Move long-running imports to background worker (threading or Celery)
@@ -52,6 +53,13 @@ All 4 sprint milestones are complete. Key outcomes:
   - Store last processed ID in SyncLog
   - Add `?resume=true` parameter to continue from checkpoint
   - Faster recovery than idempotency-based restart
+
+- [ ] **Data Quality Platform** *(Epic)*
+  - Extend the Data Quality Dashboard beyond Salesforce to cover all data sources (Pathful, Google Sheets, manual entry)
+  - Auto-detect new issue types: duplicate contacts, orphaned records, stale data
+  - Resolution workflows: bulk fix, merge duplicates, link to source for correction
+  - Trend tracking: data quality score over time, improvement metrics
+  - Integration with import pipelines: flag issues in real-time during import
 
 - [ ] **Conflict detection dashboard**
   - Visual display of data conflicts (Polaris vs. Salesforce)

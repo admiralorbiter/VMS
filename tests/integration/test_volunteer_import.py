@@ -727,8 +727,10 @@ class TestVolunteerImportSkills:
         assert data["processed_count"] == 1
 
 
-class TestVolunteerImportConnectorData:
-    """Tests for Connector subscription enum mapping (P1 gap)."""
+class TestVolunteerImportConnectorDataRemoved:
+    """Tests that connector fields in Salesforce data are safely ignored
+    after TD-034 Phase 3 removed the ConnectorData import block.
+    Connector data is now sourced from PathfulUserProfile instead."""
 
     def _run_import(self, client, auth_headers, sf_row):
         with (
@@ -754,8 +756,8 @@ class TestVolunteerImportConnectorData:
                 headers=auth_headers,
             )
 
-    def test_active_subscription_mapped(self, client, auth_headers, app):
-        """Known subscription value 'active' maps to ConnectorSubscriptionEnum.ACTIVE."""
+    def test_connector_fields_ignored_on_import(self, client, auth_headers, app):
+        """Connector Salesforce fields are safely ignored — volunteer still created."""
         sf_row = _make_sf_row(
             {
                 "Connector_Active_Subscription__c": "active",
@@ -766,19 +768,18 @@ class TestVolunteerImportConnectorData:
         response = self._run_import(client, auth_headers, sf_row)
         assert response.status_code == 200
 
-        from models.volunteer import ConnectorData, Volunteer
-        from models.volunteer_enums import ConnectorSubscriptionEnum
+        from models.volunteer import Volunteer
 
         with app.app_context():
             vol = Volunteer.query.filter_by(
                 salesforce_individual_id="003SFID000000001"
             ).first()
-            assert vol.connector is not None
-            assert vol.connector.active_subscription == ConnectorSubscriptionEnum.ACTIVE
-            assert vol.connector.industry == "Education"
+            assert vol is not None  # Volunteer still created
+            # ConnectorData relationship removed — attribute no longer exists
+            assert not hasattr(vol, "connector")
 
-    def test_unknown_subscription_defaults_to_none(self, client, auth_headers, app):
-        """Unknown subscription value 'PREMIUM' is silently ignored (stays NONE)."""
+    def test_unknown_connector_subscription_no_crash(self, client, auth_headers, app):
+        """Unknown connector subscription value doesn't crash — fields are ignored."""
         sf_row = _make_sf_row(
             {
                 "Connector_Active_Subscription__c": "premium",
@@ -789,15 +790,13 @@ class TestVolunteerImportConnectorData:
         assert response.status_code == 200
 
         from models.volunteer import Volunteer
-        from models.volunteer_enums import ConnectorSubscriptionEnum
 
         with app.app_context():
             vol = Volunteer.query.filter_by(
                 salesforce_individual_id="003SFID000000001"
             ).first()
-            assert vol.connector is not None
-            # Unknown value ignored — stays at default NONE
-            assert vol.connector.active_subscription == ConnectorSubscriptionEnum.NONE
+            assert vol is not None
+            assert not hasattr(vol, "connector")
 
 
 class TestVolunteerImportPrivacyFlags:
@@ -943,9 +942,9 @@ class TestVolunteerImportRealDataPatterns:
             # Truncated skills should still be stored (not silently dropped)
             assert len(vol.skills) >= 1
 
-    def test_allcaps_name_stored_as_received(self, client, auth_headers, app):
-        """ALL CAPS names (18,225 in prod) are stored as-is from Salesforce.
-        Import doesn't normalize casing."""
+    def test_allcaps_name_normalized_on_import(self, client, auth_headers, app):
+        """ALL CAPS names (18,225 in prod) are normalized to smart title case
+        during import (TD-034 Phase 2)."""
         sf_row = _make_sf_row(
             {
                 "FirstName": "RACHEL",
@@ -961,9 +960,9 @@ class TestVolunteerImportRealDataPatterns:
             vol = Volunteer.query.filter_by(
                 salesforce_individual_id="003SFID000000001"
             ).first()
-            # Names stored as received — casing not normalized
-            assert vol.first_name == "RACHEL"
-            assert vol.last_name == "MAYO"
+            # Names normalized by smart_title_case (TD-034 Phase 2)
+            assert vol.first_name == "Rachel"
+            assert vol.last_name == "Mayo"
 
     def test_volunteer_email_none_not_stored(self, client, auth_headers, app):
         """Volunteer import correctly skips None emails (uses 'if not email_value: continue').

@@ -60,8 +60,6 @@ from models.history import History
 from models.organization import Organization, VolunteerOrganization
 from models.recruitment_note import RecruitmentNote
 from models.volunteer import (
-    ConnectorData,
-    ConnectorSubscriptionEnum,
     Engagement,
     EventParticipation,
     Skill,
@@ -186,51 +184,8 @@ def process_volunteer_row(row, success_count, error_count, errors):
             except (ValueError, TypeError):
                 volunteer.times_volunteered = 0
 
-        # Handle Connector data
-        connector_data = {
-            "active_subscription": (row.get("Connector_Active_Subscription__c") or "")
-            .strip()
-            .upper()
-            or "NONE",
-            "active_subscription_name": (
-                row.get("Connector_Active_Subscription_Name__c") or ""
-            ).strip(),
-            "affiliations": (row.get("Connector_Affiliations__c") or "").strip(),
-            "industry": (row.get("Connector_Industry__c") or "").strip(),
-            "joining_date": (row.get("Connector_Joining_Date__c") or "").strip(),
-            "last_login_datetime": (
-                row.get("Connector_Last_Login_Date_Time__c") or ""
-            ).strip(),
-            "last_update_date": parse_date(row.get("Connector_Last_Update_Date__c")),
-            "profile_link": (row.get("Connector_Profile_Link__c") or "").strip(),
-            "role": (row.get("Connector_Role__c") or "").strip(),
-            "signup_role": (row.get("Connector_SignUp_Role__c") or "").strip(),
-            "user_auth_id": (row.get("Connector_User_ID__c") or "").strip(),
-        }
-
-        # Create or update connector data
-        if not volunteer.connector:
-            volunteer.connector = ConnectorData(volunteer_id=volunteer.id)
-
-        # Update connector fields if they exist in Salesforce data
-        if connector_data["active_subscription"] in [
-            e.name for e in ConnectorSubscriptionEnum
-        ]:
-            if (
-                volunteer.connector.active_subscription
-                != ConnectorSubscriptionEnum[connector_data["active_subscription"]]
-            ):
-                volunteer.connector.active_subscription = ConnectorSubscriptionEnum[
-                    connector_data["active_subscription"]
-                ]
-
-        for field, value in connector_data.items():
-            if (
-                field != "active_subscription" and value
-            ):  # Skip active_subscription as it's handled above
-                current_value = getattr(volunteer.connector, field)
-                if current_value != value:
-                    setattr(volunteer.connector, field, value)
+        # ConnectorData import removed (TD-034 Phase 3)
+        # Connector fields are now sourced from PathfulUserProfile
 
         return success_count + 1, error_count
 
@@ -402,8 +357,12 @@ def volunteers():
             query = query.filter(db.false())
 
     if current_filters.get("connector_only"):
+        from models.pathful_import import PathfulUserProfile
+
         query = query.filter(
-            Volunteer.connector.has(ConnectorData.user_auth_id.isnot(None))
+            Volunteer.pathful_profile.has(
+                PathfulUserProfile.pathful_user_id.isnot(None)
+            )
         )
 
     # Apply sorting based on parameters

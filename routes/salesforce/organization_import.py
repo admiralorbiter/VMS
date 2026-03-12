@@ -160,7 +160,19 @@ def import_organizations_from_salesforce():
                     # Update organization fields with Salesforce data
                     org.salesforce_id = row["Id"]
                     org.name = row.get("Name", "")
-                    org.type = row.get("Type")
+                    sf_type = row.get("Type")
+                    org.type = sf_type if sf_type else "Other"
+                    if not sf_type and org.id:
+                        # Flag for review — org has no type in Salesforce
+                        from models.data_quality_flag import flag_data_quality_issue
+
+                        flag_data_quality_issue(
+                            entity_type="organization",
+                            entity_id=org.id,
+                            issue_type="null_org_type",
+                            details=f"Org '{org.name}' has no type in Salesforce",
+                            salesforce_id=row["Id"],
+                        )
                     org.description = row.get("Description")
                     org.billing_street = row.get("BillingStreet")
                     org.billing_city = row.get("BillingCity")
