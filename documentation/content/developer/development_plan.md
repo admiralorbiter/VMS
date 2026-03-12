@@ -15,6 +15,7 @@
 | District Suite Phase 4 verification | 🔧 In Progress | Code complete, needs end-to-end testing. See [phases.md](../district_suite/phases.md) |
 | Documentation consolidation | 🔧 In Progress | Merging roadmaps, archiving completed sprints |
 | TD-034 Data Quality Dashboard | ✅ Complete | Dashboard live at `/admin/data-quality` with stats, filters, pagination, dismiss |
+| Advanced Search CSV Export | 🔧 In Progress | FR-RECRUIT-307 — export search results with email, activity dates |
 
 ---
 

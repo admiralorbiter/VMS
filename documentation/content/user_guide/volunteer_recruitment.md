@@ -55,6 +55,24 @@ The Recruitment Search tool allows for powerful, multi-criteria searches to find
 -   **Multiple Terms**: Use spaces to separate different search concepts.
 -   **Intelligent Matching**: Results are ranked by relevance score (keyword matches, availability, and history).
 
+### Exporting Search Results
+
+After performing a search, click the **Export CSV** button in the search controls to download all matching volunteers as a CSV file. The export includes **all** matching volunteers (not just the current page) and contains the following columns:
+
+| Column | Description |
+|--------|-------------|
+| Name | Full name of the volunteer |
+| Email | Primary email address — use this to reach out directly |
+| Title | Job title or role |
+| Organization | Company, school, or institution affiliations |
+| Skills | Semicolon-separated list of skills |
+| Last Non-Internal Email Date | Date of last external (non-internal) email communication |
+| Last Volunteer Date | Date of most recent volunteer activity |
+| Times Volunteered | Total number of recorded volunteer sessions |
+
+> [!TIP]
+> Use Narrow Search mode to refine your results before exporting. This ensures the exported list only includes volunteers matching **all** of your search terms.
+
 ## 3. Managing Profiles
 
 Click any volunteer name to view their **Profile**:

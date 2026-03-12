@@ -266,3 +266,60 @@ def test_search_performance_tc308(client, auth_headers, recruitment_data):
     # Assert response time is reasonable (e.g., < 1000ms for this small dataset integration test)
     # real performance testing would be load testing, but this verifies no obvious regression/timeout
     assert duration < 1.0, f"Search took too long: {duration:.3f}s"
+
+
+# --- CSV Export Tests (FR-RECRUIT-307, TC-350–TC-353) ---
+
+
+def test_search_csv_export(client, auth_headers, recruitment_data):
+    """TC-350: CSV export returns valid CSV with matching volunteers."""
+    response = client.get(
+        "/reports/recruitment/search.csv?search=TechCorp", headers=auth_headers
+    )
+    assert response.status_code == 200
+    assert "text/csv" in response.content_type
+
+    content = response.data.decode()
+    lines = content.strip().split("\n")
+    assert len(lines) >= 2  # Header + at least 1 data row
+    assert "Name" in lines[0]
+    assert "Victor" in content
+    assert "Victoria" in content
+
+
+def test_search_csv_export_includes_email(client, auth_headers, recruitment_data):
+    """TC-351: CSV export includes Email column with actual addresses."""
+    response = client.get(
+        "/reports/recruitment/search.csv?search=Victor&search_mode=narrow",
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+
+    content = response.data.decode()
+    # Header should contain Email column
+    header = content.split("\n")[0]
+    assert "Email" in header
+    # Data should contain actual email
+    assert "v1@example.com" in content
+
+
+def test_search_csv_empty_returns_headers_only(client, auth_headers, recruitment_data):
+    """TC-352: CSV export with no matches returns only the header row."""
+    response = client.get(
+        "/reports/recruitment/search.csv?search=NonExistentTermXYZ",
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    assert "text/csv" in response.content_type
+
+    content = response.data.decode()
+    lines = [line for line in content.strip().split("\n") if line.strip()]
+    assert len(lines) == 1  # Header only
+    assert "Name" in lines[0]
+
+
+def test_search_csv_no_query_returns_empty(client, auth_headers, recruitment_data):
+    """TC-353: CSV export with no search query returns only headers."""
+    response = client.get("/reports/recruitment/search.csv", headers=auth_headers)
+    assert response.status_code == 200
+    assert "text/csv" in response.content_type

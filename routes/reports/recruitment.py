@@ -338,6 +338,169 @@ def load_routes(bp):
             connector_only=connector_only,  # Pass the connector filter state
         )
 
+    @bp.route("/reports/recruitment/search.csv")
+    @login_required
+    def recruitment_search_csv():
+        """CSV export of advanced search results (FR-RECRUIT-307).
+
+        Accepts the same query params as recruitment_search() but returns
+        all matching volunteers as a downloadable CSV file with additional
+        columns (email, activity dates) for outreach purposes.
+        """
+        search_query = request.args.get("search", "").strip()
+        sort_by = request.args.get("sort", "name")
+        order = request.args.get("order", "asc")
+        search_mode = request.args.get("search_mode", "wide")
+        connector_only = request.args.get("connector_only", type=bool)
+
+        # Build the same query as the HTML search route
+        query = (
+            eagerload_volunteer_bundle(Volunteer.query)
+            .outerjoin(VolunteerOrganization)
+            .outerjoin(Organization)
+            .outerjoin(VolunteerSkill)
+            .outerjoin(Skill)
+            .outerjoin(EventParticipation)
+            .outerjoin(Event)
+        )
+
+        if search_query:
+            search_terms = [
+                term.strip() for term in search_query.split() if term.strip()
+            ]
+
+            if search_mode == "wide":
+                search_conditions = []
+                for term in search_terms:
+                    search_conditions.append(
+                        db.or_(
+                            Volunteer.first_name.ilike(f"%{term}%"),
+                            Volunteer.last_name.ilike(f"%{term}%"),
+                            Organization.name.ilike(f"%{term}%"),
+                            Skill.name.ilike(f"%{term}%"),
+                            Event.title.ilike(f"%{term}%"),
+                            Volunteer.title.ilike(f"%{term}%"),
+                            Volunteer.industry.ilike(f"%{term}%"),
+                            db.cast(Volunteer.local_status, db.String).ilike(
+                                f"%{term}%"
+                            ),
+                            db.cast(Event.type, db.String).ilike(f"%{term}%"),
+                        )
+                    )
+                query = query.filter(db.or_(*search_conditions))
+            else:
+                for term in search_terms:
+                    query = query.filter(
+                        db.or_(
+                            Volunteer.first_name.ilike(f"%{term}%"),
+                            Volunteer.last_name.ilike(f"%{term}%"),
+                            Organization.name.ilike(f"%{term}%"),
+                            Skill.name.ilike(f"%{term}%"),
+                            Event.title.ilike(f"%{term}%"),
+                            Volunteer.title.ilike(f"%{term}%"),
+                            Volunteer.industry.ilike(f"%{term}%"),
+                            db.cast(Volunteer.local_status, db.String).ilike(
+                                f"%{term}%"
+                            ),
+                            db.cast(Event.type, db.String).ilike(f"%{term}%"),
+                        )
+                    )
+
+        if connector_only:
+            from models.pathful_import import PathfulUserProfile
+
+            query = query.filter(
+                Volunteer.pathful_profile.has(
+                    PathfulUserProfile.pathful_user_id.isnot(None)
+                )
+            )
+
+        # Apply sorting (same as HTML route)
+        if sort_by == "name":
+            if order == "asc":
+                query = query.order_by(Volunteer.first_name, Volunteer.last_name)
+            else:
+                query = query.order_by(
+                    db.desc(Volunteer.first_name), db.desc(Volunteer.last_name)
+                )
+        elif sort_by == "organization":
+            if order == "asc":
+                query = query.order_by(Organization.name)
+            else:
+                query = query.order_by(db.desc(Organization.name))
+        elif sort_by == "last_email":
+            if order == "asc":
+                query = query.order_by(Volunteer.last_non_internal_email_date)
+            else:
+                query = query.order_by(db.desc(Volunteer.last_non_internal_email_date))
+        elif sort_by == "last_volunteer":
+            if order == "asc":
+                query = query.order_by(Volunteer.last_volunteer_date)
+            else:
+                query = query.order_by(db.desc(Volunteer.last_volunteer_date))
+
+        # Fetch all results (no pagination for CSV export)
+        volunteers = query.distinct().all()
+
+        # Build CSV output
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(
+            [
+                "Name",
+                "Email",
+                "Title",
+                "Organization",
+                "Skills",
+                "Last Non-Internal Email Date",
+                "Last Volunteer Date",
+                "Times Volunteered",
+            ]
+        )
+
+        for v in volunteers:
+            writer.writerow(
+                [
+                    v.full_name,
+                    v.primary_email or "",
+                    v.title or "",
+                    (
+                        ", ".join(org.name for org in v.organizations)
+                        if v.organizations
+                        else ""
+                    ),
+                    "; ".join(skill.name for skill in v.skills) if v.skills else "",
+                    (
+                        v.last_non_internal_email_date.strftime("%Y-%m-%d")
+                        if v.last_non_internal_email_date
+                        else ""
+                    ),
+                    (
+                        v.last_volunteer_date.strftime("%Y-%m-%d")
+                        if v.last_volunteer_date
+                        else ""
+                    ),
+                    v.total_times_volunteered,
+                ]
+            )
+
+        csv_data = output.getvalue()
+
+        # Build descriptive filename
+        if search_query:
+            clean_query = "".join(c for c in search_query if c.isalnum() or c in " -_")[
+                :30
+            ].strip()
+            filename = f"volunteer_search_{clean_query}.csv"
+        else:
+            filename = "volunteer_search_export.csv"
+
+        headers = {
+            "Content-Type": "text/csv; charset=utf-8",
+            "Content-Disposition": f"attachment; filename={filename}",
+        }
+        return Response(csv_data, headers=headers)
+
     @bp.route("/reports/recruitment/candidates")
     @login_required
     def recruitment_candidates():

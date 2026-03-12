@@ -11,6 +11,7 @@
 | <a id="fr-recruit-301"></a>**FR-RECRUIT-301** | Polaris shall provide a searchable list of volunteers. | TC-300 | [US-401](user-stories#us-401) |
 | <a id="fr-recruit-302"></a>**FR-RECRUIT-302** | Polaris shall support filtering/search by volunteer name, organization, role, skills, and career type. | TC-301–TC-308 | [US-401](user-stories#us-401) |
 | <a id="fr-recruit-303"></a>**FR-RECRUIT-303** | Polaris shall support identifying volunteers who have participated in virtual activities (including virtual-only). | TC-320–TC-322 | [US-401](user-stories#us-401) |
+| <a id="fr-recruit-307"></a>**FR-RECRUIT-307** | Polaris shall support exporting Advanced Search results to CSV, including volunteer email address, last non-internal email date, last volunteer date, and total times volunteered. | TC-350–TC-353 | [US-401](user-stories#us-401) |
 
 ---
 
