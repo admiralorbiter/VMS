@@ -36,6 +36,36 @@ from services.teacher_matching_service import normalize_name
 logger = logging.getLogger(__name__)
 
 
+def _last_name_matches(name_a: str, name_b: str) -> bool:
+    """Check if two normalized last names match, allowing multi-part suffixes.
+
+    Uses word-boundary matching to prevent false positives:
+    - 'velarde' matches 'velarde duarte'  (space after 'velarde')
+    - 'sanchez' matches 'sanchez puga'    (space after 'sanchez')
+    - 'clay' does NOT match 'clayton'     (no word boundary after 'clay')
+    - 'kling' does NOT match 'klinginsmith'
+
+    Args:
+        name_a: First normalized last name
+        name_b: Second normalized last name
+
+    Returns:
+        True if the names match (exact or word-boundary prefix)
+    """
+    if not name_a or not name_b:
+        return False
+    if name_a == name_b:
+        return True
+    shorter, longer = (
+        (name_a, name_b) if len(name_a) <= len(name_b) else (name_b, name_a)
+    )
+    if not longer.startswith(shorter):
+        return False
+    # Word-boundary check: next char must be space or hyphen
+    next_char = longer[len(shorter)]
+    return next_char in (" ", "-")
+
+
 @dataclass
 class MatchInfo:
     """Details about how a teacher was matched or created."""
@@ -207,6 +237,34 @@ def find_or_create_teacher(
                     MatchInfo(
                         method="name",
                         confidence=0.75,
+                        matched_value=f"{normalized_first} {normalized_last}",
+                    ),
+                )
+
+            # Priority 3b: Multi-part surname match (word-boundary)
+            # Handles "Velarde Duarte" matching "Velarde",
+            # but blocks "Clayton" matching "Clay".
+            if (
+                candidate_first
+                and candidate_last
+                and normalized_first
+                and normalized_last
+                and candidate_first == normalized_first
+                and _last_name_matches(candidate_last, normalized_last)
+            ):
+                _update_teacher_if_needed(candidate, email, school_id, import_source)
+                logger.debug(
+                    "Teacher matched by multi-part surname: " "'%s %s' → %s",
+                    first_name,
+                    last_name,
+                    candidate.full_name,
+                )
+                return (
+                    candidate,
+                    False,
+                    MatchInfo(
+                        method="name_variant",
+                        confidence=0.70,
                         matched_value=f"{normalized_first} {normalized_last}",
                     ),
                 )

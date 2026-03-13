@@ -130,6 +130,36 @@ Production database analysis revealed several data patterns in Salesforce. Most 
 
 ---
 
+## TD-035: Multi-Part Name Creates Duplicate Teacher Records ✅ RESOLVED
+
+**Created:** 2026-03-13 · **Resolved:** 2026-03-13 · **Category:** Data Integrity
+
+`parse_name()` and two `_split_name()` functions treated the **last word** as the surname, splitting "Catalina Velarde Duarte" into first="Catalina Velarde", last="Duarte". This created duplicate Teacher records with stale "registered" statuses.
+
+**Fix:** All 5 name-splitting locations now use first-word-as-given-name convention. `find_or_create_teacher()` has word-boundary matching (Priority 3b). 15 unit tests added. Data cleanup: 31 multi-part surname pairs + 4 misparsed first-name pairs merged. Merge logs in `scripts/maintenance/`.
+
+---
+
+## TD-036: Exact-Name Duplicate Teacher Records (~2,100 pairs)
+
+**Created:** 2026-03-13 · **Priority:** Low · **Category:** Data Integrity
+
+~2,106 Teacher pairs have identical normalized names but different IDs (e.g., "AARON GADDIS" vs "Aaron Gaddis"). Most have 0 EventTeachers on one side, suggesting they are orphaned stubs.
+
+**Root cause:** Multiple import sources create Teacher records independently without case-insensitive dedup:
+
+1. **Google Sheets roster import** — creates Teachers from the teacher roster with original casing
+2. **Pathful session import** — creates Teachers from Pathful data, often in ALL-CAPS
+3. **Reconciliation scripts** — `resolve_teacher_for_tp()` can create new Teachers during backfill
+
+Each source calls `find_or_create_teacher()` which does case-insensitive matching — but historically, earlier code paths (manual creation, direct DB inserts, Salesforce sync) did not normalize before insertion.
+
+**Impact:** Low — most duplicates are orphaned (0 EventTeachers). The ones with EventTeachers (1,132 pairs) could cause minor count inflation in aggregate reports.
+
+**Recommended fix:** Run `merge_duplicate_teachers.py` with exact-name matching re-enabled, using the same school-validation safety check. Add case-insensitive unique constraint or pre-insert dedup check.
+
+---
+
 ## Priority Order
 
 Ordered by **what best unblocks future work**:
@@ -142,9 +172,11 @@ Ordered by **what best unblocks future work**:
 | 4 | **TD-016** | Generic `ReportCache` model |
 | 5 | **TD-022** | Add tests for extracted blueprints |
 | 6 | **TD-034** | Salesforce data quality audit |
-| 7 | **TD-011** | SQLite → MySQL *(do last when codebase is clean)* |
+| 7 | **TD-036** | Exact-name duplicate Teacher cleanup (~2,100 pairs) |
+| 8 | **TD-011** | SQLite → MySQL *(do last when codebase is clean)* |
 
 > TD-004 is intentionally deferred — the M2M relationship is the correct path forward.
+
 
 ---
 

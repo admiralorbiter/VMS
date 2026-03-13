@@ -342,3 +342,177 @@ class TestMatchInfo:
         assert info.method == "created"
         assert info.confidence == 1.0
         assert info.matched_value is None
+
+
+class TestLastNameMatches:
+    """Test the _last_name_matches word-boundary helper."""
+
+    def test_exact_match(self):
+        from services.teacher_service import _last_name_matches
+
+        assert _last_name_matches("velarde", "velarde") is True
+
+    def test_multipart_surname_space(self):
+        from services.teacher_service import _last_name_matches
+
+        assert _last_name_matches("velarde", "velarde duarte") is True
+        assert _last_name_matches("velarde duarte", "velarde") is True
+
+    def test_multipart_surname_hyphen(self):
+        from services.teacher_service import _last_name_matches
+
+        assert _last_name_matches("sanchez", "sanchez-puga") is True
+
+    def test_rejects_non_word_boundary(self):
+        """'clay' should NOT match 'clayton' (no word boundary)."""
+        from services.teacher_service import _last_name_matches
+
+        assert _last_name_matches("clay", "clayton") is False
+        assert _last_name_matches("kling", "klinginsmith") is False
+        assert _last_name_matches("law", "lawallen") is False
+        assert _last_name_matches("corr", "correa") is False
+
+    def test_empty_names(self):
+        from services.teacher_service import _last_name_matches
+
+        assert _last_name_matches("", "smith") is False
+        assert _last_name_matches("smith", "") is False
+        assert _last_name_matches("", "") is False
+
+
+class TestMultiPartNameMatching:
+    """Test find_or_create_teacher with multi-part Hispanic surnames."""
+
+    def test_match_hispanic_multipart_surname(self, app):
+        """'Catalina Velarde Duarte' should match existing 'Catalina Velarde'."""
+        with app.app_context():
+            existing = Teacher(
+                first_name="Catalina",
+                last_name="Velarde",
+                active=True,
+            )
+            db.session.add(existing)
+            db.session.commit()
+
+            teacher, is_new, match_info = find_or_create_teacher(
+                first_name="Catalina",
+                last_name="Velarde Duarte",
+            )
+
+            assert is_new is False
+            assert teacher.id == existing.id
+            assert match_info.method == "name_variant"
+            assert match_info.confidence == 0.70
+
+            db.session.delete(existing)
+            db.session.commit()
+
+    def test_match_hyphenated_married_name(self, app):
+        """'Barbara Sanchez-Puga' should match existing 'Barbara Sanchez'."""
+        with app.app_context():
+            existing = Teacher(
+                first_name="Barbara",
+                last_name="Sanchez",
+                active=True,
+            )
+            db.session.add(existing)
+            db.session.commit()
+
+            teacher, is_new, match_info = find_or_create_teacher(
+                first_name="Barbara",
+                last_name="Sanchez-Puga",
+            )
+
+            assert is_new is False
+            assert teacher.id == existing.id
+            assert match_info.method == "name_variant"
+
+            db.session.delete(existing)
+            db.session.commit()
+
+    def test_no_false_positive_on_similar_names(self, app):
+        """'Sarah Clayton' should NOT match 'Sarah Clay' (different people)."""
+        with app.app_context():
+            existing = Teacher(
+                first_name="Sarah",
+                last_name="Clay",
+                active=True,
+            )
+            db.session.add(existing)
+            db.session.commit()
+
+            teacher, is_new, match_info = find_or_create_teacher(
+                first_name="Sarah",
+                last_name="Clayton",
+            )
+
+            assert is_new is True
+            assert teacher.id != existing.id
+
+            db.session.delete(existing)
+            db.session.delete(teacher)
+            db.session.commit()
+
+    def test_reverse_direction_match(self, app):
+        """Existing 'Miriam Haro Lara' should match incoming 'Miriam Haro'."""
+        with app.app_context():
+            existing = Teacher(
+                first_name="Miriam",
+                last_name="Haro Lara",
+                active=True,
+            )
+            db.session.add(existing)
+            db.session.commit()
+
+            teacher, is_new, match_info = find_or_create_teacher(
+                first_name="Miriam",
+                last_name="Haro",
+            )
+
+            assert is_new is False
+            assert teacher.id == existing.id
+            assert match_info.method == "name_variant"
+
+            db.session.delete(existing)
+            db.session.commit()
+
+
+class TestParseName:
+    """Test parse_name() splits correctly for multi-part surnames."""
+
+    def test_simple_name(self):
+        from routes.virtual.pathful_import.parsing import parse_name
+
+        assert parse_name("John Smith") == ("John", "Smith")
+
+    def test_hispanic_multipart(self):
+        from routes.virtual.pathful_import.parsing import parse_name
+
+        first, last = parse_name("Catalina Velarde Duarte")
+        assert first == "Catalina"
+        assert last == "Velarde Duarte"
+
+    def test_three_part_surname(self):
+        from routes.virtual.pathful_import.parsing import parse_name
+
+        first, last = parse_name("Maria De La Cruz")
+        assert first == "Maria"
+        assert last == "De La Cruz"
+
+    def test_prefix_removal(self):
+        from routes.virtual.pathful_import.parsing import parse_name
+
+        first, last = parse_name("Dr. Mary Viveros")
+        assert first == "Mary"
+        assert last == "Viveros"
+
+    def test_single_name(self):
+        from routes.virtual.pathful_import.parsing import parse_name
+
+        assert parse_name("Madonna") == ("", "Madonna")
+
+    def test_empty(self):
+        from routes.virtual.pathful_import.parsing import parse_name
+
+        assert parse_name("") == ("", "")
+        assert parse_name(None) == ("", "")
