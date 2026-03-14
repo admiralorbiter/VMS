@@ -1,0 +1,384 @@
+{#
+Teacher Merge Tool
+==================
+Admin-only page to search for duplicate teachers, compare them side-by-side,
+and merge with full audit trail. Status-aware: "attended" wins over "registered".
+#}
+
+{% extends "base.html" %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+    .merge-container { max-width: 1200px; margin: 0 auto; padding: 1rem; }
+    .search-box { position: relative; }
+    .search-results {
+        position: absolute; top: 100%; left: 0; right: 0; z-index: 100;
+        background: #fff; border: 1px solid #dee2e6; border-radius: 0 0 8px 8px;
+        max-height: 300px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .search-result-item {
+        padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f0f0f0;
+        transition: background 0.15s;
+    }
+    .search-result-item:hover { background: #e8f5e9; }
+    .search-result-item .name { font-weight: 600; color: #1a3a1a; }
+    .search-result-item .meta { font-size: 0.8rem; color: #666; }
+
+    .slot-card {
+        border: 2px dashed #ccc; border-radius: 12px; padding: 1.5rem;
+        min-height: 180px; display: flex; flex-direction: column;
+        justify-content: center; align-items: center; background: #fafffe;
+        transition: border-color 0.3s, background 0.3s;
+    }
+    .slot-card.filled { border: 2px solid #4caf50; background: #fff; align-items: stretch; }
+    .slot-card.keep { border-color: #2196f3; }
+    .slot-card.merge-away { border-color: #ff9800; }
+    .slot-placeholder { color: #999; font-size: 1.1rem; }
+    .slot-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+    .slot-label.keep { color: #2196f3; }
+    .slot-label.merge-away { color: #ff9800; }
+    .teacher-name { font-size: 1.2rem; font-weight: 700; color: #1a3a1a; }
+    .teacher-detail { font-size: 0.85rem; color: #555; margin-top: 0.25rem; }
+
+    .compare-section {
+        background: #f8f9fa; border-radius: 12px; padding: 1.25rem; margin-top: 1.5rem;
+    }
+    .shared-badge { display: inline-block; background: #fff3e0; color: #e65100; padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
+    .status-badge {
+        display: inline-block; padding: 2px 8px; border-radius: 4px;
+        font-size: 0.75rem; font-weight: 600;
+    }
+    .status-badge.attended { background: #e8f5e9; color: #2e7d32; }
+    .status-badge.registered { background: #fff3e0; color: #e65100; }
+    .status-badge.no_show { background: #ffebee; color: #c62828; }
+
+    .merge-btn {
+        background: linear-gradient(135deg, #ff9800, #f57c00);
+        color: #fff; border: none; padding: 12px 32px; border-radius: 8px;
+        font-size: 1rem; font-weight: 700; cursor: pointer;
+        transition: transform 0.1s, box-shadow 0.2s;
+    }
+    .merge-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(255,152,0,0.4); }
+    .merge-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .swap-btn {
+        background: #e0e0e0; border: none; border-radius: 50%; width: 36px; height: 36px;
+        cursor: pointer; font-size: 1rem; transition: background 0.2s;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .swap-btn:hover { background: #bdbdbd; }
+
+    .success-toast {
+        position: fixed; top: 20px; right: 20px; z-index: 9999;
+        background: #4caf50; color: #fff; padding: 16px 24px;
+        border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        animation: slideIn 0.3s ease-out;
+    }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    .clear-btn {
+        background: none; border: none; color: #999; cursor: pointer;
+        font-size: 0.8rem; margin-top: 0.5rem;
+    }
+    .clear-btn:hover { color: #e53935; }
+
+    .candidates-section { margin-bottom: 2rem; }
+    .candidate-card {
+        border: 1px solid #e0e0e0; border-radius: 10px; padding: 1rem;
+        cursor: pointer; transition: all 0.2s; background: #fff;
+    }
+    .candidate-card:hover { border-color: #ff9800; box-shadow: 0 2px 8px rgba(255,152,0,0.15); transform: translateY(-1px); }
+    .candidate-card .pair-names { font-weight: 600; font-size: 0.95rem; color: #1a3a1a; }
+    .candidate-card .pair-meta { font-size: 0.8rem; color: #666; margin-top: 0.25rem; }
+    .confidence-high { border-left: 4px solid #e53935; }
+    .confidence-med { border-left: 4px solid #ff9800; }
+    .confidence-low { border-left: 4px solid #ffc107; }
+    .candidates-loading { text-align: center; padding: 2rem; color: #999; }
+    .candidates-empty { text-align: center; padding: 1.5rem; color: #4caf50; font-weight: 500; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="merge-container">
+    <h1><i class="fas fa-code-branch me-2"></i>Teacher Merge Tool</h1>
+    <p class="text-muted">Search for duplicate teachers, compare side-by-side, and merge records with full audit trail.</p>
+
+    <!-- Flagged Candidates -->
+    <div class="candidates-section">
+        <h5><i class="fas fa-flag text-warning me-2"></i>Flagged Duplicate Candidates</h5>
+        <p class="text-muted" style="font-size: 0.85rem;">Teachers with the same first name, different last name, and 2+ shared events. Click to load.</p>
+        <div id="candidatesList" class="row g-3">
+            <div class="candidates-loading"><i class="fas fa-spinner fa-spin me-2"></i>Scanning for duplicates...</div>
+        </div>
+    </div>
+
+    <hr>
+
+    <!-- Search -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <label class="form-label fw-bold">Search Teachers</label>
+            <div class="search-box">
+                <input type="text" id="searchInput" class="form-control" placeholder="Type a name to search..." autocomplete="off">
+                <div id="searchResults" class="search-results" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Side-by-side Slots -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-5">
+            <div id="slotA" class="slot-card" data-teacher-id="">
+                <span class="slot-placeholder"><i class="fas fa-user-plus me-2"></i>Select first teacher</span>
+            </div>
+        </div>
+        <div class="col-md-2 d-flex flex-column align-items-center justify-content-center">
+            <button id="swapBtn" class="swap-btn mb-2" title="Swap" disabled><i class="fas fa-exchange-alt"></i></button>
+            <small class="text-muted">Swap</small>
+        </div>
+        <div class="col-md-5">
+            <div id="slotB" class="slot-card" data-teacher-id="">
+                <span class="slot-placeholder"><i class="fas fa-user-plus me-2"></i>Select second teacher</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comparison -->
+    <div id="compareSection" class="compare-section" style="display: none;">
+        <h5><i class="fas fa-balance-scale me-2"></i>Comparison</h5>
+        <div id="compareDetails"></div>
+    </div>
+
+    <!-- Merge Button -->
+    <div class="text-center mt-4" id="mergeSection" style="display: none;">
+        <p class="text-muted mb-2">
+            <i class="fas fa-arrow-left text-primary me-1"></i><strong class="text-primary">KEEP</strong> left &mdash;
+            <strong class="text-warning">MERGE</strong> right <i class="fas fa-arrow-right text-warning ms-1"></i>
+        </p>
+        <button id="mergeBtn" class="merge-btn" disabled>
+            <i class="fas fa-code-branch me-2"></i>Merge Right Into Left
+        </button>
+    </div>
+</div>
+
+<script>
+(function() {
+    const searchInput = document.getElementById('searchInput');
+    const searchResults = document.getElementById('searchResults');
+    const slotA = document.getElementById('slotA');
+    const slotB = document.getElementById('slotB');
+    const swapBtn = document.getElementById('swapBtn');
+    const compareSection = document.getElementById('compareSection');
+    const compareDetails = document.getElementById('compareDetails');
+    const mergeSection = document.getElementById('mergeSection');
+    const mergeBtn = document.getElementById('mergeBtn');
+
+    let debounceTimer;
+    let teacherA = null, teacherB = null;
+
+    // Load flagged candidates on page load
+    fetch('/teachers/merge/candidates')
+        .then(r => r.json())
+        .then(candidates => {
+            const list = document.getElementById('candidatesList');
+            if (!candidates.length) {
+                list.innerHTML = '<div class="candidates-empty"><i class="fas fa-check-circle me-2"></i>No flagged duplicates found!</div>';
+                return;
+            }
+            list.innerHTML = candidates.map((c, i) => {
+                const conf = c.shared_events >= 10 ? 'high' : c.shared_events >= 4 ? 'med' : 'low';
+                return `
+                <div class="col-md-4">
+                    <div class="candidate-card confidence-${conf}" data-pair='${JSON.stringify(c).replace(/'/g, "&#39;")}'>
+                        <div class="pair-names">
+                            ${c.teacher_a.first_name} ${c.teacher_a.last_name}
+                            <i class="fas fa-arrows-alt-h text-muted mx-1" style="font-size:0.7rem;"></i>
+                            ${c.teacher_b.first_name} ${c.teacher_b.last_name}
+                        </div>
+                        <div class="pair-meta">
+                            <span class="shared-badge">${c.shared_events} shared (${c.overlap_pct}%)</span>
+                            &nbsp; ${c.teacher_a.school} / ${c.teacher_b.school}
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            // Click to load pair
+            list.addEventListener('click', function(e) {
+                const card = e.target.closest('.candidate-card');
+                if (!card) return;
+                const pair = JSON.parse(card.dataset.pair);
+                clearSlot('A'); clearSlot('B');
+                setSlot('A', {...pair.teacher_a, email: '--', import_source: '--'});
+                setSlot('B', {...pair.teacher_b, email: '--', import_source: '--'});
+                // Scroll down to compare
+                document.getElementById('compareSection').scrollIntoView({behavior: 'smooth', block: 'start'});
+            });
+        })
+        .catch(() => {
+            document.getElementById('candidatesList').innerHTML = '<div class="text-danger">Error loading candidates</div>';
+        });
+
+    // Search
+    searchInput.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        const q = this.value.trim();
+        if (q.length < 2) { searchResults.style.display = 'none'; return; }
+        debounceTimer = setTimeout(() => {
+            fetch(`/teachers/merge/search?q=${encodeURIComponent(q)}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.length) { searchResults.innerHTML = '<div class="search-result-item"><em>No results</em></div>'; }
+                    else {
+                        searchResults.innerHTML = data.map(t => `
+                            <div class="search-result-item" data-id="${t.id}" data-teacher='${JSON.stringify(t).replace(/'/g, "&#39;")}'>
+                                <div class="name">${t.first_name} ${t.last_name} <small class="text-muted">#${t.id}</small></div>
+                                <div class="meta">School: ${t.school} | Events: ${t.event_count} | TP: ${t.tp_count}</div>
+                            </div>
+                        `).join('');
+                    }
+                    searchResults.style.display = 'block';
+                });
+        }, 250);
+    });
+
+    // Click result
+    searchResults.addEventListener('click', function(e) {
+        const item = e.target.closest('.search-result-item');
+        if (!item || !item.dataset.teacher) return;
+        const t = JSON.parse(item.dataset.teacher);
+        if (!teacherA) { setSlot('A', t); }
+        else if (!teacherB && t.id !== teacherA.id) { setSlot('B', t); }
+        searchResults.style.display = 'none';
+        searchInput.value = '';
+    });
+
+    // Close dropdown on click outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.search-box')) searchResults.style.display = 'none';
+    });
+
+    function setSlot(slot, t) {
+        const el = slot === 'A' ? slotA : slotB;
+        if (slot === 'A') teacherA = t; else teacherB = t;
+        el.dataset.teacherId = t.id;
+        const label = slot === 'A' ? 'keep' : 'merge-away';
+        const labelText = slot === 'A' ? '✓ KEEP this record' : '⤏ MERGE into left';
+        el.className = `slot-card filled ${label}`;
+        el.innerHTML = `
+            <div class="slot-label ${label}">${labelText}</div>
+            <div class="teacher-name">${t.first_name} ${t.last_name} <small class="text-muted">#${t.id}</small></div>
+            <div class="teacher-detail">School: ${t.school}</div>
+            <div class="teacher-detail">Email: ${t.email} | Source: ${t.import_source}</div>
+            <div class="teacher-detail">Events: ${t.event_count} | TP links: ${t.tp_count}</div>
+            <button class="clear-btn" onclick="clearSlot('${slot}')"><i class="fas fa-times"></i> Remove</button>
+        `;
+        swapBtn.disabled = !(teacherA && teacherB);
+        if (teacherA && teacherB) loadComparison();
+    }
+
+    window.clearSlot = function(slot) {
+        const el = slot === 'A' ? slotA : slotB;
+        if (slot === 'A') teacherA = null; else teacherB = null;
+        el.className = 'slot-card';
+        el.dataset.teacherId = '';
+        el.innerHTML = `<span class="slot-placeholder"><i class="fas fa-user-plus me-2"></i>Select ${slot === 'A' ? 'first' : 'second'} teacher</span>`;
+        compareSection.style.display = 'none';
+        mergeSection.style.display = 'none';
+        swapBtn.disabled = true;
+    };
+
+    // Swap
+    swapBtn.addEventListener('click', function() {
+        if (!teacherA || !teacherB) return;
+        const tmp = teacherA;
+        setSlot('A', teacherB);
+        setSlot('B', tmp);
+    });
+
+    // Compare
+    function loadComparison() {
+        fetch(`/teachers/merge/compare?id_a=${teacherA.id}&id_b=${teacherB.id}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) { compareDetails.innerHTML = `<p class="text-danger">${data.error}</p>`; return; }
+
+                let html = `<div class="row">
+                    <div class="col-md-6"><strong>Shared events:</strong> <span class="shared-badge">${data.shared_events}</span></div>
+                </div>`;
+
+                if (data.shared_event_details.length) {
+                    html += `<table class="table table-sm mt-2"><thead><tr><th>Event</th><th>Left Status</th><th>Right Status</th><th>After Merge</th></tr></thead><tbody>`;
+                    const priority = {attended: 3, no_show: 2, registered: 1};
+                    data.shared_event_details.forEach(e => {
+                        const winner = (priority[e.status_a] || 0) >= (priority[e.status_b] || 0) ? e.status_a : e.status_b;
+                        const upgraded = winner !== e.status_a;
+                        html += `<tr>
+                            <td>#${e.event_id}</td>
+                            <td><span class="status-badge ${e.status_a}">${e.status_a}</span></td>
+                            <td><span class="status-badge ${e.status_b}">${e.status_b}</span></td>
+                            <td><span class="status-badge ${winner}">${winner}</span>${upgraded ? ' <small class="text-success">↑ upgraded</small>' : ''}</td>
+                        </tr>`;
+                    });
+                    html += `</tbody></table>`;
+                }
+
+                const onlyA = data.teacher_a.event_count - data.shared_events;
+                const onlyB = data.teacher_b.event_count - data.shared_events;
+                html += `<div class="mt-2 text-muted">
+                    <small>Events only on left: ${onlyA} | Only on right (will move): ${onlyB} | Shared (will dedup): ${data.shared_events}</small>
+                </div>`;
+
+                compareDetails.innerHTML = html;
+                compareSection.style.display = 'block';
+                mergeSection.style.display = 'block';
+                mergeBtn.disabled = false;
+            });
+    }
+
+    // Merge
+    mergeBtn.addEventListener('click', function() {
+        if (!teacherA || !teacherB) return;
+        const keepName = `${teacherA.first_name} ${teacherA.last_name}`;
+        const mergeName = `${teacherB.first_name} ${teacherB.last_name}`;
+        if (!confirm(`Merge "${mergeName}" (#${teacherB.id}) INTO "${keepName}" (#${teacherA.id})?\n\nThis cannot be easily undone.`)) return;
+
+        mergeBtn.disabled = true;
+        mergeBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Merging...';
+
+        fetch('/teachers/merge/execute', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({keep_id: teacherA.id, merge_id: teacherB.id})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const toast = document.createElement('div');
+                toast.className = 'success-toast';
+                toast.innerHTML = `<i class="fas fa-check-circle me-2"></i>${data.message}`;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 5000);
+
+                clearSlot('B');
+                // Refresh slot A with updated data
+                fetch(`/teachers/merge/search?q=${encodeURIComponent(keepName)}`)
+                    .then(r => r.json())
+                    .then(results => {
+                        const updated = results.find(t => t.id === teacherA.id);
+                        if (updated) setSlot('A', updated);
+                    });
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+                mergeBtn.disabled = false;
+                mergeBtn.innerHTML = '<i class="fas fa-code-branch me-2"></i>Merge Right Into Left';
+            }
+        })
+        .catch(err => {
+            alert('Error: ' + err.message);
+            mergeBtn.disabled = false;
+            mergeBtn.innerHTML = '<i class="fas fa-code-branch me-2"></i>Merge Right Into Left';
+        });
+    });
+})();
+</script>
+{% endblock %}

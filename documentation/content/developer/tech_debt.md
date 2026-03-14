@@ -158,6 +158,21 @@ Each source calls `find_or_create_teacher()` which does case-insensitive matchin
 
 **Recommended fix:** Run `merge_duplicate_teachers.py` with exact-name matching re-enabled, using the same school-validation safety check. Add case-insensitive unique constraint or pre-insert dedup check.
 
+**Update (2026-03-13):**
+- 7,660 orphaned teachers (0 FKs, no email) soft-deleted. Active teachers reduced from 10,122 to 2,462. Prune log in `data/`.
+- **Admin Merge UI** built at `/teachers/merge` — search, compare, and merge with audit trail. Includes auto-flagged candidates (same first name, different last name, 90%+ event overlap, no school conflicts).
+- **~11 flagged maiden/married name candidates** remain for manual review (e.g., Sarah Ross/Hurst, Angela Hall/Clark-Hall). Only Caitlin Borel/Atkinson merged so far — **staff review needed** for the rest. Use the merge UI to process them.
+
+---
+
+## TD-037: Hard-Delete Pruned Teachers (after 2026-04-13)
+
+**Created:** 2026-03-13 · **Priority:** Low · **Category:** Maintenance
+
+7,660 teachers were soft-deleted (marked `active=False`, tagged `pruned_20260313`) on 2026-03-13. If no issues are reported by **April 13, 2026**, they can be permanently deleted. Prune log: `data/prune_log_20260313_233506.json`.
+
+**Undo:** `UPDATE teacher SET active = 1, import_source = REPLACE(import_source, '|pruned_20260313', '') WHERE import_source LIKE '%pruned_20260313%'`
+
 ---
 
 ## Priority Order
@@ -172,8 +187,9 @@ Ordered by **what best unblocks future work**:
 | 4 | **TD-016** | Generic `ReportCache` model |
 | 5 | **TD-022** | Add tests for extracted blueprints |
 | 6 | **TD-034** | Salesforce data quality audit |
-| 7 | **TD-036** | Exact-name duplicate Teacher cleanup (~2,100 pairs) |
-| 8 | **TD-011** | SQLite → MySQL *(do last when codebase is clean)* |
+| 7 | **TD-036** | Exact-name duplicate Teacher cleanup |
+| 8 | **TD-037** | Hard-delete pruned teachers (after 2026-04-13) |
+| 9 | **TD-011** | SQLite → MySQL *(do last when codebase is clean)* |
 
 > TD-004 is intentionally deferred — the M2M relationship is the correct path forward.
 
