@@ -104,6 +104,16 @@ Welcome to the VMS User Guide. This section provides detailed, step-by-step inst
       </div>
     </a>
   </div>
+
+  <div class="qn-card">
+    <a href="#user-guide-teacher-merge" class="qn-card-link">
+      <div class="qn-icon">🔀</div>
+      <div class="qn-body">
+        <div class="qn-title">Teacher Merge Tool</div>
+        <div class="qn-desc">Identify and merge duplicate teacher records with audit trail (Admin only).</div>
+      </div>
+    </a>
+  </div>
 </div>
 
 ---

@@ -117,9 +117,18 @@ def build_import_caches():
     for t in all_teacher_records:
         if t.cached_email:
             teacher_record_by_email[t.cached_email.lower()] = t
-        norm_name = f"{normalize_name(t.first_name or '')} {normalize_name(t.last_name or '')}".strip()
+        norm_first = normalize_name(t.first_name or "")
+        norm_last = normalize_name(t.last_name or "")
+        norm_name = f"{norm_first} {norm_last}".strip()
         if norm_name:
             teacher_record_by_name[norm_name] = t
+        # Also index by first-word + first-word-of-last for multi-part surname
+        # matching (e.g., "catalina velarde" for Teacher "Catalina Velarde Duarte")
+        if norm_first and norm_last and " " in norm_last:
+            first_word_of_last = norm_last.split()[0]
+            short_key = f"{norm_first} {first_word_of_last}"
+            # Only set if not already claimed by another teacher (avoid collisions)
+            teacher_record_by_name.setdefault(short_key, t)
     print(
         f"  Teacher records: {len(all_teacher_records)} ({len(teacher_record_by_email)} by email, {len(teacher_record_by_name)} by name)"
     )

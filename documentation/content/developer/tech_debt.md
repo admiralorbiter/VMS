@@ -91,20 +91,17 @@ Add integration tests for `quality_bp` and `docs_bp`. Audit `reports/` test cove
 
 ---
 
-## TD-033: Student Import `str(None)` Data Cleanup
+## TD-033: Student Import `str(None)` Data Cleanup ✅ RESOLVED
 
-**Created:** 2026-03-07 · **Priority:** High · **Category:** Data Integrity
+**Created:** 2026-03-07 · **Resolved:** 2026-03-13 · **Category:** Data Integrity
 
 `Student.update_contact_info` used `str(sf_data.get("Email", ""))`, which converted Salesforce `None` values into the literal string `"None"`. This created **158,923 email records** and **158,925 phone records** containing the string `"None"` — all for student contacts.
 
-**Import code is fixed** (uses `isinstance()` guard now, matching the teacher pattern). The existing garbage records in the database still need cleanup.
+**Import code fixed** (uses `isinstance()` guard now). **Database cleaned (2026-03-13):**
 
-### Proposed Fix
-
-1. Write a one-time migration script to delete or null-out all `email` records where `email = 'None'` and `phone` records where `number = 'None'`.
-2. Re-import students from Salesforce to back-fill any real email/phone data that was masked.
-
-**Risk:** Low — the records are definitively garbage (literal string `"None"`).
+- 158,923 email records with `email='None'` — **deleted**
+- 158,925 phone records with `number='None'` — **deleted**
+- Script: `scripts/maintenance/fix_student_none_data.py`
 
 ---
 
@@ -117,16 +114,69 @@ Production database analysis revealed several data patterns in Salesforce. Most 
 | Issue | Scale | Status |
 |:---|:---|:---|
 | Skeleton addresses (all fields empty) | 4,587 / 5,582 | ✅ Resolved — 4,630 deleted, import guard added |
-| ALL CAPS names (`"RACHEL"`, `"MAYO"`) | 18,225 contacts | ✅ Resolved — `smart_title_case()` in import; 18,814 normalized |
+| ALL CAPS names (e.g., `"JANE"`, `"DOE"`) | 18,225 contacts | ✅ Resolved — `smart_title_case()` in import; 18,814 normalized |
 | Truncated skills | ~20 records | ✅ Resolved — `Skill.name` widened 50→200 chars |
 | Connector subscriptions = NONE | 12,576 | ✅ Code removed — `ConnectorData` model deleted; `PathfulUserProfile` used instead |
 | Organizations with no type | 983 / 3,811 | ✅ Resolved — Defaulted to "Other" + flagged |
 
 ### Remaining
 
-- [ ] **Drop `connector_data` table** — Orphaned table, no code references remain. Run `DROP TABLE connector_data;` on prod after deploy.
+- [x] ~~**Drop `connector_data` table**~~ — Table does not exist on current database (already clean).
 
-**Risk:** None — table is ignored by the app; drop at convenience.
+**Re-scanned (2026-03-13):** Data quality scan run on clean DB, 1,088 flags created:
+
+| Detector | Issues | Flags |
+|:---|:---|:---|
+| ALL CAPS contact names | 103 | 103 |
+| Organizations missing type | 985 | 985 |
+| Student str(None) email/phone (TD-033) | 0 | 0 |
+
+View results at `/admin/data-quality`.
+
+---
+
+## TD-035: Multi-Part Name Creates Duplicate Teacher Records ✅ RESOLVED
+
+**Created:** 2026-03-13 · **Resolved:** 2026-03-13 · **Category:** Data Integrity
+
+`parse_name()` and two `_split_name()` functions treated the **last word** as the surname, splitting multi-part surnames like "Maria Garcia Lopez" into first="Maria Garcia", last="Lopez". This created duplicate Teacher records with stale "registered" statuses.
+
+**Fix:** All 5 name-splitting locations now use first-word-as-given-name convention. `find_or_create_teacher()` has word-boundary matching (Priority 3b). 15 unit tests added. Data cleanup: 31 multi-part surname pairs + 4 misparsed first-name pairs merged. Merge logs in `scripts/maintenance/`.
+
+---
+
+## TD-036: Exact-Name Duplicate Teacher Records (~2,100 pairs)
+
+**Created:** 2026-03-13 · **Priority:** Low · **Category:** Data Integrity
+
+~2,106 Teacher pairs have identical normalized names but different IDs (e.g., "AARON GADDIS" vs "Aaron Gaddis"). Most have 0 EventTeachers on one side, suggesting they are orphaned stubs.
+
+**Root cause:** Multiple import sources create Teacher records independently without case-insensitive dedup:
+
+1. **Google Sheets roster import** — creates Teachers from the teacher roster with original casing
+2. **Pathful session import** — creates Teachers from Pathful data, often in ALL-CAPS
+3. **Reconciliation scripts** — `resolve_teacher_for_tp()` can create new Teachers during backfill
+
+Each source calls `find_or_create_teacher()` which does case-insensitive matching — but historically, earlier code paths (manual creation, direct DB inserts, Salesforce sync) did not normalize before insertion.
+
+**Impact:** Low — most duplicates are orphaned (0 EventTeachers). The ones with EventTeachers (1,132 pairs) could cause minor count inflation in aggregate reports.
+
+**Recommended fix:** Run `merge_duplicate_teachers.py` with exact-name matching re-enabled, using the same school-validation safety check. Add case-insensitive unique constraint or pre-insert dedup check.
+
+**Update (2026-03-13):**
+- 7,660 orphaned teachers (0 FKs, no email) soft-deleted. Active teachers reduced from 10,122 to 2,462. Prune log in `data/`.
+- **Admin Merge UI** built at `/teachers/merge` — search, compare, and merge with audit trail. Includes auto-flagged candidates (same first name, different last name, 90%+ event overlap, no school conflicts).
+- **~11 flagged maiden/married name candidates** remain for manual review (e.g., maiden/married name mismatches). One pair merged so far — **staff review needed** for the rest. Use the merge UI to process them.
+
+---
+
+## TD-037: Hard-Delete Pruned Teachers (after 2026-04-13)
+
+**Created:** 2026-03-13 · **Priority:** Low · **Category:** Maintenance
+
+7,660 teachers were soft-deleted (marked `active=False`, tagged `pruned_20260313`) on 2026-03-13. If no issues are reported by **April 13, 2026**, they can be permanently deleted. Prune log: `data/prune_log_20260313_233506.json`.
+
+**Undo:** `UPDATE teacher SET active = 1, import_source = REPLACE(import_source, '|pruned_20260313', '') WHERE import_source LIKE '%pruned_20260313%'`
 
 ---
 
@@ -142,9 +192,12 @@ Ordered by **what best unblocks future work**:
 | 4 | **TD-016** | Generic `ReportCache` model |
 | 5 | **TD-022** | Add tests for extracted blueprints |
 | 6 | **TD-034** | Salesforce data quality audit |
-| 7 | **TD-011** | SQLite → MySQL *(do last when codebase is clean)* |
+| 7 | **TD-036** | Exact-name duplicate Teacher cleanup |
+| 8 | **TD-037** | Hard-delete pruned teachers (after 2026-04-13) |
+| 9 | **TD-011** | SQLite → MySQL *(do last when codebase is clean)* |
 
 > TD-004 is intentionally deferred — the M2M relationship is the correct path forward.
+
 
 ---
 

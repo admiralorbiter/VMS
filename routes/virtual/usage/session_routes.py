@@ -1070,7 +1070,8 @@ def load_session_routes():
                 return "", ""
             if len(parts) == 1:
                 return parts[0], ""
-            return " ".join(parts[:-1]), parts[-1]
+            # First word = given name, rest = surname (preserves multi-part surnames)
+            return parts[0], " ".join(parts[1:])
 
         # Update basic fields
         title = _norm(request.form.get("title"))
@@ -1445,7 +1446,8 @@ def load_session_routes():
                 return "", ""
             if len(parts) == 1:
                 return parts[0], ""
-            return " ".join(parts[:-1]), parts[-1]
+            # First word = given name, rest = surname (preserves multi-part surnames)
+            return parts[0], " ".join(parts[1:])
 
         # ---- Basic event fields ----
         year = _norm(request.form.get("year")) or get_current_virtual_year()

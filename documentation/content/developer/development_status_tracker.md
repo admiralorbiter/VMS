@@ -365,7 +365,7 @@
 
 | ID | Requirement | Status | Notes |
 |----|-------------|--------|-------|
-| FR-DATA-901 | Duplicate management | ✅ | TC-901 |
+| FR-DATA-901 | Duplicate management | ✅ | TC-901; Admin merge UI at `/teachers/merge` |
 | FR-DATA-902 | Dynamic profile creation | ✅ | TC-902 |
 | FR-DATA-903 | Sync dependencies | ✅ | TC-903, TC-904 |
 

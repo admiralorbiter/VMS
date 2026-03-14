@@ -133,6 +133,9 @@ def parse_name(full_name):
     Parse full name into first and last name components.
 
     Handles common name patterns and prefixes (Dr., Mr., Mrs., etc.)
+    Uses first-word-as-given-name convention: everything after the first
+    word is treated as the surname. This correctly preserves multi-part
+    surnames common in Hispanic names (e.g., "Velarde Duarte").
 
     Args:
         full_name: Full name string
@@ -171,8 +174,11 @@ def parse_name(full_name):
     elif len(parts) == 1:
         return "", parts[0]  # Single name becomes last name
     else:
-        first_name = " ".join(parts[:-1])
-        last_name = parts[-1]
+        # First word = given name, everything else = surname.
+        # This preserves multi-part surnames (e.g., "Catalina Velarde Duarte"
+        # becomes first="Catalina", last="Velarde Duarte").
+        first_name = parts[0]
+        last_name = " ".join(parts[1:])
         return first_name, last_name
 
 
