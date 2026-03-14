@@ -91,20 +91,17 @@ Add integration tests for `quality_bp` and `docs_bp`. Audit `reports/` test cove
 
 ---
 
-## TD-033: Student Import `str(None)` Data Cleanup
+## TD-033: Student Import `str(None)` Data Cleanup ✅ RESOLVED
 
-**Created:** 2026-03-07 · **Priority:** High · **Category:** Data Integrity
+**Created:** 2026-03-07 · **Resolved:** 2026-03-13 · **Category:** Data Integrity
 
 `Student.update_contact_info` used `str(sf_data.get("Email", ""))`, which converted Salesforce `None` values into the literal string `"None"`. This created **158,923 email records** and **158,925 phone records** containing the string `"None"` — all for student contacts.
 
-**Import code is fixed** (uses `isinstance()` guard now, matching the teacher pattern). The existing garbage records in the database still need cleanup.
+**Import code fixed** (uses `isinstance()` guard now). **Database cleaned (2026-03-13):**
 
-### Proposed Fix
-
-1. Write a one-time migration script to delete or null-out all `email` records where `email = 'None'` and `phone` records where `number = 'None'`.
-2. Re-import students from Salesforce to back-fill any real email/phone data that was masked.
-
-**Risk:** Low — the records are definitively garbage (literal string `"None"`).
+- 158,923 email records with `email='None'` — **deleted**
+- 158,925 phone records with `number='None'` — **deleted**
+- Script: `scripts/maintenance/fix_student_none_data.py`
 
 ---
 
@@ -124,9 +121,17 @@ Production database analysis revealed several data patterns in Salesforce. Most 
 
 ### Remaining
 
-- [ ] **Drop `connector_data` table** — Orphaned table, no code references remain. Run `DROP TABLE connector_data;` on prod after deploy.
+- [x] ~~**Drop `connector_data` table**~~ — Table does not exist on current database (already clean).
 
-**Risk:** None — table is ignored by the app; drop at convenience.
+**Re-scanned (2026-03-13):** Data quality scan run on clean DB, 1,088 flags created:
+
+| Detector | Issues | Flags |
+|:---|:---|:---|
+| ALL CAPS contact names | 103 | 103 |
+| Organizations missing type | 985 | 985 |
+| Student str(None) email/phone (TD-033) | 0 | 0 |
+
+View results at `/admin/data-quality`.
 
 ---
 
