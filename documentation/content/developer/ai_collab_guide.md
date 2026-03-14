@@ -141,9 +141,22 @@ Always consider:
 - **Tech debt:** did we add any? can we avoid it cheaply?
 - **Security/privacy:** any obvious concerns? secrets? data exposure?
 - **Docs drift:** does this misalign with existing docs? call it out.
+- **PII in docs:** never use real names (teachers, students, volunteers) in documentation, comments, or commit messages. Use generic placeholders like "Jane Smith" or "Teacher A".
 
 ### Safety for destructive actions
 - If a command is destructive (delete/drop/force push), **warn clearly** and **ask before proceeding**.
+
+### Data operations safety pattern
+For any bulk data change (delete, merge, migrate, prune):
+
+1. **Dry-run first** — always default to `--dry-run` with a report showing what *would* change
+2. **Audit log** — write JSON with full undo information before committing changes
+3. **Soft-delete** — mark `active=False` (or equivalent) rather than `DELETE`; set a hard-delete date (30 days)
+4. **Verify on critical data** — spot-check the most important dashboards (e.g., KCKPS teacher usage) before calling it done
+
+### Environment notes
+- **PowerShell quoting:** avoid inline Python one-liners (quoting breaks). For anything beyond trivial, write a temp `.py` script, run it, then delete.
+- **SQLite locking:** the dev DB locks when Flask is running. Stop the server before running maintenance scripts, or use read-only raw sqlite connections for investigation.
 
 ---
 
