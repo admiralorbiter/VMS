@@ -12,7 +12,7 @@ The Teacher Merge Tool allows admins to identify and merge duplicate teacher rec
 
 Use the merge tool when:
 
--   A teacher appears twice on event pages under different names (e.g., "Caitlin Atkinson" from Pathful and "Caitlin Borel" from the roster)
+-   A teacher appears twice on event pages under different names (e.g., "Jane Smith" from Pathful and "Jane Doe" from the roster)
 -   The same teacher has separate session counts that should be combined
 -   Pathful imports create records with a different last name than the school roster (common with maiden/married names, hyphenation, or name changes)
 

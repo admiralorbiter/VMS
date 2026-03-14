@@ -114,7 +114,7 @@ Production database analysis revealed several data patterns in Salesforce. Most 
 | Issue | Scale | Status |
 |:---|:---|:---|
 | Skeleton addresses (all fields empty) | 4,587 / 5,582 | ✅ Resolved — 4,630 deleted, import guard added |
-| ALL CAPS names (`"RACHEL"`, `"MAYO"`) | 18,225 contacts | ✅ Resolved — `smart_title_case()` in import; 18,814 normalized |
+| ALL CAPS names (e.g., `"JANE"`, `"DOE"`) | 18,225 contacts | ✅ Resolved — `smart_title_case()` in import; 18,814 normalized |
 | Truncated skills | ~20 records | ✅ Resolved — `Skill.name` widened 50→200 chars |
 | Connector subscriptions = NONE | 12,576 | ✅ Code removed — `ConnectorData` model deleted; `PathfulUserProfile` used instead |
 | Organizations with no type | 983 / 3,811 | ✅ Resolved — Defaulted to "Other" + flagged |
@@ -139,7 +139,7 @@ View results at `/admin/data-quality`.
 
 **Created:** 2026-03-13 · **Resolved:** 2026-03-13 · **Category:** Data Integrity
 
-`parse_name()` and two `_split_name()` functions treated the **last word** as the surname, splitting "Catalina Velarde Duarte" into first="Catalina Velarde", last="Duarte". This created duplicate Teacher records with stale "registered" statuses.
+`parse_name()` and two `_split_name()` functions treated the **last word** as the surname, splitting multi-part surnames like "Maria Garcia Lopez" into first="Maria Garcia", last="Lopez". This created duplicate Teacher records with stale "registered" statuses.
 
 **Fix:** All 5 name-splitting locations now use first-word-as-given-name convention. `find_or_create_teacher()` has word-boundary matching (Priority 3b). 15 unit tests added. Data cleanup: 31 multi-part surname pairs + 4 misparsed first-name pairs merged. Merge logs in `scripts/maintenance/`.
 
@@ -166,7 +166,7 @@ Each source calls `find_or_create_teacher()` which does case-insensitive matchin
 **Update (2026-03-13):**
 - 7,660 orphaned teachers (0 FKs, no email) soft-deleted. Active teachers reduced from 10,122 to 2,462. Prune log in `data/`.
 - **Admin Merge UI** built at `/teachers/merge` — search, compare, and merge with audit trail. Includes auto-flagged candidates (same first name, different last name, 90%+ event overlap, no school conflicts).
-- **~11 flagged maiden/married name candidates** remain for manual review (e.g., Sarah Ross/Hurst, Angela Hall/Clark-Hall). Only Caitlin Borel/Atkinson merged so far — **staff review needed** for the rest. Use the merge UI to process them.
+- **~11 flagged maiden/married name candidates** remain for manual review (e.g., maiden/married name mismatches). One pair merged so far — **staff review needed** for the rest. Use the merge UI to process them.
 
 ---
 
