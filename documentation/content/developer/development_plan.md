@@ -12,10 +12,12 @@
 
 | Item | Status | Notes |
 |------|--------|-------|
-| District Suite Phase 4 verification | 🔧 In Progress | Code complete, needs end-to-end testing. See [phases.md](../district_suite/phases.md) |
+| District Suite Phase 4 verification | 🔧 In Progress | Code complete, needs end-to-end testing Monday 3/16. See [phases.md](../district_suite/phases.md) |
 | Documentation consolidation | 🔧 In Progress | Merging roadmaps, archiving completed sprints |
 | TD-034 Data Quality Dashboard | ✅ Complete | Dashboard live at `/admin/data-quality` with stats, filters, pagination, dismiss |
-| Advanced Search CSV Export | 🔧 In Progress | FR-RECRUIT-307 — export search results with email, activity dates |
+| Advanced Search CSV Export | ✅ Complete | FR-RECRUIT-307 — endpoint, template button, 4 integration tests. See [user guide](../user_guide/recruitment_search.md) |
+| TD-033 Student str(None) Cleanup | ✅ Complete | 158K email + 158K phone garbage records deleted. Import guard in place |
+| TD-035/036 Teacher Dedup | ✅ Complete | Name parsing fixed, 7,660 orphans pruned, merge UI built. ~11 candidates need staff review (Mon 3/16) |
 
 ---
 
@@ -23,24 +25,21 @@
 
 High-impact, low-risk items that should be done first.
 
-### TD-033: Student `str(None)` Data Cleanup
+### TD-033: Student `str(None)` Data Cleanup ✅ RESOLVED
 
-- [ ] Write a one-time migration script to null-out `email = 'None'` (158,923 records) and `phone = 'None'` (158,925 records)
+- [x] ~~Write a one-time migration script to delete `email = 'None'` (158,923 records) and `phone = 'None'` (158,925 records)~~ — Done 2026-03-13
 - [ ] Re-import students from Salesforce to back-fill real email/phone data
 - **Root cause is fixed** — `Student.update_contact_info` now uses `isinstance()` guard
 
-### TD-034: Salesforce Data Quality Audit
+### TD-034: Salesforce Data Quality Audit ✅ RESOLVED
 
 - [x] ~~Skeleton addresses~~ — 4,630 hollow addresses deleted; import fixed to skip empty addresses
 - [x] ~~ALL CAPS name normalization~~ — `smart_title_case()` added to import; 18,814 records normalized
 - [x] ~~Truncated skills~~ — `Skill.name` widened from 50→200 chars
 - [x] ~~Organizations with NULL type~~ — Defaulted to "Other" + flagged via Data Quality system
-- [x] ~~Connector → Pathful migration~~ — `ConnectorData` model removed; all UI/routes now use `PathfulUserProfile`
-  - **Post-deploy:** Drop the orphaned `connector_data` table (`DROP TABLE connector_data;` — 12,576 rows, no code references remain)
+- [x] ~~Connector → Pathful migration~~ — `ConnectorData` model removed; `connector_data` table does not exist on current DB
 - [x] ~~Data Quality Review Dashboard~~ — Live at `/admin/data-quality` with stats, filters, pagination, dismiss/bulk-dismiss
-- **New:** Data Quality Flag system (`data_quality_flag` table) — flags created during Salesforce imports
-
-> **Deploy note:** This commit is **code-only**. The name normalization and skeleton address fixes are in the import logic and will take effect on next Salesforce sync. Drop `connector_data` table post-deploy.
+- [x] ~~Re-scan on clean DB~~ — 1,088 flags remain (103 ALL CAPS names, 985 missing org types, 0 student str(None))
 
 ---
 
@@ -204,7 +203,7 @@ Remaining requirements from the [Status Tracker](development_status_tracker.md).
 
 Pending items from the [Salesforce Import Roadmap](salesforce_import_roadmap.md):
 
-- [ ] **Student data cleanup and reimport** *(TD-033)* — see Tier 1
+- [x] ~~Student data cleanup~~ *(TD-033)* — Resolved. 317K garbage records deleted
 - [x] ~~Salesforce data quality investigation~~ *(TD-034)* — Resolved. See Tier 1
 - [ ] **Background task execution for large imports** — see Tier 3.4
 - [ ] **Resumable imports with checkpointing** — store last processed ID in SyncLog, add `?resume=true`
@@ -239,7 +238,8 @@ Items considered but not currently feasible:
 | District Suite Phases 1–3 | Jan 2026 | Foundation, events, volunteers. All complete with test coverage |
 | District Suite Phase 4 | Mar 2026 | Recruitment tools — code complete, verification in progress |
 | TD-034 Data Quality Audit | Mar 2026 | Skeleton addresses, ALL CAPS names, truncated skills, connector migration, Data Quality Dashboard. See [Tech Debt Tracker](tech_debt.md) |
-| Tech Debt TD-001 through TD-034 | Feb–Mar 2026 | 21 items resolved. See [Tech Debt Tracker](tech_debt.md#resolved-archive) |
+| Teacher Deduplication (TD-033/035/036) | Mar 2026 | Name parsing fixed (5 locations), 7,660 orphans pruned, admin merge UI, 317K garbage student records deleted, data quality rescan. See [Tech Debt Tracker](tech_debt.md) |
+| Tech Debt TD-001 through TD-036 | Feb–Mar 2026 | 23 items resolved. See [Tech Debt Tracker](tech_debt.md#resolved-archive) |
 
 ---
 

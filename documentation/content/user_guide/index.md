@@ -114,9 +114,18 @@ Welcome to the VMS User Guide. This section provides detailed, step-by-step inst
       </div>
     </a>
   </div>
+  <div class="qn-card">
+    <a href="#user-guide-recruitment-search" class="qn-card-link">
+      <div class="qn-icon">🔍</div>
+      <div class="qn-body">
+        <div class="qn-title">Recruitment Search & CSV Export</div>
+        <div class="qn-desc">Search volunteers by skills, events, and organizations. Export results to CSV for outreach.</div>
+      </div>
+    </a>
+  </div>
 </div>
 
 ---
 
-*Last updated: January 30, 2026*
-*Version: 1.1 — Added Pathful Import guide*
+*Last updated: March 13, 2026*
+*Version: 1.2 — Added Teacher Merge Tool and Recruitment Search guides*
