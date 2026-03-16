@@ -16,6 +16,7 @@ District Suite transforms Polaris from a single-tenant system to a multi-tenant 
 | **Phase 3** ✅ | District Volunteers | Complete | Volunteer management, import, event assignment |
 | **Phase 4** | District Recruitment | 🔧 Verification | Recruitment tools, matching, public signup |
 | **Phase 5** | PrepKC Visibility | Planned | Read-only PrepKC event access |
+| **Phase 6** | Teacher Self-Service | 📋 Proposed | Direct teacher add, roster search, audit logging |
 
 ---
 
@@ -256,6 +257,40 @@ District Suite transforms Polaris from a single-tenant system to a multi-tenant 
 - [ ] PrepKC events appear on calendar with distinct styling
 - [ ] Event details are read-only
 - [ ] Statistics show aggregate metrics
+
+---
+
+## Phase 6: Teacher Self-Service — 📋 Proposed
+
+**Objective:** Enable districts to manage their own teacher rosters directly in Polaris, eliminating spreadsheet dependency.
+
+**Status:** Proposed (March 2026). See [Feature Proposal](teacher_roster_management) for full analysis.
+
+> [!NOTE]
+> This phase mirrors the **Phase 3 (District Volunteers)** pattern — districts already have CRUD for volunteers; this extends the same self-service model to teachers.
+
+### Deliverables
+
+| Component | Description | Proposed Req |
+|-----------|-------------|--------------|
+| Teacher Add Form | In-app form to add a teacher (Building, Name, Email, Grade) | FR-DISTRICT-601 |
+| Teacher Edit/Deactivate | Edit or soft-delete existing roster entries | FR-DISTRICT-605–606 |
+| Validation | Email uniqueness, building fuzzy-match | FR-DISTRICT-602–603 |
+| Teacher Linking | Auto-link to `Teacher` entity via `find_or_create_teacher()` | FR-DISTRICT-604 |
+| Audit Logging | All changes logged to `AuditLog` | FR-DISTRICT-607 |
+| Roster Search | Filter roster by building, name, or status | FR-DISTRICT-609 |
+
+### Short-Term Alternative
+
+Until Phase 6 is built, a **documented self-service workflow** is planned to make the existing spreadsheet import process district-friendly. See [Feature Proposal — Solution 1](teacher_roster_management#solution-1-documented-self-service-workflow-short-term).
+
+### Success Criteria
+
+- [ ] District admin can add a teacher without touching a spreadsheet
+- [ ] New teacher is auto-linked to the `Teacher` entity
+- [ ] Building name is fuzzy-matched to a `School` record
+- [ ] All changes are audit-logged
+- [ ] Spreadsheet import remains available as a bulk alternative
 
 ---
 

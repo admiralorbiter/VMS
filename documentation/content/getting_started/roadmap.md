@@ -25,6 +25,7 @@ These features are prioritized for upcoming development:
 | **Automated Teacher Reminders** | 📋 Planned | FR-DISTRICT-504 |
 | **Automated Pathful Export Pulling** | 📋 Planned | FR-VIRTUAL-207 |
 | **Local Volunteer Auto-Communications** | 📋 Planned | FR-VIRTUAL-209 |
+| **Teacher Roster Self-Service Workflow** | 📋 Planned | [Feature Proposal](../district_suite/teacher_roster_management) |
 | **Documentation Restructure** | ✅ Complete | — |
 | **Cache Management UI** | ✅ Complete | — |
 
@@ -78,6 +79,7 @@ These features are prioritized for upcoming development:
 
 | Feature | Description |
 |---------|-------------|
+| **Direct Teacher Add** | In-app teacher management — add, edit, deactivate without spreadsheet dependency ([Feature Proposal](../district_suite/teacher_roster_management)) |
 | **Profile Self-Editing** | Teachers update their own contact info and school |
 | **Session History Exports** | Download participation records for professional development |
 | **Achievement Recognition** | Visual indicators for teachers meeting goals |

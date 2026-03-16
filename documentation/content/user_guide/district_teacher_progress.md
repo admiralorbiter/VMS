@@ -59,6 +59,9 @@ Sign-ups can be removed using the **Remove** button that appears on override ses
 ### Roster Import & Matching
 Teacher data is imported from district rosters via Google Sheets. This process ensures the "Teacher Progress" list matches the actual district staff.
 
+> [!TIP]
+> **Planned Improvement:** A direct "Add Teacher" feature is proposed to eliminate spreadsheet dependency. See the [Teacher Roster Management Feature Proposal](../district_suite/teacher_roster_management) for details on both the short-term workflow documentation and the long-term in-app solution.
+
 #### 1. Preparing the Google Sheet
 Create a Google Sheet with the following columns (headers are recommended but not strictly required if order matches, but best practice is to follow standard format):
 -   **Building** (School Name)
