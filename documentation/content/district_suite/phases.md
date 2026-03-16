@@ -294,6 +294,26 @@ Until Phase 6 is built, a **documented self-service workflow** is planned to mak
 
 ---
 
+## Cross-Phase: Volunteer Data Enrichment — 📋 Proposed
+
+**Objective:** Bulk-import volunteer metadata (local status, POC flag) and introduce a tenant-scoped preference/rating system.
+
+**Status:** Proposed (March 2026). See [Feature Proposal](volunteer_data_enrichment) for full analysis.
+
+> [!NOTE]
+> This feature is **cross-phase** — the enrichment import is an admin tool (independent of district phases), while the preference system will extend to tenant-facing UIs in Phase 6+.
+
+### Key Components
+
+| Component | Effort | Phase Dependency |
+|-----------|--------|-----------------|
+| Enrichment Import (CSV → existing fields) | 1 sprint | None |
+| Prefer/Avoid Preference Model + UI | 1 sprint | None |
+| Preference in Enrichment Import | 0.5 sprint | Above two |
+| District-Facing Preferences | 1 sprint | Phase 6 tenant scoping |
+
+---
+
 ## Quality Gates
 
 Each phase must pass these gates before production release:
