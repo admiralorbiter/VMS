@@ -183,6 +183,7 @@ Service layer modules for business logic and shared utilities.
 | `teacher_import_service.py` | Teacher roster import logic (CSV/Google Sheets) |
 | `academic_year_service.py` | Academic year, semester, and date range calculations |
 | `teacher_matching_service.py` | Centralized identity resolution (`resolve_teacher_for_tp`, `match_tp_to_profile`), name normalization, and session counting |
+| `session_status_service.py` | Shared session status classification (`classify_teacher_session`). Single source of truth for no-show detection, completion, planned/needs-review status |
 
 ---
 

@@ -12,6 +12,10 @@ from sqlalchemy.orm import joinedload
 from models.event import Event, EventStatus, EventTeacher, EventType
 from models.school_model import School
 from models.teacher import Teacher
+from services.session_status_service import (
+    SessionClassification,
+    classify_teacher_session,
+)
 
 from .computation import _district_name_matches
 
@@ -93,102 +97,16 @@ def compute_teacher_school_breakdown(district_name, virtual_year, date_from, dat
                     "upcoming_sessions": 0,
                 }
 
-            # Determine classification for this registration
-            def _norm(x):
-                return (x or "").strip().lower()
+            # Classify using shared service
+            classification = classify_teacher_session(event, teacher_reg, now)
 
-            def _sanitize(text: str) -> str:
-                t = (text or "").lower().strip()
-                for ch in ["_", "-", "/", "\\", ",", ".", "  "]:
-                    t = t.replace(ch, " ")
-                while "  " in t:
-                    t = t.replace("  ", " ")
-                return t
-
-            original_status = _sanitize(getattr(event, "original_status_string", None))
-            moved_to_in_person = "moved to in-person" in original_status
-            # Consider common variations for teacher no-show at the event level
-            event_teacher_no_show = ("teacher no show" in original_status) or (
-                "teacher did not attend" in original_status
-            )
-            tr_status = _sanitize(getattr(teacher_reg, "status", None))
-
-            is_teacher_no_show = (
-                "teacher no show" in tr_status
-                or "no show" in tr_status
-                or "did not attend" in tr_status
-            )
-            is_teacher_cancel = (
-                "cancel" in tr_status
-                or "withdraw" in tr_status
-                or "inclement weather" in tr_status
-                or "technical" in tr_status
-            )
-            completed_by_status = ("attended" in tr_status) or (
-                "completed" in tr_status
-            )
-
-            counted_completed = False
-            counted_no_show = False
-
-            # Check for upcoming sessions (Teacher requested or Industry chat + Draft status)
-            # Only count upcoming sessions that are actually in the future
-            session_type = getattr(event, "additional_information", "")
-            event_status = getattr(event, "status", "")
-            teacher_reg_status = getattr(teacher_reg, "status", "")
-
-            # Handle enum status values
-            event_status_str = (
-                str(event_status.value)
-                if hasattr(event_status, "value")
-                else str(event_status)
-            )
-            teacher_reg_status_str = (
-                str(teacher_reg_status) if teacher_reg_status else ""
-            )
-
-            # Check if this is an upcoming session AND it's actually in the future
-            # Ensure both datetimes are timezone-aware for comparison
-            event_start_date = event.start_date
-            if event_start_date and event_start_date.tzinfo is None:
-                # If event.start_date is timezone-naive, assume it's in UTC
-                event_start_date = event_start_date.replace(tzinfo=timezone.utc)
-
-            is_upcoming_session = (
-                (
-                    "teacher requested" in (session_type or "").lower()
-                    or "industry chat" in (session_type or "").lower()
-                )
-                and (
-                    "draft" in event_status_str.lower()
-                    or "draft" in teacher_reg_status_str.lower()
-                )
-                and event_start_date
-                and event_start_date > now  # Only future sessions
-            )
-
-            if is_upcoming_session:
-                school_teacher_data[school_name][teacher_id]["upcoming_sessions"] += 1
-            # Prioritize explicit no-show status over attendance_confirmed_at
-            elif is_teacher_no_show or (
-                event_teacher_no_show and not moved_to_in_person
-            ):
-                school_teacher_data[school_name][teacher_id]["no_shows"] += 1
-                counted_no_show = True
-            elif (
-                moved_to_in_person
-                or completed_by_status
-                or teacher_reg.attendance_confirmed_at
-            ):
+            if classification == SessionClassification.COMPLETED:
                 school_teacher_data[school_name][teacher_id]["sessions"] += 1
-                counted_completed = True
-            else:
-                # Ignore cancellations and indeterminate statuses (do not count as no-show)
-                if not is_teacher_cancel:
-                    # If truly indeterminate and attendance not confirmed, do nothing
-                    pass
-                else:
-                    pass
+            elif classification == SessionClassification.PLANNED:
+                school_teacher_data[school_name][teacher_id]["upcoming_sessions"] += 1
+            elif classification == SessionClassification.NO_SHOW:
+                school_teacher_data[school_name][teacher_id]["no_shows"] += 1
+            # CANCELLED, NEEDS_REVIEW, SKIPPED → don't count in school breakdown
 
     # Convert to sorted structure for template
     school_breakdown = {}
@@ -350,85 +268,24 @@ def compute_teacher_progress_tracking(district_name, virtual_year, date_from, da
                                 break
 
                 if progress_data:
-                    # Normalize status strings for robust matching (similar to compute_teacher_school_breakdown)
-                    def _sanitize_status(text):
-                        """Normalize status text for comparison"""
-                        if not text:
-                            return ""
-                        t = str(text).lower().strip()
-                        # Replace common separators with spaces
-                        for ch in ["_", "-", "/", "\\", ",", ".", "  "]:
-                            t = t.replace(ch, " ")
-                        # Normalize multiple spaces
-                        while "  " in t:
-                            t = t.replace("  ", " ")
-                        return t
+                    # Use shared classifier for consistent status detection
+                    now = datetime.now(timezone.utc)
+                    classification = classify_teacher_session(event, teacher_reg, now)
 
-                    # Check teacher's individual registration status first
-                    teacher_reg_status = _sanitize_status(
-                        getattr(teacher_reg, "status", "")
-                    )
-                    # Also check event-level status for teacher no-shows
-                    event_original_status = _sanitize_status(
-                        getattr(event, "original_status_string", "")
-                    )
-                    # Check if event status enum is NO_SHOW
-                    event_status_is_no_show = event.status == EventStatus.NO_SHOW
-
-                    # Comprehensive no-show detection
-                    # Check teacher registration status first (most specific)
-                    is_teacher_no_show = (
-                        "teacher no show" in teacher_reg_status
-                        or "no show" in teacher_reg_status
-                        or "did not attend" in teacher_reg_status
-                    )
-
-                    # If teacher registration doesn't have no-show, check event-level status
-                    if not is_teacher_no_show:
-                        is_teacher_no_show = (
-                            "teacher no show" in event_original_status
-                            or "teacher did not attend" in event_original_status
-                            # Check if event status enum is NO_SHOW and original status mentions teacher
-                            or (
-                                event_status_is_no_show
-                                and "teacher" in event_original_status
-                            )
-                        )
-                    is_teacher_cancel = (
-                        "cancel" in teacher_reg_status
-                        or "withdraw" in teacher_reg_status
-                        or "cancelled" in teacher_reg_status
-                    )
-
-                    # Track no-shows - they should not count as completed or planned,
-                    # but they affect the status calculation (teacher needs to replan)
-                    if is_teacher_no_show:
+                    if classification == SessionClassification.NO_SHOW:
                         progress_data["no_show_count"] += 1
                         continue
-                    if is_teacher_cancel:
+                    if classification == SessionClassification.CANCELLED:
                         continue
 
-                    # Check if teacher registration has "count" status - this should count as completed
-                    # even if the event status is NO_SHOW (as long as it's not a teacher no-show)
-                    is_count_status = (
-                        teacher_reg_status == "count" or "count" in teacher_reg_status
-                    )
-
-                    # Only count as completed if teacher actually attended (not no-show or cancelled)
-                    # Check if this is a completed session
-                    if (
-                        event.status == EventStatus.COMPLETED
-                        or (event.status == EventStatus.SIMULCAST)
-                        or (getattr(event, "original_status_string", "") or "").lower()
-                        in ["completed", "successfully completed"]
-                        # Also count if teacher registration has "count" status
-                        or is_count_status
-                    ):
+                    if classification == SessionClassification.COMPLETED:
                         progress_data["completed_sessions"] += 1
-                    # Check if this is a planned/upcoming session
-                    elif event.status == EventStatus.DRAFT or (
-                        getattr(event, "original_status_string", "") or ""
-                    ).lower() in ["draft", "registered"]:
+                    elif classification == SessionClassification.PLANNED:
+                        progress_data["planned_sessions"] += 1
+                    elif classification == SessionClassification.NEEDS_REVIEW:
+                        # Past events stuck in non-terminal status —
+                        # count toward planned so the no-show force-override
+                        # doesn't incorrectly trigger "Needs Planning"
                         progress_data["planned_sessions"] += 1
 
     # Group teachers by building/school

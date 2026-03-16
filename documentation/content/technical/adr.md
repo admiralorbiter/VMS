@@ -32,6 +32,7 @@ ADRs are immutable records of significant technical decisions that capture conte
 | D-002 | Google Sheets Integration | ✅ Accepted | 2024-03 |
 | D-003 | Daily Sync with Conflict Resolution | ✅ Accepted | 2024-04 |
 | D-004 | Auto-Link TeacherProgress to Teacher on Import | ✅ Accepted | 2026-02 |
+| D-010 | Shared Session Status Classification Service | ✅ Accepted | 2026-03 |
 
 ### GUI Enhancement Decisions
 
@@ -219,6 +220,24 @@ ADRs are immutable records of significant technical decisions that capture conte
 - ✅ All 28 KCKPS buildings have School records (seeded during Sprint 4.4)
 
 ---
+
+### 2026-03-16: D-010 — Shared Session Status Classification Service
+
+**Context:** Session status classification logic (no-show detection, completion, planned vs needs-review) was duplicated across 3 route files (`routes/virtual/usage/teacher_progress.py`, `routes/reports/virtual_session/teacher_progress.py`, `routes/district/tenant_teacher_usage.py`) with ~100 lines each. The copies diverged over time — the usage dashboard copy didn't count `CONFIRMED` or `PUBLISHED` events, causing teachers with valid upcoming sessions to show as "Needs Planning" instead of "In Progress".
+
+**Decision:** Create `services/session_status_service.py` as the single source of truth for session classification. Classification rules:
+
+- **No-show / Cancellation** detected first (from `EventTeacher.status` or `Event.original_status_string`)
+- **Completed** — `COMPLETED`, `SIMULCAST`, attendance confirmed, "count" status, or "moved to in-person"
+- **Planned** — `CONFIRMED`, `PUBLISHED`, `REQUESTED`, or `DRAFT` with a **future** `start_date`
+- **Needs Review** — `CONFIRMED`, `PUBLISHED`, or `REQUESTED` with a **past** `start_date` (indicates stale data: either import hasn't run or the event was missed during import)
+
+**Consequences:**
+- ✅ Bug fixed: CONFIRMED/PUBLISHED sessions now count as planned, preventing false "Needs Planning"
+- ✅ ~350 lines of duplicated inline classification removed from 2 route files
+- ✅ New "Needs Review" status flags stale past sessions for admin attention
+- ✅ 36 unit tests cover all classification paths
+- ⚠️ `tenant_teacher_usage.py` migrated to use shared service (was already correct but now unified)
 
 ## Creating New ADRs
 
