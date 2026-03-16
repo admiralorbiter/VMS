@@ -123,6 +123,15 @@ Welcome to the VMS User Guide. This section provides detailed, step-by-step inst
       </div>
     </a>
   </div>
+  <div class="qn-card">
+    <a href="#user-guide-newsletter-formatter" class="qn-card-link">
+      <div class="qn-icon">📰</div>
+      <div class="qn-body">
+        <div class="qn-title">Newsletter Formatter</div>
+        <div class="qn-desc">Generate formatted newsletter text from upcoming Pathful virtual sessions.</div>
+      </div>
+    </a>
+  </div>
 </div>
 
 ---

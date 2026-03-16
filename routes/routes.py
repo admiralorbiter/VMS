@@ -81,6 +81,9 @@ from routes.students.routes import students_bp
 from routes.teachers.routes import teachers_bp
 from routes.tenants import tenant_users_bp, tenants_bp
 
+# Tools (Newsletter Formatter, etc.)
+from routes.tools import tools_bp
+
 # Import virtual __init__ to register usage routes
 from routes.virtual.routes import virtual_bp
 from routes.volunteers.routes import volunteers_bp
@@ -148,6 +151,7 @@ def init_routes(app):
     app.register_blueprint(public_api_bp)  # District Suite Public API
     app.register_blueprint(quality_bp)  # Quality scoring & validation (TD-006)
     app.register_blueprint(docs_bp)  # Documentation serving (TD-006)
+    app.register_blueprint(tools_bp)  # Internal productivity tools
 
     @app.route("/")
     def index():
