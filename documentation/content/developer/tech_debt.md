@@ -248,3 +248,239 @@ All resolved items, for historical reference:
 **Proposed fix:** Move to app config or a shared constants module **when a second consumer appears** (YAGNI until then).
 
 **Risk:** None — cosmetic.
+
+---
+
+## TD-041: Oversized Route Files (33 Files Over 500 Lines)
+
+**Created:** 2026-03-17 · **Priority:** High · **Category:** Architecture / Modularity
+
+**Scope:** 33 of 110 route files exceed 500 lines. The top 6 are all over 1,500 lines:
+
+| Lines | File | Root cause |
+|------:|------|------------|
+| 2,061 | `virtual/pathful_import/routes.py` | Import parsing + validation + UI mixed in one file |
+| 1,917 | `reports/recruitment.py` | Matching algorithm + search + result formatting inline |
+| 1,845 | `virtual/usage/computation.py` | Session counting + caching + formatting |
+| 1,780 | `virtual/usage/session_routes.py` | Session CRUD + inline business logic |
+| 1,743 | `virtual/usage/district_routes.py` | District dashboard + inline queries |
+| 1,647 | `district/tenant_teacher_usage.py` | Teacher usage + inline computation |
+
+**Root cause:** Business logic (computation, formatting, validation, caching) lives in route handlers instead of a service layer. Routes mix HTTP concerns with domain logic, making them untestable in isolation and hard to reuse.
+
+**Proposed fix:** Extract business logic into `services/` modules following the pattern established by `session_status_service.py` (TD-038). Priority extractions:
+1. Virtual computation (TD-046)
+2. Recruitment matching logic
+3. Pathful import parsing
+
+**Risk:** Medium — each extraction requires updating imports and verifying no behavioral changes. Migration should be done one file at a time with tests.
+
+**Dependencies:** TD-042 (cache consolidation) should come first since cached data access patterns need to be settled before extracting computation logic.
+
+---
+
+## TD-042: Cache Function Duplication (4 Functions × 3 Files)
+
+**Created:** 2026-03-17 · **Priority:** High · **Category:** DRY / Architecture
+
+**Scope:** 4 cache functions are copy-pasted **verbatim** across 3 files:
+
+| Function | File 1 | File 2 | File 3 |
+|----------|--------|--------|--------|
+| `get_virtual_session_cache` | `reports/virtual_session/cache.py` | `virtual/usage/cache.py` | `virtual/usage/computation.py` |
+| `save_virtual_session_cache` | same | same | same |
+| `get_virtual_session_district_cache` | same | same | same |
+| `save_virtual_session_district_cache` | same | same | same |
+
+**Root cause:** When `usage.py` was split into packages (TD-017), cache functions were copied into both the `reports` and `virtual` packages rather than extracted to a shared location.
+
+**Proposed fix:** Create `services/cache_service.py` with canonical implementations. Update all 3 consumer files to import from the single source. This also lays groundwork for TD-016 (generic ReportCache model).
+
+**Risk:** Low — functions are identical, so consolidation is mechanical. Add a smoke test to verify cache read/write still works.
+
+**Effort:** Small (1–2 hours).
+
+---
+
+## TD-043: User Management Duplication (3 Functions × 3 Files)
+
+**Created:** 2026-03-17 · **Priority:** Medium · **Category:** DRY / Maintainability
+
+**Scope:** User CRUD functions duplicated across 3 route files:
+
+| Function | File |
+|----------|------|
+| `create_user` | `auth/routes.py`, `district/tenant_users.py`, `tenants/user_management.py` |
+| `edit_user_form` | `district/tenant_users.py`, `management/routes.py`, `tenants/user_management.py` |
+| `update_user` | `district/tenant_users.py`, `management/routes.py`, `tenants/user_management.py` |
+
+**Root cause:** Three different UIs manage users (global admin, tenant admin, district admin), each with its own route handler that duplicates user creation/update logic. Small differences (tenant scoping, permission checks) led to full copies rather than parameterized shared functions.
+
+**Proposed fix:** Create `services/user_service.py` with shared `create_user()`, `update_user()`, `get_user_for_edit()` functions. Route handlers call the service with context-specific parameters (tenant_id, role constraints). Each route handler stays thin — just request parsing and template rendering.
+
+**Risk:** Medium — the 3 implementations may have diverged. Requires careful diff to identify intentional vs accidental differences before merging.
+
+**Effort:** Medium (2–3 hours including diff analysis and tests).
+
+---
+
+## TD-044: `get_school_year_dates` Duplication (3 Files)
+
+**Created:** 2026-03-17 · **Priority:** Medium · **Category:** DRY
+
+**Scope:** `get_school_year_dates()` defined in 3 separate route files:
+- `routes/reports/attendance.py`
+- `routes/reports/virtual_session/computation.py`
+- `routes/virtual/usage/computation.py`
+
+**Root cause:** Missed consolidation. `services/academic_year_service.py` already exists and handles semester/year calculations, but this specific function was never migrated into it.
+
+**Proposed fix:** Move `get_school_year_dates()` into `services/academic_year_service.py` and update all 3 consumers to import from there. Verify the 3 implementations are identical first (likely copy-pasted).
+
+**Risk:** Low — should be a direct move with no logic changes.
+
+**Effort:** Small (30 minutes).
+
+---
+
+## TD-045: `get_tenant_district_name` Duplication (3 Files)
+
+**Created:** 2026-03-17 · **Priority:** Medium · **Category:** DRY
+
+**Scope:** `get_tenant_district_name()` defined in 3 district route files:
+- `routes/district/tenant_teacher_import.py`
+- `routes/district/tenant_teacher_usage.py`
+- `routes/district/virtual_sessions.py`
+
+**Root cause:** District utility function duplicated when route files were created independently. `services/district_service.py` exists but is small (4,959 bytes) — this function was never added to it.
+
+**Proposed fix:** Move `get_tenant_district_name()` into `services/district_service.py`. Update all 3 consumers. Verify implementations are identical.
+
+**Risk:** Low — utility function, no side effects.
+
+**Effort:** Small (30 minutes).
+
+---
+
+## TD-046: Virtual Computation Duplication (2 Files, ~3,400 Lines)
+
+**Created:** 2026-03-17 · **Priority:** High · **Category:** DRY / Architecture
+
+**Scope:** Two large computation files share substantial logic:
+- `routes/virtual/usage/computation.py` (1,845 lines)
+- `routes/reports/virtual_session/computation.py` (1,590 lines)
+
+Both compute session counts, teacher progress metrics, cache results, and format data for display. They evolved independently from the same original `usage.py` god module (TD-017).
+
+**Root cause:** When `usage.py` (7,473 lines) was split into domain packages (TD-017), computation logic was copied into both the `virtual/usage/` and `reports/virtual_session/` packages. Over time, small divergences appeared (different caching strategies, different output formats), but the core counting/classification logic remains largely identical.
+
+**Proposed fix:**
+1. **Diff the two files** to identify shared vs. divergent logic
+2. Extract shared computation into `services/virtual_computation_service.py`:
+   - Session counting and classification
+   - Teacher progress aggregation
+   - District-level rollup
+3. Keep route-specific formatting in the route files
+4. Expected result: each `computation.py` drops from ~1,700 lines to ~400 lines
+
+**Risk:** Medium-High — these are the most complex files in the system. Core metrics depend on the exact counting logic. Requires:
+- Comprehensive diff before merging
+- Side-by-side integration tests to verify output matches
+- Staged rollout (extract one function at a time)
+
+**Dependencies:** TD-042 (cache consolidation) should come first.
+
+**Effort:** Large (4–6 hours across 1–2 sessions).
+
+---
+
+## TD-047: Oversized Templates (28 Files Over 500 Lines)
+
+**Created:** 2026-03-17 · **Priority:** Low · **Category:** Maintainability / Frontend
+
+**Scope:** 28 of 142 templates exceed 500 lines. Top 5:
+
+| Lines | Template |
+|------:|---------|
+| 2,795 | `data_quality/quality_dashboard.html` |
+| 1,805 | `reports/districts/district_year_end_detail.html` |
+| 1,483 | `virtual/usage/index.html` |
+| 1,324 | `salesforce/import_dashboard.html` |
+| 1,187 | `volunteers/view.html` |
+
+**Root cause:** Inline CSS (`<style>` blocks), inline JS (`<script>` blocks), and complex HTML all in single files. Each template is self-contained but hard to navigate.
+
+**Proposed fix:** Incrementally extract:
+1. CSS to `static/css/<feature>.css` (imported via `{% block extra_css %}`)
+2. JS to `static/js/<feature>.js` (imported via `{% block extra_js %}`)
+3. Reusable HTML fragments to Jinja2 `{% include %}` partials (prefixed with `_`)
+
+Start with the quality dashboard (2,795 lines) as the pilot.
+
+**Risk:** Low — purely structural refactoring, no logic changes. But must verify no Jinja2 template variables break when moving to external files (JS in external files can't use `{{ }}` without a config object pattern).
+
+**Effort:** Medium per template (1–2 hours each). Recommend doing 1–2 per session as cleanup work.
+
+---
+
+## Priority Order
+
+Ordered by **what best unblocks future work**:
+
+| Priority | ID | Item | Effort |
+|:--------:|----|------|:------:|
+| 1 | **TD-042** | Cache function consolidation (4 functions × 3 files) | S |
+| 2 | **TD-044** | `get_school_year_dates` → `academic_year_service.py` | S |
+| 3 | **TD-045** | `get_tenant_district_name` → `district_service.py` | S |
+| 4 | **TD-043** | User management → `user_service.py` | M |
+| 5 | **TD-046** | Virtual computation service extraction | L |
+| 6 | **TD-009** | Centralize transaction management (199 calls, 55 files) | L |
+| 7 | **TD-041** | Oversized route files — ongoing extraction | L |
+| 8 | **TD-013** | True application factory pattern | M |
+| 9 | **TD-016** | Generic `ReportCache` model | M |
+| 10 | **TD-022** | Add tests for extracted blueprints | M |
+| 11 | **TD-036** | Exact-name duplicate Teacher cleanup | S |
+| 12 | **TD-037** | Hard-delete pruned teachers (after 2026-04-13) | S |
+| 13 | **TD-047** | Oversized templates — incremental extraction | M |
+| 14 | **TD-040** | `NEPRIS_SESSION_BASE_URL` in single file (YAGNI) | S |
+| 15 | **TD-011** | SQLite → MySQL *(do last when codebase is clean)* | XL |
+
+> TD-004 is intentionally deferred — the M2M relationship is the correct path forward.
+> TD-033 and TD-034 are resolved. See [Resolved Archive](#resolved-archive).
+
+---
+
+## Resolved Archive
+
+All resolved items, for historical reference:
+
+| ID | Title | Resolved | Summary |
+|----|-------|----------|---------|
+| TD-001 | Enum vs String Storage for Roles | 2026-03-01 | `TenantRole` converted to `str, Enum`. `hasattr` workarounds removed. |
+| TD-002 | Incomplete Savepoint Recovery | 2026-02-04 | All SF import files updated with savepoint recovery and structured error codes. |
+| TD-003 | `Teacher.school_id` FK Constraint | N/A | Evaluated — column type already correct. FK would break imports due to identity lag. |
+| TD-005 | EventTeacher Primary Counting | 2026-02-28 | All 464 TeacherProgress linked. EventTeacher backfill completed (15,838+ records, 97.5%). |
+| TD-006 | `app.py` God Module (841 lines) | 2026-03-01 | Extracted `quality_bp` + `docs_bp`. `app.py` reduced 841 → 248 lines. |
+| TD-007 | Deprecated `datetime.utcnow()` | 2026-03-01 | All calls replaced with `datetime.now(timezone.utc)` across 18 files. |
+| TD-008 | Blanket `except Exception` (50+ files) | 2026-03-03 | Error hierarchy (`AppError` + 6 subclasses), `@handle_route_errors` decorator. 4-phase migration. |
+| TD-010 | Hardcoded District Mappings | 2026-03-01 | Replaced with `DistrictAlias` model + `resolve_district()` (4-tier lookup). |
+| TD-012 | Oversized Model Files | 2026-03-03 | Enums extracted from `contact.py`, `event.py`, `volunteer.py` into dedicated modules. |
+| TD-014 | Duplicate Method in `volunteer.py` | 2026-03-01 | Removed duplicate `_check_local_status_from_events`. |
+| TD-015 | F-String Logger Interpolation | 2026-03-03 | 562 f-string logger calls migrated to `%s` lazy interpolation across ~30 files. |
+| TD-017 | `usage.py` God Module (7,473 lines) | 2026-03-02 | Extracted into 7 domain-specific modules. |
+| TD-018 | Inline `is_admin` Checks (40+ instances) | 2026-03-03 | 37 inline checks replaced with `@admin_required` across 13 files. |
+| TD-019 | `management.py` God Module (1,410 lines) | 2026-03-03 | Extracted into 5 domain-specific modules. |
+| TD-020 | Oversized Route Files (3 files) | 2026-03-03 | `virtual_session.py`, `pathful_import.py`, `district_year_end.py` extracted into packages. |
+| TD-021 | SQLite `RETURNING` Workaround | 2026-03-03 | `MockLog` replaced with real `RosterImportLog` using standard ORM. |
+| TD-023 | Unsafe Test Fixtures (prod DB risk) | 2026-03-02 | 31 unsafe fixture definitions removed across 7 test files. |
+| TD-024 | Legacy `import_sheet()` Route | 2026-03-02 | Removed ~1,537 lines of dead code + 18 helper functions. |
+| TD-025 | Consolidate Permission Decorators | 2026-03-02 | Canonical `admin_required` + `global_admin_required` in `routes/decorators.py`. |
+| TD-026 | DB Commit Patterns in SF Imports | 2026-03-02 | 3 files fixed with consistent batch commit patterns. |
+| TD-027 | N+1 Queries in Volunteer Import | 2026-03-02 | Pre-loaded 4 lookup caches, eliminating ~15,000+ individual queries. |
+| TD-028 | Model Cleanup (Duplicates, Ordering) | 2026-03-02 | Duplicate assignments removed, missing imports added, deterministic ordering. |
+| TD-029 | Unlinked TeacherProgress Records | 2026-03-06 | Centralized identity resolution in `teacher_matching_service.py` (`resolve_teacher_for_tp`, `match_tp_to_profile`). Reconciliation script linked 42 profiles, resolved 35 TPs. |
+| TD-030 | Override Double-Counting | 2026-03-06 | ADD overrides now event-aware — skip if event already counted via EventTeacher. Stale ADDs auto-resolved with logging. |
+| TD-031 | No-Show Text-Match Leak | 2026-03-06 | Split `matched_event_ids` into `all_et_event_ids` + `counted_events_per_tp`. No-show EventTeacher records now excluded from supplementary text-matching. |
+| TD-032 | Pathful Multi-District `district_partner` Mismatch | 2026-03-07 | Removed `district_partner` filter from FK-based EventTeacher counting path. Pathful assigns a single `district_partner` per event, so multi-district sessions get mislabelled (e.g. KCKPS event tagged "Hogan Preparatory Academy"). FK link already proves attendance; filter kept only on supplementary text-matching path. Fixed under-counting for 17 teachers across 2 events in Spring 2025-2026. **Upstream fix needed:** notify Pathful that events with teachers from multiple districts get the wrong `district_partner` value. |
+| TD-038 | Session Status Classification Dedup | 2026-03-16 | CONFIRMED/PUBLISHED sessions silently dropped from teacher progress counting. Extracted ~350 lines of duplicated inline classification from 2 route files into `services/session_status_service.py`. Future CONFIRMED/PUBLISHED → "Planned"; past → "Needs Review". 36 unit tests. See ADR D-010. |
+| TD-039 | Inline `import pytz` in Newsletter | 2026-03-17 | `import pytz` was inside 2 endpoint functions in `newsletter.py`. Moved to module level. |

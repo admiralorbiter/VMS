@@ -15,6 +15,7 @@ ADRs are immutable records of significant technical decisions that capture conte
 | G-001 | Flask as Web Framework | ✅ Accepted | 2024-01 |
 | G-002 | SQLite as Primary Database | ✅ Accepted | 2024-01 |
 | G-003 | Vanilla JavaScript Frontend | ✅ Accepted | 2024-02 |
+| G-004 | Service-Layer Extraction Strategy | ✅ Accepted | 2026-03 |
 
 ### Validation System Decisions
 
@@ -238,6 +239,32 @@ ADRs are immutable records of significant technical decisions that capture conte
 - ✅ New "Needs Review" status flags stale past sessions for admin attention
 - ✅ 36 unit tests cover all classification paths
 - ⚠️ `tenant_teacher_usage.py` migrated to use shared service (was already correct but now unified)
+
+---
+
+### 2026-03-17: G-004 — Service-Layer Extraction Strategy
+
+**Context:** A structural audit (2026-03-17) found that 33 of 110 route files exceed 500 lines, with the top 6 over 1,500 lines. 15 functions are duplicated across 3+ files. Cache functions, user management, and date utilities are copy-pasted. Root cause: business logic lives in route handlers instead of a service layer, a pattern inherited from the original monolithic codebase.
+
+**Decision:** Adopt an incremental service-layer extraction strategy:
+1. **Extract DRY violations first** — move duplicated utility functions to existing or new service modules (cache, academic year, district, user management)
+2. **Extract computation logic second** — move shared computation from the two `computation.py` files into `services/virtual_computation_service.py`
+3. **Route handlers become thin** — only request parsing, service calls, and template rendering
+4. **Migrate incrementally** — one file at a time, with tests verifying behavioral equivalence
+
+This follows the pattern established by `session_status_service.py` (D-010) which successfully extracted ~350 lines of duplicated classification logic.
+
+**Consequences:**
+- ✅ Clear precedent exists (D-010) — proven approach
+- ✅ Services are independently testable with unit tests
+- ✅ Route files become manageable (~300–500 lines each)
+- ✅ New features can reuse service functions without importing from route files
+- ⚠️ Requires careful diffing before merging duplicated functions (may have diverged)
+- ⚠️ Large scope — 7 TD items across 4 phases
+
+**Related:** TD-041 through TD-047. See [Development Plan § 2.7](../developer/development_plan.md#27--structural-consolidation-sprint-td-041047).
+
+---
 
 ## Creating New ADRs
 

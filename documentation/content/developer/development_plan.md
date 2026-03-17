@@ -101,6 +101,45 @@ Foundational improvements that unblock future work and reduce risk.
 - [ ] Add integration tests for `quality_bp` and `docs_bp`
 - [ ] Audit `reports/` test coverage — at least smoke tests for all 14 modules
 
+### 2.7 — Structural Consolidation Sprint *(TD-041–047)*
+
+> [!NOTE]
+> **Added March 2026** after a codebase-wide structural audit. See individual TD entries in [Tech Debt Tracker](tech_debt.md) for full evaluations including scope, root cause, risk, and dependencies.
+
+**System snapshot (as of 2026-03-17):**
+- 33 of 110 route files over 500 lines (30%)
+- 199 `db.session.commit()` calls across 55 route files
+- 15 duplicate function names across 3+ route files
+- 28 of 142 templates over 500 lines
+
+**Phase 1 — Quick DRY Wins (1 session, ~2–3 hours):**
+
+- [ ] **TD-042:** Consolidate 4 cache functions into `services/cache_service.py` (3 files → 1)
+- [ ] **TD-044:** Move `get_school_year_dates()` into `services/academic_year_service.py` (3 files → 1)
+- [ ] **TD-045:** Move `get_tenant_district_name()` into `services/district_service.py` (3 files → 1)
+- [ ] Run full test suite to verify no regressions
+
+**Phase 2 — User Service Extraction (1 session, ~2–3 hours):**
+
+- [ ] **TD-043:** Diff the 3 `create_user` / `edit_user` / `update_user` implementations
+- [ ] Identify intentional vs accidental divergence
+- [ ] Extract shared logic into `services/user_service.py`
+- [ ] Update 3 route files to use the service
+- [ ] Add service-level tests
+
+**Phase 3 — Virtual Computation Extraction (1–2 sessions, ~4–6 hours):**
+
+- [ ] **TD-046:** Diff `virtual/usage/computation.py` vs `reports/virtual_session/computation.py`
+- [ ] Identify shared counting/classification logic
+- [ ] Extract into `services/virtual_computation_service.py`
+- [ ] Side-by-side integration tests to verify output parity
+- [ ] Expected: each file drops from ~1,700 lines to ~400 lines
+
+**Phase 4 — Ongoing Cleanup:**
+
+- [ ] **TD-041:** Continue extracting business logic from oversized route files into services
+- [ ] **TD-047:** Incrementally extract CSS/JS from oversized templates (1–2 per session)
+
 ---
 
 ## Tier 3: MySQL Migration
@@ -240,12 +279,14 @@ Items considered but not currently feasible:
 | TD-034 Data Quality Audit | Mar 2026 | Skeleton addresses, ALL CAPS names, truncated skills, connector migration, Data Quality Dashboard. See [Tech Debt Tracker](tech_debt.md) |
 | Teacher Deduplication (TD-033/035/036) | Mar 2026 | Name parsing fixed (5 locations), 7,660 orphans pruned, admin merge UI, 317K garbage student records deleted, data quality rescan. See [Tech Debt Tracker](tech_debt.md) |
 | Tech Debt TD-001 through TD-036 | Feb–Mar 2026 | 23 items resolved. See [Tech Debt Tracker](tech_debt.md#resolved-archive) |
+| Newsletter Formatter | Mar 2026 | Virtual Connector + Career Exploration + Virtual Search-and-Add modes. 15 FRs (FR-TOOLS-101–115), 42 tests. See [requirements-tools.md](../requirements/requirements-tools.md) |
+| Structural Health Audit | Mar 2026 | Codebase-wide audit: 7 structural issues catalogued (TD-041–047), 4-phase consolidation roadmap. See Section 2.7 |
 
 ---
 
 ## References
 
-- [Development Status Tracker](development_status_tracker.md) — FR-by-FR implementation status (~188 FRs)
+- [Development Status Tracker](development_status_tracker.md) — FR-by-FR implementation status (~203 FRs)
 - [Tech Debt Tracker](tech_debt.md) — Active debt items with descriptions and priorities
 - [Architecture](../technical/architecture.md) — System design
 - [ADR Log](../technical/adr.md) — Architectural decisions
