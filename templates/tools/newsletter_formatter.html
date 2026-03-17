@@ -202,6 +202,75 @@
     /* Loading spinner */
     .nf-loading { text-align: center; padding: 40px; color: #999; }
 
+    /* ── Virtual search section ── */
+    .nf-vs-section {
+        border-top: 2px solid #667eea; margin-top: 4px;
+    }
+    .nf-vs-header {
+        display: flex; align-items: center; gap: 8px;
+        padding: 10px 16px; background: linear-gradient(135deg, #eef2ff 0%, #e8ecf8 100%);
+        font-weight: 600; color: #4a5568; font-size: 0.93em;
+    }
+    .nf-vs-header i { color: #667eea; }
+    .nf-vs-count { font-weight: 400; font-size: 0.82em; color: #999; margin-left: auto; }
+    .nf-vs-clear {
+        padding: 2px 8px; border-radius: 4px; border: 1px solid #ccc;
+        background: white; cursor: pointer; font-size: 0.75em; color: #e74c3c;
+        transition: all 0.15s;
+    }
+    .nf-vs-clear:hover { background: #fef2f2; border-color: #e74c3c; }
+    .nf-vs-body { padding: 8px 16px; }
+    .nf-vs-search-row {
+        display: flex; gap: 8px; margin-bottom: 8px; position: relative;
+    }
+    .nf-vs-search-input {
+        flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px;
+        font-size: 0.86em; outline: none; transition: border-color 0.15s;
+    }
+    .nf-vs-search-input:focus { border-color: #667eea; }
+    .nf-vs-search-btn {
+        padding: 8px 14px; border-radius: 6px; border: 1px solid #667eea;
+        background: linear-gradient(135deg, #667eea 0%, #5a6fd6 100%); color: white;
+        cursor: pointer; font-size: 0.86em; font-weight: 500; white-space: nowrap;
+        transition: all 0.15s;
+    }
+    .nf-vs-search-btn:hover { box-shadow: 0 2px 8px rgba(102,126,234,0.3); }
+    .nf-vs-results {
+        max-height: 200px; overflow-y: auto; border: 1px solid #e2e8f0;
+        border-radius: 6px; margin-bottom: 8px; display: none;
+    }
+    .nf-vs-results.show { display: block; }
+    .nf-vs-result-row {
+        display: flex; align-items: center; gap: 8px; padding: 6px 12px;
+        font-size: 0.84em; border-bottom: 1px solid #f0f0f0; cursor: pointer;
+        transition: background 0.1s;
+    }
+    .nf-vs-result-row:last-child { border-bottom: none; }
+    .nf-vs-result-row:hover { background: #f0f7ff; }
+    .nf-vs-result-row .nf-vs-add-btn {
+        padding: 2px 8px; border-radius: 4px; border: 1px solid #27ae60;
+        background: #eafaf1; color: #27ae60; cursor: pointer; font-size: 0.9em;
+        font-weight: 600; flex-shrink: 0; transition: all 0.15s;
+    }
+    .nf-vs-result-row .nf-vs-add-btn:hover { background: #27ae60; color: white; }
+    .nf-vs-result-dt { color: #888; font-size: 0.92em; white-space: nowrap; }
+    .nf-vs-result-title { flex: 1; color: #333; }
+    .nf-vs-empty { padding: 12px; text-align: center; color: #aaa; font-size: 0.85em; }
+    .nf-vs-cart { margin-top: 4px; }
+    .nf-vs-cart-row {
+        display: flex; align-items: center; gap: 8px; padding: 5px 0;
+        font-size: 0.84em; border-bottom: 1px solid #f5f5f5;
+    }
+    .nf-vs-cart-row input[type="checkbox"] { accent-color: #667eea; cursor: pointer; }
+    .nf-vs-cart-dt { color: #555; white-space: nowrap; }
+    .nf-vs-cart-title { flex: 1; color: #333; }
+    .nf-vs-remove {
+        padding: 1px 6px; border-radius: 3px; border: 1px solid #ddd;
+        background: white; color: #e74c3c; cursor: pointer; font-size: 0.8em;
+        transition: all 0.15s;
+    }
+    .nf-vs-remove:hover { background: #fef2f2; border-color: #e74c3c; }
+
     /* Toast notification */
     .nf-toast {
         position: fixed; bottom: 24px; right: 24px; z-index: 9999;
@@ -309,6 +378,10 @@
     // Default-off sections (same pattern as General / KC Series for virtual)
     const DEFAULT_OFF_SECTIONS = new Set(["General / KC Series", "Other Events"]);
 
+    // ── Virtual session cart (search-and-add for in-person mode) ──
+    let virtualCart = [];        // [{id, title, formatted_datetime, link}]
+    let virtualCartSelected = new Set();  // IDs of checked virtual sessions
+
     // All sessions from the API, keyed by id
     let sessionsById = {};
     // Set of selected session ids (strings)
@@ -372,6 +445,7 @@
                 } else {
                     activeGroupOrder = data.section_order || IN_PERSON_SECTION_ORDER;
                     buildInPersonUI(data.sessions);
+                    appendVirtualSearchSection();
                 }
             })
             .catch(err => {
@@ -410,10 +484,154 @@
     // ── Build UI: In-Person mode (section-grouped) ──
     function buildInPersonUI(sessions) {
         activeGroupOrder = IN_PERSON_SECTION_ORDER;
+        // Clear virtual cart when rebuilding
+        virtualCart = [];
+        virtualCartSelected = new Set();
         _buildGroupedUI(sessions, IN_PERSON_SECTION_ORDER, function(s) { return [s.section]; }, function(s) {
             return '<span class="nf-session-dt">' + escapeHtml(s.formatted_datetime) + '</span>'
                  + '<span class="nf-session-title">' + escapeHtml(s.title) + '</span>';
         });
+    }
+
+    // ── Virtual search section (in-person mode only) ──
+    function appendVirtualSearchSection() {
+        const body = document.getElementById("sessionsBody");
+        let html = '<div class="nf-vs-section" id="virtualSearchSection">';
+        html += '<div class="nf-vs-header">';
+        html += '<i class="fas fa-laptop"></i> ';
+        html += '<span>Virtual Sessions</span>';
+        html += '<span class="nf-vs-count" id="vsCount">0 added</span>';
+        html += '<button class="nf-vs-clear" onclick="clearVirtualCart()" title="Remove all virtual sessions">Clear</button>';
+        html += '</div>';
+        html += '<div class="nf-vs-body">';
+        html += '<div class="nf-vs-search-row">';
+        html += '<input type="text" class="nf-vs-search-input" id="vsSearchInput" placeholder="Search virtual sessions by title…" onkeydown="if(event.key===\'Enter\')searchVirtual()">';
+        html += '<button class="nf-vs-search-btn" onclick="searchVirtual()"><i class="fas fa-search"></i> Search</button>';
+        html += '</div>';
+        html += '<div class="nf-vs-results" id="vsResults"></div>';
+        html += '<div class="nf-vs-cart" id="vsCart"></div>';
+        html += '</div></div>';
+        body.insertAdjacentHTML('beforeend', html);
+    }
+
+    // ── Search virtual sessions ──
+    let vsSearchTimeout;
+    window.searchVirtual = function() {
+        const q = document.getElementById("vsSearchInput").value.trim();
+        if (!q) return;
+        const resultsEl = document.getElementById("vsResults");
+        resultsEl.innerHTML = '<div class="nf-vs-empty"><i class="fas fa-spinner fa-spin"></i> Searching…</div>';
+        resultsEl.classList.add("show");
+
+        fetch("{{ url_for('tools.newsletter_formatter_search_virtual_sessions') }}?q=" + encodeURIComponent(q))
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success || !data.sessions.length) {
+                    resultsEl.innerHTML = '<div class="nf-vs-empty">No sessions found for "' + escapeHtml(q) + '"</div>';
+                    return;
+                }
+                // Filter out already-added sessions
+                const addedIds = new Set(virtualCart.map(s => s.id));
+                const available = data.sessions.filter(s => !addedIds.has(s.id));
+                if (!available.length) {
+                    resultsEl.innerHTML = '<div class="nf-vs-empty">All matching sessions already added</div>';
+                    return;
+                }
+                let rhtml = '';
+                available.forEach(s => {
+                    rhtml += '<div class="nf-vs-result-row" data-vsid="' + s.id + '">';
+                    rhtml += '<button class="nf-vs-add-btn" onclick="addVirtualSession(' + s.id + ', this)" title="Add to newsletter">+</button>';
+                    rhtml += '<span class="nf-vs-result-title">' + escapeHtml(s.title) + '</span>';
+                    rhtml += '<span class="nf-vs-result-dt">' + escapeHtml(s.formatted_datetime.split(',').slice(0,2).join(',')) + '</span>';
+                    rhtml += '</div>';
+                    // Stash data for the add handler
+                    resultsEl['_sess_' + s.id] = s;
+                });
+                resultsEl.innerHTML = rhtml;
+            })
+            .catch(() => {
+                resultsEl.innerHTML = '<div class="nf-vs-empty" style="color:#c0392b;">Search failed</div>';
+            });
+    };
+
+    // ── Add a virtual session to the cart ──
+    window.addVirtualSession = function(id, btnEl) {
+        const resultsEl = document.getElementById("vsResults");
+        const session = resultsEl['_sess_' + id];
+        if (!session || virtualCart.find(s => s.id === id)) return;
+
+        virtualCart.push(session);
+        virtualCartSelected.add(String(id));
+
+        // Remove from results
+        const row = btnEl.closest('.nf-vs-result-row');
+        if (row) row.remove();
+        // If no more results, hide
+        if (!resultsEl.querySelector('.nf-vs-result-row')) {
+            resultsEl.classList.remove('show');
+        }
+
+        renderVirtualCart();
+        updateVsCount();
+        renderPreview();
+        showToast('Added: ' + session.title.substring(0, 40));
+    };
+
+    // ── Remove a virtual session from the cart ──
+    window.removeVirtualSession = function(id) {
+        virtualCart = virtualCart.filter(s => s.id !== id);
+        virtualCartSelected.delete(String(id));
+        renderVirtualCart();
+        updateVsCount();
+        renderPreview();
+    };
+
+    // ── Toggle virtual session checkbox ──
+    window.toggleVirtualSession = function(cb) {
+        const sid = cb.dataset.vsid;
+        if (cb.checked) {
+            virtualCartSelected.add(sid);
+        } else {
+            virtualCartSelected.delete(sid);
+        }
+        renderPreview();
+    };
+
+    // ── Clear all virtual sessions ──
+    window.clearVirtualCart = function() {
+        virtualCart = [];
+        virtualCartSelected = new Set();
+        renderVirtualCart();
+        updateVsCount();
+        renderPreview();
+        showToast('Cleared all virtual sessions');
+    };
+
+    // ── Render virtual cart ──
+    function renderVirtualCart() {
+        const cartEl = document.getElementById('vsCart');
+        if (!cartEl) return;
+        if (!virtualCart.length) {
+            cartEl.innerHTML = '<div class="nf-vs-empty">No virtual sessions added yet. Use the search above to find and add sessions.</div>';
+            return;
+        }
+        let html = '';
+        virtualCart.forEach(s => {
+            const chk = virtualCartSelected.has(String(s.id)) ? 'checked' : '';
+            html += '<div class="nf-vs-cart-row">';
+            html += '<input type="checkbox" ' + chk + ' data-vsid="' + s.id + '" onchange="toggleVirtualSession(this)">';
+            html += '<span class="nf-vs-cart-dt">' + escapeHtml(s.formatted_datetime) + '</span>';
+            html += '<span class="nf-vs-cart-title">' + escapeHtml(s.title) + '</span>';
+            html += '<button class="nf-vs-remove" onclick="removeVirtualSession(' + s.id + ')" title="Remove">✕</button>';
+            html += '</div>';
+        });
+        cartEl.innerHTML = html;
+    }
+
+    function updateVsCount() {
+        const el = document.getElementById('vsCount');
+        if (el) el.textContent = virtualCart.length + ' added';
+        updateGlobalCount();
     }
 
     // ── Shared grouped UI builder ──
@@ -487,7 +705,10 @@
     // ── Count helpers ──
     function updateGlobalCount() {
         const total = Object.keys(sessionsById).length;
-        document.getElementById("sessionCount").textContent = selected.size + " of " + total + " selected";
+        const vsSelected = currentMode === 'in-person' ? virtualCartSelected.size : 0;
+        const totalSel = selected.size + vsSelected;
+        const totalAll = total + (currentMode === 'in-person' ? virtualCart.length : 0);
+        document.getElementById("sessionCount").textContent = totalSel + " of " + totalAll + " selected";
     }
 
     function updateGroupCount(gid) {
@@ -705,7 +926,9 @@
     // ── Render preview ──
     window.renderPreview = function() {
         const previewEl = document.getElementById("previewText");
-        if (selected.size === 0) {
+        const hasInPerson = selected.size > 0;
+        const hasVirtual = currentMode === 'in-person' && virtualCartSelected.size > 0;
+        if (!hasInPerson && !hasVirtual) {
             previewEl.innerHTML =
                 '<div class="nf-preview-empty"><i class="fas fa-inbox"></i>No sessions selected.<br>Check some sessions on the left to build the newsletter.</div>';
             return;
@@ -751,7 +974,6 @@
             html += '<div class="nf-pv-grade">' + escapeHtml(section) + '</div>';
             items.forEach(s => {
                 html += '<div class="nf-pv-session">';
-                // Format: "Thursday, April 2nd from 8:30-10:30 AM, Title"
                 let line = escapeHtml(s.formatted_datetime) + ', ';
                 if (s.link) {
                     line += '<a class="nf-pv-link" href="' + escapeAttr(s.link) + '" target="_blank">' + escapeHtml(s.title) + '</a>';
@@ -765,6 +987,23 @@
                 html += '</div>';
             });
         });
+
+        // Append selected virtual sessions
+        const vsItems = virtualCart.filter(s => virtualCartSelected.has(String(s.id)));
+        if (vsItems.length) {
+            html += '<div class="nf-pv-grade">Virtual Sessions</div>';
+            vsItems.forEach(s => {
+                html += '<div class="nf-pv-session">';
+                let line = escapeHtml(s.formatted_datetime) + ', ';
+                if (s.link) {
+                    line += '<a class="nf-pv-link" href="' + escapeAttr(s.link) + '" target="_blank">' + escapeHtml(s.title) + '</a>';
+                } else {
+                    line += escapeHtml(s.title);
+                }
+                html += line;
+                html += '</div>';
+            });
+        }
 
         previewEl.innerHTML = html;
     }
@@ -794,6 +1033,14 @@
                     text += line + "\n";
                 });
             });
+            // Virtual sessions
+            const vsItems = virtualCart.filter(s => virtualCartSelected.has(String(s.id)));
+            if (vsItems.length) {
+                text += "\nVirtual Sessions\n";
+                vsItems.forEach(s => {
+                    text += s.formatted_datetime + ", " + s.title + "\n";
+                });
+            }
         }
         return text;
     }
@@ -836,6 +1083,22 @@
                     html += '</p>';
                 });
             });
+            // Virtual sessions
+            const vsItems = virtualCart.filter(s => virtualCartSelected.has(String(s.id)));
+            if (vsItems.length) {
+                html += '<p style="margin:14px 0 4px; font-weight:bold; font-size:15px;">Virtual Sessions</p>';
+                vsItems.forEach(s => {
+                    html += '<p style="margin:2px 0;">';
+                    let line = escapeHtml(s.formatted_datetime) + ', ';
+                    if (s.link) {
+                        line += '<a href="' + escapeAttr(s.link) + '" style="color:#2980b9; text-decoration:none;">' + escapeHtml(s.title) + '</a>';
+                    } else {
+                        line += escapeHtml(s.title);
+                    }
+                    html += line;
+                    html += '</p>';
+                });
+            }
         }
         html += '</div>';
         return html;
@@ -843,10 +1106,12 @@
 
     // ── Copy to clipboard (rich text + plain text fallback) ──
     window.copyToClipboard = function() {
-        if (selected.size === 0) {
+        const vsSelected = currentMode === 'in-person' ? virtualCartSelected.size : 0;
+        if (selected.size === 0 && vsSelected === 0) {
             showToast("Nothing to copy — select some sessions first");
             return;
         }
+        const totalCopied = selected.size + vsSelected;
 
         const richHtml = buildClipboardHtml();
         const plainText = buildPlainText();
@@ -860,7 +1125,7 @@
             const btn = document.getElementById("copyBtn");
             btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
             btn.classList.add("copied");
-            showToast("Copied " + selected.size + " sessions with links to clipboard");
+            showToast("Copied " + totalCopied + " sessions with links to clipboard");
             setTimeout(() => {
                 btn.innerHTML = '<i class="fas fa-copy"></i> Copy to Clipboard';
                 btn.classList.remove("copied");

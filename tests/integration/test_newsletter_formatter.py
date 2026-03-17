@@ -420,3 +420,109 @@ class TestInPersonNewsletterRoutes:
             test_events = [s for s in data["sessions"] if s["id"] == event_id]
             if test_events:
                 assert test_events[0]["section"] == "Other Events"
+
+
+# ---------------------------------------------------------------------------
+# Integration tests for search-virtual-sessions endpoint
+# ---------------------------------------------------------------------------
+
+
+class TestSearchVirtualSessions:
+    """Tests for the search-virtual-sessions endpoint."""
+
+    def test_search_requires_auth(self, client):
+        """Search endpoint requires authentication."""
+        response = client.get(
+            "/tools/newsletter-formatter/search-virtual-sessions?q=career"
+        )
+        assert response.status_code in (302, 401)
+
+    def test_search_returns_matching_sessions(self, client, auth_headers, app):
+        """Search returns virtual sessions matching the query."""
+        with app.app_context():
+            event = Event(
+                title="Exploring Veterinary Careers",
+                type=EventType.VIRTUAL_SESSION,
+                status=EventStatus.CONFIRMED,
+                start_date=datetime.now(timezone.utc) + timedelta(days=5),
+                end_date=datetime.now(timezone.utc) + timedelta(days=5, hours=1),
+                format=EventFormat.VIRTUAL,
+                pathful_session_id=99999,
+            )
+            db.session.add(event)
+            db.session.commit()
+            event_id = event.id
+
+        response = safe_route_test(
+            client,
+            "/tools/newsletter-formatter/search-virtual-sessions?q=veterinary",
+            headers=auth_headers,
+        )
+        if response.status_code == 200:
+            data = json.loads(response.data)
+            assert data["success"] is True
+            matches = [s for s in data["sessions"] if s["id"] == event_id]
+            assert len(matches) == 1
+            assert "Veterinary" in matches[0]["title"]
+
+    def test_search_empty_query_returns_empty(self, client, auth_headers):
+        """Empty search query returns empty results (no error)."""
+        response = safe_route_test(
+            client,
+            "/tools/newsletter-formatter/search-virtual-sessions?q=",
+            headers=auth_headers,
+        )
+        if response.status_code == 200:
+            data = json.loads(response.data)
+            assert data["success"] is True
+            assert data["sessions"] == []
+
+    def test_search_excludes_in_person(self, client, auth_headers, app):
+        """Search only returns virtual sessions, not in-person events."""
+        with app.app_context():
+            event = Event(
+                title="In-Person Unicorn Careers",
+                type=EventType.CAREER_JUMPING,
+                status=EventStatus.CONFIRMED,
+                start_date=datetime.now(timezone.utc) + timedelta(days=5),
+                format=EventFormat.IN_PERSON,
+            )
+            db.session.add(event)
+            db.session.commit()
+            event_id = event.id
+
+        response = safe_route_test(
+            client,
+            "/tools/newsletter-formatter/search-virtual-sessions?q=unicorn",
+            headers=auth_headers,
+        )
+        if response.status_code == 200:
+            data = json.loads(response.data)
+            matches = [s for s in data["sessions"] if s["id"] == event_id]
+            assert len(matches) == 0
+
+    def test_search_includes_nepris_link(self, client, auth_headers, app):
+        """Search results include correct Nepris link from pathful_session_id."""
+        with app.app_context():
+            event = Event(
+                title="Zebra Zoologist Virtual Talk",
+                type=EventType.VIRTUAL_SESSION,
+                status=EventStatus.CONFIRMED,
+                start_date=datetime.now(timezone.utc) + timedelta(days=3),
+                format=EventFormat.VIRTUAL,
+                pathful_session_id=12345,
+            )
+            db.session.add(event)
+            db.session.commit()
+            event_id = event.id
+
+        response = safe_route_test(
+            client,
+            "/tools/newsletter-formatter/search-virtual-sessions?q=zebra",
+            headers=auth_headers,
+        )
+        if response.status_code == 200:
+            data = json.loads(response.data)
+            matches = [s for s in data["sessions"] if s["id"] == event_id]
+            assert len(matches) == 1
+            assert matches[0]["link"] == "https://prepkc.nepris.com/app/sessions/12345"

@@ -22,6 +22,7 @@
 | [FR-TOOLS-112](#fr-tools-112) | In-Person Section Grouping | [UC-22](use-cases#uc-22) |
 | [FR-TOOLS-113](#fr-tools-113) | In-Person Date/Time Formatting | [UC-22](use-cases#uc-22) |
 | [FR-TOOLS-114](#fr-tools-114) | Registration Link Import | [UC-22](use-cases#uc-22) |
+| [FR-TOOLS-115](#fr-tools-115) | Virtual Sessions in Career Exploration | [UC-22](use-cases#uc-22) |
 
 ---
 
@@ -172,6 +173,32 @@ The Salesforce event import shall extract the `Registration_Link__c` field from 
 
 ---
 
+### <a id="fr-tools-115"></a>FR-TOOLS-115: Virtual Sessions in Career Exploration Mode
+
+The Career Exploration Events mode shall include a **"Virtual Sessions"** section below the in-person sections. Unlike in-person events (which auto-load), virtual sessions use a **search-and-add** pattern:
+
+1. Section starts **empty** — no virtual sessions loaded by default
+2. A search box lets users find virtual sessions by title keyword
+3. Users click `+` to add specific sessions to the section
+4. Added sessions can be removed with `✕`
+5. Each added session links to its Nepris session page: `https://prepkc.nepris.com/app/sessions/{pathful_session_id}`
+
+**Search endpoint:** `GET /tools/newsletter-formatter/search-virtual-sessions?q=keyword`
+
+**Key behaviors:**
+- Search is case-insensitive, returns up to 20 matching results
+- Deduplicates by session ID (can't add same session twice)
+- Uses the same date format as in-person events (FR-TOOLS-113)
+- Included in clipboard copy output below in-person sections
+- Sessions without `pathful_session_id` render without a hyperlink
+
+**Acceptance:** Users can search, add, and remove virtual sessions. Copy includes both in-person and added virtual events.
+
+> [!NOTE]
+> This differs from the existing **Virtual Connector** mode (FR-TOOLS-101–109) which auto-loads all sessions, groups by grade level, and uses a single shared Google Forms URL. Both modes remain available.
+
+---
+
 ## Related Documentation
 
 - [User Stories — Epic 14: Internal Tools](user-stories#epic-14)
@@ -180,4 +207,4 @@ The Salesforce event import shall extract the `Registration_Link__c` field from 
 
 ---
 
-*Last updated: March 17, 2026 · Version 1.1*
+*Last updated: March 17, 2026 · Version 1.2*

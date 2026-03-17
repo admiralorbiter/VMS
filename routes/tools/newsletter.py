@@ -8,20 +8,24 @@ which sessions to include, the tool groups them appropriately, and produces
 copy-paste-ready text.
 
 Endpoints:
-    GET  /tools/newsletter-formatter                    → Render the formatter page
-    GET  /tools/newsletter-formatter/sessions           → JSON API — upcoming virtual sessions
-    GET  /tools/newsletter-formatter/in-person-sessions → JSON API — upcoming in-person events
+    GET  /tools/newsletter-formatter                         → Render the formatter page
+    GET  /tools/newsletter-formatter/sessions                → JSON API — upcoming virtual sessions
+    GET  /tools/newsletter-formatter/in-person-sessions      → JSON API — upcoming in-person events
+    GET  /tools/newsletter-formatter/search-virtual-sessions → JSON API — search virtual sessions
 """
 
 import re
 from datetime import datetime, timezone
 
-from flask import current_app, jsonify, render_template
+from flask import current_app, jsonify, render_template, request
 from flask_login import login_required
 
 from models.event import Event, EventStatus, EventType, db
 from routes.tools import tools_bp
 from services.salesforce.utils import extract_href_from_html
+
+# Base URL for constructing per-session Nepris links
+NEPRIS_SESSION_BASE_URL = "https://prepkc.nepris.com/app/sessions/"
 
 # ---------------------------------------------------------------------------
 # Grade-level parsing (virtual sessions)
@@ -262,5 +266,78 @@ def newsletter_formatter_in_person_sessions():
                 "section_order": IN_PERSON_SECTION_ORDER,
             }
         )
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@tools_bp.route("/newsletter-formatter/search-virtual-sessions")
+@login_required
+def newsletter_formatter_search_virtual_sessions():
+    """Search upcoming virtual sessions by title keyword.
+
+    Query params:
+        q     (str, required)  – search term (case-insensitive title match)
+        limit (int, optional)  – max results (default 20)
+
+    Returns JSON with matching sessions including per-session Nepris links.
+    """
+    q = (request.args.get("q") or "").strip()
+    if not q:
+        return jsonify({"success": True, "sessions": []})
+
+    try:
+        limit = min(int(request.args.get("limit", 20)), 50)
+    except (ValueError, TypeError):
+        limit = 20
+
+    try:
+        now = datetime.now(timezone.utc)
+
+        events = (
+            Event.query.filter(
+                Event.type == EventType.VIRTUAL_SESSION,
+                Event.status.in_([EventStatus.CONFIRMED, EventStatus.PUBLISHED]),
+                Event.start_date > now,
+                Event.title.ilike(f"%{q}%"),
+            )
+            .order_by(Event.start_date.asc())
+            .limit(limit)
+            .all()
+        )
+
+        results = []
+        for e in events:
+            local_start = e.local_start_date or e.start_date
+
+            # Compute local end date
+            local_end = None
+            if e.end_date:
+                import pytz
+
+                end = e.end_date
+                if not end.tzinfo:
+                    end = end.replace(tzinfo=timezone.utc)
+                tz_name = current_app.config.get("TIMEZONE", "America/Chicago")
+                tz = pytz.timezone(tz_name)
+                local_end = end.astimezone(tz)
+
+            formatted_dt = _format_in_person_datetime(local_start, local_end)
+
+            # Build Nepris link from pathful_session_id
+            link = ""
+            if e.pathful_session_id:
+                link = f"{NEPRIS_SESSION_BASE_URL}{e.pathful_session_id}"
+
+            results.append(
+                {
+                    "id": e.id,
+                    "title": e.title,
+                    "formatted_datetime": formatted_dt,
+                    "link": link,
+                    "status": e.status.value if e.status else "Unknown",
+                }
+            )
+
+        return jsonify({"success": True, "sessions": results})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
