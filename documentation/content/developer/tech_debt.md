@@ -390,6 +390,36 @@ API tokens in `User.api_token` are stored as raw hex strings (not hashed). If th
 
 **Status:** ✅ Resolved 2026-03-17.
 
+---
+
+## TD-050: Consolidate Legacy Virtual Usage Routes into Tenant Dashboard
+
+**Created:** 2026-03-17 · **Priority:** Medium · **Category:** Architecture / Route Consolidation
+
+Two parallel systems exist for virtual session reporting:
+
+1. **Legacy:** `/virtual/usage/*` — `district_routes.py` + `session_routes.py` (~2,500 lines). Only reachable from **homepage cards** (`index.html` L328, L382). Not in the navbar or the Virtual sessions page.
+2. **Current:** `/district/teacher-usage/*` — `tenant_teacher_usage.py` (1,643 lines). Linked from **navbar** ("Teacher Progress"), the Virtual sessions page, and the district sidebar. This is the primary system for day-to-day use.
+
+The migration from System 1 → System 2 was **partially completed** but never finished. Three features remain unique to the legacy routes:
+
+| Feature | Legacy Route | Replacement Candidate |
+|---------|-------------|-----------------------|
+| Monthly Breakdown (session outcomes by month) | `/virtual/usage/breakdown` | Move to Reports section |
+| Session CRUD (create/edit/delete) | `/virtual/usage` inline | Confirm `/virtual/sessions` covers this |
+| Recruitment Matching | `/virtual/usage/recruitment` | `/district/recruitment` already exists |
+
+### Proposed Fix
+
+1. **Verify** session CRUD coverage in `/virtual/sessions`
+2. **Migrate** the Monthly Breakdown report to Reports (or add as a tab in teacher-usage)
+3. **Confirm** `/district/recruitment` covers all recruitment matching needs
+4. **Update** homepage `index.html` to point "Virtual Dashboard" card to `/virtual/sessions` or teacher-usage
+5. **Deprecate** then remove `district_routes.py` routes (~1,541 lines)
+6. Clean up orphaned templates: `virtual/usage/index.html`, `virtual/usage/district.html`, `virtual/usage/breakdown.html`
+
+**Risk:** Medium — need to verify no external bookmarks or district users depend on legacy URLs. Could add redirects as a safety net.
+
 ## Priority Order
 
 Ordered by **what best unblocks future work**:
@@ -405,8 +435,9 @@ Ordered by **what best unblocks future work**:
 | 8 | **TD-036** | Exact-name duplicate Teacher cleanup | S |
 | 9 | **TD-037** | Hard-delete pruned teachers (after 2026-04-13) | S |
 | 10 | **TD-047** | Oversized templates — incremental extraction | M |
-| 11 | **TD-040** | `NEPRIS_SESSION_BASE_URL` in single file (YAGNI) | S |
-| 12 | **TD-011** | SQLite → MySQL *(do last when codebase is clean)* | XL |
+| 11 | **TD-050** | Consolidate legacy virtual usage routes into tenant dashboard | M |
+| 12 | **TD-040** | `NEPRIS_SESSION_BASE_URL` in single file (YAGNI) | S |
+| 13 | **TD-011** | SQLite → MySQL *(do last when codebase is clean)* | XL |
 
 > TD-004 is intentionally deferred — the M2M relationship is the correct path forward.
 > TD-033 and TD-034 are resolved. See [Resolved Archive](#resolved-archive).

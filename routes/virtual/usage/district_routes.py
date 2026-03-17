@@ -43,6 +43,7 @@ from routes.reports.common import (
     is_cache_valid,
 )
 from routes.virtual.routes import virtual_bp
+from services.virtual_computation_service import parse_virtual_year_filters
 
 from .cache import (
     get_virtual_session_district_cache,
@@ -67,50 +68,15 @@ def load_district_routes():
     @login_required
     @district_scoped_required
     def virtual_usage_district(district_name):
-        # Get filter parameters: Use virtual year instead of school year
-        default_virtual_year = get_current_virtual_year()
-        selected_virtual_year = request.args.get("year", default_virtual_year)
-
-        # Check if refresh is requested
+        # Get filter parameters
         refresh_requested = request.args.get("refresh", "0") == "1"
-
+        current_filters = parse_virtual_year_filters(request.args)
+        selected_virtual_year = current_filters["year"]
+        date_from = current_filters["date_from"]
+        date_to = current_filters["date_to"]
         default_date_from, default_date_to = get_virtual_year_dates(
             selected_virtual_year
         )
-        date_from_str = request.args.get("date_from")
-        date_to_str = request.args.get("date_to")
-        date_from = default_date_from
-        date_to = default_date_to
-        if date_from_str:
-            try:
-                parsed_date_from = datetime.strptime(date_from_str, "%Y-%m-%d")
-                if (
-                    default_date_from.date()
-                    <= parsed_date_from.date()
-                    <= default_date_to.date()
-                ):
-                    date_from = parsed_date_from.replace(hour=0, minute=0, second=0)
-            except ValueError:
-                pass
-        if date_to_str:
-            try:
-                parsed_date_to = datetime.strptime(date_to_str, "%Y-%m-%d")
-                if (
-                    default_date_from.date()
-                    <= parsed_date_to.date()
-                    <= default_date_to.date()
-                ):
-                    date_to = parsed_date_to.replace(hour=23, minute=59, second=59)
-            except ValueError:
-                pass
-        if date_from > date_to:
-            date_from = default_date_from
-            date_to = default_date_to
-        current_filters = {
-            "year": selected_virtual_year,
-            "date_from": date_from,
-            "date_to": date_to,
-        }
         virtual_year_options = generate_school_year_options()
 
         # Check if we're using default full year date range (for caching)
@@ -128,8 +94,12 @@ def load_district_routes():
             if cached_data:
                 db.session.delete(cached_data)
                 db.session.commit()
-            print(
-                f"Cache invalidated for district {district_name} virtual session report {selected_virtual_year}"
+            import logging
+
+            logging.getLogger(__name__).info(
+                "Cache invalidated for district %s virtual session report %s",
+                district_name,
+                selected_virtual_year,
             )
 
         # Try to get cached data for full year queries
@@ -144,8 +114,12 @@ def load_district_routes():
             if cached_data:
                 is_cached = True
                 last_refreshed = cached_data.last_updated
-                print(
-                    f"Using cached data for district {district_name} virtual session report {selected_virtual_year}"
+                import logging
+
+                logging.getLogger(__name__).debug(
+                    "Using cached data for district %s virtual session report %s",
+                    district_name,
+                    selected_virtual_year,
                 )
 
                 # Check if cached data has the new teacher ID fields and correct student calculation
@@ -158,8 +132,8 @@ def load_district_routes():
                 if teacher_breakdown and len(teacher_breakdown) > 0:
                     sample_teacher = teacher_breakdown[0]
                     if "id" not in sample_teacher:
-                        print(
-                            f"DEBUG: Cached data missing teacher ID field, invalidating cache"
+                        logging.getLogger(__name__).debug(
+                            "Cached data missing teacher ID field, invalidating cache"
                         )
                         needs_refresh = True
 
@@ -301,62 +275,17 @@ def load_district_routes():
     @virtual_bp.route("/usage/export")
     @login_required
     def virtual_usage_export():
-        # Get filter parameters - Use virtual year instead of school year
-        default_virtual_year = get_current_virtual_year()
-        selected_virtual_year = request.args.get("year", default_virtual_year)
-
-        # Calculate default date range based on virtual session year
-        default_date_from, default_date_to = get_virtual_year_dates(
-            selected_virtual_year
-        )
-
-        # Handle explicit date range parameters
-        date_from_str = request.args.get("date_from")
-        date_to_str = request.args.get("date_to")
-
-        date_from = default_date_from
-        date_to = default_date_to
-
-        if date_from_str:
-            try:
-                parsed_date_from = datetime.strptime(date_from_str, "%Y-%m-%d")
-                if (
-                    default_date_from.date()
-                    <= parsed_date_from.date()
-                    <= default_date_to.date()
-                ):
-                    date_from = parsed_date_from.replace(hour=0, minute=0, second=0)
-            except ValueError:
-                pass
-
-        if date_to_str:
-            try:
-                parsed_date_to = datetime.strptime(date_to_str, "%Y-%m-%d")
-                if (
-                    default_date_from.date()
-                    <= parsed_date_to.date()
-                    <= default_date_to.date()
-                ):
-                    date_to = parsed_date_to.replace(hour=23, minute=59, second=59)
-            except ValueError:
-                pass
-
-        if date_from > date_to:
-            date_from = default_date_from
-            date_to = default_date_to
-
-        current_filters = {
-            "year": selected_virtual_year,
-            "date_from": date_from,
-            "date_to": date_to,
-            "career_cluster": request.args.get("career_cluster"),
-            "school": request.args.get("school"),
-            "district": request.args.get("district"),
-            "status": request.args.get("status"),
-            "search": request.args.get(
-                "search"
-            ),  # Text search across teacher, title, presenter
-        }
+        # Get filter parameters
+        current_filters = parse_virtual_year_filters(request.args)
+        selected_virtual_year = current_filters["year"]
+        date_from = current_filters["date_from"]
+        date_to = current_filters["date_to"]
+        # Add extra filter keys used by the export
+        current_filters["career_cluster"] = request.args.get("career_cluster")
+        current_filters["school"] = request.args.get("school")
+        current_filters["district"] = request.args.get("district")
+        current_filters["status"] = request.args.get("status")
+        current_filters["search"] = request.args.get("search")
 
         # Base query for virtual session events (same as main route)
         base_query = Event.query.options(
@@ -552,81 +481,9 @@ def load_district_routes():
         # Apply runtime filters (including search)
         session_data = apply_runtime_filters(session_data, current_filters)
 
-        # Apply sorting (same logic as main route)
-        sort_column = request.args.get("sort", "date")
-        sort_order = request.args.get("order", "desc")
-
-        sortable_columns = {
-            "status": "status",
-            "date": "date",
-            "time": "time",
-            "session_type": "session_type",
-            "teacher_name": "teacher_name",
-            "school_name": "school_name",
-            "school_level": "school_level",
-            "district": "district",
-            "session_title": "session_title",
-            "presenter": "presenter",
-            "presenter_organization": "presenter_organization",
-            "topic_theme": "topic_theme",
-        }
-
-        if sort_column in sortable_columns:
-            reverse_order = sort_order == "desc"
-
-            if sort_column == "date":
-
-                def date_sort_key(session):
-                    try:
-                        if session["date"]:
-                            date_parts = session["date"].split("/")
-                            if len(date_parts) == 3:
-                                month, day, year = (
-                                    int(date_parts[0]),
-                                    int(date_parts[1]),
-                                    int(date_parts[2]),
-                                )
-                                if year < 50:
-                                    year += 2000
-                                else:
-                                    year += 1900
-                                return datetime(year, month, day)
-                            elif len(date_parts) == 2:
-                                month, day = int(date_parts[0]), int(date_parts[1])
-                                virtual_year_start = int(
-                                    selected_virtual_year.split("-")[0]
-                                )
-                                year = (
-                                    virtual_year_start
-                                    if month >= 7
-                                    else virtual_year_start + 1
-                                )
-                                return datetime(year, month, day)
-                        return datetime.min
-                    except (ValueError, IndexError):
-                        return datetime.min
-
-                session_data.sort(key=date_sort_key, reverse=reverse_order)
-
-            elif sort_column == "time":
-
-                def time_sort_key(session):
-                    try:
-                        if session["time"]:
-                            return datetime.strptime(session["time"], "%I:%M %p").time()
-                        return datetime.min.time()
-                    except ValueError:
-                        return datetime.min.time()
-
-                session_data.sort(key=time_sort_key, reverse=reverse_order)
-
-            else:
-
-                def string_sort_key(session):
-                    value = session.get(sortable_columns[sort_column], "") or ""
-                    return str(value).lower()
-
-                session_data.sort(key=string_sort_key, reverse=reverse_order)
+        # Apply sorting using shared service (sorts session_data in-place)
+        # We discard the paginated slice — export needs all rows.
+        apply_sorting_and_pagination(session_data, request.args, current_filters)
 
         # Create Excel workbook
         wb = openpyxl.Workbook()
@@ -780,55 +637,11 @@ def load_district_routes():
         - Number of local professional canceled/no show sessions
         - Number of unfilled sessions
         """
-        # Get filter parameters - Use virtual year instead of school year
-        default_virtual_year = get_current_virtual_year()
-        selected_virtual_year = request.args.get("year", default_virtual_year)
-
-        # Calculate default date range based on virtual session year
-        default_date_from, default_date_to = get_virtual_year_dates(
-            selected_virtual_year
-        )
-
-        # Handle explicit date range parameters
-        date_from_str = request.args.get("date_from")
-        date_to_str = request.args.get("date_to")
-
-        date_from = default_date_from
-        date_to = default_date_to
-
-        if date_from_str:
-            try:
-                parsed_date_from = datetime.strptime(date_from_str, "%Y-%m-%d")
-                if (
-                    default_date_from.date()
-                    <= parsed_date_from.date()
-                    <= default_date_to.date()
-                ):
-                    date_from = parsed_date_from.replace(hour=0, minute=0, second=0)
-            except ValueError:
-                pass
-
-        if date_to_str:
-            try:
-                parsed_date_to = datetime.strptime(date_to_str, "%Y-%m-%d")
-                if (
-                    default_date_from.date()
-                    <= parsed_date_to.date()
-                    <= default_date_to.date()
-                ):
-                    date_to = parsed_date_to.replace(hour=23, minute=59, second=59)
-            except ValueError:
-                pass
-
-        if date_from > date_to:
-            date_from = default_date_from
-            date_to = default_date_to
-
-        current_filters = {
-            "year": selected_virtual_year,
-            "date_from": date_from,
-            "date_to": date_to,
-        }
+        # Get filter parameters
+        current_filters = parse_virtual_year_filters(request.args)
+        selected_virtual_year = current_filters["year"]
+        date_from = current_filters["date_from"]
+        date_to = current_filters["date_to"]
 
         # Base query for virtual session events
         base_query = Event.query.options(
@@ -1630,21 +1443,11 @@ def load_district_routes():
         topic_counts = dict(sorted(topic_counts.items()))
 
         # Debug output to understand the data
-        print(f"DEBUG: Found {len(events)} events")
-        print(f"DEBUG: Unique statuses: {sorted(unique_statuses)}")
-        print(f"DEBUG: Unique additional info: {sorted(unique_additional_info)}")
-        print(f"DEBUG: Unique series: {sorted(unique_series)}")
-        print(f"DEBUG: Unique school levels: {sorted(unique_school_levels)}")
-        print(f"DEBUG: Running count totals: {running_count}")
-        print(f"DEBUG: Topic counts: {topic_counts}")
-        print(f"DEBUG: District completed: {district_completed}")
+        import logging
 
-        # Show overall completion stats
-        total_completed = sum(district_completed.values()) if district_completed else 0
-        total_successfully_completed = running_count.get("successfully_completed", 0)
-        print(f"DEBUG: Total completed by district: {total_completed}")
-        print(
-            f"DEBUG: Total successfully completed in running count: {total_successfully_completed}"
+        logger = logging.getLogger(__name__)
+        logger.debug(
+            "Breakdown: %d events, %d statuses", len(events), len(unique_statuses)
         )
 
         # Prepare data for template

@@ -64,7 +64,67 @@ STATUS_FILTER_MAPPING = {
 ATTENDED_STATUSES = {"attended", "count", "completed"}
 
 
-# ── Attendance Helper ──────────────────────────────────────────────────
+# ── Virtual Year Filter Parsing ───────────────────────────────────────
+
+
+def parse_virtual_year_filters(request_args, virtual_year=None):
+    """Parse and validate virtual-year date-range filters from request args.
+
+    This replaces the ~40-line block that was duplicated in
+    virtual_usage_district, virtual_usage_export, and virtual_breakdown.
+
+    Args:
+        request_args: Flask request.args (or any dict-like)
+        virtual_year: Override for the virtual year; defaults to
+                      ``get_current_virtual_year()``.
+
+    Returns:
+        dict with keys:
+            year, date_from, date_to  (always present)
+            Plus any extra filter keys from request_args (career_cluster,
+            school, district, status, search).
+    """
+    from routes.reports.common import (
+        generate_school_year_options,
+        get_current_virtual_year,
+        get_virtual_year_dates,
+    )
+
+    default_virtual_year = virtual_year or get_current_virtual_year()
+    selected_virtual_year = request_args.get("year", default_virtual_year)
+
+    default_date_from, default_date_to = get_virtual_year_dates(selected_virtual_year)
+    date_from = default_date_from
+    date_to = default_date_to
+
+    date_from_str = request_args.get("date_from")
+    date_to_str = request_args.get("date_to")
+
+    if date_from_str:
+        try:
+            parsed = datetime.strptime(date_from_str, "%Y-%m-%d")
+            if default_date_from.date() <= parsed.date() <= default_date_to.date():
+                date_from = parsed.replace(hour=0, minute=0, second=0)
+        except ValueError:
+            pass
+
+    if date_to_str:
+        try:
+            parsed = datetime.strptime(date_to_str, "%Y-%m-%d")
+            if default_date_from.date() <= parsed.date() <= default_date_to.date():
+                date_to = parsed.replace(hour=23, minute=59, second=59)
+        except ValueError:
+            pass
+
+    if date_from > date_to:
+        date_from = default_date_from
+        date_to = default_date_to
+
+    return {
+        "year": selected_virtual_year,
+        "date_from": date_from,
+        "date_to": date_to,
+    }
 
 
 def is_teacher_attended(teacher_reg):
