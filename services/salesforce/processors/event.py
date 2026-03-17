@@ -41,7 +41,7 @@ from routes.utils import (
     parse_event_skills,
 )
 from services.district_service import resolve_district
-from services.salesforce.utils import safe_parse_delivery_hours
+from services.salesforce.utils import extract_href_from_html, safe_parse_delivery_hours
 
 
 def process_event_row(
@@ -115,6 +115,12 @@ def process_event_row(
         )
         event.additional_information = row.get("Additional_Information__c", "")
         event.session_host = row.get("Session_Host__c", "")
+
+        # Registration Link — Salesforce stores this as HTML:
+        #   <a href="https://..." target="_blank">Sign up</a>
+        # Extract the clean URL for storage.
+        raw_reg_link = row.get("Registration_Link__c", "")
+        event.registration_link = extract_href_from_html(raw_reg_link)
 
         # Handle numeric fields with constraint protection
         def safe_convert_to_int(value, default=0):

@@ -16,6 +16,23 @@
     .nf-header h1 { color: #2c3e50; margin: 0; font-size: 1.8em; }
     .nf-header p  { color: #666; margin: 4px 0 0; font-size: 0.9em; }
 
+    /* ── Mode toggle tabs ── */
+    .nf-mode-tabs {
+        display: flex; gap: 0; margin-bottom: 16px;
+        background: white; border-radius: 10px; overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06); width: fit-content;
+    }
+    .nf-mode-tab {
+        padding: 10px 22px; cursor: pointer; font-weight: 600; font-size: 0.9em;
+        color: #666; border: none; background: white;
+        transition: all 0.2s; position: relative; white-space: nowrap;
+    }
+    .nf-mode-tab:hover { color: #2c3e50; background: #f0f4f8; }
+    .nf-mode-tab.active {
+        color: white; background: linear-gradient(135deg, #667eea 0%, #5a6fd6 100%);
+    }
+    .nf-mode-tab i { margin-right: 6px; }
+
     .nf-body {
         display: flex; gap: 20px; align-items: flex-start;
     }
@@ -202,8 +219,18 @@
     <div class="nf-header">
         <div>
             <h1><i class="fas fa-newspaper" style="color: #667eea;"></i> Newsletter Formatter</h1>
-            <p>Select upcoming Pathful sessions and copy formatted text for the newsletter.</p>
+            <p>Select upcoming sessions and copy formatted text for the newsletter.</p>
         </div>
+    </div>
+
+    <!-- Mode toggle tabs -->
+    <div class="nf-mode-tabs">
+        <button class="nf-mode-tab active" id="tabVirtual" onclick="switchMode('virtual')">
+            <i class="fas fa-laptop"></i> Virtual Connector
+        </button>
+        <button class="nf-mode-tab" id="tabInPerson" onclick="switchMode('in-person')">
+            <i class="fas fa-school"></i> Career Exploration Events
+        </button>
     </div>
 
     <div class="nf-body">
@@ -213,8 +240,8 @@
                 <button onclick="selectAll()" title="Select all sessions"><i class="fas fa-check-double"></i> All</button>
                 <button onclick="deselectAll()" title="Deselect all sessions"><i class="fas fa-times"></i> None</button>
                 <div class="nf-sep"></div>
-                <button onclick="expandAll()" title="Expand all grade groups"><i class="fas fa-expand-alt"></i> Expand</button>
-                <button onclick="collapseAll()" title="Collapse all grade groups"><i class="fas fa-compress-alt"></i> Collapse</button>
+                <button onclick="expandAll()" title="Expand all groups"><i class="fas fa-expand-alt"></i> Expand</button>
+                <button onclick="collapseAll()" title="Collapse all groups"><i class="fas fa-compress-alt"></i> Collapse</button>
                 <div class="nf-search-wrap">
                     <i class="fas fa-search"></i>
                     <input type="text" class="nf-search" id="searchInput" placeholder="Filter sessions…" oninput="filterSessions()">
@@ -222,7 +249,7 @@
                 </div>
                 <span style="margin-left: auto; color: #999; font-size: 0.82em; white-space: nowrap;" id="sessionCount"></span>
                 <div class="nf-sep"></div>
-                <button onclick="openSettings()" title="Newsletter settings" style="color: #667eea;"><i class="fas fa-cog"></i></button>
+                <button onclick="openSettings()" title="Newsletter settings" style="color: #667eea;" id="settingsBtn"><i class="fas fa-cog"></i></button>
             </div>
             <div id="sessionsBody">
                 <div class="nf-loading"><i class="fas fa-spinner fa-spin"></i> Loading sessions…</div>
@@ -266,18 +293,30 @@
 (function () {
     "use strict";
 
+    // ── Current mode: 'virtual' or 'in-person' ──
+    let currentMode = "virtual";
+
     const GRADE_ORDER = [
         "Kindergarten", "First Grade", "Second Grade",
         "Third Grade", "Fourth Grade", "Fifth Grade",
         "General / KC Series"
     ];
 
+    const IN_PERSON_SECTION_ORDER = [
+        "Career Jumping", "Career Speakers", "Career Fair", "Other Events"
+    ];
+
+    // Default-off sections (same pattern as General / KC Series for virtual)
+    const DEFAULT_OFF_SECTIONS = new Set(["General / KC Series", "Other Events"]);
+
     // All sessions from the API, keyed by id
     let sessionsById = {};
     // Set of selected session ids (strings)
     let selected = new Set();
-    // Grade → [session ids] mapping for per-group operations
-    let gradeSessionIds = {};
+    // Group → [session ids] mapping for per-group operations
+    let groupSessionIds = {};
+    // Current group order (GRADE_ORDER or IN_PERSON_SECTION_ORDER)
+    let activeGroupOrder = GRADE_ORDER;
 
     // ── Toast ──
     function showToast(msg) {
@@ -287,7 +326,61 @@
         setTimeout(() => t.classList.remove("show"), 2000);
     }
 
-    // ── Fetch sessions and build UI ──
+    // ── Mode switching ──
+    window.switchMode = function(mode) {
+        if (mode === currentMode) return;
+        currentMode = mode;
+
+        // Update tab styling
+        document.getElementById("tabVirtual").classList.toggle("active", mode === "virtual");
+        document.getElementById("tabInPerson").classList.toggle("active", mode === "in-person");
+
+        // Show/hide settings gear (only relevant for virtual mode)
+        document.getElementById("settingsBtn").style.display = mode === "virtual" ? "" : "none";
+
+        // Reset state
+        sessionsById = {};
+        selected = new Set();
+        groupSessionIds = {};
+
+        // Clear search
+        document.getElementById("searchInput").value = "";
+        document.getElementById("searchClear").classList.remove("visible");
+
+        // Show loading
+        document.getElementById("sessionsBody").innerHTML =
+            '<div class="nf-loading"><i class="fas fa-spinner fa-spin"></i> Loading sessions…</div>';
+        document.getElementById("previewText").innerHTML = "Loading…";
+
+        // Fetch data for the new mode
+        const url = mode === "virtual"
+            ? "{{ url_for('tools.newsletter_formatter_sessions') }}"
+            : "{{ url_for('tools.newsletter_formatter_in_person_sessions') }}";
+
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success || !data.sessions.length) {
+                    document.getElementById("sessionsBody").innerHTML =
+                        '<div class="nf-empty"><i class="fas fa-calendar-times" style="font-size:2em; margin-bottom:10px;"></i><br>No upcoming sessions found.</div>';
+                    renderPreview();
+                    return;
+                }
+                if (mode === "virtual") {
+                    activeGroupOrder = GRADE_ORDER;
+                    buildVirtualUI(data.sessions);
+                } else {
+                    activeGroupOrder = data.section_order || IN_PERSON_SECTION_ORDER;
+                    buildInPersonUI(data.sessions);
+                }
+            })
+            .catch(err => {
+                document.getElementById("sessionsBody").innerHTML =
+                    '<div class="nf-empty" style="color:#c0392b;">Error loading sessions.</div>';
+            });
+    };
+
+    // ── Initial load for virtual mode ──
     fetch("{{ url_for('tools.newsletter_formatter_sessions') }}")
         .then(r => r.json())
         .then(data => {
@@ -297,46 +390,71 @@
                 renderPreview();
                 return;
             }
-            buildUI(data.sessions);
+            buildVirtualUI(data.sessions);
         })
         .catch(err => {
             document.getElementById("sessionsBody").innerHTML =
                 '<div class="nf-empty" style="color:#c0392b;">Error loading sessions.</div>';
         });
 
-    function buildUI(sessions) {
-        // Index sessions — exclude "General / KC Series" from initial selection
-        const GENERAL_KEY = "General / KC Series";
+    // ── Build UI: Virtual mode (grade-grouped) ──
+    function buildVirtualUI(sessions) {
+        activeGroupOrder = GRADE_ORDER;
+        const groupKey = "grade_levels";
+        _buildGroupedUI(sessions, GRADE_ORDER, function(s) { return s.grade_levels; }, function(s) {
+            return '<span class="nf-session-dt">' + escapeHtml(s.formatted_datetime) + '</span>'
+                 + '<span class="nf-session-title">' + escapeHtml(s.title) + '</span>';
+        });
+    }
+
+    // ── Build UI: In-Person mode (section-grouped) ──
+    function buildInPersonUI(sessions) {
+        activeGroupOrder = IN_PERSON_SECTION_ORDER;
+        _buildGroupedUI(sessions, IN_PERSON_SECTION_ORDER, function(s) { return [s.section]; }, function(s) {
+            return '<span class="nf-session-dt">' + escapeHtml(s.formatted_datetime) + '</span>'
+                 + '<span class="nf-session-title">' + escapeHtml(s.title) + '</span>';
+        });
+    }
+
+    // ── Shared grouped UI builder ──
+    function _buildGroupedUI(sessions, order, getGroups, renderRow) {
+        // Reset state
+        sessionsById = {};
+        selected = new Set();
+        groupSessionIds = {};
+
+        // Index sessions
         sessions.forEach(s => {
             sessionsById[s.id] = s;
-            const isGeneralOnly = s.grade_levels.length === 1 && s.grade_levels[0] === GENERAL_KEY;
-            if (!isGeneralOnly) {
+            const groups = getGroups(s);
+            const isDefaultOff = groups.length === 1 && DEFAULT_OFF_SECTIONS.has(groups[0]);
+            if (!isDefaultOff) {
                 selected.add(String(s.id));
             }
         });
 
-        // Group by grade
+        // Group
         const groups = {};
-        GRADE_ORDER.forEach(g => { groups[g] = []; gradeSessionIds[g] = []; });
+        order.forEach(g => { groups[g] = []; groupSessionIds[g] = []; });
         sessions.forEach(s => {
-            s.grade_levels.forEach(g => {
-                if (!groups[g]) { groups[g] = []; gradeSessionIds[g] = []; }
+            getGroups(s).forEach(g => {
+                if (!groups[g]) { groups[g] = []; groupSessionIds[g] = []; }
                 groups[g].push(s);
-                gradeSessionIds[g].push(String(s.id));
+                groupSessionIds[g].push(String(s.id));
             });
         });
 
         let html = "";
-        GRADE_ORDER.forEach(grade => {
+        order.forEach(grade => {
             const items = groups[grade];
             if (!items || !items.length) return;
             const gid = grade.replace(/\W/g, "_");
 
             html += '<div class="nf-grade-group" data-grade="' + gid + '">';
 
-            // Grade header with checkbox + inline actions
-            const isGeneral = grade === GENERAL_KEY;
-            const gradeChecked = isGeneral ? '' : 'checked';
+            // Group header with checkbox + inline actions
+            const isDefaultOff = DEFAULT_OFF_SECTIONS.has(grade);
+            const gradeChecked = isDefaultOff ? '' : 'checked';
             html += '<div class="nf-grade-header" id="header_' + gid + '">';
             html += '<input type="checkbox" class="nf-grade-cb" ' + gradeChecked + ' data-gid="' + gid + '" onclick="event.stopPropagation(); toggleGradeCheckbox(\'' + gid + '\', this)" title="Select/deselect all in this group">';
             html += '<i class="fas fa-chevron-down nf-chevron" onclick="toggleGrade(\'' + gid + '\', this.parentElement)"></i> ';
@@ -354,15 +472,14 @@
                 const cls = selected.has(String(s.id)) ? '' : ' nf-deselected';
                 html += '<label class="nf-session-row' + cls + '" data-sid="' + s.id + '" data-title="' + escapeAttr(s.title) + '">';
                 html += '<input type="checkbox" ' + chk + ' data-sid="' + s.id + '" data-gid="' + gid + '" onchange="onToggle(this)">';
-                html += '<span class="nf-session-dt">' + s.formatted_datetime + '</span>';
-                html += '<span class="nf-session-title">' + escapeHtml(s.title) + '</span>';
+                html += renderRow(s);
                 html += '</label>';
             });
             html += '</div></div>';
         });
 
         document.getElementById("sessionsBody").innerHTML = html;
-        updateAllGradeCounts();
+        updateAllGroupCounts();
         updateGlobalCount();
         renderPreview();
     }
@@ -373,8 +490,8 @@
         document.getElementById("sessionCount").textContent = selected.size + " of " + total + " selected";
     }
 
-    function updateGradeCount(gid) {
-        const ids = gradeSessionIds[gidToGrade(gid)] || [];
+    function updateGroupCount(gid) {
+        const ids = groupSessionIds[gidToGroup(gid)] || [];
         const sel = ids.filter(id => selected.has(id)).length;
         const countEl = document.getElementById("count_" + gid);
         if (countEl) countEl.textContent = sel + " of " + ids.length;
@@ -392,15 +509,15 @@
         }
     }
 
-    function updateAllGradeCounts() {
-        GRADE_ORDER.forEach(grade => {
-            const gid = grade.replace(/\W/g, "_");
-            updateGradeCount(gid);
+    function updateAllGroupCounts() {
+        activeGroupOrder.forEach(group => {
+            const gid = group.replace(/\W/g, "_");
+            updateGroupCount(gid);
         });
     }
 
-    function gidToGrade(gid) {
-        return GRADE_ORDER.find(g => g.replace(/\W/g, "_") === gid) || gid;
+    function gidToGroup(gid) {
+        return activeGroupOrder.find(g => g.replace(/\W/g, "_") === gid) || gid;
     }
 
     // ── Toggle grade collapse ──
@@ -421,19 +538,19 @@
             selected.delete(sid);
             row.classList.add("nf-deselected");
         }
-        // Update counts for ALL grade groups this session belongs to
-        const gradesToUpdate = new Set();
+        // Update counts for ALL groups this session belongs to
+        const groupsToUpdate = new Set();
         document.querySelectorAll('input[data-sid="' + sid + '"]').forEach(el => {
             el.checked = cb.checked;
             el.closest(".nf-session-row").classList.toggle("nf-deselected", !cb.checked);
-            gradesToUpdate.add(el.dataset.gid);
+            groupsToUpdate.add(el.dataset.gid);
         });
-        gradesToUpdate.forEach(g => updateGradeCount(g));
+        groupsToUpdate.forEach(g => updateGroupCount(g));
         updateGlobalCount();
         renderPreview();
     };
 
-    // ── Per-grade toggle via header checkbox ──
+    // ── Per-group toggle via header checkbox ──
     window.toggleGradeCheckbox = function(gid, headerCb) {
         const shouldCheck = headerCb.checked;
         const body = document.getElementById("grade_" + gid);
@@ -445,16 +562,16 @@
             else selected.delete(cb.dataset.sid);
         });
         headerCb.indeterminate = false;
-        updateGradeCount(gid);
-        updateAllGradeCounts();   // multi-grade sessions may affect others
+        updateGroupCount(gid);
+        updateAllGroupCounts();   // multi-group sessions may affect others
         updateGlobalCount();
         renderPreview();
         showToast(shouldCheck
-            ? "Selected all in " + gidToGrade(gid)
-            : "Deselected all in " + gidToGrade(gid));
+            ? "Selected all in " + gidToGroup(gid)
+            : "Deselected all in " + gidToGroup(gid));
     };
 
-    // ── Per-grade select/deselect buttons ──
+    // ── Per-group select/deselect buttons ──
     window.selectGrade = function(gid) {
         const body = document.getElementById("grade_" + gid);
         body.querySelectorAll('input[type="checkbox"]').forEach(cb => {
@@ -462,10 +579,10 @@
             selected.add(cb.dataset.sid);
             cb.closest(".nf-session-row").classList.remove("nf-deselected");
         });
-        updateAllGradeCounts();
+        updateAllGroupCounts();
         updateGlobalCount();
         renderPreview();
-        showToast("Selected all in " + gidToGrade(gid));
+        showToast("Selected all in " + gidToGroup(gid));
     };
 
     window.deselectGrade = function(gid) {
@@ -475,10 +592,10 @@
             selected.delete(cb.dataset.sid);
             cb.closest(".nf-session-row").classList.add("nf-deselected");
         });
-        updateAllGradeCounts();
+        updateAllGroupCounts();
         updateGlobalCount();
         renderPreview();
-        showToast("Deselected all in " + gidToGrade(gid));
+        showToast("Deselected all in " + gidToGroup(gid));
     };
 
     // ── Global select / deselect ──
@@ -487,7 +604,7 @@
             cb.checked = true; selected.add(cb.dataset.sid);
             cb.closest(".nf-session-row").classList.remove("nf-deselected");
         });
-        updateAllGradeCounts();
+        updateAllGroupCounts();
         updateGlobalCount();
         renderPreview();
         showToast("Selected all sessions");
@@ -499,7 +616,7 @@
             cb.closest(".nf-session-row").classList.add("nf-deselected");
         });
         selected.clear();
-        updateAllGradeCounts();
+        updateAllGroupCounts();
         updateGlobalCount();
         renderPreview();
         showToast("Deselected all sessions");
@@ -530,7 +647,7 @@
             row.classList.toggle("nf-hidden-by-search", !match);
         });
 
-        // Hide grade groups where all rows are hidden
+        // Hide groups where all rows are hidden
         document.querySelectorAll(".nf-grade-group").forEach(group => {
             const visibleRows = group.querySelectorAll(".nf-session-row:not(.nf-hidden-by-search)");
             group.classList.toggle("nf-hidden-by-search", visibleRows.length === 0);
@@ -545,13 +662,14 @@
 
 
 
-    // ── Shared: collect selected sessions into grade groups ──
+    // ── Shared: collect selected sessions into groups ──
     function collectGroups() {
         const groups = {};
-        GRADE_ORDER.forEach(g => { groups[g] = []; });
+        activeGroupOrder.forEach(g => { groups[g] = []; });
         Object.values(sessionsById).forEach(s => {
             if (!selected.has(String(s.id))) return;
-            s.grade_levels.forEach(g => {
+            const sGroups = currentMode === "virtual" ? s.grade_levels : [s.section];
+            sGroups.forEach(g => {
                 if (!groups[g]) groups[g] = [];
                 if (!groups[g].some(x => x.id === s.id)) groups[g].push(s);
             });
@@ -584,7 +702,7 @@
         document.getElementById("formUrlInput").value = DEFAULT_FORM_URL;
     };
 
-    // ── Render preview (rich HTML with hyperlinked titles) ──
+    // ── Render preview ──
     window.renderPreview = function() {
         const previewEl = document.getElementById("previewText");
         if (selected.size === 0) {
@@ -593,8 +711,16 @@
             return;
         }
 
-        const groups = collectGroups();
+        if (currentMode === "virtual") {
+            renderVirtualPreview(previewEl);
+        } else {
+            renderInPersonPreview(previewEl);
+        }
+    };
 
+    // ── Virtual preview (existing logic) ──
+    function renderVirtualPreview(previewEl) {
+        const groups = collectGroups();
         let html = '';
 
         GRADE_ORDER.forEach(grade => {
@@ -611,20 +737,64 @@
         });
 
         previewEl.innerHTML = html;
-    };
+    }
+
+    // ── In-Person preview ──
+    function renderInPersonPreview(previewEl) {
+        const groups = collectGroups();
+        let html = '';
+
+        IN_PERSON_SECTION_ORDER.forEach(section => {
+            const items = groups[section];
+            if (!items || !items.length) return;
+
+            html += '<div class="nf-pv-grade">' + escapeHtml(section) + '</div>';
+            items.forEach(s => {
+                html += '<div class="nf-pv-session">';
+                // Format: "Thursday, April 2nd from 8:30-10:30 AM, Title"
+                let line = escapeHtml(s.formatted_datetime) + ', ';
+                if (s.link) {
+                    line += '<a class="nf-pv-link" href="' + escapeAttr(s.link) + '" target="_blank">' + escapeHtml(s.title) + '</a>';
+                } else {
+                    line += escapeHtml(s.title);
+                }
+                if (s.district) {
+                    line += ' - ' + escapeHtml(s.district);
+                }
+                html += line;
+                html += '</div>';
+            });
+        });
+
+        previewEl.innerHTML = html;
+    }
 
     // ── Build plain-text fallback ──
     function buildPlainText() {
         const groups = collectGroups();
         let text = '';
-        GRADE_ORDER.forEach(grade => {
-            const items = groups[grade];
-            if (!items || !items.length) return;
-            text += "\n" + grade + "\n";
-            items.forEach(s => {
-                text += s.formatted_datetime.padEnd(22, " ") + "  " + s.title + "\n";
+
+        if (currentMode === "virtual") {
+            GRADE_ORDER.forEach(grade => {
+                const items = groups[grade];
+                if (!items || !items.length) return;
+                text += "\n" + grade + "\n";
+                items.forEach(s => {
+                    text += s.formatted_datetime.padEnd(22, " ") + "  " + s.title + "\n";
+                });
             });
-        });
+        } else {
+            IN_PERSON_SECTION_ORDER.forEach(section => {
+                const items = groups[section];
+                if (!items || !items.length) return;
+                text += "\n" + section + "\n";
+                items.forEach(s => {
+                    let line = s.formatted_datetime + ", " + s.title;
+                    if (s.district) line += " - " + s.district;
+                    text += line + "\n";
+                });
+            });
+        }
         return text;
     }
 
@@ -634,17 +804,39 @@
 
         let html = '<div style="font-family:Segoe UI,Arial,sans-serif; font-size:14px; color:#333;">';
 
-        GRADE_ORDER.forEach(grade => {
-            const items = groups[grade];
-            if (!items || !items.length) return;
-            html += '<p style="margin:14px 0 4px; font-weight:bold; font-size:15px;">' + escapeHtml(grade) + '</p>';
-            items.forEach(s => {
-                html += '<p style="margin:2px 0;">';
-                html += '<span style="color:#555; display:inline-block; min-width:160px;">' + escapeHtml(s.formatted_datetime) + '</span> ';
-                html += '<a href="' + FORM_URL + '" style="color:#2980b9; text-decoration:none;">' + escapeHtml(s.title) + '</a>';
-                html += '</p>';
+        if (currentMode === "virtual") {
+            GRADE_ORDER.forEach(grade => {
+                const items = groups[grade];
+                if (!items || !items.length) return;
+                html += '<p style="margin:14px 0 4px; font-weight:bold; font-size:15px;">' + escapeHtml(grade) + '</p>';
+                items.forEach(s => {
+                    html += '<p style="margin:2px 0;">';
+                    html += '<span style="color:#555; display:inline-block; min-width:160px;">' + escapeHtml(s.formatted_datetime) + '</span> ';
+                    html += '<a href="' + FORM_URL + '" style="color:#2980b9; text-decoration:none;">' + escapeHtml(s.title) + '</a>';
+                    html += '</p>';
+                });
             });
-        });
+        } else {
+            IN_PERSON_SECTION_ORDER.forEach(section => {
+                const items = groups[section];
+                if (!items || !items.length) return;
+                html += '<p style="margin:14px 0 4px; font-weight:bold; font-size:15px;">' + escapeHtml(section) + '</p>';
+                items.forEach(s => {
+                    html += '<p style="margin:2px 0;">';
+                    let line = escapeHtml(s.formatted_datetime) + ', ';
+                    if (s.link) {
+                        line += '<a href="' + escapeAttr(s.link) + '" style="color:#2980b9; text-decoration:none;">' + escapeHtml(s.title) + '</a>';
+                    } else {
+                        line += escapeHtml(s.title);
+                    }
+                    if (s.district) {
+                        line += ' - ' + escapeHtml(s.district);
+                    }
+                    html += line;
+                    html += '</p>';
+                });
+            });
+        }
         html += '</div>';
         return html;
     }

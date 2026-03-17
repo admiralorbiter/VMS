@@ -109,7 +109,7 @@ def import_events_from_salesforce():
         District__c, School__c, Legacy_Skill_Covered_for_the_Session__c,
         Legacy_Skills_Needed__c, Requested_Skills__c, Additional_Information__c,
         Total_Requested_Volunteer_Jobs__c, Available_Slots__c, Parent_Account__c,
-        Session_Host__c, LastModifiedDate
+        Session_Host__c, Registration_Link__c, LastModifiedDate
     FROM Session__c
     WHERE Session_Status__c != 'Draft' AND Session_Type__c != 'Connector Session'
     """

@@ -157,11 +157,10 @@ def load_routes(bp):
         for event in upcoming_events:
             # Extract the URL from the HTML anchor tag if it exists
             registration_link = None
-            if event.registration_link and "href=" in event.registration_link:
-                start = event.registration_link.find('href="') + 6
-                end = event.registration_link.find('"', start)
-                if start > 5 and end > start:  # ensure we found both quotes
-                    registration_link = event.registration_link[start:end]
+            if event.registration_link:
+                from services.salesforce.utils import extract_href_from_html
+
+                registration_link = extract_href_from_html(event.registration_link)
 
             events_data.append(
                 {

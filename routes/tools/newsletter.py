@@ -3,25 +3,28 @@ Newsletter Formatter Tool
 =========================
 
 Provides a UI for generating formatted newsletter text from upcoming Pathful
-virtual sessions.  Users select which sessions to include, the tool groups
-them by grade level, and produces copy-paste-ready text.
+virtual sessions **and** in-person career exploration events.  Users select
+which sessions to include, the tool groups them appropriately, and produces
+copy-paste-ready text.
 
 Endpoints:
-    GET  /tools/newsletter-formatter            → Render the formatter page
-    GET  /tools/newsletter-formatter/sessions    → JSON API returning upcoming sessions
+    GET  /tools/newsletter-formatter                    → Render the formatter page
+    GET  /tools/newsletter-formatter/sessions           → JSON API — upcoming virtual sessions
+    GET  /tools/newsletter-formatter/in-person-sessions → JSON API — upcoming in-person events
 """
 
 import re
 from datetime import datetime, timezone
 
-from flask import jsonify, render_template
+from flask import current_app, jsonify, render_template
 from flask_login import login_required
 
 from models.event import Event, EventStatus, EventType, db
 from routes.tools import tools_bp
+from services.salesforce.utils import extract_href_from_html
 
 # ---------------------------------------------------------------------------
-# Grade-level parsing
+# Grade-level parsing (virtual sessions)
 # ---------------------------------------------------------------------------
 
 # Ordered list of (regex_pattern, list_of_grade_keys) pairs.
@@ -68,6 +71,78 @@ def parse_grade_levels(title: str) -> list[str]:
             return grades
 
     return ["General / KC Series"]
+
+
+# ---------------------------------------------------------------------------
+# In-person event section mapping
+# ---------------------------------------------------------------------------
+
+# Section grouping for in-person events.
+# Primary sections default ON; "Other" defaults OFF (mirrors virtual General).
+_IN_PERSON_SECTION_MAP = {
+    EventType.CAREER_JUMPING: "Career Jumping",
+    EventType.CAREER_SPEAKER: "Career Speakers",
+    EventType.CAREER_FAIR: "Career Fair",
+    EventType.CLASSROOM_SPEAKER: "Other Events",
+    EventType.WORKPLACE_VISIT: "Other Events",
+}
+
+IN_PERSON_SECTION_ORDER = [
+    "Career Jumping",
+    "Career Speakers",
+    "Career Fair",
+    "Other Events",
+]
+
+# All in-person event types we query for
+_IN_PERSON_EVENT_TYPES = list(_IN_PERSON_SECTION_MAP.keys())
+
+
+def _ordinal(n: int) -> str:
+    """Return the ordinal suffix for an integer (1→'1st', 2→'2nd', etc.)."""
+    if 11 <= (n % 100) <= 13:
+        return f"{n}th"
+    return f"{n}{('th','st','nd','rd','th','th','th','th','th','th')[n % 10]}"
+
+
+def _format_time_short(dt: datetime) -> str:
+    """Format a datetime's time as '8:30 AM' (no leading zero)."""
+    return dt.strftime("%I:%M %p").lstrip("0")
+
+
+def _format_in_person_datetime(start_dt: datetime, end_dt: datetime | None) -> str:
+    """Build the newsletter-style datetime string.
+
+    Example: ``Thursday, April 2nd from 8:30-10:30 AM``
+    If both times share AM/PM, collapse to ``8:30-10:30 AM``.
+    Otherwise use ``8:30 AM to 10:30 PM``.
+    """
+    day_name = start_dt.strftime("%A")  # e.g. "Thursday"
+    month_name = start_dt.strftime("%B")  # e.g. "April"
+    day_ord = _ordinal(start_dt.day)  # e.g. "2nd"
+
+    date_part = f"{day_name}, {month_name} {day_ord}"
+
+    start_time = _format_time_short(start_dt)
+    if not end_dt:
+        return f"{date_part}, {start_time}"
+
+    end_time = _format_time_short(end_dt)
+    # Collapse shared AM/PM: "8:30-10:30 AM"
+    start_ampm = start_dt.strftime("%p")
+    end_ampm = end_dt.strftime("%p")
+    if start_ampm == end_ampm:
+        start_no_ampm = start_time.replace(f" {start_ampm}", "")
+        time_range = f"{start_no_ampm}-{end_time}"
+    else:
+        time_range = f"{start_time} to {end_time}"
+
+    return f"{date_part}, from {time_range}"
+
+
+def _section_for_event_type(event_type: EventType) -> str:
+    """Map an EventType to its in-person section name."""
+    return _IN_PERSON_SECTION_MAP.get(event_type, "Other Events")
 
 
 # ---------------------------------------------------------------------------
@@ -122,5 +197,70 @@ def newsletter_formatter_sessions():
             )
 
         return jsonify({"success": True, "sessions": results})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@tools_bp.route("/newsletter-formatter/in-person-sessions")
+@login_required
+def newsletter_formatter_in_person_sessions():
+    """Return upcoming in-person career events as JSON, grouped by section."""
+    try:
+        now = datetime.now(timezone.utc)
+
+        events = (
+            Event.query.filter(
+                Event.type.in_(_IN_PERSON_EVENT_TYPES),
+                Event.status.in_([EventStatus.CONFIRMED, EventStatus.PUBLISHED]),
+                Event.start_date > now,
+            )
+            .order_by(Event.start_date.asc())
+            .all()
+        )
+
+        results = []
+        for e in events:
+            local_start = e.local_start_date or e.start_date
+
+            # Compute local end date (same timezone conversion as start)
+            local_end = None
+            if e.end_date:
+                import pytz
+
+                end = e.end_date
+                if not end.tzinfo:
+                    end = end.replace(tzinfo=timezone.utc)
+                tz_name = current_app.config.get("TIMEZONE", "America/Chicago")
+                tz = pytz.timezone(tz_name)
+                local_end = end.astimezone(tz)
+
+            formatted_dt = _format_in_person_datetime(local_start, local_end)
+            section = _section_for_event_type(e.type)
+
+            # Derive school name from relationship or title
+            school_name = ""
+            if e.school_obj:
+                school_name = e.school_obj.name
+
+            results.append(
+                {
+                    "id": e.id,
+                    "title": e.title,
+                    "formatted_datetime": formatted_dt,
+                    "section": section,
+                    "school_name": school_name,
+                    "district": e.district_partner or "",
+                    "link": extract_href_from_html(e.registration_link) or "",
+                    "status": e.status.value if e.status else "Unknown",
+                }
+            )
+
+        return jsonify(
+            {
+                "success": True,
+                "sessions": results,
+                "section_order": IN_PERSON_SECTION_ORDER,
+            }
+        )
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500

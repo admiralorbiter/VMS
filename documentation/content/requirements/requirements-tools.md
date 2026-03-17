@@ -17,10 +17,15 @@
 | [FR-TOOLS-107](#fr-tools-107) | Rich HTML Clipboard Copy | [UC-22](use-cases#uc-22) |
 | [FR-TOOLS-108](#fr-tools-108) | Configurable Sign-Up Form URL | [UC-22](use-cases#uc-22) |
 | [FR-TOOLS-109](#fr-tools-109) | Search & Filter Sessions | [UC-22](use-cases#uc-22) |
+| [FR-TOOLS-110](#fr-tools-110) | Mode Toggle (Virtual / In-Person) | [UC-22](use-cases#uc-22) |
+| [FR-TOOLS-111](#fr-tools-111) | In-Person Session Data Endpoint | [UC-22](use-cases#uc-22) |
+| [FR-TOOLS-112](#fr-tools-112) | In-Person Section Grouping | [UC-22](use-cases#uc-22) |
+| [FR-TOOLS-113](#fr-tools-113) | In-Person Date/Time Formatting | [UC-22](use-cases#uc-22) |
+| [FR-TOOLS-114](#fr-tools-114) | Registration Link Import | [UC-22](use-cases#uc-22) |
 
 ---
 
-## Newsletter Formatter
+## Newsletter Formatter — Virtual Mode
 
 ---
 
@@ -111,6 +116,62 @@ The toolbar shall include a search input that filters visible sessions in real t
 
 ---
 
+## Newsletter Formatter — In-Person Mode
+
+---
+
+### <a id="fr-tools-110"></a>FR-TOOLS-110: Mode Toggle (Virtual / In-Person)
+
+The Newsletter Formatter page shall provide a tabbed mode toggle with two options: **Virtual Connector** (default) and **Career Exploration Events**. Switching modes shall fetch the appropriate data endpoint and re-render the sessions panel. All toolbar actions (Select All, Deselect, Expand, Collapse, Search, Copy) shall be mode-aware.
+
+**Acceptance:** Clicking tabs switches modes; settings gear hidden in in-person mode.
+
+---
+
+### <a id="fr-tools-111"></a>FR-TOOLS-111: In-Person Session Data Endpoint
+
+The system shall provide a JSON API at `/tools/newsletter-formatter/in-person-sessions` that returns all upcoming in-person events with types `CAREER_JUMPING`, `CAREER_SPEAKER`, `CAREER_FAIR`, `CLASSROOM_SPEAKER`, or `WORKPLACE_VISIT`, status `CONFIRMED` or `PUBLISHED`, and `start_date` in the future, ordered by `start_date ASC`.
+
+**Response fields per session:** `id`, `title`, `formatted_datetime`, `section`, `school_name`, `district`, `link`, `status`.
+
+**Response also includes:** `section_order` (ordered list of section names) and `default_off_sections` (sections unchecked by default).
+
+---
+
+### <a id="fr-tools-112"></a>FR-TOOLS-112: In-Person Section Grouping
+
+In-person events shall be grouped into four sections in this order:
+
+| Section | Event Types |
+|---------|------------|
+| Career Jumping | `CAREER_JUMPING` |
+| Career Speakers | `CAREER_SPEAKER` |
+| Career Fair | `CAREER_FAIR` |
+| Other Events | `CLASSROOM_SPEAKER`, `WORKPLACE_VISIT` |
+
+"Other Events" shall be **unchecked by default** on page load.
+
+---
+
+### <a id="fr-tools-113"></a>FR-TOOLS-113: In-Person Date/Time Formatting
+
+In-person event dates shall be formatted as: **Thursday, April 2nd, from 8:30-10:30 AM**
+
+- Day name, month name, ordinal day suffix (1st, 2nd, 3rd, 4th…)
+- When start and end share the same AM/PM period, show collapsed format (e.g., `8:30-10:30 AM`)
+- When they differ, show full format (e.g., `11:00 AM to 1:00 PM`)
+- If no end time, show only start time with AM/PM
+
+---
+
+### <a id="fr-tools-114"></a>FR-TOOLS-114: Registration Link Import
+
+The Salesforce event import shall extract the `Registration_Link__c` field from Session records and store the clean URL in `Event.registration_link`. The field value in Salesforce is HTML (`<a href="url">Sign up</a>`); the import shall extract only the `href` URL.
+
+**Acceptance:** After a full event import, all sessions with a `Registration_Link__c` value in Salesforce have a clean URL in `registration_link`.
+
+---
+
 ## Related Documentation
 
 - [User Stories — Epic 14: Internal Tools](user-stories#epic-14)
@@ -119,4 +180,4 @@ The toolbar shall include a search input that filters visible sessions in real t
 
 ---
 
-*Last updated: March 2026 · Version 1.0*
+*Last updated: March 17, 2026 · Version 1.1*
