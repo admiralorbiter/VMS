@@ -58,6 +58,24 @@ from .computation import (
     get_google_sheet_url,
 )
 
+# ── Shared helpers ─────────────────────────────────────────────────────
+
+
+def _norm(s: str | None) -> str:
+    """Normalise a form value to a stripped string."""
+    return (s or "").strip()
+
+
+def _split_name(full_name: str) -> tuple[str, str]:
+    """Split a full name into (first, last).  Preserves multi-part surnames."""
+    full_name = _norm(full_name)
+    parts = [p for p in full_name.split() if p]
+    if not parts:
+        return "", ""
+    if len(parts) == 1:
+        return parts[0], ""
+    return parts[0], " ".join(parts[1:])
+
 
 def load_session_routes():
     def _group_sessions_for_table(session_rows):
@@ -1060,18 +1078,6 @@ def load_session_routes():
             )
 
         # POST: Update event
-        def _norm(s: str | None) -> str:
-            return (s or "").strip()
-
-        def _split_name(full_name: str) -> tuple[str, str]:
-            full_name = _norm(full_name)
-            parts = [p for p in full_name.split() if p]
-            if not parts:
-                return "", ""
-            if len(parts) == 1:
-                return parts[0], ""
-            # First word = given name, rest = surname (preserves multi-part surnames)
-            return parts[0], " ".join(parts[1:])
 
         # Update basic fields
         title = _norm(request.form.get("title"))
@@ -1458,19 +1464,6 @@ def load_session_routes():
         - Teacher registrations: registered, attendance not confirmed
         - Presenter participation: Confirmed (as Presenter)
         """
-
-        def _norm(s: str | None) -> str:
-            return (s or "").strip()
-
-        def _split_name(full_name: str) -> tuple[str, str]:
-            full_name = _norm(full_name)
-            parts = [p for p in full_name.split() if p]
-            if not parts:
-                return "", ""
-            if len(parts) == 1:
-                return parts[0], ""
-            # First word = given name, rest = surname (preserves multi-part surnames)
-            return parts[0], " ".join(parts[1:])
 
         # ---- Basic event fields ----
         year = _norm(request.form.get("year")) or get_current_virtual_year()

@@ -60,12 +60,14 @@ Business logic extracted from route handlers to follow the DRY principle. Routes
 | `cache_service.py` | Virtual session cache CRUD (5 functions) |
 | `district_service.py` | District name resolution, tenant district lookup |
 | `flag_scanner.py` | Data quality flag scanning |
+| `recruitment_scoring_service.py` | Keyword derivation and scoring helpers for recruitment matching |
 | `scoping.py` | User scope filtering (district/school) |
 | `session_status_service.py` | Session status classification (Completed/Planned/Needs Review) |
 | `teacher_import_service.py` | Teacher roster import logic |
 | `teacher_matching_service.py` | Teacher identity resolution across systems |
 | `teacher_service.py` | Teacher CRUD and querying |
 | `user_service.py` | User validation, creation, update, privilege escalation guards |
+| `virtual_computation_service.py` | Shared virtual session computation helpers (attendance, filters, district resolution) |
 
 ---
 

@@ -141,7 +141,10 @@ Foundational improvements that unblock future work and reduce risk.
 
 **Phase 4 — Ongoing Cleanup:**
 
-- [ ] **TD-041:** Continue extracting business logic from oversized route files into services
+- [/] **TD-041:** Continue extracting business logic from oversized route files into services
+    - [x] Session 1: Extracted 13 keyword/scoring functions from `recruitment.py` (1,918→970 lines) into `services/recruitment_scoring_service.py`
+    - [x] Session 1: Deduped `_norm`/`_split_name` in `session_routes.py` (−24 lines)
+    - [ ] Next: Extract sorting/export helpers from `district_routes.py`, replace `_classify_session` in `tenant_teacher_usage.py`
 - [ ] **TD-047:** Incrementally extract CSS/JS from oversized templates (1–2 per session)
 
 ---
