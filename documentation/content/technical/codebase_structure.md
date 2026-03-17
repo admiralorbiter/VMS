@@ -104,6 +104,7 @@ Flask blueprints organized by feature domain. Each subdirectory contains a `rout
 | `district/` | `district_bp` | Tenant teacher import, usage dashboard, magic links |
 | `tenants/` | `tenants_bp` | Tenant management (PrepKC admin) |
 | `quality/` | `quality_bp` | Data quality dashboards |
+| `tools/` | `tools_bp` | Internal tools (newsletter formatter) |
 
 ### Key Files in `routes/`
 
@@ -138,6 +139,7 @@ Jinja2 HTML templates organized to mirror the route structure.
 | `volunteers/` | Volunteer management templates |
 | `events/` | Event management templates |
 | `management/` | Admin templates |
+| `tools/` | Internal tool UIs (newsletter formatter) |
 | `email/` | Email templates (HTML for sending) |
 
 **Template Conventions:**
@@ -330,4 +332,4 @@ def admin_page():
 
 ---
 
-*Last updated: February 2026*
+*Last updated: March 2026*

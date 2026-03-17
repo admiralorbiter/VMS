@@ -28,7 +28,7 @@ Optimize for:
 - **Database:** SQLite (dev), MySQL (production on PythonAnywhere)
 - **External integrations:** Salesforce (via `simple-salesforce`), Pathful (CSV imports), Google Sheets
 - **Frontend:** Server-rendered HTML + vanilla JS, FullCalendar.js for calendar views
-- **Testing:** pytest, ~1,100+ tests
+- **Testing:** pytest, ~1,350+ tests
 
 ### Key Architecture
 - **Domain blueprints:** `routes/events/`, `routes/virtual/`, `routes/district/`, `routes/salesforce/`

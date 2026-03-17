@@ -17,6 +17,7 @@ Endpoints:
 import re
 from datetime import datetime, timezone
 
+import pytz
 from flask import current_app, jsonify, render_template, request
 from flask_login import login_required
 
@@ -229,8 +230,6 @@ def newsletter_formatter_in_person_sessions():
             # Compute local end date (same timezone conversion as start)
             local_end = None
             if e.end_date:
-                import pytz
-
                 end = e.end_date
                 if not end.tzinfo:
                     end = end.replace(tzinfo=timezone.utc)

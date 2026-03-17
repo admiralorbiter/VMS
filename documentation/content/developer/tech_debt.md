@@ -194,7 +194,8 @@ Ordered by **what best unblocks future work**:
 | 6 | **TD-034** | Salesforce data quality audit |
 | 7 | **TD-036** | Exact-name duplicate Teacher cleanup |
 | 8 | **TD-037** | Hard-delete pruned teachers (after 2026-04-13) |
-| 9 | **TD-011** | SQLite → MySQL *(do last when codebase is clean)* |
+| 9 | **TD-040** | `NEPRIS_SESSION_BASE_URL` in single file (YAGNI) |
+| 10 | **TD-011** | SQLite → MySQL *(do last when codebase is clean)* |
 
 > TD-004 is intentionally deferred — the M2M relationship is the correct path forward.
 
@@ -234,3 +235,16 @@ All resolved items, for historical reference:
 | TD-031 | No-Show Text-Match Leak | 2026-03-06 | Split `matched_event_ids` into `all_et_event_ids` + `counted_events_per_tp`. No-show EventTeacher records now excluded from supplementary text-matching. |
 | TD-032 | Pathful Multi-District `district_partner` Mismatch | 2026-03-07 | Removed `district_partner` filter from FK-based EventTeacher counting path. Pathful assigns a single `district_partner` per event, so multi-district sessions get mislabelled (e.g. KCKPS event tagged "Hogan Preparatory Academy"). FK link already proves attendance; filter kept only on supplementary text-matching path. Fixed under-counting for 17 teachers across 2 events in Spring 2025-2026. **Upstream fix needed:** notify Pathful that events with teachers from multiple districts get the wrong `district_partner` value. |
 | TD-038 | Session Status Classification Dedup | 2026-03-16 | CONFIRMED/PUBLISHED sessions silently dropped from teacher progress counting. Extracted ~350 lines of duplicated inline classification from 2 route files into `services/session_status_service.py`. Future CONFIRMED/PUBLISHED → "Planned"; past → "Needs Review". 36 unit tests. See ADR D-010. |
+| TD-039 | Inline `import pytz` in Newsletter | 2026-03-17 | `import pytz` was inside 2 endpoint functions in `newsletter.py`. Moved to module level. |
+
+---
+
+## TD-040: `NEPRIS_SESSION_BASE_URL` in Single File
+
+**Created:** 2026-03-17 · **Priority:** Low · **Category:** Maintainability
+
+`NEPRIS_SESSION_BASE_URL` is defined only in `routes/tools/newsletter.py`. If another feature needs Nepris links, the URL would be duplicated.
+
+**Proposed fix:** Move to app config or a shared constants module **when a second consumer appears** (YAGNI until then).
+
+**Risk:** None — cosmetic.

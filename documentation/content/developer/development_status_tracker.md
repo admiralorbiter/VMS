@@ -1,7 +1,7 @@
 # VMS Development Status Tracker
 
 **Last Updated:** March 2026
-**Total Functional Requirements:** ~188
+**Total Functional Requirements:** ~203
 
 ---
 
@@ -30,6 +30,7 @@
 | [Email System](#email-system) | 22 | 0 | 0 | 22 | 0 |
 | [Data & Operations](#data--operations) | 35 | 35 | 0 | 0 | 0 |
 | [District Suite](#district-suite) | 40 | 34 | 0 | 3 | 3 |
+| [Tools](#tools) | 15 | 15 | 0 | 0 | 0 |
 
 ---
 
@@ -511,6 +512,32 @@
 | FR-API-106 | API key rotation | ✅ | TC-990, TC-991 |
 | FR-API-107 | JSON response format | ✅ | TC-980, TC-982 |
 | FR-API-108 | Event object schema | ✅ | TC-981 |
+
+---
+
+## Tools
+
+> File: [requirements-tools.md](../requirements/requirements-tools.md)
+
+### Newsletter Formatter
+
+| ID | Requirement | Status | Notes |
+|----|-------------|--------|-------|
+| FR-TOOLS-101 | Authenticated access | ✅ | `@login_required` |
+| FR-TOOLS-102 | Virtual Connector Mode (default) | ✅ | Tab-based mode toggle |
+| FR-TOOLS-103 | Grade-level grouping | ✅ | Parsed from title prefix |
+| FR-TOOLS-104 | Date/time formatting | ✅ | E.g. "Tues., March 25th, 8:15 AM" |
+| FR-TOOLS-105 | Configurable registration URL | ✅ | Editable form URL field |
+| FR-TOOLS-106 | Select/deselect sessions | ✅ | Per-session + group All/None |
+| FR-TOOLS-107 | Live preview panel | ✅ | Real-time HTML preview |
+| FR-TOOLS-108 | Copy to clipboard (rich HTML) | ✅ | `text/html` + `text/plain` fallback |
+| FR-TOOLS-109 | Default-off groups | ✅ | "General / KC Series" unchecked |
+| FR-TOOLS-110 | Career Exploration Events mode | ✅ | Tab toggle, loads in-person data |
+| FR-TOOLS-111 | In-person sessions API | ✅ | `/newsletter-formatter/in-person-sessions` |
+| FR-TOOLS-112 | In-person section grouping | ✅ | Career Jumping/Speakers/Fair/Other |
+| FR-TOOLS-113 | In-person date/time formatting | ✅ | E.g. "Thursday, April 2nd, from 8:30-10:30 AM" |
+| FR-TOOLS-114 | Registration link import | ✅ | `Registration_Link__c` → hyperlinked titles |
+| FR-TOOLS-115 | Virtual sessions search-and-add | ✅ | Search endpoint + cart UI + per-session Nepris links |
 
 ---
 
