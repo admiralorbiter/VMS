@@ -285,25 +285,9 @@ All resolved items, for historical reference:
 
 ---
 
-## TD-043: User Management Duplication (3 Functions × 3 Files)
+## ~~TD-043: User Management Duplication (3 Functions × 3 Files)~~ ✅ RESOLVED
 
-**Created:** 2026-03-17 · **Priority:** Medium · **Category:** DRY / Maintainability
-
-**Scope:** User CRUD functions duplicated across 3 route files:
-
-| Function | File |
-|----------|------|
-| `create_user` | `auth/routes.py`, `district/tenant_users.py`, `tenants/user_management.py` |
-| `edit_user_form` | `district/tenant_users.py`, `management/routes.py`, `tenants/user_management.py` |
-| `update_user` | `district/tenant_users.py`, `management/routes.py`, `tenants/user_management.py` |
-
-**Root cause:** Three different UIs manage users (global admin, tenant admin, district admin), each with its own route handler that duplicates user creation/update logic. Small differences (tenant scoping, permission checks) led to full copies rather than parameterized shared functions.
-
-**Proposed fix:** Create `services/user_service.py` with shared `create_user()`, `update_user()`, `get_user_for_edit()` functions. Route handlers call the service with context-specific parameters (tenant_id, role constraints). Each route handler stays thin — just request parsing and template rendering.
-
-**Risk:** Medium — the 3 implementations may have diverged. Requires careful diff to identify intentional vs accidental differences before merging.
-
-**Effort:** Medium (2–3 hours including diff analysis and tests).
+**Resolved:** 2026-03-17 · Created `services/user_service.py` with shared validation, creation, update, and privilege escalation guard. Updated 4 route files to use service. Added `@admin_required` to `delete_user`, moved `require_tenant_admin` to `routes/decorators.py`, replaced inline permission checks with `@security_level_required`. Added rate limiting to login (5/min) and token generation (5/min) endpoints.
 
 ---
 
@@ -380,18 +364,34 @@ Start with the quality dashboard (2,795 lines) as the pilot.
 
 ---
 
+## TD-048: API Tokens Stored in Plaintext
+
+**Created:** 2026-03-17 · **Priority:** Medium · **Category:** Security
+
+API tokens in `User.api_token` are stored as raw hex strings (not hashed). If the database is compromised, all active tokens are exposed. Best practice is to hash tokens (like passwords) and compare hashes on lookup.
+
+**Complication:** `find_by_api_token()` does a direct `filter_by(api_token=token)` DB lookup. Hashing breaks this pattern. Would need a token prefix for lookup + hash for verification, or iterate-and-compare (impractical).
+
+**Proposed fix:** Store a token prefix (first 8 chars) for indexed lookup + SHA-256 hash of full token for verification. Requires migration to hash existing tokens. Active tokens in prod would need regeneration.
+
+**Risk:** Medium — schema change + migration + token regeneration coordination.
+
+**Effort:** Medium (2–3 hours including migration strategy).
+
+---
+
 ## Priority Order
 
 Ordered by **what best unblocks future work**:
 
 | Priority | ID | Item | Effort |
 |:--------:|----|------|:------:|
-| 1 | **TD-043** | User management → `user_service.py` | M |
-| 2 | **TD-046** | Virtual computation service extraction | L |
-| 3 | **TD-009** | Centralize transaction management (199 calls, 55 files) | L |
-| 4 | **TD-041** | Oversized route files — ongoing extraction | L |
-| 5 | **TD-013** | True application factory pattern | M |
-| 6 | **TD-016** | Generic `ReportCache` model | M |
+| 1 | **TD-046** | Virtual computation service extraction | L |
+| 2 | **TD-009** | Centralize transaction management (199 calls, 55 files) | L |
+| 3 | **TD-041** | Oversized route files — ongoing extraction | L |
+| 4 | **TD-013** | True application factory pattern | M |
+| 5 | **TD-016** | Generic `ReportCache` model | M |
+| 6 | **TD-048** | API tokens stored in plaintext | M |
 | 7 | **TD-022** | Add tests for extracted blueprints | M |
 | 8 | **TD-036** | Exact-name duplicate Teacher cleanup | S |
 | 9 | **TD-037** | Hard-delete pruned teachers (after 2026-04-13) | S |
@@ -439,5 +439,6 @@ All resolved items, for historical reference:
 | TD-038 | Session Status Classification Dedup | 2026-03-16 | CONFIRMED/PUBLISHED sessions silently dropped from teacher progress counting. Extracted ~350 lines of duplicated inline classification from 2 route files into `services/session_status_service.py`. Future CONFIRMED/PUBLISHED → "Planned"; past → "Needs Review". 36 unit tests. See ADR D-010. |
 | TD-039 | Inline `import pytz` in Newsletter | 2026-03-17 | `import pytz` was inside 2 endpoint functions in `newsletter.py`. Moved to module level. |
 | TD-042 | Cache Function Duplication | 2026-03-17 | 5 cache functions consolidated from 3 files into `services/cache_service.py`. ~410 lines removed. Original `cache.py` files retained as thin re-exports. |
+| TD-043 | User Management Duplication | 2026-03-17 | Created `services/user_service.py` (5 functions). Updated 4 route files. Added privilege escalation guard, `@admin_required` on delete, `@security_level_required` on management edit/update. Rate limiting on login (5/min) and token gen (5/min). |
 | TD-044 | `get_school_year_dates` Duplication | 2026-03-17 | Moved to `services/academic_year_service.py`. Updated 3 consumer files. |
 | TD-045 | `get_tenant_district_name` Duplication | 2026-03-17 | Moved to `services/district_service.py` with 3-tier resolution (FK → setting → name). Updated 3 consumer files. |

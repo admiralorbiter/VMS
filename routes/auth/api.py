@@ -57,6 +57,7 @@ from functools import wraps
 from flask import Blueprint, jsonify, request
 
 from models import User
+from utils.rate_limiter import limiter
 
 api_bp = Blueprint("api", __name__)
 
@@ -97,6 +98,7 @@ def token_required(f):
 
 
 @api_bp.route("/token", methods=["POST"])
+@limiter.limit("5 per minute")
 def get_token():
     """
     Generate API token for user authentication.

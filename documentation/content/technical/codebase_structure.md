@@ -18,6 +18,7 @@ VMS/
 ├── config/                # Application configuration
 ├── models/                # SQLAlchemy database models
 ├── routes/                # Flask blueprints and route handlers
+├── services/              # Business logic services (DRY extraction layer)
 ├── templates/             # Jinja2 HTML templates
 ├── static/                # CSS, JavaScript, images
 ├── utils/                 # Utility modules (clients, validators)
@@ -45,6 +46,26 @@ The Flask application factory. Creates and configures the app, registers bluepri
 
 ### `forms.py`
 WTForms form classes for HTML form handling and validation.
+
+---
+
+## Services (`services/`)
+
+Business logic extracted from route handlers to follow the DRY principle. Routes remain thin (request parsing, permission checks, response formatting) and delegate to services for shared operations.
+
+| File | Purpose |
+|------|---------|
+| `academic_year_service.py` | School year / semester date calculations |
+| `audit_service.py` | Audit log recording |
+| `cache_service.py` | Virtual session cache CRUD (5 functions) |
+| `district_service.py` | District name resolution, tenant district lookup |
+| `flag_scanner.py` | Data quality flag scanning |
+| `scoping.py` | User scope filtering (district/school) |
+| `session_status_service.py` | Session status classification (Completed/Planned/Needs Review) |
+| `teacher_import_service.py` | Teacher roster import logic |
+| `teacher_matching_service.py` | Teacher identity resolution across systems |
+| `teacher_service.py` | Teacher CRUD and querying |
+| `user_service.py` | User validation, creation, update, privilege escalation guards |
 
 ---
 

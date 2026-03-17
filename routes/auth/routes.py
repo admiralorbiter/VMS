@@ -55,16 +55,21 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required, login_user, logout_user
-from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.security import check_password_hash
 
 from forms import LoginForm  # Adjust import path as needed
 from models import User, db  # Adjust import path as needed
 from routes.decorators import admin_required, handle_route_errors
+from services.user_service import check_role_escalation
+from services.user_service import create_user as service_create_user
+from services.user_service import update_user_fields, validate_new_user
+from utils.rate_limiter import limiter
 
 auth_bp = Blueprint("auth", __name__)
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute", methods=["POST"])
 def login():
     """
     Handle user login functionality.
@@ -178,57 +183,55 @@ def create_user():
         Redirect to admin panel with success/error message
     """
 
-    username = request.form.get("username")
-    email = request.form.get("email")
-    password = request.form.get("password")
+    import json
+
+    username = request.form.get("username", "").strip()
+    email = request.form.get("email", "").strip()
+    password = request.form.get("password", "")
     security_level = request.form.get("security_level", type=int)
     scope_type = request.form.get("scope_type", "global")
     allowed_districts = request.form.getlist("allowed_districts")
 
-    if not all([username, email, password, security_level is not None]):
-        flash("All fields are required", "danger")
+    # Validation (via service)
+    errors = validate_new_user(username, email, password)
+
+    if security_level is None or not (-1 <= security_level <= 3):
+        errors.append("Invalid security level.")
+
+    # Privilege escalation guard (via service)
+    if security_level is not None:
+        escalation_error = check_role_escalation(
+            current_user, security_level, context="global"
+        )
+        if escalation_error:
+            errors.append(escalation_error)
+
+    if errors:
+        for error in errors:
+            flash(error, "danger")
         return redirect(url_for("management.admin"))
 
-    if User.query.filter_by(username=username).first():
-        flash("Username already exists", "danger")
-        return redirect(url_for("management.admin"))
-
-    if User.query.filter_by(email=email).first():
-        flash("Email already exists", "danger")
-        return redirect(url_for("management.admin"))
-
-    # For admin users (security_level 3), allow creating any valid security level
-    # For non-admin users, ensure they can only create users with lower security levels
-    if not (-1 <= security_level <= 3) or (
-        not current_user.is_admin and security_level >= current_user.security_level
-    ):
-        flash("Invalid security level or insufficient permissions", "danger")
-        return redirect(url_for("management.admin"))
-
-    import json
-
-    user = User(
+    # Create user (via service)
+    user, error = service_create_user(
         username=username,
         email=email,
-        password_hash=generate_password_hash(password),
+        password=password,
         security_level=security_level,
         scope_type=scope_type,
         allowed_districts=json.dumps(allowed_districts) if allowed_districts else None,
     )
 
-    try:
-        db.session.add(user)
-        db.session.commit()
+    if error:
+        flash(error, "danger")
+    else:
         flash("User created successfully", "success")
-    except Exception as e:
-        db.session.rollback()
-        flash(f"Error creating user: {str(e)}", "danger")
 
     return redirect(url_for("management.admin"))
 
 
 @auth_bp.route("/admin/users/<int:id>", methods=["DELETE"])
 @login_required
+@admin_required
 def delete_user(id):
     """
     Delete a user account.
@@ -295,13 +298,12 @@ def change_password():
         flash("New passwords do not match", "danger")
         return redirect(url_for("management.admin"))
 
-    try:
-        # Update password
-        current_user.password_hash = generate_password_hash(new_password)
-        db.session.commit()
+    # Update password via service
+    success, error = update_user_fields(current_user, password=new_password)
+
+    if success:
         flash("Password updated successfully", "success")
-    except Exception as e:
-        db.session.rollback()
-        flash(f"Error updating password: {str(e)}", "danger")
+    else:
+        flash(error or "Error updating password", "danger")
 
     return redirect(url_for("management.admin"))

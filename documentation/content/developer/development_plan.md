@@ -119,13 +119,14 @@ Foundational improvements that unblock future work and reduce risk.
 - [x] **TD-045:** Move `get_tenant_district_name()` into `services/district_service.py` (3 files → 1)
 - [x] Full test suite passed (1,358 tests, 0 failures)
 
-**Phase 2 — User Service Extraction (1 session, ~2–3 hours):**
+**Phase 2 — User Service Extraction ✅ (completed 2026-03-17):**
 
-- [ ] **TD-043:** Diff the 3 `create_user` / `edit_user` / `update_user` implementations
-- [ ] Identify intentional vs accidental divergence
-- [ ] Extract shared logic into `services/user_service.py`
-- [ ] Update 3 route files to use the service
-- [ ] Add service-level tests
+- [x] **TD-043:** Diffed 3 `create_user` / `edit_user` / `update_user` implementations
+- [x] Identified intentional vs accidental divergence (3 distinct contexts)
+- [x] Extracted shared logic into `services/user_service.py` (5 functions)
+- [x] Updated 4 route files to use the service
+- [x] Added privilege escalation guard, rate limiting, `@admin_required` on delete
+- [x] Full test suite passed
 
 **Phase 3 — Virtual Computation Extraction (1–2 sessions, ~4–6 hours):**
 
