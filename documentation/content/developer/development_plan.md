@@ -128,13 +128,16 @@ Foundational improvements that unblock future work and reduce risk.
 - [x] Added privilege escalation guard, rate limiting, `@admin_required` on delete
 - [x] Full test suite passed
 
-**Phase 3 — Virtual Computation Extraction (1–2 sessions, ~4–6 hours):**
+**Phase 3 — Virtual Computation Extraction ✅ (completed 2026-03-17):**
 
-- [ ] **TD-046:** Diff `virtual/usage/computation.py` vs `reports/virtual_session/computation.py`
-- [ ] Identify shared counting/classification logic
-- [ ] Extract into `services/virtual_computation_service.py`
-- [ ] Side-by-side integration tests to verify output parity
-- [ ] Expected: each file drops from ~1,700 lines to ~400 lines
+- [x] **TD-046:** Diffed `virtual/usage/computation.py` vs `reports/virtual_session/computation.py`
+- [x] Identified 7 shared functions + 3 divergences (attendance filtering, `requested` status, `source_host` field)
+- [x] Extracted into `services/virtual_computation_service.py` with hybrid attendance approach
+- [x] Fixed `processing.py` to set `attendance_confirmed_at` on import (root cause)
+- [x] Fixed `is_local` double-counting bug, removed DEBUG prints
+- [x] File A: 1,623 → 1,026 lines (−597). File B: 1,584 → 946 lines (−638)
+- [x] Full test suite passed
+- [x] **TD-049:** Backfilled `attendance_confirmed_at` for 12,890 existing attended records (one-time ORM update)
 
 **Phase 4 — Ongoing Cleanup:**
 

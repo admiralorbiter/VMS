@@ -5,6 +5,8 @@ Handles processing individual rows from Pathful Session Reports, including
 role-based routing to teacher/volunteer matching and event linking.
 """
 
+from datetime import datetime, timezone
+
 import pandas as pd
 from flask import current_app
 from sqlalchemy import func
@@ -315,11 +317,21 @@ def process_session_report_row(
                             and et_status in ("attended", "no_show")
                         ):
                             existing_et.status = et_status
+                            existing_et.attendance_confirmed_at = (
+                                datetime.now(timezone.utc)
+                                if et_status == "attended"
+                                else None
+                            )
                     else:
                         et = _ET(
                             event_id=event.id,
                             teacher_id=teacher_id_to_link,
                             status=et_status,
+                            attendance_confirmed_at=(
+                                datetime.now(timezone.utc)
+                                if et_status == "attended"
+                                else None
+                            ),
                         )
                         db.session.add(et)
                     if caches:
@@ -335,6 +347,11 @@ def process_session_report_row(
                         if existing_et and existing_et.status != et_status:
                             if not existing_et.notes:
                                 existing_et.status = et_status
+                                existing_et.attendance_confirmed_at = (
+                                    datetime.now(timezone.utc)
+                                    if et_status == "attended"
+                                    else None
+                                )
 
             # Text cache (Event.educators) is regenerated post-import
             # by sync_event_participant_fields — no manual accumulation needed

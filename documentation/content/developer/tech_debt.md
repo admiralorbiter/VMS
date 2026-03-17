@@ -380,14 +380,23 @@ API tokens in `User.api_token` are stored as raw hex strings (not hashed). If th
 
 ---
 
+## TD-049: Backfill `attendance_confirmed_at` for Existing Records
+
+**Created:** 2026-03-17 · **Priority:** Low · **Category:** Data Quality
+
+~12,964 of 12,975 `EventTeacher` records with `status='attended'` had `attendance_confirmed_at = NULL` because the Pathful import didn't set the field prior to the TD-046 fix.
+
+**Resolution:** One-time ORM backfill on 2026-03-17 set `attendance_confirmed_at` for 12,890 records. All 12,979 attended records now have the timestamp. Self-heal via re-import was insufficient (only triggers on status *changes*, not same-status re-imports).
+
+**Status:** ✅ Resolved 2026-03-17.
+
 ## Priority Order
 
 Ordered by **what best unblocks future work**:
 
 | Priority | ID | Item | Effort |
 |:--------:|----|------|:------:|
-| 1 | **TD-046** | Virtual computation service extraction | L |
-| 2 | **TD-009** | Centralize transaction management (199 calls, 55 files) | L |
+| 1 | **TD-009** | Centralize transaction management (199 calls, 55 files) | L |
 | 3 | **TD-041** | Oversized route files — ongoing extraction | L |
 | 4 | **TD-013** | True application factory pattern | M |
 | 5 | **TD-016** | Generic `ReportCache` model | M |
@@ -442,3 +451,5 @@ All resolved items, for historical reference:
 | TD-043 | User Management Duplication | 2026-03-17 | Created `services/user_service.py` (5 functions). Updated 4 route files. Added privilege escalation guard, `@admin_required` on delete, `@security_level_required` on management edit/update. Rate limiting on login (5/min) and token gen (5/min). |
 | TD-044 | `get_school_year_dates` Duplication | 2026-03-17 | Moved to `services/academic_year_service.py`. Updated 3 consumer files. |
 | TD-045 | `get_tenant_district_name` Duplication | 2026-03-17 | Moved to `services/district_service.py` with 3-tier resolution (FK → setting → name). Updated 3 consumer files. |
+| TD-046 | Virtual Computation Extraction | 2026-03-17 | Extracted 7 shared functions into `services/virtual_computation_service.py`. Fixed `processing.py` to set `attendance_confirmed_at`. Hybrid attendance check replaces broken `attendance_confirmed_at`-only gate in reports. File A: 1,623→1,026 lines. File B: 1,584→946 lines. ~1,235 lines removed. See ADR D-011. |
+| TD-049 | Backfill `attendance_confirmed_at` | 2026-03-17 | One-time ORM backfill set `attendance_confirmed_at` for 12,890 attended `EventTeacher` records. All 12,979 attended records now have the timestamp. |

@@ -34,6 +34,7 @@ ADRs are immutable records of significant technical decisions that capture conte
 | D-003 | Daily Sync with Conflict Resolution | ✅ Accepted | 2024-04 |
 | D-004 | Auto-Link TeacherProgress to Teacher on Import | ✅ Accepted | 2026-02 |
 | D-010 | Shared Session Status Classification Service | ✅ Accepted | 2026-03 |
+| D-011 | Hybrid Teacher Attendance Check | ✅ Accepted | 2026-03 |
 
 ### GUI Enhancement Decisions
 
@@ -89,6 +90,35 @@ ADRs are immutable records of significant technical decisions that capture conte
 - Simpler, maintainable codebase
 - Focus on actual data relationships
 - Reduced database complexity
+
+---
+
+### 2026-03-17: D-011 — Hybrid Teacher Attendance Check
+
+**Context:** Two computation files diverged on how they determined teacher attendance:
+- File A (`virtual/usage/computation.py`) used a **status-string blocklist** (fragile, version-specific)
+- File B (`reports/virtual_session/computation.py`) used **`attendance_confirmed_at IS NOT NULL`** (precise, but only 11 of 12,975 records had the field populated — Pathful import never set it)
+
+File B's reports were silently undercounting teachers by ~99.9%.
+
+**Decision:** Adopt a **hybrid attendance check** that uses both signals:
+1. If `attendance_confirmed_at` is set → attended (primary signal)
+2. Else if status in `{"attended", "count", "completed"}` → attended (fallback)
+3. Always exclude statuses containing "no_show", "no-show", "cancel", "withdraw"
+
+Also fix the **root cause**: modify `processing.py` to set `attendance_confirmed_at` when creating/updating `EventTeacher` records with `status='attended'`.
+
+**Consequences:**
+- ✅ File B reports immediately fixed — correct teacher counts
+- ✅ New imports will populate both signals going forward
+- ✅ Historical records still counted correctly via status fallback
+- ⚠️ ~12,964 existing attended records still lack `attendance_confirmed_at` — will self-heal on next import cycle, or can be backfilled (TD-049)
+
+**Files Changed:**
+- `services/virtual_computation_service.py` — New shared service with `is_teacher_attended()`
+- `routes/virtual/pathful_import/processing.py` — Root cause fix
+- `routes/virtual/usage/computation.py` — Uses hybrid check + shared service imports
+- `routes/reports/virtual_session/computation.py` — Uses hybrid check + shared service imports
 
 ---
 
