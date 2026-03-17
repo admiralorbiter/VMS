@@ -279,26 +279,9 @@ All resolved items, for historical reference:
 
 ---
 
-## TD-042: Cache Function Duplication (4 Functions × 3 Files)
+## ~~TD-042: Cache Function Duplication~~ ✅ RESOLVED
 
-**Created:** 2026-03-17 · **Priority:** High · **Category:** DRY / Architecture
-
-**Scope:** 4 cache functions are copy-pasted **verbatim** across 3 files:
-
-| Function | File 1 | File 2 | File 3 |
-|----------|--------|--------|--------|
-| `get_virtual_session_cache` | `reports/virtual_session/cache.py` | `virtual/usage/cache.py` | `virtual/usage/computation.py` |
-| `save_virtual_session_cache` | same | same | same |
-| `get_virtual_session_district_cache` | same | same | same |
-| `save_virtual_session_district_cache` | same | same | same |
-
-**Root cause:** When `usage.py` was split into packages (TD-017), cache functions were copied into both the `reports` and `virtual` packages rather than extracted to a shared location.
-
-**Proposed fix:** Create `services/cache_service.py` with canonical implementations. Update all 3 consumer files to import from the single source. This also lays groundwork for TD-016 (generic ReportCache model).
-
-**Risk:** Low — functions are identical, so consolidation is mechanical. Add a smoke test to verify cache read/write still works.
-
-**Effort:** Small (1–2 hours).
+**Resolved:** 2026-03-17 · See `services/cache_service.py`. 5 cache functions consolidated from 3 files (~410 lines removed). Both original `cache.py` files replaced with thin re-exports for backward compatibility.
 
 ---
 
@@ -324,41 +307,15 @@ All resolved items, for historical reference:
 
 ---
 
-## TD-044: `get_school_year_dates` Duplication (3 Files)
+## ~~TD-044: `get_school_year_dates` Duplication~~ ✅ RESOLVED
 
-**Created:** 2026-03-17 · **Priority:** Medium · **Category:** DRY
-
-**Scope:** `get_school_year_dates()` defined in 3 separate route files:
-- `routes/reports/attendance.py`
-- `routes/reports/virtual_session/computation.py`
-- `routes/virtual/usage/computation.py`
-
-**Root cause:** Missed consolidation. `services/academic_year_service.py` already exists and handles semester/year calculations, but this specific function was never migrated into it.
-
-**Proposed fix:** Move `get_school_year_dates()` into `services/academic_year_service.py` and update all 3 consumers to import from there. Verify the 3 implementations are identical first (likely copy-pasted).
-
-**Risk:** Low — should be a direct move with no logic changes.
-
-**Effort:** Small (30 minutes).
+**Resolved:** 2026-03-17 · Moved to `services/academic_year_service.py`. Updated 3 consumer files. Handles both 2-digit ('24-25') and 4-digit ('2024-2025') formats.
 
 ---
 
-## TD-045: `get_tenant_district_name` Duplication (3 Files)
+## ~~TD-045: `get_tenant_district_name` Duplication~~ ✅ RESOLVED
 
-**Created:** 2026-03-17 · **Priority:** Medium · **Category:** DRY
-
-**Scope:** `get_tenant_district_name()` defined in 3 district route files:
-- `routes/district/tenant_teacher_import.py`
-- `routes/district/tenant_teacher_usage.py`
-- `routes/district/virtual_sessions.py`
-
-**Root cause:** District utility function duplicated when route files were created independently. `services/district_service.py` exists but is small (4,959 bytes) — this function was never added to it.
-
-**Proposed fix:** Move `get_tenant_district_name()` into `services/district_service.py`. Update all 3 consumers. Verify implementations are identical.
-
-**Risk:** Low — utility function, no side effects.
-
-**Effort:** Small (30 minutes).
+**Resolved:** 2026-03-17 · Moved to `services/district_service.py`. Updated 3 consumer files. Canonical version uses 3-tier resolution: FK → legacy setting → tenant name.
 
 ---
 
@@ -429,21 +386,18 @@ Ordered by **what best unblocks future work**:
 
 | Priority | ID | Item | Effort |
 |:--------:|----|------|:------:|
-| 1 | **TD-042** | Cache function consolidation (4 functions × 3 files) | S |
-| 2 | **TD-044** | `get_school_year_dates` → `academic_year_service.py` | S |
-| 3 | **TD-045** | `get_tenant_district_name` → `district_service.py` | S |
-| 4 | **TD-043** | User management → `user_service.py` | M |
-| 5 | **TD-046** | Virtual computation service extraction | L |
-| 6 | **TD-009** | Centralize transaction management (199 calls, 55 files) | L |
-| 7 | **TD-041** | Oversized route files — ongoing extraction | L |
-| 8 | **TD-013** | True application factory pattern | M |
-| 9 | **TD-016** | Generic `ReportCache` model | M |
-| 10 | **TD-022** | Add tests for extracted blueprints | M |
-| 11 | **TD-036** | Exact-name duplicate Teacher cleanup | S |
-| 12 | **TD-037** | Hard-delete pruned teachers (after 2026-04-13) | S |
-| 13 | **TD-047** | Oversized templates — incremental extraction | M |
-| 14 | **TD-040** | `NEPRIS_SESSION_BASE_URL` in single file (YAGNI) | S |
-| 15 | **TD-011** | SQLite → MySQL *(do last when codebase is clean)* | XL |
+| 1 | **TD-043** | User management → `user_service.py` | M |
+| 2 | **TD-046** | Virtual computation service extraction | L |
+| 3 | **TD-009** | Centralize transaction management (199 calls, 55 files) | L |
+| 4 | **TD-041** | Oversized route files — ongoing extraction | L |
+| 5 | **TD-013** | True application factory pattern | M |
+| 6 | **TD-016** | Generic `ReportCache` model | M |
+| 7 | **TD-022** | Add tests for extracted blueprints | M |
+| 8 | **TD-036** | Exact-name duplicate Teacher cleanup | S |
+| 9 | **TD-037** | Hard-delete pruned teachers (after 2026-04-13) | S |
+| 10 | **TD-047** | Oversized templates — incremental extraction | M |
+| 11 | **TD-040** | `NEPRIS_SESSION_BASE_URL` in single file (YAGNI) | S |
+| 12 | **TD-011** | SQLite → MySQL *(do last when codebase is clean)* | XL |
 
 > TD-004 is intentionally deferred — the M2M relationship is the correct path forward.
 > TD-033 and TD-034 are resolved. See [Resolved Archive](#resolved-archive).
@@ -484,3 +438,6 @@ All resolved items, for historical reference:
 | TD-032 | Pathful Multi-District `district_partner` Mismatch | 2026-03-07 | Removed `district_partner` filter from FK-based EventTeacher counting path. Pathful assigns a single `district_partner` per event, so multi-district sessions get mislabelled (e.g. KCKPS event tagged "Hogan Preparatory Academy"). FK link already proves attendance; filter kept only on supplementary text-matching path. Fixed under-counting for 17 teachers across 2 events in Spring 2025-2026. **Upstream fix needed:** notify Pathful that events with teachers from multiple districts get the wrong `district_partner` value. |
 | TD-038 | Session Status Classification Dedup | 2026-03-16 | CONFIRMED/PUBLISHED sessions silently dropped from teacher progress counting. Extracted ~350 lines of duplicated inline classification from 2 route files into `services/session_status_service.py`. Future CONFIRMED/PUBLISHED → "Planned"; past → "Needs Review". 36 unit tests. See ADR D-010. |
 | TD-039 | Inline `import pytz` in Newsletter | 2026-03-17 | `import pytz` was inside 2 endpoint functions in `newsletter.py`. Moved to module level. |
+| TD-042 | Cache Function Duplication | 2026-03-17 | 5 cache functions consolidated from 3 files into `services/cache_service.py`. ~410 lines removed. Original `cache.py` files retained as thin re-exports. |
+| TD-044 | `get_school_year_dates` Duplication | 2026-03-17 | Moved to `services/academic_year_service.py`. Updated 3 consumer files. |
+| TD-045 | `get_tenant_district_name` Duplication | 2026-03-17 | Moved to `services/district_service.py` with 3-tier resolution (FK → setting → name). Updated 3 consumer files. |

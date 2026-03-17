@@ -71,13 +71,8 @@ def virtual_admin_required(f):
 # services.academic_year_service
 
 
-def get_tenant_district_name(tenant_id=None):
-    """Get district name for a tenant (defaults to current user's tenant)."""
-    tid = tenant_id or current_user.tenant_id
-    if not tid:
-        return None
-    tenant = Tenant.query.get(tid)
-    return tenant.name if tenant else None
+# Note: get_tenant_district_name is imported from services.district_service
+from services.district_service import get_tenant_district_name  # noqa: E402, F811
 
 
 def _backfill_teacher_ids(teachers):

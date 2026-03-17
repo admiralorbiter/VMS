@@ -22,24 +22,7 @@ from models import db
 from models.event import Event, EventStatus, EventType
 from models.tenant import Tenant
 from routes.district import district_bp
-
-
-def get_tenant_district_name():
-    """Get the district name for the current user's tenant."""
-    if not current_user.tenant_id:
-        return None
-
-    # Query the tenant
-    tenant = Tenant.query.get(current_user.tenant_id)
-    if not tenant:
-        return None
-
-    # Check if tenant has a linked district via FK
-    if tenant.district:
-        return tenant.district.name
-
-    # Fallback: check settings for linked_district_name (legacy)
-    return tenant.get_setting("linked_district_name")
+from services.district_service import get_tenant_district_name
 
 
 @district_bp.route("/virtual-sessions")

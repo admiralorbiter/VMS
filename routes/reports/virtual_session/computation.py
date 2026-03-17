@@ -17,14 +17,7 @@ from routes.reports.common import (
     get_school_year_date_range,
     get_virtual_year_dates,
 )
-
-
-# Alias for backward compatibility
-def get_school_year_dates(school_year: str) -> tuple:
-    """Alias for get_school_year_date_range for backward compatibility."""
-    return get_school_year_date_range(
-        school_year[:2] + school_year[-2:] if "-" in school_year else school_year
-    )
+from services.academic_year_service import get_school_year_dates  # noqa: F401
 
 
 def apply_runtime_filters(session_data, filters):

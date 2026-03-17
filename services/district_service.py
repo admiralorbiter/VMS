@@ -158,3 +158,48 @@ def seed_district_aliases() -> dict:
     }
     logger.info("seed_district_aliases: %s", summary)
     return summary
+
+
+def get_tenant_district_name(tenant_id=None):
+    """
+    Get the display district name for a tenant.
+
+    Resolution order:
+      1. tenant.district.name (FK relationship)
+      2. tenant.get_setting('linked_district_name') (legacy setting)
+      3. tenant.name (fallback)
+
+    Consolidated from 3 route files (TD-045):
+      - routes/district/tenant_teacher_usage.py
+      - routes/district/tenant_teacher_import.py
+      - routes/district/virtual_sessions.py
+
+    Args:
+        tenant_id: Optional tenant ID. Defaults to current_user.tenant_id.
+
+    Returns:
+        str or None: The district name, or None if no tenant found.
+    """
+    from flask_login import current_user
+
+    from models.tenant import Tenant
+
+    tid = tenant_id or getattr(current_user, "tenant_id", None)
+    if not tid:
+        return None
+
+    tenant = Tenant.query.get(tid)
+    if not tenant:
+        return None
+
+    # 1. FK relationship (preferred)
+    if tenant.district:
+        return tenant.district.name
+
+    # 2. Legacy setting
+    linked = tenant.get_setting("linked_district_name")
+    if linked:
+        return linked
+
+    # 3. Fallback to tenant name
+    return tenant.name

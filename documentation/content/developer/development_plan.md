@@ -112,12 +112,12 @@ Foundational improvements that unblock future work and reduce risk.
 - 15 duplicate function names across 3+ route files
 - 28 of 142 templates over 500 lines
 
-**Phase 1 — Quick DRY Wins (1 session, ~2–3 hours):**
+**Phase 1 — Quick DRY Wins ✅ (completed 2026-03-17):**
 
-- [ ] **TD-042:** Consolidate 4 cache functions into `services/cache_service.py` (3 files → 1)
-- [ ] **TD-044:** Move `get_school_year_dates()` into `services/academic_year_service.py` (3 files → 1)
-- [ ] **TD-045:** Move `get_tenant_district_name()` into `services/district_service.py` (3 files → 1)
-- [ ] Run full test suite to verify no regressions
+- [x] **TD-042:** Consolidate 4 cache functions into `services/cache_service.py` (3 files → 1)
+- [x] **TD-044:** Move `get_school_year_dates()` into `services/academic_year_service.py` (3 files → 1)
+- [x] **TD-045:** Move `get_tenant_district_name()` into `services/district_service.py` (3 files → 1)
+- [x] Full test suite passed (1,358 tests, 0 failures)
 
 **Phase 2 — User Service Extraction (1 session, ~2–3 hours):**
 
