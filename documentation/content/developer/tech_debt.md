@@ -451,13 +451,13 @@ Ordered by **what best unblocks future work**:
 |:--------:|----|------|:------:|
 | 1 | **TD-009** | Centralize transaction management (199 calls, 55 files) | L |
 | 3 | **TD-041** | Oversized route files — ongoing extraction | L |
-| 4 | **TD-013** | True application factory pattern | M |
+| ~~4~~ | ~~**TD-013**~~ | ~~True application factory pattern~~ ✅ Resolved 2026-03-17 | ~~M~~ |
 | 5 | **TD-016** | Generic `ReportCache` model | M |
 | 6 | **TD-048** | API tokens stored in plaintext | M |
 | 7 | **TD-022** | Add tests for extracted blueprints | M |
 | 8 | **TD-036** | Exact-name duplicate Teacher cleanup | S |
 | 9 | **TD-037** | Hard-delete pruned teachers (after 2026-04-13) | S |
-| 10 | **TD-047** | Oversized templates — incremental extraction | M |
+| ~~10~~ | ~~**TD-047**~~ | ~~Oversized templates — incremental extraction~~ ✅ Resolved 2026-03-17 | ~~M~~ |
 | 11 | **TD-050** | Consolidate legacy virtual usage routes into tenant dashboard | M |
 | 12 | **TD-040** | `NEPRIS_SESSION_BASE_URL` in single file (YAGNI) | S |
 | 13 | **TD-051** | Quality Dashboard — evaluate usefulness & integration | S |

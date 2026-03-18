@@ -152,6 +152,10 @@ Foundational improvements that unblock future work and reduce risk.
     - [x] Session 2: 6 templates (district_year_end_detail, newsletter_formatter, teacher_usage, import_dashboard, teacher_progress, teacher_detail) — −3,530 lines
     - [x] Session 3: 18 remaining 200+ line templates — −6,119 lines
     - **Total: ~12,878 lines extracted from 27 templates into ~30 external CSS/JS files**
+- [x] **TD-013:** True application factory pattern
+    - [x] Restructured `app.py` — all setup inside `create_app(config_class=None)`
+    - [x] Simplified `conftest.py` — ~100 lines of duplicated setup → `create_app(TestingConfig)`
+    - [x] Module-level `app = create_app()` kept for backward compat with 26 scripts
 
 ---
 

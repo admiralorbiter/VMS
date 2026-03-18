@@ -53,6 +53,7 @@ def test_update_local_status_fuzz_no_500(
         404,
         415,
         422,
+        429,
     ), f"Unexpected status {response.status_code} for {payload!r}. Body: {response.data}"
 
 

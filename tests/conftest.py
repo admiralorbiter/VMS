@@ -4,7 +4,6 @@ from datetime import date, datetime, timedelta, timezone
 from unittest.mock import patch
 
 import pytest
-from flask import Flask
 from flask_login import LoginManager
 from jinja2 import TemplateNotFound
 from jinja2.exceptions import TemplateNotFound
@@ -170,64 +169,10 @@ def mock_template_rendering(app):
 
 @pytest.fixture
 def app():
-    # Create a fresh Flask app instance for testing
-    test_app = Flask(__name__, template_folder="../templates")
-    test_app.config.from_object(TestingConfig)
+    # Use the application factory with test config
+    from app import create_app
 
-    # Initialize extensions
-    db.init_app(test_app)
-    login_manager = LoginManager()
-    login_manager.init_app(test_app)
-    login_manager.login_view = "auth.login"
-
-    # User loader callback
-    @login_manager.user_loader
-    def load_user(user_id):
-        return db.session.get(User, int(user_id))
-
-    # Import and initialize routes
-    from routes.routes import init_routes
-
-    init_routes(test_app)
-
-    # Register error handlers (matches app.py — required for @handle_route_errors)
-    from utils.error_handlers import register_error_handlers
-
-    register_error_handlers(test_app)
-
-    # Register custom Jinja2 filters (same as in app.py)
-    import json
-
-    from utils import format_event_type_for_badge, short_date
-
-    test_app.jinja_env.filters["short_date"] = short_date
-    test_app.jinja_env.filters["event_type_badge"] = format_event_type_for_badge
-
-    def from_json_filter(json_string):
-        """Custom Jinja2 filter to parse JSON strings."""
-        if not json_string or json_string == "None" or json_string == "null":
-            return []
-        try:
-            if isinstance(json_string, str):
-                return json.loads(json_string)
-            return json_string
-        except (json.JSONDecodeError, TypeError):
-            return []
-
-    test_app.jinja_env.filters["from_json"] = from_json_filter
-
-    # Add SecurityLevel context processor (mirrors app.py)
-    from models.user import SecurityLevel
-
-    @test_app.context_processor
-    def inject_security_levels():
-        return {
-            "SecurityLevel": SecurityLevel,
-            "USER": SecurityLevel.USER,
-            "SUPERVISOR": SecurityLevel.SUPERVISOR,
-            "MANAGER": SecurityLevel.MANAGER,
-            "ADMIN": SecurityLevel.ADMIN,
-        }
+    test_app = create_app(config_class=TestingConfig)
 
     with test_app.app_context():
         # Enable foreign key constraints for SQLite using the new SQLAlchemy syntax

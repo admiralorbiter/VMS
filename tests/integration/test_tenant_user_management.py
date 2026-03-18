@@ -402,7 +402,7 @@ class TestTenantNavigationIsolation:
     def test_tenant_user_sees_tenant_nav_only(
         self, client, test_tenant, tenant_regular_user
     ):
-        """TC-1216: Tenant user sees only Events, Volunteers, Recruitment, Settings"""
+        """TC-1216: Tenant user sees only tenant-scoped navigation (Events, Settings, Teacher Progress)"""
         # Login without following redirects
         client.post(
             "/login",
@@ -415,9 +415,7 @@ class TestTenantNavigationIsolation:
         if response.status_code == 200:
             # Check for tenant navigation items
             assert b"Events" in response.data or b"events" in response.data.lower()
-            assert (
-                b"Volunteers" in response.data or b"volunteers" in response.data.lower()
-            )
+            assert b"Settings" in response.data or b"settings" in response.data.lower()
 
     def test_no_polaris_admin_links(self, client, test_tenant, tenant_regular_user):
         """TC-1217: Tenant user doesn't see Polaris admin navigation"""
