@@ -1,0 +1,241 @@
+.google-sheets-sidebar {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+    height: 100%;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 3.5rem;
+    width: 100%;
+    max-width: 320px;
+}
+
+.sidebar-header {
+    background: var(--ucla-blue);
+    color: white;
+    padding: 0.75rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sidebar-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.academic-year-badge {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.sidebar-content {
+    padding: 0.75rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.sheets-list {
+    margin-bottom: 0.75rem;
+}
+
+.sheet-item {
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    background: #f8f9fa;
+    overflow: hidden;
+}
+
+.sheet-item:last-child {
+    margin-bottom: 0;
+}
+
+.sheet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    background: white;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.sheet-title {
+    font-weight: 500;
+    color: #495057;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    flex: 1;
+    min-width: 0; /* Allow text to truncate */
+}
+
+.sheet-title span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sheet-title i {
+    color: #4285f4;
+    flex-shrink: 0;
+}
+
+.sheet-actions {
+    display: flex;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+.btn-sheet-action {
+    background: var(--ucla-blue);
+    color: white;
+    border: none;
+    padding: 0.25rem;
+    border-radius: 3px;
+    cursor: pointer;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    transition: background-color 0.2s ease;
+}
+
+.btn-sheet-action:hover {
+    background: var(--delft-blue);
+    color: white;
+    text-decoration: none;
+}
+
+
+
+.sheet-meta {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.7rem;
+    color: #6c757d;
+    background: #f8f9fa;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.meta-item i {
+    width: 0.8rem;
+    text-align: center;
+}
+
+.no-sheets {
+    text-align: center;
+    padding: 1rem 0;
+}
+
+.no-sheets i {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.no-sheets p {
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.sidebar-actions {
+    border-top: 1px solid #e9ecef;
+    padding-top: 0.75rem;
+}
+
+.btn-manage-sheets {
+    display: block;
+    width: 100%;
+    background: #f8f9fa;
+    color: #495057;
+    border: 1px solid #dee2e6;
+    padding: 0.6rem;
+    border-radius: 6px;
+    text-decoration: none;
+    text-align: center;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+.btn-manage-sheets:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+    color: #495057;
+    text-decoration: none;
+}
+
+.btn-manage-sheets i {
+    margin-right: 0.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .google-sheets-sidebar {
+        position: static;
+        margin-left: 0;
+        margin-right: 0;
+        margin-bottom: 2rem;
+        width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .sheet-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .sheet-actions {
+        align-self: flex-end;
+    }
+
+    .sheet-meta {
+        flex-direction: column;
+        gap: 0.25rem;
+        align-items: flex-start;
+    }
+}
+
+/* Compact mode for when there are many sheets */
+.sheets-list:has(.sheet-item:nth-child(4)) .sheet-item {
+    margin-bottom: 0.25rem;
+}
+
+.sheets-list:has(.sheet-item:nth-child(4)) .sheet-header {
+    padding: 0.4rem 0.6rem;
+}
+
+.sheets-list:has(.sheet-item:nth-child(4)) .sheet-meta {
+    padding: 0.3rem 0.6rem;
+}
+
+.sheets-list:has(.sheet-item:nth-child(4)) .sheet-title {
+    font-size: 0.85rem;
+}
+
+.sheets-list:has(.sheet-item:nth-child(4)) .sheet-meta {
+    font-size: 0.65rem;
+}
