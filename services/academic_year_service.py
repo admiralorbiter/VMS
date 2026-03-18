@@ -133,9 +133,15 @@ def get_school_year_dates(school_year: str) -> tuple:
     Returns:
         tuple: (start_date, end_date)
     """
-    parts = school_year.split("-")
-    start_year = int(parts[0])
-    end_year = int(parts[1])
+    try:
+        parts = school_year.split("-")
+        start_year = int(parts[0])
+        end_year = int(parts[1])
+    except (ValueError, IndexError):
+        # Fallback to current school year
+        now = datetime.now()
+        start_year = now.year if now.month >= 6 else now.year - 1
+        end_year = start_year + 1
 
     # Convert 2-digit years to 4-digit
     if start_year < 100:

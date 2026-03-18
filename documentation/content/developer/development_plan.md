@@ -156,6 +156,11 @@ Foundational improvements that unblock future work and reduce risk.
     - [x] Restructured `app.py` — all setup inside `create_app(config_class=None)`
     - [x] Simplified `conftest.py` — ~100 lines of duplicated setup → `create_app(TestingConfig)`
     - [x] Module-level `app = create_app()` kept for backward compat with 26 scripts
+- [/] **TD-022:** Add tests for extracted services (9/26 files covered)
+    - [x] Session 1: 5 services tested (136 tests) — `academic_year_service`, `virtual_computation_service`, `user_service`, `district_service`, `cache_service`
+    - [x] Edge case review: caught & fixed `get_school_year_dates` crash on invalid input
+    - [ ] Session 2: Quality & scoring services (`recruitment_scoring`, `quality_scoring`, `score_calculator`, `score_weighting_engine`, `threshold_manager`)
+    - [ ] Session 3: Data integration services (`teacher_matching`, `teacher_import`, `aggregation`, `history`, `organization`)
 
 ---
 

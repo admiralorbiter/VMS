@@ -454,7 +454,7 @@ Ordered by **what best unblocks future work**:
 | ~~4~~ | ~~**TD-013**~~ | ~~True application factory pattern~~ ✅ Resolved 2026-03-17 | ~~M~~ |
 | 5 | **TD-016** | Generic `ReportCache` model | M |
 | 6 | **TD-048** | API tokens stored in plaintext | M |
-| 7 | **TD-022** | Add tests for extracted blueprints | M |
+| 7 | **TD-022** | Add tests for extracted services — **Session 1 done** (9/26 files, 136 tests) | M |
 | 8 | **TD-036** | Exact-name duplicate Teacher cleanup | S |
 | 9 | **TD-037** | Hard-delete pruned teachers (after 2026-04-13) | S |
 | ~~10~~ | ~~**TD-047**~~ | ~~Oversized templates — incremental extraction~~ ✅ Resolved 2026-03-17 | ~~M~~ |
