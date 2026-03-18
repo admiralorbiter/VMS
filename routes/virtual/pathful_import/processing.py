@@ -295,30 +295,44 @@ def process_session_report_row(
             else:
                 et_status = "registered"
 
-            # Create or update EventTeacher (cache-first)
+            # Create or update EventTeacher (cache-first, DB-fallback)
             if teacher_id_to_link:
                 et_key = (event.id, teacher_id_to_link)
                 et_set = caches["event_teacher_set"] if caches else set()
                 if et_key not in et_set:
-                    et = _ET(
-                        event_id=event.id,
-                        teacher_id=teacher_id_to_link,
-                        status=et_status,
-                    )
-                    db.session.add(et)
+                    # Key not in this import's cache — check DB for records
+                    # created in prior imports or via other paths (manual,
+                    # Salesforce, session edit, etc.)
+                    existing_et = _ET.query.filter_by(
+                        event_id=event.id, teacher_id=teacher_id_to_link
+                    ).first()
+                    if existing_et:
+                        # Update stale status (e.g. "registered" on a now-
+                        # completed event).  Respect admin overrides (notes).
+                        if (
+                            not existing_et.notes
+                            and existing_et.status != et_status
+                            and et_status in ("attended", "no_show")
+                        ):
+                            existing_et.status = et_status
+                    else:
+                        et = _ET(
+                            event_id=event.id,
+                            teacher_id=teacher_id_to_link,
+                            status=et_status,
+                        )
+                        db.session.add(et)
                     if caches:
                         caches["event_teacher_set"].add(et_key)
                 else:
-                    # Update existing EventTeacher status on re-import.
-                    # This allows correcting wrong statuses (e.g., old import
-                    # set "attended" but should be "no_show").
+                    # Key already processed in this import run — update if
+                    # status has changed (e.g. row with different att count).
                     # Respect admin overrides: skip records where notes is set.
                     if et_status in ("attended", "no_show"):
                         existing_et = _ET.query.filter_by(
                             event_id=event.id, teacher_id=teacher_id_to_link
                         ).first()
                         if existing_et and existing_et.status != et_status:
-                            # Skip if admin has overridden (notes field set)
                             if not existing_et.notes:
                                 existing_et.status = et_status
 

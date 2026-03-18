@@ -1115,6 +1115,12 @@ def load_session_routes():
         event.registration_link = registration_link or None
 
         # Update teachers (remove old, add new)
+        # Snapshot existing statuses so we can preserve them (e.g. "attended"
+        # set by Pathful import) instead of resetting everything to "registered"
+        existing_statuses = {
+            et.teacher_id: et.status
+            for et in EventTeacher.query.filter_by(event_id=event.id).all()
+        }
         EventTeacher.query.filter_by(event_id=event.id).delete()
 
         from routes.virtual.utils import get_or_create_district, get_or_create_school
@@ -1166,10 +1172,20 @@ def load_session_routes():
             if teacher.school and teacher.school.district:
                 districts_set.add(teacher.school.district.name)
 
+            # Preserve existing status (e.g. "attended" from import) or
+            # derive from event completion; only default to "registered"
+            # for non-completed events without prior status.
+            preserved = existing_statuses.get(teacher.id)
+            if preserved:
+                teacher_status = preserved
+            elif event.status == EventStatus.COMPLETED:
+                teacher_status = "attended"
+            else:
+                teacher_status = "registered"
             reg = EventTeacher(
                 event_id=event.id,
                 teacher_id=teacher.id,
-                status="registered",
+                status=teacher_status,
                 is_simulcast=False,
                 attendance_confirmed_at=None,
             )
@@ -1214,10 +1230,17 @@ def load_session_routes():
                 event_id=event.id, teacher_id=teacher.id
             ).first()
             if not existing_reg:
+                preserved = existing_statuses.get(teacher.id)
+                if preserved:
+                    teacher_status = preserved
+                elif event.status == EventStatus.COMPLETED:
+                    teacher_status = "attended"
+                else:
+                    teacher_status = "registered"
                 reg = EventTeacher(
                     event_id=event.id,
                     teacher_id=teacher.id,
-                    status="registered",
+                    status=teacher_status,
                     is_simulcast=False,
                     attendance_confirmed_at=None,
                 )
@@ -1557,10 +1580,15 @@ def load_session_routes():
                     event_id=event.id, teacher_id=teacher.id
                 ).first()
                 if not reg:
+                    teacher_status = (
+                        "attended"
+                        if event.status == EventStatus.COMPLETED
+                        else "registered"
+                    )
                     reg = EventTeacher(
                         event_id=event.id,
                         teacher_id=teacher.id,
-                        status="registered",
+                        status=teacher_status,
                         is_simulcast=False,
                         attendance_confirmed_at=None,
                     )
@@ -1607,10 +1635,15 @@ def load_session_routes():
                     event_id=event.id, teacher_id=teacher.id
                 ).first()
                 if not reg:
+                    teacher_status = (
+                        "attended"
+                        if event.status == EventStatus.COMPLETED
+                        else "registered"
+                    )
                     reg = EventTeacher(
                         event_id=event.id,
                         teacher_id=teacher.id,
-                        status="registered",
+                        status=teacher_status,
                         is_simulcast=False,
                         attendance_confirmed_at=None,
                     )
