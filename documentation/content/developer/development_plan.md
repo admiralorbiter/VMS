@@ -147,7 +147,9 @@ Foundational improvements that unblock future work and reduce risk.
     - [x] Session 2: Extracted `parse_virtual_year_filters()` into `virtual_computation_service.py`, replaced 3 duplicated date-parsing blocks and 1 sorting block in `district_routes.py` (1,744→1,541 lines, −203)
     - [x] Session 2: Converted debug `print()` to `logging` in `district_routes.py`
     - [x] Session 2: `_classify_session` in `tenant_teacher_usage.py` — investigated, false positive (13-line closure, not duplicating service)
-- [ ] **TD-047:** Incrementally extract CSS/JS from oversized templates (1–2 per session)
+- [/] **TD-047:** Incrementally extract CSS/JS from oversized templates (1–2 per session)
+    - [x] Session 1: Extracted inline CSS/JS from 3 templates into 5 external files (−3,229 lines)
+        - `quality_dashboard.html` 2,796→721-lines, `breakdown.html` 1,033→424, `no_shows.html` 679→134
 
 ---
 

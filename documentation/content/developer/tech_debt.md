@@ -392,6 +392,29 @@ API tokens in `User.api_token` are stored as raw hex strings (not hashed). If th
 
 ---
 
+## TD-051: Quality Dashboard — Evaluate Usefulness & Integration
+
+**Created:** 2026-03-17 · **Priority:** Low · **Category:** Architecture / Feature Evaluation
+
+The Quality Scoring Dashboard (`/quality_dashboard`, `templates/data_quality/quality_dashboard.html`) is a standalone page that doesn't extend `base.html` — it has its own navbar, Bootstrap CDN links, and is fully self-contained. It's only reachable from the admin side panel ("More → Data Quality") and is not integrated into the main app navigation or reporting flow.
+
+**Key observations:**
+- Standalone HTML page (doesn't use Jinja `{% extends "base.html" %}`)
+- Its own Bootstrap/FA CDN links (separate from the app's)
+- Not linked from Reports, navbar, or any other page
+- Runs validations via `/quality_dashboard/api/` endpoints
+- 721 lines after CSS/JS extraction (was 2,796)
+
+### Decision Needed
+
+1. **Keep & Integrate:** Refactor to extend `base.html`, add to Reports or admin nav
+2. **Keep as-is:** It works, leave it as an internal tool
+3. **Deprecate:** If not being used, mark for removal
+
+**Risk:** Low — isolated page with no dependencies on other features.
+
+---
+
 ## TD-050: Consolidate Legacy Virtual Usage Routes into Tenant Dashboard
 
 **Created:** 2026-03-17 · **Priority:** Medium · **Category:** Architecture / Route Consolidation
@@ -437,7 +460,8 @@ Ordered by **what best unblocks future work**:
 | 10 | **TD-047** | Oversized templates — incremental extraction | M |
 | 11 | **TD-050** | Consolidate legacy virtual usage routes into tenant dashboard | M |
 | 12 | **TD-040** | `NEPRIS_SESSION_BASE_URL` in single file (YAGNI) | S |
-| 13 | **TD-011** | SQLite → MySQL *(do last when codebase is clean)* | XL |
+| 13 | **TD-051** | Quality Dashboard — evaluate usefulness & integration | S |
+| 14 | **TD-011** | SQLite → MySQL *(do last when codebase is clean)* | XL |
 
 > TD-004 is intentionally deferred — the M2M relationship is the correct path forward.
 > TD-033 and TD-034 are resolved. See [Resolved Archive](#resolved-archive).
