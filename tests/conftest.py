@@ -4,7 +4,6 @@ from datetime import date, datetime, timedelta, timezone
 from unittest.mock import patch
 
 import pytest
-from flask_login import LoginManager
 from jinja2 import TemplateNotFound
 from jinja2.exceptions import TemplateNotFound
 from sqlalchemy import text

@@ -136,6 +136,7 @@ class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     WTF_CSRF_ENABLED = False  # Disable CSRF for testing
+    RATELIMIT_ENABLED = False  # Disable rate limiter for testing (TD-013 retro)
 
 
 # Default configuration
