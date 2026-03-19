@@ -1,4 +1,4 @@
-﻿"""
+"""
 Pathful Import Routes
 =====================
 
@@ -446,6 +446,139 @@ def load_pathful_routes():
         db.session.commit()
         flash(f"Successfully resolved {resolved_count} records.", "success")
         return redirect(url_for("virtual.pathful_unmatched"))
+
+    # =============================================================================
+    # DRAFT REVIEW QUEUE ROUTES
+    # =============================================================================
+
+    @virtual_bp.route("/pathful/draft-review")
+    @login_required
+    @admin_required
+    def draft_review():
+        """View Draft events queue for admin triage."""
+        from services.draft_review_service import get_draft_review_queue
+
+        confidence_filter = request.args.get("confidence", "all")
+
+        result = get_draft_review_queue()
+        draft_events = result["events"]
+        summary = result["summary"]
+
+        # Apply client-side confidence filter
+        if confidence_filter != "all":
+            draft_events = [
+                e for e in draft_events if e["confidence_level"] == confidence_filter
+            ]
+
+        return render_template(
+            "virtual/pathful/draft_review.html",
+            draft_events=draft_events,
+            summary=summary,
+            confidence_filter=confidence_filter,
+        )
+
+    @virtual_bp.route("/pathful/draft-review/promote", methods=["POST"])
+    @login_required
+    @admin_required
+    def draft_review_promote():
+        """Bulk promote Draft events to Completed."""
+        from services.draft_review_service import promote_draft_events
+
+        event_ids = request.form.getlist("event_ids", type=int)
+
+        if not event_ids:
+            flash("No events selected.", "warning")
+            return redirect(url_for("virtual.draft_review"))
+
+        if len(event_ids) > 100:
+            flash("Maximum 100 events can be processed at once.", "error")
+            return redirect(url_for("virtual.draft_review"))
+
+        result = promote_draft_events(event_ids, user_id=current_user.id)
+
+        # Audit log
+        from routes.utils import log_audit_action
+
+        log_audit_action(
+            action="pol.draft_review.promote",
+            resource_type="event",
+            metadata={
+                "event_ids": event_ids,
+                "promoted": result["promoted"],
+                "teachers_updated": result["teachers_updated"],
+            },
+        )
+
+        if result["errors"]:
+            flash(
+                f"Promoted {result['promoted']} events "
+                f"({result['teachers_updated']} teachers updated). "
+                f"Errors: {len(result['errors'])}",
+                "warning",
+            )
+        else:
+            flash(
+                f"Successfully promoted {result['promoted']} events to Completed "
+                f"({result['teachers_updated']} teacher records updated, "
+                f"{result['flags_resolved']} flags resolved).",
+                "success",
+            )
+
+        return redirect(url_for("virtual.draft_review"))
+
+    @virtual_bp.route("/pathful/draft-review/dismiss", methods=["POST"])
+    @login_required
+    @admin_required
+    def draft_review_dismiss():
+        """Bulk dismiss Draft events as Cancelled."""
+        from services.draft_review_service import dismiss_draft_events
+
+        event_ids = request.form.getlist("event_ids", type=int)
+        cancellation_reason = request.form.get(
+            "cancellation_reason", "Dismissed via draft review queue"
+        )
+
+        if not event_ids:
+            flash("No events selected.", "warning")
+            return redirect(url_for("virtual.draft_review"))
+
+        if len(event_ids) > 100:
+            flash("Maximum 100 events can be processed at once.", "error")
+            return redirect(url_for("virtual.draft_review"))
+
+        result = dismiss_draft_events(
+            event_ids,
+            cancellation_reason=cancellation_reason,
+            user_id=current_user.id,
+        )
+
+        # Audit log
+        from routes.utils import log_audit_action
+
+        log_audit_action(
+            action="pol.draft_review.dismiss",
+            resource_type="event",
+            metadata={
+                "event_ids": event_ids,
+                "dismissed": result["dismissed"],
+                "reason": cancellation_reason,
+            },
+        )
+
+        if result["errors"]:
+            flash(
+                f"Dismissed {result['dismissed']} events. "
+                f"Errors: {len(result['errors'])}",
+                "warning",
+            )
+        else:
+            flash(
+                f"Successfully dismissed {result['dismissed']} events as Cancelled "
+                f"({result['flags_resolved']} flags resolved).",
+                "success",
+            )
+
+        return redirect(url_for("virtual.draft_review"))
 
     # API endpoints for AJAX operations
     @virtual_bp.route("/api/pathful/import/<int:import_id>")

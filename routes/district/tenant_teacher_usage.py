@@ -657,6 +657,9 @@ def teacher_detail(teacher_progress_id):
             event = et.event
             if not event or event.type != EventType.VIRTUAL_SESSION:
                 continue
+            # Exclude Draft events — they haven't been triaged yet
+            if event.status == EventStatus.DRAFT:
+                continue
 
             matched_event_ids.add(event.id)
             session_data = _build_session_data(event, et)
@@ -667,6 +670,7 @@ def teacher_detail(teacher_progress_id):
 
     events_query = Event.query.filter(
         Event.type == EventType.VIRTUAL_SESSION,
+        Event.status != EventStatus.DRAFT,
     )
     if district_names:
         events_query = events_query.filter(Event.district_partner.in_(district_names))

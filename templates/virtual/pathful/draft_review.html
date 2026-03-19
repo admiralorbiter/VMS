@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+{% block title %}Draft Review Queue{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="mb-3">
+                <i class="fas fa-clipboard-check me-2 text-info"></i>Draft Review Queue
+            </h1>
+            <p class="text-muted">
+                Review past-date Draft sessions from Pathful imports. Promote real sessions to Completed or dismiss abandoned ones as Cancelled.
+            </p>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-info">
+                <div class="card-body text-center">
+                    <h2 class="text-info mb-0">{{ summary.total }}</h2>
+                    <small class="text-muted">Total Draft Events</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-success">
+                <div class="card-body text-center">
+                    <h2 class="text-success mb-0">{{ summary.high }}</h2>
+                    <small class="text-muted">Likely Completed</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-warning">
+                <div class="card-body text-center">
+                    <h2 class="text-warning mb-0">{{ summary.medium }}</h2>
+                    <small class="text-muted">Needs Review</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-secondary">
+                <div class="card-body text-center">
+                    <h2 class="text-secondary mb-0">{{ summary.low }}</h2>
+                    <small class="text-muted">Likely Never Happened</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body py-2">
+                    <form method="GET" class="row g-2 align-items-center">
+                        <div class="col-auto">
+                            <label class="form-label mb-0 me-2">Confidence:</label>
+                            <select name="confidence" class="form-select form-select-sm" onchange="this.form.submit()">
+                                <option value="all" {% if confidence_filter=='all' %}selected{% endif %}>All</option>
+                                <option value="high" {% if confidence_filter=='high' %}selected{% endif %}>Likely Completed</option>
+                                <option value="medium" {% if confidence_filter=='medium' %}selected{% endif %}>Needs Review</option>
+                                <option value="low" {% if confidence_filter=='low' %}selected{% endif %}>Likely Never Happened</option>
+                            </select>
+                        </div>
+                        <div class="col-auto ms-auto">
+                            <a href="{{ url_for('virtual.pathful_import') }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-file-import me-1"></i>New Import
+                            </a>
+                            <a href="{{ url_for('virtual.pathful_unmatched') }}" class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-exclamation-triangle me-1"></i>Unmatched Records
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Actions Form -->
+    <form method="POST" id="draft-review-form">
+        <!-- Bulk Action Bar (hidden until selection) -->
+        <div class="row mb-3" id="bulk-action-bar" style="display: none;">
+            <div class="col-12">
+                <div class="card bg-primary text-white">
+                    <div class="card-body py-2 d-flex align-items-center justify-content-between">
+                        <span><strong id="selected-count">0</strong> event(s) selected</span>
+                        <div class="d-flex gap-2 align-items-center">
+                            <button type="button" class="btn btn-sm btn-success" onclick="submitPromote()">
+                                <i class="fas fa-check-circle me-1"></i>Promote to Completed
+                            </button>
+                            <div class="dropdown">
+                                <button type="button" class="btn btn-sm btn-danger dropdown-toggle" data-bs-toggle="dropdown">
+                                    <i class="fas fa-times-circle me-1"></i>Dismiss as Cancelled
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><button type="button" class="dropdown-item" onclick="submitDismiss('Session never happened')">Session never happened</button></li>
+                                    <li><button type="button" class="dropdown-item" onclick="submitDismiss('Duplicate entry')">Duplicate entry</button></li>
+                                    <li><button type="button" class="dropdown-item" onclick="submitDismiss('Pathful data error')">Pathful data error</button></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <div class="px-3 py-1">
+                                            <input type="text" id="custom-reason" class="form-control form-control-sm mb-1" placeholder="Custom reason...">
+                                            <button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="submitDismiss(document.getElementById('custom-reason').value || 'Custom dismissal')">
+                                                Dismiss with custom reason
+                                            </button>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-light" onclick="clearSelection()">
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Events Table -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            {{ draft_events|length }} Draft Event{% if draft_events|length != 1 %}s{% endif %}
+                        </h5>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectAll()">
+                                <i class="fas fa-check-square me-1"></i>Select All
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-success" onclick="selectByConfidence('high')">
+                                <i class="fas fa-check me-1"></i>Select High Confidence
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        {% if draft_events %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" id="draft-review-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="40"><input type="checkbox" id="select-all-checkbox" onchange="toggleAll(this)"></th>
+                                        <th>Title</th>
+                                        <th>Date</th>
+                                        <th>District</th>
+                                        <th class="text-center">Teachers</th>
+                                        <th class="text-center">Reg Students</th>
+                                        <th class="text-center">Att Students</th>
+                                        <th>Confidence</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in draft_events %}
+                                    <tr data-confidence="{{ item.confidence_level }}">
+                                        <td>
+                                            <input type="checkbox" name="event_ids" value="{{ item.event.id }}"
+                                                class="event-checkbox" onchange="updateBulkBar()">
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('events.view_event', id=item.event.id) }}"
+                                               class="text-decoration-none" title="{{ item.event.title }}">
+                                                {{ item.event.title[:50] }}{% if item.event.title|length > 50 %}...{% endif %}
+                                            </a>
+                                            {% if item.event.pathful_session_id %}
+                                            <br><small class="text-muted">Pathful #{{ item.event.pathful_session_id }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small>{{ item.event.start_date.strftime('%Y-%m-%d') if item.event.start_date else 'N/A' }}</small>
+                                        </td>
+                                        <td>
+                                            <small>{{ item.event.district_partner or '-' }}</small>
+                                        </td>
+                                        <td class="text-center">
+                                            {% if item.teacher_count > 0 %}
+                                            <span class="badge bg-info">{{ item.teacher_count }}</span>
+                                            {% else %}
+                                            <span class="text-muted">0</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            {{ item.event.registered_student_count or 0 }}
+                                        </td>
+                                        <td class="text-center">
+                                            {% if (item.event.attended_student_count or 0) > 0 %}
+                                            <strong class="text-success">{{ item.event.attended_student_count }}</strong>
+                                            {% else %}
+                                            <span class="text-muted">0</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.confidence_level == 'high' %}
+                                            <span class="badge bg-success">{{ item.confidence_label }}</span>
+                                            {% elif item.confidence_level == 'medium' %}
+                                            <span class="badge bg-warning text-dark">{{ item.confidence_label }}</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary">{{ item.confidence_label }}</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="p-4">
+                            <div class="alert alert-success mb-0">
+                                <i class="fas fa-check-circle me-2"></i>
+                                No Draft events to review! All sessions have been triaged.
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    function updateBulkBar() {
+        const checkboxes = document.querySelectorAll('.event-checkbox:checked');
+        const bulkBar = document.getElementById('bulk-action-bar');
+        const countSpan = document.getElementById('selected-count');
+
+        if (checkboxes.length > 0) {
+            bulkBar.style.display = 'block';
+            countSpan.textContent = checkboxes.length;
+        } else {
+            bulkBar.style.display = 'none';
+        }
+    }
+
+    function toggleAll(checkbox) {
+        document.querySelectorAll('.event-checkbox').forEach(cb => cb.checked = checkbox.checked);
+        updateBulkBar();
+    }
+
+    function selectAll() {
+        document.querySelectorAll('.event-checkbox').forEach(cb => cb.checked = true);
+        const selectAllCb = document.getElementById('select-all-checkbox');
+        if (selectAllCb) selectAllCb.checked = true;
+        updateBulkBar();
+    }
+
+    function selectByConfidence(level) {
+        // Clear first
+        document.querySelectorAll('.event-checkbox').forEach(cb => cb.checked = false);
+        // Select matching rows
+        document.querySelectorAll(`tr[data-confidence="${level}"] .event-checkbox`).forEach(cb => cb.checked = true);
+        updateBulkBar();
+    }
+
+    function clearSelection() {
+        document.querySelectorAll('.event-checkbox').forEach(cb => cb.checked = false);
+        const selectAllCb = document.getElementById('select-all-checkbox');
+        if (selectAllCb) selectAllCb.checked = false;
+        updateBulkBar();
+    }
+
+    function submitPromote() {
+        const form = document.getElementById('draft-review-form');
+        form.action = "{{ url_for('virtual.draft_review_promote') }}";
+        form.submit();
+    }
+
+    function submitDismiss(reason) {
+        if (!reason) {
+            alert('Please provide a cancellation reason.');
+            return;
+        }
+        const form = document.getElementById('draft-review-form');
+        form.action = "{{ url_for('virtual.draft_review_dismiss') }}";
+
+        // Add hidden input for reason
+        let reasonInput = document.getElementById('dismissal-reason-input');
+        if (!reasonInput) {
+            reasonInput = document.createElement('input');
+            reasonInput.type = 'hidden';
+            reasonInput.name = 'cancellation_reason';
+            reasonInput.id = 'dismissal-reason-input';
+            form.appendChild(reasonInput);
+        }
+        reasonInput.value = reason;
+
+        form.submit();
+    }
+</script>
+{% endblock %}
