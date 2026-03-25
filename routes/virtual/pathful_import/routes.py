@@ -1,4 +1,4 @@
-﻿"""
+"""
 Pathful Import Routes
 =====================
 
@@ -1497,11 +1497,16 @@ def load_pathful_routes():
         if dir_param not in ("asc", "desc"):
             dir_param = "desc"
 
-        # Base query - all virtual sessions
+        # Base query - all virtual sessions (include dateless/unscheduled events)
         query = Event.query.filter(
             Event.type == EventType.VIRTUAL_SESSION,
-            Event.start_date >= date_from,
-            Event.start_date <= date_to,
+            db.or_(
+                db.and_(
+                    Event.start_date >= date_from,
+                    Event.start_date <= date_to,
+                ),
+                Event.start_date.is_(None),  # Include unscheduled events
+            ),
         )
 
         # Phase D-3: Apply tenant scoping for district admins
@@ -1518,11 +1523,14 @@ def load_pathful_routes():
             query = query.filter(Event.school == school)
 
         if status:
-            try:
-                status_enum = EventStatus(status)
-                query = query.filter(Event.status == status_enum)
-            except ValueError:
-                pass
+            if status == "Unscheduled":
+                query = query.filter(Event.start_date.is_(None))
+            else:
+                try:
+                    status_enum = EventStatus(status)
+                    query = query.filter(Event.status == status_enum)
+                except ValueError:
+                    pass
 
         if search:
             # Search by Title, Educator(s), and Presenter(s) only (case-insensitive, partial match)

@@ -302,7 +302,7 @@ def match_or_create_event(
         new_order = STATUS_ORDER.get(new_status, -1)
         return new_order > cur_order
 
-    def _update_matched_event(event, status_str, career_cluster):
+    def _update_matched_event(event, status_str, career_cluster, session_date=None):
         """Update fields on a matched event that may have changed since last import."""
         if career_cluster and not event.career_cluster:
             event.career_cluster = career_cluster
@@ -314,6 +314,13 @@ def match_or_create_event(
                 event.status = new_status
                 event.original_status_string = status_str
 
+        # Fill in date if the event was previously dateless (unscheduled)
+        if session_date and not event.start_date:
+            event.start_date = session_date
+            event.end_date = session_date
+            if event.duration:
+                event.end_date = session_date + timedelta(minutes=event.duration)
+
     session_id_str = str(session_id) if session_id and not pd.isna(session_id) else None
 
     # Priority 1: Match by pathful_session_id
@@ -324,7 +331,7 @@ def match_or_create_event(
             else Event.query.filter(Event.pathful_session_id == session_id_str).first()
         )
         if event:
-            _update_matched_event(event, status_str, career_cluster)
+            _update_matched_event(event, status_str, career_cluster, session_date)
             return event, "matched_by_session_id"
 
     # Priority 2: Match by title + date
@@ -344,7 +351,7 @@ def match_or_create_event(
             # Update pathful_session_id if not set
             if session_id_str and not event.pathful_session_id:
                 event.pathful_session_id = session_id_str
-            _update_matched_event(event, status_str, career_cluster)
+            _update_matched_event(event, status_str, career_cluster, session_date)
             return event, "matched_by_title_date"
 
     # No match: Create new event

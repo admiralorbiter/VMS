@@ -1168,3 +1168,190 @@ def test_reverse_backfill_name_match_with_middle_name(app):
             f"Name match should link 'Sarah Jean Williams' to Teacher "
             f"'Sarah Williams', got teacher_id={tp.teacher_id}"
         )
+
+
+# --- Dateless Event Tests ---
+
+
+def test_dateless_requested_event_imported(client, pathful_admin_login, app):
+    """Verify Requested-status dateless rows create events with NULL start_date."""
+    from models.event import EventTeacher
+
+    df = pd.DataFrame(
+        [
+            {
+                "Session ID": "sess-dateless-req-001",
+                "Title": "2nd Grade: Changing Landforms",
+                "Date": None,
+                "Status": "Requested",
+                "Duration": 60,
+                "User Auth Id": "user-dateless-1",
+                "Name": "Dateless Teacher",
+                "SignUp Role": "Educator",
+                "School": "Test Elementary",
+                "District or Company": "Test District",
+                "Partner": "PREP-KC",
+                "Registered Student Count": 0,
+                "Attended Student Count": 0,
+                "Career Cluster": "Science",
+            }
+        ]
+    )
+
+    output = io.BytesIO()
+    df.to_excel(output, index=False, engine="openpyxl")
+    output.seek(0)
+
+    client.post(
+        "/virtual/pathful/import",
+        headers=pathful_admin_login,
+        data={
+            "file": (output, "dateless_requested.xlsx"),
+            "report_type": "session_report",
+        },
+        content_type="multipart/form-data",
+    )
+
+    with app.app_context():
+        event = Event.query.filter_by(
+            pathful_session_id="sess-dateless-req-001"
+        ).first()
+        assert event is not None, "Dateless Requested event should be created"
+        assert event.start_date is None, "start_date should be NULL for dateless event"
+        assert event.status == EventStatus.REQUESTED
+
+
+def test_dateless_draft_event_still_skipped(client, pathful_admin_login, app):
+    """Verify Draft-status dateless rows are still skipped."""
+    df = pd.DataFrame(
+        [
+            {
+                "Session ID": "sess-dateless-draft-001",
+                "Title": "Old Draft Event",
+                "Date": None,
+                "Status": "Draft",
+                "Duration": 60,
+                "User Auth Id": "user-dateless-draft",
+                "Name": "Draft Teacher",
+                "SignUp Role": "Educator",
+                "School": "Test Elementary",
+                "District or Company": "Test District",
+                "Partner": "PREP-KC",
+                "Registered Student Count": 0,
+                "Attended Student Count": 0,
+                "Career Cluster": "Science",
+            }
+        ]
+    )
+
+    output = io.BytesIO()
+    df.to_excel(output, index=False, engine="openpyxl")
+    output.seek(0)
+
+    client.post(
+        "/virtual/pathful/import",
+        headers=pathful_admin_login,
+        data={
+            "file": (output, "dateless_draft.xlsx"),
+            "report_type": "session_report",
+        },
+        content_type="multipart/form-data",
+    )
+
+    with app.app_context():
+        event = Event.query.filter_by(
+            pathful_session_id="sess-dateless-draft-001"
+        ).first()
+        assert event is None, "Dateless Draft event should still be skipped"
+
+
+def test_dateless_event_gets_date_on_reimport(client, pathful_admin_login, app):
+    """Verify re-importing a dateless event with a date backfills the date."""
+    # First import: dateless Requested session
+    df1 = pd.DataFrame(
+        [
+            {
+                "Session ID": "sess-dateless-reimport-001",
+                "Title": "Session That Gets Scheduled",
+                "Date": None,
+                "Status": "Requested",
+                "Duration": 60,
+                "User Auth Id": "user-reimport-1",
+                "Name": "Reimport Teacher",
+                "SignUp Role": "Educator",
+                "School": "Test School",
+                "District or Company": "Test District",
+                "Partner": "PREP-KC",
+                "Registered Student Count": 0,
+                "Attended Student Count": 0,
+                "Career Cluster": "Technology",
+            }
+        ]
+    )
+
+    output1 = io.BytesIO()
+    df1.to_excel(output1, index=False, engine="openpyxl")
+    output1.seek(0)
+
+    client.post(
+        "/virtual/pathful/import",
+        headers=pathful_admin_login,
+        data={
+            "file": (output1, "reimport_dateless.xlsx"),
+            "report_type": "session_report",
+        },
+        content_type="multipart/form-data",
+    )
+
+    with app.app_context():
+        event = Event.query.filter_by(
+            pathful_session_id="sess-dateless-reimport-001"
+        ).first()
+        assert event is not None
+        assert event.start_date is None, "Should start dateless"
+
+    # Second import: same session now has a date
+    df2 = pd.DataFrame(
+        [
+            {
+                "Session ID": "sess-dateless-reimport-001",
+                "Title": "Session That Gets Scheduled",
+                "Date": "2026-04-28 10:00:00",
+                "Status": "Confirmed",
+                "Duration": 60,
+                "User Auth Id": "user-reimport-1",
+                "Name": "Reimport Teacher",
+                "SignUp Role": "Educator",
+                "School": "Test School",
+                "District or Company": "Test District",
+                "Partner": "PREP-KC",
+                "Registered Student Count": 25,
+                "Attended Student Count": 22,
+                "Career Cluster": "Technology",
+            }
+        ]
+    )
+
+    output2 = io.BytesIO()
+    df2.to_excel(output2, index=False, engine="openpyxl")
+    output2.seek(0)
+
+    client.post(
+        "/virtual/pathful/import",
+        headers=pathful_admin_login,
+        data={
+            "file": (output2, "reimport_dated.xlsx"),
+            "report_type": "session_report",
+        },
+        content_type="multipart/form-data",
+    )
+
+    with app.app_context():
+        event = Event.query.filter_by(
+            pathful_session_id="sess-dateless-reimport-001"
+        ).first()
+        assert event is not None
+        assert event.start_date is not None, "Date should be backfilled on re-import"
+        assert (
+            event.status == EventStatus.CONFIRMED
+        ), "Status should progress to Confirmed"

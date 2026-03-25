@@ -146,8 +146,15 @@ def process_session_report_row(
                 current_app.logger.warning(
                     f"Row {row_index}: Could not parse date '{date_value}'"
                 )
-            import_log.skipped_rows += 1
-            return True
+                import_log.skipped_rows += 1
+                return True
+
+            # Allow Requested-status dateless rows through (active sessions
+            # where teachers signed up but date not yet scheduled)
+            status_upper = status.upper() if status else ""
+            if status_upper not in ("REQUESTED",):
+                import_log.skipped_rows += 1
+                return True
 
         if not title:
             current_app.logger.warning("Row %s: Missing title", row_index)
@@ -158,7 +165,7 @@ def process_session_report_row(
         session_id_str = (
             str(session_id)
             if session_id and not pd.isna(session_id)
-            else f"{title}_{session_date.date()}"
+            else f"{title}_{session_date.date() if session_date else 'unscheduled'}"
         )
 
         if session_id_str in processed_events:
