@@ -1645,3 +1645,264 @@ def audit_export_csv():
             "Content-Disposition": "attachment; filename=teacher_usage_audit_log.csv"
         },
     )
+
+
+# ── Presenter No-Show / Session Credit ───────────────────────────────
+
+
+@teacher_usage_bp.route("/session-credit")
+@login_required
+@virtual_admin_required
+def session_credit():
+    """Admin page to grant attendance credit for a session where the presenter no-showed.
+
+    Accepts query params:
+      - event_id (int): internal Event primary key, OR
+      - pathful_id (str): Pathful session ID (e.g. from URL https://app.pathful.com/wbl/sessions/109933)
+      - tenant_id (int): admin-only tenant override
+    """
+    from models.event import Event, EventTeacher, EventType
+
+    # Tenant scoping
+    admin_tenant_id = request.args.get("tenant_id", type=int)
+    if current_user.is_admin and admin_tenant_id:
+        effective_tenant_id = admin_tenant_id
+    else:
+        effective_tenant_id = current_user.tenant_id
+
+    district_name = get_tenant_district_name(effective_tenant_id) or "Your District"
+
+    event = None
+    teachers = []
+    error = None
+
+    # Look up event by internal ID or Pathful session ID
+    event_id = request.args.get("event_id", type=int)
+    pathful_url_or_id = request.args.get("pathful_id", "").strip()
+
+    if event_id:
+        event = Event.query.get(event_id)
+        if not event:
+            error = f"No event found with internal ID {event_id}."
+    elif pathful_url_or_id:
+        # Strip full URL down to just the numeric ID at the end
+        import re
+
+        match = re.search(r"(\d+)\s*$", pathful_url_or_id)
+        if match:
+            pathful_id_str = match.group(1)
+            event = Event.query.filter_by(pathful_session_id=pathful_id_str).first()
+            if not event:
+                error = f"No session found matching Pathful ID '{pathful_id_str}'. It may not have been imported yet."
+        else:
+            error = "Could not parse a Pathful session ID from the value entered."
+
+    if event and event.type != EventType.VIRTUAL_SESSION:
+        error = "That event is not a virtual session and cannot be credited here."
+        event = None
+
+    if event:
+        # Load all teachers registered for this session
+        et_records = EventTeacher.query.filter_by(event_id=event.id).all()
+
+        # Build TeacherProgress lookup for this tenant
+        tp_map = {}  # teacher_id -> TeacherProgress
+        if et_records:
+            teacher_ids = [et.teacher_id for et in et_records if et.teacher_id]
+            tp_entries = TeacherProgress.query.filter(
+                TeacherProgress.teacher_id.in_(teacher_ids),
+                TeacherProgress.tenant_id == effective_tenant_id,
+                TeacherProgress.is_active == True,
+            ).all()
+            tp_map = {tp.teacher_id: tp for tp in tp_entries}
+
+        # Check which TPs already have an active override for this event
+        tp_ids_with_override = set()
+        if tp_map:
+            existing_overrides = AttendanceOverride.query.filter(
+                AttendanceOverride.teacher_progress_id.in_(
+                    [tp.id for tp in tp_map.values()]
+                ),
+                AttendanceOverride.event_id == event.id,
+                AttendanceOverride.action == OverrideAction.ADD,
+                AttendanceOverride.is_active == True,
+            ).all()
+            tp_ids_with_override = {ov.teacher_progress_id for ov in existing_overrides}
+
+        for et in et_records:
+            if not et.teacher_id:
+                continue
+            tp = tp_map.get(et.teacher_id)
+            teachers.append(
+                {
+                    "teacher_id": et.teacher_id,
+                    "name": tp.name if tp else f"Teacher #{et.teacher_id}",
+                    "building": tp.building if tp else "Unknown",
+                    "status": et.status or "unknown",
+                    "teacher_progress_id": tp.id if tp else None,
+                    "already_credited": tp.id in tp_ids_with_override if tp else False,
+                }
+            )
+
+        # Sort by school then name
+        teachers.sort(key=lambda t: (t["building"], t["name"]))
+
+    return render_template(
+        "district/teacher_usage/session_credit.html",
+        event=event,
+        teachers=teachers,
+        error=error,
+        district_name=district_name,
+        admin_tenant_id=admin_tenant_id,
+        queried_pathful=pathful_url_or_id,
+        queried_event_id=event_id,
+    )
+
+
+@teacher_usage_bp.route("/session-credit/bulk", methods=["POST"])
+@login_required
+@virtual_admin_required
+def bulk_session_credit():
+    """Grant attendance credit to multiple teachers for a single session.
+
+    Expects JSON:
+      {
+        "event_id": 123,
+        "teacher_progress_ids": [45, 67, 89],
+        "reason": "Presenter no-show — credit granted by admin"
+      }
+
+    Returns a summary of successes and skips (already-overridden teachers).
+    """
+    from datetime import datetime, timezone
+
+    from models.event import Event, EventStatus, EventTeacher, EventType
+
+    data = request.get_json(silent=True) or {}
+    event_id = data.get("event_id")
+    tp_ids = data.get("teacher_progress_ids", [])
+    reason = data.get("reason", "").strip()
+
+    if not event_id:
+        return jsonify({"error": "event_id is required."}), 400
+    if not tp_ids or not isinstance(tp_ids, list):
+        return jsonify({"error": "teacher_progress_ids must be a non-empty list."}), 400
+    if not reason:
+        return jsonify({"error": "A reason is required."}), 400
+
+    event = Event.query.get(event_id)
+    if not event:
+        return jsonify({"error": "Event not found."}), 404
+    if event.type != EventType.VIRTUAL_SESSION:
+        return jsonify({"error": "Event is not a virtual session."}), 400
+
+    allowed_statuses = [
+        EventStatus.COMPLETED,
+        EventStatus.CONFIRMED,
+        EventStatus.PUBLISHED,
+        EventStatus.REQUESTED,
+        EventStatus.DRAFT,
+    ]
+    if event.status not in allowed_statuses:
+        return jsonify({"error": "Event status does not allow overrides."}), 400
+
+    now = datetime.now(timezone.utc)
+    event_date = event.start_date
+    if event_date and event_date.tzinfo is None:
+        event_date = event_date.replace(tzinfo=timezone.utc)
+    is_future = event_date and event_date >= now
+
+    granted = []
+    skipped = []
+    errors = []
+
+    for tp_id in tp_ids:
+        tp = TeacherProgress.query.get(tp_id)
+        if not tp:
+            errors.append(
+                {"teacher_progress_id": tp_id, "reason": "TeacherProgress not found."}
+            )
+            continue
+
+        # Tenant scoping
+        if not current_user.is_admin and tp.tenant_id != current_user.tenant_id:
+            errors.append({"teacher_progress_id": tp_id, "reason": "Access denied."})
+            continue
+
+        # Skip if already overridden
+        existing = AttendanceOverride.query.filter_by(
+            teacher_progress_id=tp.id,
+            event_id=event_id,
+            action=OverrideAction.ADD,
+            is_active=True,
+        ).first()
+        if existing:
+            skipped.append({"teacher_progress_id": tp_id, "name": tp.name})
+            continue
+
+        # Create override
+        override = AttendanceOverride(
+            teacher_progress_id=tp.id,
+            event_id=event_id,
+            action=OverrideAction.ADD,
+            reason=reason,
+            created_by=current_user.id,
+        )
+        db.session.add(override)
+
+        # Sync EventTeacher
+        if tp.teacher_id:
+            et = EventTeacher.query.filter_by(
+                event_id=event_id, teacher_id=tp.teacher_id
+            ).first()
+            new_status = "registered" if is_future else "attended"
+            if et:
+                et.status = new_status
+                if not is_future:
+                    et.attendance_confirmed_at = now
+                et.notes = f"Override add: {reason}"
+            else:
+                et = EventTeacher(
+                    event_id=event_id,
+                    teacher_id=tp.teacher_id,
+                    status=new_status,
+                    attendance_confirmed_at=(now if not is_future else None),
+                    notes=f"Override add: {reason}",
+                )
+                db.session.add(et)
+
+        # Audit log
+        audit = AuditLog(
+            user_id=current_user.id,
+            action="attendance_override_add",
+            resource_type="attendance_override",
+            resource_id="bulk",
+            method="POST",
+            path=request.path,
+            ip=request.remote_addr,
+            meta={
+                "teacher_progress_id": tp.id,
+                "teacher_name": tp.name,
+                "event_id": event.id,
+                "event_title": event.title,
+                "override_action": "add",
+                "reason": reason,
+                "bulk": True,
+            },
+        )
+        db.session.add(audit)
+        granted.append({"teacher_progress_id": tp_id, "name": tp.name})
+
+    db.session.commit()
+
+    return (
+        jsonify(
+            {
+                "granted": granted,
+                "skipped": skipped,
+                "errors": errors,
+                "summary": f"Credit granted to {len(granted)} teacher(s). {len(skipped)} already credited. {len(errors)} error(s).",
+            }
+        ),
+        201,
+    )

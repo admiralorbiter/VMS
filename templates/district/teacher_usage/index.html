@@ -746,6 +746,10 @@
                 class="export-btn" style="background: #e67e22;">
                 <i class="fas fa-user-times"></i> No Shows
             </a>
+            <a href="{{ url_for('teacher_usage.session_credit', tenant_id=admin_tenant_id) if admin_tenant_id is defined and admin_tenant_id else url_for('teacher_usage.session_credit') }}"
+                class="export-btn" style="background: #6f42c1;">
+                <i class="fas fa-award"></i> Grant Session Credit
+            </a>
 
         </form>
     </div>
