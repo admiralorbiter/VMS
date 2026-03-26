@@ -417,7 +417,7 @@ class Teacher(Contact):
         return [
             reg.event
             for reg in self.event_registrations.all()
-            if reg.event and reg.event.start_date and reg.event.start_date > now
+            if reg.event.start_date > now
         ]
 
     @property
@@ -426,9 +426,7 @@ class Teacher(Contact):
         return [
             reg.event
             for reg in self.event_registrations.all()
-            if reg.event
-            and reg.event.start_date
-            and reg.event.start_date < datetime.now()
+            if reg.event and reg.event.start_date < datetime.now()
         ]
 
     @classmethod

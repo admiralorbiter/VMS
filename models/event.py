@@ -383,7 +383,7 @@ class Event(db.Model):
     )
 
     # Event timing - Consider adding validation to ensure end_date > start_date
-    start_date = db.Column(db.DateTime(timezone=True), nullable=True)
+    start_date = db.Column(db.DateTime(timezone=True), nullable=False)
     end_date = db.Column(db.DateTime(timezone=True), nullable=True)
     duration = db.Column(
         db.Integer
@@ -606,8 +606,6 @@ class Event(db.Model):
     @property
     def is_past_event(self):
         """Check if event is in the past"""
-        if not self.start_date:
-            return False
         if not self.end_date:
             return self.start_date < datetime.now(timezone.utc)
         return self.end_date < datetime.now(timezone.utc)
@@ -615,16 +613,12 @@ class Event(db.Model):
     @property
     def is_upcoming(self):
         """Check if event is upcoming"""
-        if not self.start_date:
-            return True  # Unscheduled events are considered upcoming
         now = datetime.now(timezone.utc)
         return self.start_date > now
 
     @property
     def is_in_progress(self):
         """Helper method to determine if an event is currently in progress"""
-        if not self.start_date:
-            return False
         now = datetime.now(timezone.utc)
         if self.end_date:
             return self.start_date <= now <= self.end_date

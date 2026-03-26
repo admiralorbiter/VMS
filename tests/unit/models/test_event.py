@@ -181,6 +181,12 @@ def test_event_properties(test_event):
             "start_date": datetime.now(timezone.utc),
             # Missing required title
         },
+        {
+            "title": "Test Event",
+            "description": "Test Description",
+            "type": EventType.IN_PERSON,
+            # Missing required start_date
+        },
     ],
 )
 def test_invalid_event_data(app, invalid_data):

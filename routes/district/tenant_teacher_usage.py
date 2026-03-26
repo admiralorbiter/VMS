@@ -272,7 +272,7 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
         Event.status.in_(
             [EventStatus.CONFIRMED, EventStatus.PUBLISHED, EventStatus.REQUESTED]
         ),
-        db.or_(Event.start_date >= now, Event.start_date.is_(None)),
+        Event.start_date >= now,
     )
     if district_names:
         planned_events_query = planned_events_query.filter(
@@ -290,7 +290,7 @@ def compute_teacher_progress(tenant_id, academic_year, date_from=None, date_to=N
             Event.status.in_(
                 [EventStatus.CONFIRMED, EventStatus.PUBLISHED, EventStatus.REQUESTED]
             ),
-            db.or_(Event.start_date >= now, Event.start_date.is_(None)),
+            Event.start_date >= now,
         )
         planned_et_event_ids = set()
         for et in planned_et_query.all():
@@ -644,17 +644,9 @@ def teacher_detail(teacher_progress_id):
     def _classify_session(session_data, event):
         """Add session to past or upcoming list based on date."""
         start_date = session_data["datetime"]
-        if start_date is None:
-            # Dateless (unscheduled) events count as upcoming
-            if event.status in [
-                EventStatus.CONFIRMED,
-                EventStatus.PUBLISHED,
-                EventStatus.REQUESTED,
-            ]:
-                upcoming_sessions.append(session_data)
-        elif start_date < now:
+        if start_date and start_date < now:
             past_sessions.append(session_data)
-        else:
+        elif start_date and start_date >= now:
             if event.status in [
                 EventStatus.CONFIRMED,
                 EventStatus.PUBLISHED,
@@ -763,10 +755,6 @@ def teacher_detail(teacher_progress_id):
 
                 # Classify into correct list based on event date
                 if start_date and start_date >= now:
-                    session_data["attendance_status"] = "registered"
-                    upcoming_sessions.append(session_data)
-                elif start_date is None:
-                    # Dateless - treat as upcoming/registered
                     session_data["attendance_status"] = "registered"
                     upcoming_sessions.append(session_data)
                 else:
@@ -1146,13 +1134,9 @@ def search_sessions():
             Event.district_partner == linked_district
         )
     if date_from:
-        sessions_query = sessions_query.filter(
-            db.or_(Event.start_date >= date_from, Event.start_date.is_(None))
-        )
+        sessions_query = sessions_query.filter(Event.start_date >= date_from)
     if date_to:
-        sessions_query = sessions_query.filter(
-            db.or_(Event.start_date <= date_to, Event.start_date.is_(None))
-        )
+        sessions_query = sessions_query.filter(Event.start_date <= date_to)
 
     # Apply optional search filter
     if query_str:
@@ -1174,10 +1158,7 @@ def search_sessions():
         filtered = []
         for ev in all_sessions:
             sd = ev.start_date
-            if sd is None:
-                # Dateless (unscheduled) events count as upcoming
-                filtered.append(ev)
-            elif sd:
+            if sd:
                 if sd.tzinfo is None:
                     sd = sd.replace(tzinfo=timezone.utc)
                 if sd >= now:
@@ -1205,7 +1186,7 @@ def search_sessions():
                 "title": event.title or "Untitled Session",
                 "date": start_date.strftime("%Y-%m-%d") if start_date else None,
                 "date_display": (
-                    start_date.strftime("%B %d, %Y") if start_date else "Date TBD"
+                    start_date.strftime("%B %d, %Y") if start_date else "Unknown"
                 ),
                 "series": event.series or "",
                 "status": event.status.value if event.status else "Unknown",

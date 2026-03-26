@@ -415,11 +415,7 @@ class OrganizationService:
             events_data.append(
                 {
                     "id": event.id,
-                    "date": (
-                        event.start_date.strftime("%m/%d/%y")
-                        if event.start_date
-                        else ""
-                    ),
+                    "date": event.start_date.strftime("%m/%d/%y"),
                     "time": (
                         event.start_date.strftime("%I:%M %p")
                         if event.start_date
@@ -484,9 +480,7 @@ class OrganizationService:
 
         return [
             {
-                "date": (
-                    event.start_date.strftime("%m/%d/%y") if event.start_date else ""
-                ),
+                "date": event.start_date.strftime("%m/%d/%y"),
                 "title": event.title,
                 "type": event.type.value if event.type else "Unknown",
                 "volunteers": vol_count,
