@@ -385,6 +385,126 @@ def match_or_create_event(
     return event, "created"
 
 
+def _try_resolve_teacher_school(
+    teacher,
+    school_name: str,
+    import_log,
+    row_number: int,
+    raw_data: dict,
+    caches=None,
+) -> bool:
+    """Resolve a school name from Pathful to a Teacher.salesforce_school_id FK.
+
+    Only sets the school if:
+      1. school_name is non-empty
+      2. teacher.salesforce_school_id is currently None
+         (i.e. not already assigned by Google Sheets roster or Salesforce sync,
+         which are authoritative sources and must not be overwritten here)
+
+    Tries three lookups in order:
+      1. Exact case-insensitive match on School.name
+      2. Case-insensitive match on School.normalized_name (handles ALL CAPS variants)
+      3. Strip trailing " School" word and retry 1+2
+         (Pathful appends "Elementary School", "High School", etc.
+          while the DB stores "Frances Willard Elementary", "Dobbs Elementary", etc.)
+
+    Args:
+        teacher: Teacher model instance to update
+        school_name: Raw school name string from Pathful CSV
+        import_log: PathfulImportLog instance for unmatched tracking
+        row_number: Original CSV row number for unmatched tracking
+        raw_data: Original CSV row dict for unmatched tracking
+        caches: Shared dict for cross-row memoization and deduplication
+
+    Returns:
+        True if the school was resolved and the FK was set, False otherwise.
+    """
+    import re
+
+    if not school_name or not school_name.strip():
+        return False
+    if teacher.salesforce_school_id:
+        # Already set by an authoritative source — do not overwrite.
+        return False
+
+    def _lookup(name_str):
+        """Try exact then normalized match for a single name string."""
+        n = name_str.strip().lower()
+        hit = School.query.filter(func.lower(School.name) == n).first()
+        if not hit:
+            hit = School.query.filter(func.lower(School.normalized_name) == n).first()
+        return hit
+
+    school = _lookup(school_name)
+
+    if not school:
+        # Pass 3: strip trailing " School" (Pathful adds it, DB usually omits it)
+        stripped = re.sub(
+            r"\s+School\s*$", "", school_name.strip(), flags=re.IGNORECASE
+        ).strip()
+        if stripped and stripped.lower() != school_name.strip().lower():
+            school = _lookup(stripped)
+
+    if not school and stripped:
+        # Pass 4: convert common expansions to match normalized_name abbreviations in DB
+        # e.g., "M E Pearson Elementary" -> "M E Pearson Elem"
+        # e.g., "Sumner Academy of Arts and Science" -> "Sumner Academy of Arts & Science"
+        abbreviated = (
+            stripped.lower().replace(" elementary", " elem").replace(" and ", " & ")
+        )
+        if abbreviated != stripped.lower():
+            # Only check normalized_name for this highly-mangled variant
+            school = School.query.filter(
+                func.lower(School.normalized_name) == abbreviated
+            ).first()
+
+    if school:
+        teacher.salesforce_school_id = school.id
+        current_app.logger.debug(
+            "Pathful school resolved: %r -> School %s (%s)",
+            school_name,
+            school.id,
+            school.name,
+        )
+        return True
+
+    current_app.logger.debug(
+        "Pathful school not resolved in DB: %r (teacher %s)",
+        school_name,
+        teacher.id,
+    )
+
+    # ── Create Unmatched Record ──────────────────────────────
+    # Avoid spamming the DB by deduplicating using caches if available.
+    # We only want one notification per unique school name per import.
+    dedup_key = school_name.strip().lower()
+
+    if caches is not None:
+        if "unresolved_schools" not in caches:
+            caches["unresolved_schools"] = set()
+
+        if dedup_key in caches["unresolved_schools"]:
+            return False
+
+        caches["unresolved_schools"].add(dedup_key)
+
+    unmatched = PathfulUnmatchedRecord(
+        import_log_id=import_log.id,
+        row_number=row_number,
+        raw_data=raw_data,
+        unmatched_type=UnmatchedType.SCHOOL_UNRESOLVED,
+        attempted_match_name=f"{teacher.first_name} {teacher.last_name}".strip(),
+        attempted_match_school=school_name,
+    )
+    # Link the teacher so admin can go straight to the record
+    unmatched.resolved_teacher_id = teacher.id
+
+    db.session.add(unmatched)
+    import_log.unmatched_count += 1
+
+    return False
+
+
 def match_teacher(
     name,
     email,

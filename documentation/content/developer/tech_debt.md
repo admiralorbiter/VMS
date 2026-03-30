@@ -11,6 +11,26 @@ This document tracks active technical debt. Resolved items are summarized in the
 
 ---
 
+## TD-053: Teacher/School Matching — Build `SchoolAlias` Admin UI
+
+**Created:** 2026-03-30 · **Priority:** High · **Category:** Data Integrity / Architecture / Epic 18
+**Status:** Plumbed (Backend complete) — Needs Frontend/DB Model
+
+**Background:** Pathful session imports often contain school names that differ from Polaris' canonical `school` table (e.g., abbreviations like "M.E. Pearson" vs "M E PEARSON ELEM", missing schools entirely, or disambiguation like Kansas vs Missouri variants).
+
+**Current State (Hardened 2026-03-30):**
+The `match_teacher()` pipeline securely refuses to falsely assign teachers when string-matching fails. It safely drops the unresolved school into the `pathful_unmatched_record` table as a `SCHOOL_UNRESOLVED` type.
+
+**Proposed Fix (The Alias Pattern):**
+Mirroring TD-010 (DistrictAlias) and TD-052 (OrganizationAlias), we need to close the loop on school matching:
+1. Create a `SchoolAlias` database model.
+2. Build an Admin UI for the Unmatched Records queue `/virtual/pathful/unmatched` to let Admins link a `SCHOOL_UNRESOLVED` record to an existing canonical Polaris school.
+3. Automatically generate the `SchoolAlias` upon resolution so future Pathful imports succeed instantly.
+
+**Risk:** Low — standardizes our Entity Identity Reconciliation pattern across all three layers (District, Organization, School).
+
+---
+
 ## TD-004: `Event.district_partner` Is a Text Field, Not a FK *(Deferred)*
 
 **Created:** 2026-02-28 · **Priority:** 2026

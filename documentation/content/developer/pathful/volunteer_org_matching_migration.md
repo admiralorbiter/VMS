@@ -243,17 +243,11 @@ registers "Turner Construction Company" as an `OrganizationAlias`, and clears th
 
 ## ADR Recommendation
 
-File a new ADR: **"Org Matching Follows District Alias Pattern"**
+File a new ADR: **"Entity Identity Reconciliation Pattern"**
 
-**Decision:** All external-source org name resolution (Pathful, future imports) uses
-`resolve_organization()` with the `OrganizationAlias` registry. Auto-creation of
-`VolunteerOrganization` FKs without admin verification is prohibited in import code.
+**Decision:** All external-source name resolution (Pathful mapping to Districts, Schools, and Organizations) uses `resolve_entity()` combined with an `Alias` registry (e.g., `DistrictAlias`, `SchoolAlias`, `OrganizationAlias`). Auto-creation of relationships (like `VolunteerOrganization` or fallback guessing of a `School`) without admin verification is strictly prohibited. Unresolved entities must fail loudly and safely to the `PathfulUnmatchedRecord` queue.
 
-**Rationale:** The suffix-regex approach (active since 2026-03-30) is a known-insufficient
-interim measure. The `DistrictAlias` pattern (TD-010) has proven correct for this class of
-problem and should be the single canonical approach for all entity-name resolution in imports.
-
----
+**Rationale:** The string-munging regex approach (active since 2026-03-30 for Orgs) is fundamentally insufficient and fragile. The Entity Identity Reconciliation pattern (TD-010 for Districts, Epic 17 Option 3 hardening for Schools) has proven correct for solving this entire class of problems. Extending it to Volunteer-Org matching gives Admins a single, unified "Unmatched Queue" to resolve missing data safely.
 
 ## Verification
 

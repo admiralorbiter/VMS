@@ -441,7 +441,8 @@ class OrganizationService:
             if (
                 teacher
                 and event_teacher
-                and event_teacher.status in ["simulcast", "successfully completed"]
+                and event_teacher.status
+                in ["attended", "simulcast", "successfully completed"]
             ):
                 classroom_info = {
                     "teacher_id": teacher.id,
@@ -474,7 +475,8 @@ class OrganizationService:
                     "time": (
                         event.start_date.strftime("%I:%M %p")
                         if event.start_date
-                        else ""
+                        and (event.start_date.hour != 0 or event.start_date.minute != 0)
+                        else "—"
                     ),
                     "date_sort": event.start_date,
                     "title": event.title,

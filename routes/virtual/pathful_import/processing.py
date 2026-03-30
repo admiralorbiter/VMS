@@ -16,6 +16,7 @@ from models.event import EventStatus
 from models.school_model import School
 
 from .matching import (
+    _try_resolve_teacher_school,
     match_or_create_event,
     match_teacher,
     match_volunteer,
@@ -230,11 +231,14 @@ def process_session_report_row(
 
             # Link teacher to event via EventTeacher FK (cache-first)
             from models.event import EventTeacher as _ET
+            from models.teacher import Teacher as _Teacher
             from services.teacher_matching_service import normalize_name as _norm
 
             teacher_id_to_link = None
+            teacher_obj = None  # track for school resolution below
             if teacher_progress and teacher_progress.teacher_id:
                 teacher_id_to_link = teacher_progress.teacher_id
+                # Defer loading teacher_obj until we know school resolution is needed
             elif name:
                 # Try cache-first Teacher resolution before DB
                 first_name, last_name = parse_name(name)
@@ -245,6 +249,7 @@ def process_session_report_row(
                         cached_teacher = caches["teacher_record_by_name"].get(norm_key)
                     if cached_teacher:
                         teacher_id_to_link = cached_teacher.id
+                        teacher_obj = cached_teacher
                     else:
                         from services.teacher_service import find_or_create_teacher
 
@@ -254,6 +259,7 @@ def process_session_report_row(
                             import_source="pathful",
                         )
                         teacher_id_to_link = teacher_record.id
+                        teacher_obj = teacher_record
                         # Update cache for subsequent rows
                         if caches and norm_key:
                             caches["teacher_record_by_name"][norm_key] = teacher_record
@@ -275,6 +281,24 @@ def process_session_report_row(
                     # imported before user data.
                     if teacher_id_to_link and not teacher_progress:
                         _reverse_link_teacher_progress(teacher_id_to_link)
+
+            # ── School resolution ──────────────────────────────────────────
+            # Try to link the teacher to a School FK using the "School" column
+            # from the Pathful session report.  Only sets salesforce_school_id
+            # when it is currently None — Google Sheets roster and Salesforce
+            # sync are authoritative and will overwrite this on their next run.
+            if teacher_id_to_link and school:
+                if teacher_obj is None:
+                    teacher_obj = _Teacher.query.get(teacher_id_to_link)
+                if teacher_obj:
+                    _try_resolve_teacher_school(
+                        teacher=teacher_obj,
+                        school_name=school,
+                        import_log=import_log,
+                        row_number=row_index,
+                        raw_data=raw_data,
+                        caches=caches,
+                    )
 
             # Derive teacher attendance status from Attended Educator Count
             # and the event status.  Attended Educator Count is the primary
