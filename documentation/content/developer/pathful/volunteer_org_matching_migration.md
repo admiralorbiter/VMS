@@ -21,9 +21,9 @@ org name in the database. For example:
 
 | Pathful CSV value | DB canonical name | Result |
 |---|---|---|
-| `"Turner Construction Company"` | `"Turner Construction"` | ❌ New duplicate org created |
-| `"KC Tomorrow"` | `"Kansas City Tomorrow"` | ❌ New duplicate org created |
-| `"AECOM Inc."` | `"AECOM"` | ❌ New duplicate org created |
+| `"Example Corp Inc."` | `"Example Corp"` | ❌ New duplicate org created |
+| `"Acme Solutions"` | `"Acme Tech Solutions"` | ❌ New duplicate org created |
+| `"Tech Dynamics LLC"` | `"Tech Dynamics"` | ❌ New duplicate org created |
 
 A suffix-stripping regex was applied as a **provisional fix** on 2026-03-30 (strips "Company",
 "Inc.", "LLC", "Corp", etc.), but this does not cover abbreviations, trade names, or any
@@ -36,8 +36,7 @@ without any admin verification, which can silently mis-attribute volunteers to t
 
 ## Current State
 
-Three files were modified on 2026-03-30 as a working fix for the immediate issue (Turner
-Construction / Carson Gonzalez & Marissa Plath):
+Three files were modified on 2026-03-30 as a working fix for the immediate issue (Organization Report data gap caused by strict linking):
 
 | File | What changed | Limitation |
 |---|---|---|
@@ -157,12 +156,12 @@ class DraftReviewType(str, Enum):
 The review UI (`/pathful/draft-review`) shows a card for each unresolved volunteer:
 
 ```
-Carson Gonzalez  |  "Turner Construction Company"  |  Crafting Success (02/25/26)
+Jane Doe  |  "Example Corp Inc."  |  Career Session (02/25/26)
 [ Link to existing org ▾ ]  [ Create new org ]  [ Mark as Independent ]
 ```
 
-When an admin selects "Turner Construction" → creates the `VolunteerOrganization` FK,
-registers "Turner Construction Company" as an `OrganizationAlias`, and clears the review item.
+When an admin selects "Example Corp" → creates the `VolunteerOrganization` FK,
+registers "Example Corp Inc." as an `OrganizationAlias`, and clears the review item.
 
 > [!IMPORTANT]
 > Until an admin resolves the item, the volunteer **will not appear on the org report**.
@@ -228,7 +227,7 @@ registers "Turner Construction Company" as an `OrganizationAlias`, and clears th
 - [ ] Add `OrganizationAlias` CRUD to the existing org management pages (or a new
   `/admin/organizations/aliases` route).
 - [ ] Allows admins to pre-register known aliases before a Pathful import runs (e.g.,
-  register "Turner Construction Company" → Turner Construction so the next import resolves
+  register "Example Corp Inc." → Example Corp so the next import resolves
   automatically without queuing).
 
 ### Phase 6 — Backfill
