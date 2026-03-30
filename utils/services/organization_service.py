@@ -166,8 +166,14 @@ class OrganizationService:
     def _get_volunteers_data(
         self, org_id: int, start_date: Optional[datetime], end_date: Optional[datetime]
     ) -> List[Dict]:
-        """Get volunteer participation data for the organization."""
-        query = (
+        """Get volunteer participation data for the organization.
+
+        Queries both EventParticipation (in-person / Salesforce events) and the
+        event_volunteers M2M table (virtual sessions) so that volunteers who
+        only presented virtually are included in the org report.
+        """
+        # --- Query 1: in-person volunteers via EventParticipation ---
+        inperson_query = (
             db.session.query(
                 Volunteer,
                 func.count(func.distinct(Event.id)).label("event_count"),
@@ -187,24 +193,73 @@ class OrganizationService:
                 Volunteer.exclude_from_reports == False,
             )
         )
-
         if start_date:
-            query = query.filter(Event.start_date >= start_date)
+            inperson_query = inperson_query.filter(Event.start_date >= start_date)
         if end_date:
-            query = query.filter(Event.start_date <= end_date)
+            inperson_query = inperson_query.filter(Event.start_date <= end_date)
+        inperson_stats = inperson_query.group_by(Volunteer.id).all()
 
-        volunteer_stats = query.group_by(Volunteer.id).all()
+        # --- Query 2: virtual session volunteers via event_volunteers M2M ---
+        virtual_query = (
+            db.session.query(
+                Volunteer,
+                func.count(func.distinct(Event.id)).label("event_count"),
+            )
+            .join(event_volunteers, Volunteer.id == event_volunteers.c.volunteer_id)
+            .join(Event, event_volunteers.c.event_id == Event.id)
+            .join(
+                VolunteerOrganization,
+                Volunteer.id == VolunteerOrganization.volunteer_id,
+            )
+            .filter(
+                VolunteerOrganization.organization_id == org_id,
+                Event.type == EventType.VIRTUAL_SESSION,
+                Event.status.in_(
+                    [
+                        EventStatus.COMPLETED,
+                        EventStatus.CONFIRMED,
+                        EventStatus.SIMULCAST,
+                    ]
+                ),
+                Volunteer.exclude_from_reports == False,
+            )
+        )
+        if start_date:
+            virtual_query = virtual_query.filter(Event.start_date >= start_date)
+        if end_date:
+            virtual_query = virtual_query.filter(Event.start_date <= end_date)
+        virtual_stats = virtual_query.group_by(Volunteer.id).all()
 
-        return [
-            {
+        # --- Merge: in-person is the base; virtual adds or supplements ---
+        # A volunteer can appear in both (e.g. did an in-person AND a GV session).
+        # In that case we sum the event counts and keep the in-person hours
+        # (virtual sessions do not record delivery_hours).
+        merged: Dict[int, Dict] = {}
+        for v, events, hours in inperson_stats:
+            merged[v.id] = {
                 "id": v.id,
                 "name": f"{v.first_name} {v.last_name}",
                 "email": v.primary_email,
                 "events": events,
                 "hours": round(hours or 0, 2),
             }
-            for v, events, hours in volunteer_stats
-        ]
+
+        for v, events in virtual_stats:
+            if v.id in merged:
+                # Already counted from in-person — add the virtual event count only.
+                # Hours stay as-is; virtual sessions carry no delivery_hours.
+                merged[v.id]["events"] += events
+            else:
+                # Virtual-only volunteer — no delivery hours tracked.
+                merged[v.id] = {
+                    "id": v.id,
+                    "name": f"{v.first_name} {v.last_name}",
+                    "email": v.primary_email,
+                    "events": events,
+                    "hours": 0,
+                }
+
+        return list(merged.values())
 
     def _get_in_person_events(
         self, org_id: int, start_date: Optional[datetime], end_date: Optional[datetime]

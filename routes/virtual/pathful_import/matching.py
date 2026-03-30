@@ -569,7 +569,93 @@ def match_volunteer(
             import_log.matched_volunteers += 1
             return volunteer
 
-    # No match - create unmatched record
+    # No existing match found.
+    # Create the Volunteer record now so they are linked to the event and
+    # appear in org reports.  We still write an unmatched record so admins
+    # can review and optionally merge with an existing contact later.
+    if first_name and last_name:
+        volunteer = Volunteer(
+            first_name=first_name,
+            last_name=last_name,
+            pathful_user_id=pathful_id_str if pathful_id_str else None,
+        )
+        db.session.add(volunteer)
+        db.session.flush()  # get volunteer.id
+
+        # Link to organization if company name is provided
+        if organization_name:
+            import re
+
+            from models.organization import Organization, VolunteerOrganization
+
+            def _find_org(name):
+                """Exact match first, then strip common business suffixes and retry."""
+                match = Organization.query.filter(
+                    func.lower(Organization.name) == func.lower(name)
+                ).first()
+                if match:
+                    return match
+                # Strip suffixes like "Company", "Inc.", "LLC", "Corp", "Co." etc.
+                stripped = re.sub(
+                    r"\s*,?\s*(company|inc\.?|llc\.?|corp\.?|co\.?|ltd\.?|incorporated|limited)$",
+                    "",
+                    name.strip(),
+                    flags=re.IGNORECASE,
+                ).strip()
+                if stripped and stripped.lower() != name.strip().lower():
+                    return Organization.query.filter(
+                        func.lower(Organization.name) == func.lower(stripped)
+                    ).first()
+                return None
+
+            org = _find_org(organization_name)
+            if not org:
+                org = Organization(name=organization_name)
+                db.session.add(org)
+                db.session.flush()
+
+            # Check no duplicate org link
+            exists = VolunteerOrganization.query.filter_by(
+                volunteer_id=volunteer.id, organization_id=org.id
+            ).first()
+            if not exists:
+                has_primary = VolunteerOrganization.query.filter_by(
+                    volunteer_id=volunteer.id, is_primary=True
+                ).first()
+                vol_org = VolunteerOrganization(
+                    volunteer_id=volunteer.id,
+                    organization_id=org.id,
+                    is_primary=not has_primary,
+                )
+                db.session.add(vol_org)
+
+        # Update caches so duplicate rows in this import reuse this volunteer
+        if caches and first_name and last_name:
+            caches["volunteer_by_name"][
+                (first_name.lower(), last_name.lower())
+            ] = volunteer
+            if pathful_id_str:
+                caches["volunteer_by_pathful_id"][pathful_id_str] = volunteer
+
+        # Still create an unmatched record for admin review / potential merging
+        unmatched = PathfulUnmatchedRecord(
+            import_log_id=import_log.id,
+            row_number=row_number,
+            raw_data=raw_data,
+            unmatched_type=UnmatchedType.VOLUNTEER,
+            attempted_match_name=name_str,
+            attempted_match_email=email_normalized,
+            attempted_match_organization=organization_name,
+        )
+        if pathful_id_str:
+            unmatched.attempted_match_session_id = pathful_id_str
+        db.session.add(unmatched)
+        import_log.unmatched_count += 1
+
+        import_log.matched_volunteers += 1
+        return volunteer
+
+    # Cannot create without at least a first and last name — give up
     unmatched = PathfulUnmatchedRecord(
         import_log_id=import_log.id,
         row_number=row_number,

@@ -189,13 +189,14 @@ Ordered by **what best unblocks future work**:
 | 1 | **TD-033** | Student `str(None)` data cleanup (159K garbage records) |
 | 2 | **TD-009** | Centralize transaction management |
 | 3 | **TD-013** | True application factory pattern |
-| 4 | **TD-016** | Generic `ReportCache` model |
-| 5 | **TD-022** | Add tests for extracted blueprints |
-| 6 | **TD-034** | Salesforce data quality audit |
-| 7 | **TD-036** | Exact-name duplicate Teacher cleanup |
-| 8 | **TD-037** | Hard-delete pruned teachers (after 2026-04-13) |
-| 9 | **TD-040** | `NEPRIS_SESSION_BASE_URL` in single file (YAGNI) |
-| 10 | **TD-011** | SQLite → MySQL *(do last when codebase is clean)* |
+| 4 | **TD-052** | Volunteer org matching → alias-based resolution *(provisional regex active)* |
+| 5 | **TD-016** | Generic `ReportCache` model |
+| 6 | **TD-022** | Add tests for extracted blueprints |
+| 7 | **TD-034** | Salesforce data quality audit |
+| 8 | **TD-036** | Exact-name duplicate Teacher cleanup |
+| 9 | **TD-037** | Hard-delete pruned teachers (after 2026-04-13) |
+| 10 | **TD-040** | `NEPRIS_SESSION_BASE_URL` in single file (YAGNI) |
+| 11 | **TD-011** | SQLite → MySQL *(do last when codebase is clean)* |
 
 > TD-004 is intentionally deferred — the M2M relationship is the correct path forward.
 
@@ -248,3 +249,36 @@ All resolved items, for historical reference:
 **Proposed fix:** Move to app config or a shared constants module **when a second consumer appears** (YAGNI until then).
 
 **Risk:** None — cosmetic.
+
+---
+
+## TD-052: Volunteer Org Matching — Migrate to Alias-Based Resolution
+
+**Created:** 2026-03-30 · **Priority:** Medium · **Category:** Data Integrity / Architecture
+
+When Pathful session reports are imported, new "professional" participants are matched to an `Organization` by exact (case-insensitive) name on the `"District or Company"` CSV field. This fails silently when Pathful's string differs from the canonical DB name (e.g. `"Turner Construction Company"` vs `"Turner Construction"`), creating **duplicate organizations** and mis-attributed `VolunteerOrganization` links.
+
+A **provisional regex fix** (suffix-stripping: Company, Inc, LLC, etc.) was applied on 2026-03-30. It resolves the most common variant class but cannot handle abbreviations, trade names, or reordered names.
+
+### Current Provisional Fix (active)
+
+- `_find_org()` in `match_volunteer()` strips common business suffixes before falling back to creating a new org.
+- Data fix applied: duplicate org 3849 ("Turner Construction Company") merged into org 3230 ("Turner Construction") on 2026-03-30.
+
+### Target Architecture
+
+Mirror the `DistrictAlias` pattern (TD-010, resolved):
+
+1. New `OrganizationAlias` model — admins register known Pathful-name variants.
+2. New `resolve_organization()` service function — 4-tier lookup (cache → exact → alias → suffix-stripped).
+3. `match_volunteer()` calls `resolve_organization()`; on miss, stores raw string in `Volunteer.organization_name` and skips FK creation.
+4. Unresolved volunteers surface in the **draft review queue** (`/pathful/draft-review`) where an admin links them to the correct org, which also auto-registers the alias for future imports.
+
+**Full migration plan:** [`documentation/content/developer/pathful/volunteer_org_matching_migration.md`](pathful/volunteer_org_matching_migration.md)
+
+### Risk
+
+Medium — requires new model + migration, service function, draft review queue extension, and admin UI. The org report query fix (Bug 2) is independent and already final.
+
+> [!NOTE]
+> Until this is implemented, re-importing a Pathful session report where a company name does not match after suffix stripping will still create a duplicate org. Monitor for new orgs with similar names after each major import.

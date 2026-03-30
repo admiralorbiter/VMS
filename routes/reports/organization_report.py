@@ -9,7 +9,7 @@ from sqlalchemy.orm import aliased
 
 from models import db
 from models.district_model import District
-from models.event import Event, EventStatus, EventTeacher, EventType
+from models.event import Event, EventStatus, EventTeacher, EventType, event_volunteers
 from models.organization import Organization, VolunteerOrganization
 from models.reports import OrganizationSummaryCache
 from models.school_model import School
@@ -147,16 +147,77 @@ def load_routes(bp):
 
         org_stats = org_stats.group_by(Organization.id).all()
 
+        # Also pull virtual session participation via event_volunteers M2M so that
+        # organisations whose volunteers ONLY presented virtually are not invisible.
+        virtual_org_stats = (
+            db.session.query(
+                Organization,
+                db.func.count(db.distinct(Event.id)).label("unique_sessions"),
+                db.func.count(db.distinct(Volunteer.id)).label("unique_volunteers"),
+            )
+            .join(
+                VolunteerOrganization,
+                Organization.id == VolunteerOrganization.organization_id,
+            )
+            .join(Volunteer, VolunteerOrganization.volunteer_id == Volunteer.id)
+            .join(event_volunteers, Volunteer.id == event_volunteers.c.volunteer_id)
+            .join(Event, event_volunteers.c.event_id == Event.id)
+            .filter(
+                Event.start_date >= start_date,
+                Event.start_date <= end_date,
+                Event.type == EventType.VIRTUAL_SESSION,
+                Event.status.in_(
+                    [
+                        EventStatus.COMPLETED,
+                        EventStatus.CONFIRMED,
+                        EventStatus.SIMULCAST,
+                    ]
+                ),
+            )
+        )
+        if host_filter == "prepkc":
+            virtual_org_stats = virtual_org_stats.filter(
+                db.or_(
+                    Event.session_host.ilike("%PREPKC%"),
+                    Event.session_host.ilike("%prepkc%"),
+                    Event.session_host.ilike("%PrepKC%"),
+                )
+            )
+        virtual_org_stats = virtual_org_stats.group_by(Organization.id).all()
+
+        # Merge: in-person is the base dict keyed by org ID; virtual adds or supplements.
+        org_by_id = {
+            org.id: {
+                "org": org,
+                "sessions": s,
+                "hours": round(h or 0, 2),
+                "volunteers": v,
+            }
+            for org, s, h, v in org_stats
+        }
+        for org, sessions, volunteers in virtual_org_stats:
+            if org.id in org_by_id:
+                org_by_id[org.id]["sessions"] += sessions
+                org_by_id[org.id]["volunteers"] += volunteers
+            else:
+                org_by_id[org.id] = {
+                    "org": org,
+                    "sessions": sessions,
+                    "hours": 0,
+                    "volunteers": volunteers,
+                }
+
         # Format organization data
         org_data = []
-        for org, sessions, hours, volunteers in org_stats:
+        for d in org_by_id.values():
+            org = d["org"]
             org_data.append(
                 {
                     "name": org.name,
                     "id": org.id,
-                    "unique_sessions": sessions,
-                    "total_hours": round(hours or 0, 2),
-                    "unique_volunteers": volunteers,
+                    "unique_sessions": d["sessions"],
+                    "total_hours": d["hours"],
+                    "unique_volunteers": d["volunteers"],
                 }
             )
 
