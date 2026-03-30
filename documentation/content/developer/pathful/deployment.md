@@ -357,25 +357,26 @@ All historical Pathful exports have been loaded using the Phase 1 import pipelin
 ### Phase D: Post-Import Data Management Features
 
 **Priority:** HIGH — Enables data quality management workflow
-**Timeline:** February 2026
+**Timeline:** February–March 2026
 **Dependency:** Phases 1-3 complete
-**Status:** 📋 PLANNED
+**Status:** 🔧 IN PROGRESS
 
 > [!INFO]
 > **Phase Purpose**
 >
 > This phase adds the tooling needed to manage virtual session data after Pathful import. It enables staff and district admins to flag issues, make corrections, set cancellation reasons, and verify data accuracy — all with full audit logging.
 
-#### D-1: Auto-Flagging System
+#### D-1: Auto-Flagging System ✅ COMPLETE
 
 **Priority:** HIGH
 **Dependency:** None (builds on existing import)
+**Status:** ✅ Deployed (March 2026)
 
 | Task | Description | Status |
 |------|-------------|--------|
-| Create `EventFlag` model | Flag type enum, resolution tracking | 📋 Planned |
-| Implement flag scanner | Auto-flag after import completes | 📋 Planned |
-| Create flag queue UI | `/virtual/flags` with filtering | 📋 Planned |
+| Create `EventFlag` model | Flag type enum, resolution tracking | ✅ |
+| Implement flag scanner | Auto-flag after import completes | ✅ |
+| Create flag queue UI | `/virtual/flags` with filtering | ✅ |
 
 **Flag Types:**
 - `NEEDS_ATTENTION` — Draft events with past session dates
@@ -387,17 +388,18 @@ All historical Pathful exports have been loaded using the Phase 1 import pipelin
 
 ---
 
-#### D-2: Cancellation Reasons
+#### D-2: Cancellation Reasons ✅ COMPLETE
 
 **Priority:** HIGH
 **Dependency:** D-1 complete
+**Status:** ✅ Deployed (March 2026)
 
 | Task | Description | Status |
 |------|-------------|--------|
-| Add `CancellationReason` enum | 8 predefined reasons + OTHER | 📋 Planned |
-| Add Event model fields | `cancellation_reason`, `cancellation_notes` | 📋 Planned |
-| Update event edit UI | Reason dropdown for cancelled events | 📋 Planned |
-| Validation logic | Notes required when reason=OTHER | 📋 Planned |
+| Add `CancellationReason` enum | 8 predefined reasons + OTHER | ✅ |
+| Add Event model fields | `cancellation_reason`, `cancellation_notes` | ✅ |
+| Update event edit UI | Reason dropdown for cancelled events | ✅ |
+| Validation logic | Notes required when reason=OTHER | ✅ |
 
 **Reason Codes:** WEATHER, PRESENTER_CANCELLED, TEACHER_CANCELLED, SCHOOL_CONFLICT, TECHNICAL_ISSUES, LOW_ENROLLMENT, SCHEDULING_ERROR, OTHER
 
@@ -444,18 +446,46 @@ All historical Pathful exports have been loaded using the Phase 1 import pipelin
 
 ---
 
+#### D-5: Draft Review Queue ✅ COMPLETE
+
+**Priority:** HIGH
+**Dependency:** D-1, D-2 complete
+**Status:** ✅ Deployed (March 2026)
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Create `draft_review_service.py` | Queue query, confidence scoring, bulk promote/dismiss | ✅ |
+| Create review UI | `/virtual/pathful/draft-review` with summary stats, filtering, bulk actions | ✅ |
+| Add navigation link | Button on Virtual Sessions page | ✅ |
+| Fix teacher detail view | Exclude Draft events from teacher session history | ✅ |
+| Integration tests | 28 tests (17 happy-path + 11 edge-case) | ✅ |
+
+**Confidence Heuristic:**
+- **High** ("Likely Completed") — `attended_student_count > 0`
+- **Medium** ("Needs Review") — `registered_student_count > 0` but no attendance
+- **Low** ("Likely Never Happened") — no student data
+
+**Implementation:**
+- [draft_review_service.py](file:///c:/Users/admir/Github/VMS/services/draft_review_service.py)
+- [draft_review.html](file:///c:/Users/admir/Github/VMS/templates/virtual/pathful/draft_review.html)
+- [routes.py (draft review routes)](file:///c:/Users/admir/Github/VMS/routes/virtual/pathful_import/routes.py)
+- [test_draft_review.py](file:///c:/Users/admir/Github/VMS/tests/integration/test_draft_review.py)
+
+---
+
 #### Phase D Rollout Checklist
 
 | Step | Action | Verification |
 |------|--------|--------------|
 | 1 | Run database migrations | Tables created |
-| 2 | Deploy flag scanner | Flags created on next import |
-| 3 | Deploy flag queue UI | Staff can view/resolve flags |
-| 4 | Deploy cancellation reasons | Can set reasons on cancelled events |
-| 5 | Create district_admin test user | User can log in |
-| 6 | Deploy scoped views | District admin sees only their data |
-| 7 | Deploy edit capabilities | District admin can make edits |
-| 8 | Verify audit logging | All edits logged |
+| 2 | Deploy flag scanner | ✅ Flags created on import |
+| 3 | Deploy flag queue UI | ✅ Staff can view/resolve flags |
+| 4 | Deploy cancellation reasons | ✅ Can set reasons on cancelled events |
+| 5 | Deploy Draft Review Queue | ✅ 268 events triaged via confidence scoring |
+| 6 | Create district_admin test user | User can log in |
+| 7 | Deploy scoped views | District admin sees only their data |
+| 8 | Deploy edit capabilities | District admin can make edits |
+| 9 | Verify audit logging | All edits logged |
 
 #### Phase D Success Criteria
 
@@ -502,5 +532,5 @@ All historical Pathful exports have been loaded using the Phase 1 import pipelin
 
 ---
 
-*Last updated: January 30, 2026*
-*Version: 2.1 — Added Phase B: Enhanced Unmatched Resolution*
+*Last updated: March 19, 2026*
+*Version: 3.0 — Added Phase D-5: Draft Review Queue, updated D-1/D-2 status*

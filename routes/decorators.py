@@ -74,6 +74,34 @@ def require_tenant_context(func):
     return decorated_function
 
 
+def require_tenant_admin(func):
+    """
+    Decorator to require tenant admin access (FR-TENANT-109).
+
+    Checks that the user is authenticated, has a tenant context,
+    and holds the tenant admin role within their tenant.
+
+    Consolidated from routes/district/tenant_users.py (TD-043).
+    """
+
+    @wraps(func)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return redirect(url_for("auth.login"))
+        if not g.get("tenant"):
+            flash("District access required.", "error")
+            return redirect(url_for("index"))
+        if not current_user.is_tenant_admin:
+            flash(
+                "You must be a tenant administrator to access this page.",
+                "error",
+            )
+            return redirect(url_for("district.settings"))
+        return func(*args, **kwargs)
+
+    return decorated_function
+
+
 def global_admin_required(func):
     """
     Decorator to require admin privileges AND non-tenant scope.

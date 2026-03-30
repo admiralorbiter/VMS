@@ -101,6 +101,67 @@ Foundational improvements that unblock future work and reduce risk.
 - [ ] Add integration tests for `quality_bp` and `docs_bp`
 - [ ] Audit `reports/` test coverage — at least smoke tests for all 14 modules
 
+### 2.7 — Structural Consolidation Sprint *(TD-041–047)*
+
+> [!NOTE]
+> **Added March 2026** after a codebase-wide structural audit. See individual TD entries in [Tech Debt Tracker](tech_debt.md) for full evaluations including scope, root cause, risk, and dependencies.
+
+**System snapshot (as of 2026-03-17):**
+- 33 of 110 route files over 500 lines (30%)
+- 199 `db.session.commit()` calls across 55 route files
+- 15 duplicate function names across 3+ route files
+- 28 of 142 templates over 500 lines
+
+**Phase 1 — Quick DRY Wins ✅ (completed 2026-03-17):**
+
+- [x] **TD-042:** Consolidate 4 cache functions into `services/cache_service.py` (3 files → 1)
+- [x] **TD-044:** Move `get_school_year_dates()` into `services/academic_year_service.py` (3 files → 1)
+- [x] **TD-045:** Move `get_tenant_district_name()` into `services/district_service.py` (3 files → 1)
+- [x] Full test suite passed (1,358 tests, 0 failures)
+
+**Phase 2 — User Service Extraction ✅ (completed 2026-03-17):**
+
+- [x] **TD-043:** Diffed 3 `create_user` / `edit_user` / `update_user` implementations
+- [x] Identified intentional vs accidental divergence (3 distinct contexts)
+- [x] Extracted shared logic into `services/user_service.py` (5 functions)
+- [x] Updated 4 route files to use the service
+- [x] Added privilege escalation guard, rate limiting, `@admin_required` on delete
+- [x] Full test suite passed
+
+**Phase 3 — Virtual Computation Extraction ✅ (completed 2026-03-17):**
+
+- [x] **TD-046:** Diffed `virtual/usage/computation.py` vs `reports/virtual_session/computation.py`
+- [x] Identified 7 shared functions + 3 divergences (attendance filtering, `requested` status, `source_host` field)
+- [x] Extracted into `services/virtual_computation_service.py` with hybrid attendance approach
+- [x] Fixed `processing.py` to set `attendance_confirmed_at` on import (root cause)
+- [x] Fixed `is_local` double-counting bug, removed DEBUG prints
+- [x] File A: 1,623 → 1,026 lines (−597). File B: 1,584 → 946 lines (−638)
+- [x] Full test suite passed
+- [x] **TD-049:** Backfilled `attendance_confirmed_at` for 12,890 existing attended records (one-time ORM update)
+
+**Phase 4 — Ongoing Cleanup:**
+
+- [x] **TD-041:** Continue extracting business logic from oversized route files into services
+    - [x] Session 1: Extracted 13 keyword/scoring functions from `recruitment.py` (1,918→970 lines) into `services/recruitment_scoring_service.py`
+    - [x] Session 1: Deduped `_norm`/`_split_name` in `session_routes.py` (−24 lines)
+    - [x] Session 2: Extracted `parse_virtual_year_filters()` into `virtual_computation_service.py`, replaced 3 duplicated date-parsing blocks and 1 sorting block in `district_routes.py` (1,744→1,541 lines, −203)
+    - [x] Session 2: Converted debug `print()` to `logging` in `district_routes.py`
+    - [x] Session 2: `_classify_session` in `tenant_teacher_usage.py` — investigated, false positive (13-line closure, not duplicating service)
+- [x] **TD-047:** Incrementally extract CSS/JS from oversized templates
+    - [x] Session 1: 3 templates (quality_dashboard, breakdown, no_shows) — −3,229 lines
+    - [x] Session 2: 6 templates (district_year_end_detail, newsletter_formatter, teacher_usage, import_dashboard, teacher_progress, teacher_detail) — −3,530 lines
+    - [x] Session 3: 18 remaining 200+ line templates — −6,119 lines
+    - **Total: ~12,878 lines extracted from 27 templates into ~30 external CSS/JS files**
+- [x] **TD-013:** True application factory pattern
+    - [x] Restructured `app.py` — all setup inside `create_app(config_class=None)`
+    - [x] Simplified `conftest.py` — ~100 lines of duplicated setup → `create_app(TestingConfig)`
+    - [x] Module-level `app = create_app()` kept for backward compat with 26 scripts
+- [/] **TD-022:** Add tests for extracted services (9/26 files covered)
+    - [x] Session 1: 5 services tested (136 tests) — `academic_year_service`, `virtual_computation_service`, `user_service`, `district_service`, `cache_service`
+    - [x] Edge case review: caught & fixed `get_school_year_dates` crash on invalid input
+    - [ ] Session 2: Quality & scoring services (`recruitment_scoring`, `quality_scoring`, `score_calculator`, `score_weighting_engine`, `threshold_manager`)
+    - [ ] Session 3: Data integration services (`teacher_matching`, `teacher_import`, `aggregation`, `history`, `organization`)
+
 ---
 
 ## Tier 3: MySQL Migration
@@ -240,12 +301,14 @@ Items considered but not currently feasible:
 | TD-034 Data Quality Audit | Mar 2026 | Skeleton addresses, ALL CAPS names, truncated skills, connector migration, Data Quality Dashboard. See [Tech Debt Tracker](tech_debt.md) |
 | Teacher Deduplication (TD-033/035/036) | Mar 2026 | Name parsing fixed (5 locations), 7,660 orphans pruned, admin merge UI, 317K garbage student records deleted, data quality rescan. See [Tech Debt Tracker](tech_debt.md) |
 | Tech Debt TD-001 through TD-036 | Feb–Mar 2026 | 23 items resolved. See [Tech Debt Tracker](tech_debt.md#resolved-archive) |
+| Newsletter Formatter | Mar 2026 | Virtual Connector + Career Exploration + Virtual Search-and-Add modes. 15 FRs (FR-TOOLS-101–115), 42 tests. See [requirements-tools.md](../requirements/requirements-tools.md) |
+| Structural Health Audit | Mar 2026 | Codebase-wide audit: 7 structural issues catalogued (TD-041–047), 4-phase consolidation roadmap. See Section 2.7 |
 
 ---
 
 ## References
 
-- [Development Status Tracker](development_status_tracker.md) — FR-by-FR implementation status (~188 FRs)
+- [Development Status Tracker](development_status_tracker.md) — FR-by-FR implementation status (~203 FRs)
 - [Tech Debt Tracker](tech_debt.md) — Active debt items with descriptions and priorities
 - [Architecture](../technical/architecture.md) — System design
 - [ADR Log](../technical/adr.md) — Architectural decisions

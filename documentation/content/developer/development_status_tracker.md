@@ -113,7 +113,7 @@
 
 | ID | Requirement | Status | Notes |
 |----|-------------|--------|-------|
-| FR-VIRTUAL-224 | Flag draft events with past date | ✅ | TC-285 |
+| FR-VIRTUAL-224 | Flag draft events with past date | ✅ | TC-285; Draft Review Queue (`/virtual/pathful/draft-review`) provides bulk promote/dismiss with confidence scoring |
 | FR-VIRTUAL-225 | Flag events with no teacher | ✅ | TC-286 |
 | FR-VIRTUAL-226 | Flag completed events with no presenter | ✅ | TC-287 |
 | FR-VIRTUAL-227 | Cancellation reason codes | ✅ | TC-288, TC-289 |

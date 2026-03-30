@@ -71,13 +71,8 @@ def virtual_admin_required(f):
 # services.academic_year_service
 
 
-def get_tenant_district_name(tenant_id=None):
-    """Get district name for a tenant (defaults to current user's tenant)."""
-    tid = tenant_id or current_user.tenant_id
-    if not tid:
-        return None
-    tenant = Tenant.query.get(tid)
-    return tenant.name if tenant else None
+# Note: get_tenant_district_name is imported from services.district_service
+from services.district_service import get_tenant_district_name  # noqa: E402, F811
 
 
 def _backfill_teacher_ids(teachers):
@@ -662,6 +657,9 @@ def teacher_detail(teacher_progress_id):
             event = et.event
             if not event or event.type != EventType.VIRTUAL_SESSION:
                 continue
+            # Exclude Draft events — they haven't been triaged yet
+            if event.status == EventStatus.DRAFT:
+                continue
 
             matched_event_ids.add(event.id)
             session_data = _build_session_data(event, et)
@@ -672,6 +670,7 @@ def teacher_detail(teacher_progress_id):
 
     events_query = Event.query.filter(
         Event.type == EventType.VIRTUAL_SESSION,
+        Event.status != EventStatus.DRAFT,
     )
     if district_names:
         events_query = events_query.filter(Event.district_partner.in_(district_names))

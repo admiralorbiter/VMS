@@ -70,8 +70,8 @@ def register_data_integrity_routes(bp):
         """
         Scan for duplicate EventStudentParticipation records by (event_id, student_id).
 
-        Admin-only utility to help decide on enforcing a unique constraint.
-        Returns a simple HTML view if template exists, otherwise JSON.
+        Admin-only diagnostic utility to help decide on enforcing a unique constraint.
+        Returns JSON summary of duplicate pairs.
         """
 
         from sqlalchemy import func
@@ -120,14 +120,7 @@ def register_data_integrity_routes(bp):
                 }
             )
 
-        try:
-            return render_template(
-                "management/scan_student_participation_duplicates.html",
-                duplicates=results,
-            )
-        except Exception:
-            # Fallback JSON if template not present
-            return jsonify({"duplicates": results, "total_pairs": len(results)})
+        return jsonify({"duplicates": results, "total_pairs": len(results)})
 
     @bp.route("/admin/dedupe-student-participations", methods=["POST"])
     @bp.route("/dedupe-student-participations", methods=["POST"])

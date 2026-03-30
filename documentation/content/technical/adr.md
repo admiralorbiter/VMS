@@ -15,6 +15,7 @@ ADRs are immutable records of significant technical decisions that capture conte
 | G-001 | Flask as Web Framework | ✅ Accepted | 2024-01 |
 | G-002 | SQLite as Primary Database | ✅ Accepted | 2024-01 |
 | G-003 | Vanilla JavaScript Frontend | ✅ Accepted | 2024-02 |
+| G-004 | Service-Layer Extraction Strategy | ✅ Accepted | 2026-03 |
 
 ### Validation System Decisions
 
@@ -33,6 +34,7 @@ ADRs are immutable records of significant technical decisions that capture conte
 | D-003 | Daily Sync with Conflict Resolution | ✅ Accepted | 2024-04 |
 | D-004 | Auto-Link TeacherProgress to Teacher on Import | ✅ Accepted | 2026-02 |
 | D-010 | Shared Session Status Classification Service | ✅ Accepted | 2026-03 |
+| D-011 | Hybrid Teacher Attendance Check | ✅ Accepted | 2026-03 |
 
 ### GUI Enhancement Decisions
 
@@ -88,6 +90,35 @@ ADRs are immutable records of significant technical decisions that capture conte
 - Simpler, maintainable codebase
 - Focus on actual data relationships
 - Reduced database complexity
+
+---
+
+### 2026-03-17: D-011 — Hybrid Teacher Attendance Check
+
+**Context:** Two computation files diverged on how they determined teacher attendance:
+- File A (`virtual/usage/computation.py`) used a **status-string blocklist** (fragile, version-specific)
+- File B (`reports/virtual_session/computation.py`) used **`attendance_confirmed_at IS NOT NULL`** (precise, but only 11 of 12,975 records had the field populated — Pathful import never set it)
+
+File B's reports were silently undercounting teachers by ~99.9%.
+
+**Decision:** Adopt a **hybrid attendance check** that uses both signals:
+1. If `attendance_confirmed_at` is set → attended (primary signal)
+2. Else if status in `{"attended", "count", "completed"}` → attended (fallback)
+3. Always exclude statuses containing "no_show", "no-show", "cancel", "withdraw"
+
+Also fix the **root cause**: modify `processing.py` to set `attendance_confirmed_at` when creating/updating `EventTeacher` records with `status='attended'`.
+
+**Consequences:**
+- ✅ File B reports immediately fixed — correct teacher counts
+- ✅ New imports will populate both signals going forward
+- ✅ Historical records still counted correctly via status fallback
+- ⚠️ ~12,964 existing attended records still lack `attendance_confirmed_at` — will self-heal on next import cycle, or can be backfilled (TD-049)
+
+**Files Changed:**
+- `services/virtual_computation_service.py` — New shared service with `is_teacher_attended()`
+- `routes/virtual/pathful_import/processing.py` — Root cause fix
+- `routes/virtual/usage/computation.py` — Uses hybrid check + shared service imports
+- `routes/reports/virtual_session/computation.py` — Uses hybrid check + shared service imports
 
 ---
 
@@ -238,6 +269,32 @@ ADRs are immutable records of significant technical decisions that capture conte
 - ✅ New "Needs Review" status flags stale past sessions for admin attention
 - ✅ 36 unit tests cover all classification paths
 - ⚠️ `tenant_teacher_usage.py` migrated to use shared service (was already correct but now unified)
+
+---
+
+### 2026-03-17: G-004 — Service-Layer Extraction Strategy
+
+**Context:** A structural audit (2026-03-17) found that 33 of 110 route files exceed 500 lines, with the top 6 over 1,500 lines. 15 functions are duplicated across 3+ files. Cache functions, user management, and date utilities are copy-pasted. Root cause: business logic lives in route handlers instead of a service layer, a pattern inherited from the original monolithic codebase.
+
+**Decision:** Adopt an incremental service-layer extraction strategy:
+1. **Extract DRY violations first** — move duplicated utility functions to existing or new service modules (cache, academic year, district, user management)
+2. **Extract computation logic second** — move shared computation from the two `computation.py` files into `services/virtual_computation_service.py`
+3. **Route handlers become thin** — only request parsing, service calls, and template rendering
+4. **Migrate incrementally** — one file at a time, with tests verifying behavioral equivalence
+
+This follows the pattern established by `session_status_service.py` (D-010) which successfully extracted ~350 lines of duplicated classification logic.
+
+**Consequences:**
+- ✅ Clear precedent exists (D-010) — proven approach
+- ✅ Services are independently testable with unit tests
+- ✅ Route files become manageable (~300–500 lines each)
+- ✅ New features can reuse service functions without importing from route files
+- ⚠️ Requires careful diffing before merging duplicated functions (may have diverged)
+- ⚠️ Large scope — 7 TD items across 4 phases
+
+**Related:** TD-041 through TD-047. See [Development Plan § 2.7](../developer/development_plan.md#27--structural-consolidation-sprint-td-041047).
+
+---
 
 ## Creating New ADRs
 

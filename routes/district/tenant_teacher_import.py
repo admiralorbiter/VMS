@@ -87,22 +87,7 @@ def _resolve_tenant_id():
     return current_user.tenant_id
 
 
-def get_tenant_district_name(tenant_id=None):
-    """Get the district name for a tenant (defaults to current user's tenant)."""
-    tid = tenant_id or current_user.tenant_id
-    if not tid:
-        return None
-
-    from models.tenant import Tenant
-
-    tenant = Tenant.query.get(tid)
-    if not tenant:
-        return None
-
-    if tenant.district:
-        return tenant.district.name
-
-    return tenant.get_setting("linked_district_name") or tenant.name
+from services.district_service import get_tenant_district_name
 
 
 @teacher_import_bp.route("/")

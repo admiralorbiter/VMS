@@ -1,0 +1,86 @@
+.merge-container { max-width: 1200px; margin: 0 auto; padding: 1rem; }
+    .search-box { position: relative; }
+    .search-results {
+        position: absolute; top: 100%; left: 0; right: 0; z-index: 100;
+        background: #fff; border: 1px solid #dee2e6; border-radius: 0 0 8px 8px;
+        max-height: 300px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .search-result-item {
+        padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f0f0f0;
+        transition: background 0.15s;
+    }
+    .search-result-item:hover { background: #e8f5e9; }
+    .search-result-item .name { font-weight: 600; color: #1a3a1a; }
+    .search-result-item .meta { font-size: 0.8rem; color: #666; }
+
+    .slot-card {
+        border: 2px dashed #ccc; border-radius: 12px; padding: 1.5rem;
+        min-height: 180px; display: flex; flex-direction: column;
+        justify-content: center; align-items: center; background: #fafffe;
+        transition: border-color 0.3s, background 0.3s;
+    }
+    .slot-card.filled { border: 2px solid #4caf50; background: #fff; align-items: stretch; }
+    .slot-card.keep { border-color: #2196f3; }
+    .slot-card.merge-away { border-color: #ff9800; }
+    .slot-placeholder { color: #999; font-size: 1.1rem; }
+    .slot-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+    .slot-label.keep { color: #2196f3; }
+    .slot-label.merge-away { color: #ff9800; }
+    .teacher-name { font-size: 1.2rem; font-weight: 700; color: #1a3a1a; }
+    .teacher-detail { font-size: 0.85rem; color: #555; margin-top: 0.25rem; }
+
+    .compare-section {
+        background: #f8f9fa; border-radius: 12px; padding: 1.25rem; margin-top: 1.5rem;
+    }
+    .shared-badge { display: inline-block; background: #fff3e0; color: #e65100; padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
+    .status-badge {
+        display: inline-block; padding: 2px 8px; border-radius: 4px;
+        font-size: 0.75rem; font-weight: 600;
+    }
+    .status-badge.attended { background: #e8f5e9; color: #2e7d32; }
+    .status-badge.registered { background: #fff3e0; color: #e65100; }
+    .status-badge.no_show { background: #ffebee; color: #c62828; }
+
+    .merge-btn {
+        background: linear-gradient(135deg, #ff9800, #f57c00);
+        color: #fff; border: none; padding: 12px 32px; border-radius: 8px;
+        font-size: 1rem; font-weight: 700; cursor: pointer;
+        transition: transform 0.1s, box-shadow 0.2s;
+    }
+    .merge-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(255,152,0,0.4); }
+    .merge-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .swap-btn {
+        background: #e0e0e0; border: none; border-radius: 50%; width: 36px; height: 36px;
+        cursor: pointer; font-size: 1rem; transition: background 0.2s;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .swap-btn:hover { background: #bdbdbd; }
+
+    .success-toast {
+        position: fixed; top: 20px; right: 20px; z-index: 9999;
+        background: #4caf50; color: #fff; padding: 16px 24px;
+        border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        animation: slideIn 0.3s ease-out;
+    }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    .clear-btn {
+        background: none; border: none; color: #999; cursor: pointer;
+        font-size: 0.8rem; margin-top: 0.5rem;
+    }
+    .clear-btn:hover { color: #e53935; }
+
+    .candidates-section { margin-bottom: 2rem; }
+    .candidate-card {
+        border: 1px solid #e0e0e0; border-radius: 10px; padding: 1rem;
+        cursor: pointer; transition: all 0.2s; background: #fff;
+    }
+    .candidate-card:hover { border-color: #ff9800; box-shadow: 0 2px 8px rgba(255,152,0,0.15); transform: translateY(-1px); }
+    .candidate-card .pair-names { font-weight: 600; font-size: 0.95rem; color: #1a3a1a; }
+    .candidate-card .pair-meta { font-size: 0.8rem; color: #666; margin-top: 0.25rem; }
+    .confidence-high { border-left: 4px solid #e53935; }
+    .confidence-med { border-left: 4px solid #ff9800; }
+    .confidence-low { border-left: 4px solid #ffc107; }
+    .candidates-loading { text-align: center; padding: 2rem; color: #999; }
+    .candidates-empty { text-align: center; padding: 1.5rem; color: #4caf50; font-weight: 500; }

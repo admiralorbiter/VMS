@@ -13,11 +13,17 @@ Requirements:
 """
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
-from flask_login import login_required
-from werkzeug.security import generate_password_hash
+from flask_login import current_user, login_required
 
 from models import Tenant, TenantRole, User, db
 from routes.decorators import global_admin_required as admin_required
+from services.user_service import check_role_escalation
+from services.user_service import create_user as service_create_user
+from services.user_service import (
+    update_user_fields,
+    validate_new_user,
+    validate_user_update,
+)
 
 tenant_users_bp = Blueprint("tenant_users", __name__, url_prefix="/management/tenants")
 
@@ -53,28 +59,18 @@ def create_user(tenant_id):
     tenant_role = request.form.get("tenant_role", TenantRole.USER)
     is_active = "is_active" in request.form
 
-    # Validation
-    errors = []
-
-    if not username:
-        errors.append("Username is required.")
-    elif User.query.filter_by(username=username).first():
-        errors.append("Username already exists.")
-
-    if not email:
-        errors.append("Email is required.")
-    elif User.query.filter_by(email=email).first():
-        errors.append("Email already exists.")
-
-    if not password:
-        errors.append("Password is required.")
-    elif len(password) < 8:
-        errors.append("Password must be at least 8 characters.")
-    elif password != confirm_password:
-        errors.append("Passwords do not match.")
+    # Validation (via service)
+    errors = validate_new_user(username, email, password, confirm_password)
 
     if tenant_role not in TenantRole.CHOICES:
         errors.append("Invalid role selected.")
+
+    # Privilege escalation guard
+    escalation_error = check_role_escalation(
+        current_user, tenant_role, context="tenant"
+    )
+    if escalation_error:
+        errors.append(escalation_error)
 
     if errors:
         for error in errors:
@@ -87,18 +83,19 @@ def create_user(tenant_id):
             page_title=f"Add User to {tenant.name}",
         )
 
-    # Create user
-    user = User(
+    # Create user (via service)
+    user, error = service_create_user(
         username=username,
         email=email,
-        password_hash=generate_password_hash(password),
+        password=password,
         tenant_id=tenant_id,
         tenant_role=tenant_role,
         is_active=is_active,
     )
 
-    db.session.add(user)
-    db.session.commit()
+    if error:
+        flash(error, "error")
+        return redirect(url_for("tenants.view_tenant", tenant_id=tenant_id))
 
     flash(f"User '{username}' created successfully for {tenant.name}.", "success")
     return redirect(url_for("tenants.view_tenant", tenant_id=tenant_id))
@@ -137,27 +134,18 @@ def update_user(tenant_id, user_id):
     tenant_role = request.form.get("tenant_role", user.tenant_role)
     is_active = "is_active" in request.form
 
-    # Validation
-    errors = []
-
-    if not username:
-        errors.append("Username is required.")
-    elif username != user.username and User.query.filter_by(username=username).first():
-        errors.append("Username already exists.")
-
-    if not email:
-        errors.append("Email is required.")
-    elif email != user.email and User.query.filter_by(email=email).first():
-        errors.append("Email already exists.")
-
-    if password:  # Only validate if changing password
-        if len(password) < 8:
-            errors.append("Password must be at least 8 characters.")
-        elif password != confirm_password:
-            errors.append("Passwords do not match.")
+    # Validation (via service)
+    errors = validate_user_update(user, username, email, password, confirm_password)
 
     if tenant_role not in TenantRole.CHOICES:
         errors.append("Invalid role selected.")
+
+    # Privilege escalation guard
+    escalation_error = check_role_escalation(
+        current_user, tenant_role, context="tenant"
+    )
+    if escalation_error:
+        errors.append(escalation_error)
 
     if errors:
         for error in errors:
@@ -170,18 +158,20 @@ def update_user(tenant_id, user_id):
             page_title=f"Edit User: {user.username}",
         )
 
-    # Update user
-    user.username = username
-    user.email = email
-    user.tenant_role = tenant_role
-    user.is_active = is_active
+    # Update user (via service)
+    success, error = update_user_fields(
+        user,
+        username=username,
+        email=email,
+        password=password if password else None,
+        tenant_role=tenant_role,
+        is_active=is_active,
+    )
 
-    if password:  # Only update password if provided
-        user.password_hash = generate_password_hash(password)
-
-    db.session.commit()
-
-    flash(f"User '{username}' updated successfully.", "success")
+    if error:
+        flash(error, "error")
+    else:
+        flash(f"User '{username}' updated successfully.", "success")
     return redirect(url_for("tenants.view_tenant", tenant_id=tenant_id))
 
 

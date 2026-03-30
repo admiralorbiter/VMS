@@ -20,7 +20,6 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
-from werkzeug.security import generate_password_hash
 
 from models import db
 from models.district_model import District
@@ -36,7 +35,11 @@ from models.reports import (
 )
 from models.sync_log import SyncLog
 from models.user import SecurityLevel, User
-from routes.decorators import admin_required, handle_route_errors
+from routes.decorators import (
+    admin_required,
+    handle_route_errors,
+    security_level_required,
+)
 
 # Import sub-module registration functions
 from routes.management.bug_reports import register_bug_report_routes
@@ -51,6 +54,7 @@ from routes.reports.recent_volunteers import (
     _serialize_for_cache,
 )
 from routes.reports.virtual_session import invalidate_virtual_session_caches
+from services.user_service import update_user_fields
 
 management_bp = Blueprint("management", __name__)
 
@@ -440,14 +444,9 @@ def refresh_all_caches():
 
 @management_bp.route("/management/users/<int:user_id>/edit", methods=["GET"])
 @login_required
+@security_level_required(SecurityLevel.SUPERVISOR)
 def edit_user_form(user_id):
     """Route to render the user edit modal"""
-    if (
-        not current_user.is_admin
-        and not current_user.security_level >= SecurityLevel.SUPERVISOR
-    ):
-        return jsonify({"error": "Unauthorized"}), 403
-
     user = User.query.get_or_404(user_id)
 
     # Check if current user has permission to edit this user
@@ -466,14 +465,9 @@ def edit_user_form(user_id):
 
 @management_bp.route("/management/users/<int:user_id>", methods=["PUT"])
 @login_required
+@security_level_required(SecurityLevel.SUPERVISOR)
 def update_user(user_id):
     """Route to handle the user update form submission"""
-    if (
-        not current_user.is_admin
-        and not current_user.security_level >= SecurityLevel.SUPERVISOR
-    ):
-        return jsonify({"error": "Unauthorized"}), 403
-
     user = User.query.get_or_404(user_id)
 
     # Check if current user has permission to edit this user
@@ -494,25 +488,28 @@ def update_user(user_id):
             403,
         )
 
-    # Update user
-    user.email = email
+    # Build update kwargs
+    update_kwargs = {"email": email}
 
-    # Regular users should only be able to update their own security level if they're an admin
+    # Regular users should only be able to update security level if they outrank
     if current_user.is_admin or current_user.security_level > user.security_level:
-        user.security_level = security_level
+        update_kwargs["security_level"] = security_level
 
     # Only admins can change tenant affiliation
     if current_user.is_admin:
-        user.tenant_id = tenant_id
+        update_kwargs["tenant_id"] = tenant_id
 
-    # Update password if provided
-    if new_password:
-        user.password_hash = generate_password_hash(new_password)
+    # Update via service
+    success, error = update_user_fields(
+        user,
+        password=new_password if new_password else None,
+        **update_kwargs,
+    )
 
-    try:
-        db.session.commit()
-        return jsonify({"success": True, "message": "User updated successfully"}), 200
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.exception("Failed to update user %s: %s", user_id, e)
-        return jsonify({"success": False, "error": "Failed to update user"}), 500
+    if not success:
+        return (
+            jsonify({"success": False, "error": error or "Failed to update user"}),
+            500,
+        )
+
+    return jsonify({"success": True, "message": "User updated successfully"}), 200
