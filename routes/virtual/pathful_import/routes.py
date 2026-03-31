@@ -217,7 +217,24 @@ def load_pathful_routes():
             "school": None,
             "teacher_matches": [],
             "volunteer_matches": [],
+            "school_matches": [],
         }
+
+        if unmatched_record.unmatched_type == "school_unresolved":
+            from models.school_model import School
+
+            search_name = unmatched_record.attempted_match_school or ""
+            if search_name:
+                fuzzy = f"%{search_name}%"
+                result["school_matches"] = (
+                    School.query.filter(
+                        db.func.lower(School.name).like(fuzzy.lower())
+                        | db.func.lower(School.normalized_name).like(fuzzy.lower())
+                    )
+                    .limit(8)
+                    .all()
+                )
+            return result
 
         # Extract pathful_user_id from raw_data
         raw_data = unmatched_record.raw_data
@@ -401,6 +418,81 @@ def load_pathful_routes():
                     volunteer_id=int(volunteer_id),
                 )
                 flash("Record matched to volunteer.", "success")
+
+        elif action == "match_school":
+            from models.school_model import School, SchoolAlias
+            from models.teacher import Teacher
+
+            school_id = request.form.get("school_id")
+            if not school_id:
+                flash("School ID is required for mapping.", "error")
+                return redirect(url_for("virtual.pathful_unmatched"))
+
+            school = School.query.get_or_404(school_id)
+            teacher = Teacher.query.get_or_404(record.resolved_teacher_id)
+
+            # 1. Map the teacher to the newly chosen school
+            teacher.salesforce_school_id = school.id
+
+            # 2. Register the alias so the system "learns" it for next time
+            failed_string = record.attempted_match_school
+            if (
+                failed_string
+                and failed_string.strip().lower() != school.name.strip().lower()
+            ):
+                # Check if it already exists to prevent integrity errors
+                existing = SchoolAlias.query.filter(
+                    db.func.lower(SchoolAlias.alias) == failed_string.strip().lower()
+                ).first()
+                if not existing:
+                    new_alias = SchoolAlias(
+                        alias=failed_string.strip(), school_id=school.id
+                    )
+                    db.session.add(new_alias)
+
+            # 3. Mark the record as resolved
+            record.resolve(
+                status=ResolutionStatus.RESOLVED,
+                notes=f"Admin mapped to {school.name}. Background sibling resolution triggered.",
+                resolved_by=current_user.id,
+            )
+            flash(
+                f"Teacher {teacher.first_name} {teacher.last_name} linked to {school.name}.",
+                "success",
+            )
+
+            # 4. Auto-resolve siblings in the queue!
+            if failed_string:
+                siblings = PathfulUnmatchedRecord.query.filter_by(
+                    unmatched_type="school_unresolved",
+                    attempted_match_school=failed_string,
+                    resolution_status=ResolutionStatus.PENDING,
+                ).all()
+
+                if siblings:
+                    resolved_count = 0
+                    for sibling in siblings:
+                        if sibling.id == record.id:
+                            continue  # Already resolved
+
+                        # Link sibling teacher
+                        if sibling.resolved_teacher_id:
+                            sib_teacher = Teacher.query.get(sibling.resolved_teacher_id)
+                            if sib_teacher:
+                                sib_teacher.salesforce_school_id = school.id
+
+                        sibling.resolve(
+                            status=ResolutionStatus.RESOLVED,
+                            notes=f"Auto-resolved via sibling mapping to {school.name}.",
+                            resolved_by=current_user.id,
+                        )
+                        resolved_count += 1
+
+                    if resolved_count > 0:
+                        flash(
+                            f"Auto-resolved {resolved_count} additional records matching '{failed_string}'!",
+                            "info",
+                        )
 
         db.session.commit()
         return redirect(url_for("virtual.pathful_unmatched"))

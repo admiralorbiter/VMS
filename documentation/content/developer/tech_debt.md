@@ -11,25 +11,7 @@ This document tracks active technical debt. Resolved items are summarized in the
 
 ---
 
-## TD-053: Teacher/School Matching — Build `SchoolAlias` Admin UI
 
-**Created:** 2026-03-30 · **Priority:** High · **Category:** Data Integrity / Architecture / Epic 18
-**Status:** Plumbed (Backend complete) — Needs Frontend/DB Model
-
-**Background:** Pathful session imports often contain school names that differ from Polaris' canonical `school` table (e.g., abbreviations like "M.E. Pearson" vs "M E PEARSON ELEM", missing schools entirely, or disambiguation like Kansas vs Missouri variants).
-
-**Current State (Hardened 2026-03-30):**
-The `match_teacher()` pipeline securely refuses to falsely assign teachers when string-matching fails. It safely drops the unresolved school into the `pathful_unmatched_record` table as a `SCHOOL_UNRESOLVED` type.
-
-**Proposed Fix (The Alias Pattern):**
-Mirroring TD-010 (DistrictAlias) and TD-052 (OrganizationAlias), we need to close the loop on school matching:
-1. Create a `SchoolAlias` database model.
-2. Build an Admin UI for the Unmatched Records queue `/virtual/pathful/unmatched` to let Admins link a `SCHOOL_UNRESOLVED` record to an existing canonical Polaris school.
-3. Automatically generate the `SchoolAlias` upon resolution so future Pathful imports succeed instantly.
-
-**Risk:** Low — standardizes our Entity Identity Reconciliation pattern across all three layers (District, Organization, School).
-
----
 
 ## TD-004: `Event.district_partner` Is a Text Field, Not a FK *(Deferred)*
 
@@ -514,6 +496,7 @@ All resolved items, for historical reference:
 | TD-032 | Pathful Multi-District `district_partner` Mismatch | 2026-03-07 | Removed `district_partner` filter from FK-based EventTeacher counting path. Pathful assigns a single `district_partner` per event, so multi-district sessions get mislabelled (e.g. KCKPS event tagged "Hogan Preparatory Academy"). FK link already proves attendance; filter kept only on supplementary text-matching path. Fixed under-counting for 17 teachers across 2 events in Spring 2025-2026. **Upstream fix needed:** notify Pathful that events with teachers from multiple districts get the wrong `district_partner` value. |
 | TD-038 | Session Status Classification Dedup | 2026-03-16 | CONFIRMED/PUBLISHED sessions silently dropped from teacher progress counting. Extracted ~350 lines of duplicated inline classification from 2 route files into `services/session_status_service.py`. Future CONFIRMED/PUBLISHED → "Planned"; past → "Needs Review". 36 unit tests. See ADR D-010. |
 | TD-039 | Inline `import pytz` in Newsletter | 2026-03-17 | `import pytz` was inside 2 endpoint functions in `newsletter.py`. Moved to module level. |
+| TD-053 | SchoolAlias Admin UI | 2026-03-30 | Implemented the Entity Identity Reconciliation Pattern for School matching. Created SchoolAlias database model, built the unmatched resolving UI with fuzzy match searches, and added auto-bulk-resolving Polish feature. |
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Created:** 2026-03-30 · **Priority:** Medium · **Category:** Data Integrity / Architecture
 **Status:** Planned — provisional regex fix active (see [Current State](#current-state))
-**Related TD:** TD-010 (DistrictAlias pattern, ✅ resolved)
+**Related TD:** TD-010 (DistrictAlias pattern, ✅ resolved), TD-053 (SchoolAlias pattern, ✅ resolved)
 **Related ADR:** *(new ADR recommended — see [ADR Recommendation](#adr-recommendation))*
 
 ---
