@@ -157,6 +157,7 @@ For any bulk data change (delete, merge, migrate, prune):
 ### Environment notes
 - **PowerShell quoting:** avoid inline Python one-liners (quoting breaks). For anything beyond trivial, write a temp `.py` script, run it, then delete.
 - **SQLite locking:** the dev DB locks when Flask is running. Stop the server before running maintenance scripts, or use read-only raw sqlite connections for investigation.
+- **DB recovery ≠ data recovery:** if the SQLite database is recovered from binary salvage, **schema and Salesforce-synced data** survive, but **import-generated queue records** (e.g., `PathfulUnmatchedRecord`, `PathfulImportLog`) are not recreated automatically. After any recovery event, re-run recent Pathful imports to regenerate the Unmatched Queue. *(Lesson from Epic 19 / 2026-03-30)*
 
 ---
 
