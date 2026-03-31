@@ -159,7 +159,7 @@
                                         <th>Type</th>
                                         <th>Name</th>
                                         <th>Email</th>
-                                        <th>School</th>
+                                        <th>School / Org</th>
                                         <th>Match Suggestions</th>
                                         <th>Status</th>
                                         <th>Actions</th>
@@ -209,19 +209,22 @@
                                             <small><i class="fas fa-school me-1"></i>{{ suggestions.school }}</small>
                                             {% elif record.attempted_match_school %}
                                             <small>{{ record.attempted_match_school }}</small>
+                                            {% elif record.attempted_match_organization %}
+                                            <small><i class="fas fa-building me-1"></i>{{ record.attempted_match_organization }}</small>
                                             {% else %}
                                             <small class="text-muted">-</small>
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {% if suggestions.teacher_matches or suggestions.volunteer_matches or suggestions.school_matches %}
+                                            {% if suggestions.teacher_matches or suggestions.volunteer_matches or suggestions.school_matches or suggestions.organization_matches %}
                                             <div class="dropdown">
                                                 <button class="btn btn-sm btn-success dropdown-toggle" type="button"
                                                     data-bs-toggle="dropdown">
                                                     <i class="fas fa-magic me-1"></i>{{
                                                     (suggestions.teacher_matches|length) +
                                                     (suggestions.volunteer_matches|length) +
-                                                    (suggestions.school_matches|length) }} Found
+                                                    (suggestions.school_matches|length) +
+                                                    (suggestions.organization_matches|length) }} Found
                                                 </button>
                                                 <ul class="dropdown-menu">
                                                     {% for match in suggestions.teacher_matches %}
@@ -271,6 +274,22 @@
                                                                 <i class="fas fa-school me-1 text-danger"></i>{{
                                                                 match.name }}<br>
                                                                 <small class="text-muted ms-3">{{ match.district.name if match.district else 'No District' }} | {{ match.normalized_name }}</small>
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                    {% endfor %}
+                                                    {% for match in suggestions.organization_matches %}
+                                                    <li>
+                                                        <form method="POST"
+                                                            action="{{ url_for('virtual.resolve_unmatched', record_id=record.id) }}"
+                                                            class="d-inline w-100">
+                                                            <input type="hidden" name="action" value="match_organization">
+                                                            <input type="hidden" name="organization_id"
+                                                                value="{{ match.id }}">
+                                                            <input type="hidden" name="notes" value="Fuzzy DB match">
+                                                            <button type="submit" class="dropdown-item">
+                                                                <i class="fas fa-building me-1 text-warning"></i>{{
+                                                                match.name }}
                                                             </button>
                                                         </form>
                                                     </li>

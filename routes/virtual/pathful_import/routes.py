@@ -215,9 +215,11 @@ def load_pathful_routes():
             "profile": None,
             "email": None,
             "school": None,
+            "organization": None,
             "teacher_matches": [],
             "volunteer_matches": [],
             "school_matches": [],
+            "organization_matches": [],
         }
 
         if unmatched_record.unmatched_type == "school_unresolved":
@@ -235,6 +237,22 @@ def load_pathful_routes():
                     .all()
                 )
             return result
+
+        if (
+            unmatched_record.unmatched_type == "volunteer"
+            and unmatched_record.attempted_match_organization
+        ):
+            from models.organization import Organization
+
+            search_org = unmatched_record.attempted_match_organization
+            fuzzy = f"%{search_org}%"
+            result["organization_matches"] = (
+                Organization.query.filter(
+                    db.func.lower(Organization.name).like(fuzzy.lower())
+                )
+                .limit(8)
+                .all()
+            )
 
         # Extract pathful_user_id from raw_data
         raw_data = unmatched_record.raw_data
@@ -484,6 +502,118 @@ def load_pathful_routes():
                         sibling.resolve(
                             status=ResolutionStatus.RESOLVED,
                             notes=f"Auto-resolved via sibling mapping to {school.name}.",
+                            resolved_by=current_user.id,
+                        )
+                        resolved_count += 1
+
+                    if resolved_count > 0:
+                        flash(
+                            f"Auto-resolved {resolved_count} additional records matching '{failed_string}'!",
+                            "info",
+                        )
+
+        elif action == "match_organization":
+            from models.organization import (
+                Organization,
+                OrganizationAlias,
+                VolunteerOrganization,
+            )
+            from models.volunteer import Volunteer
+
+            organization_id = request.form.get("organization_id")
+            if not organization_id:
+                flash("Organization ID is required for mapping.", "error")
+                return redirect(url_for("virtual.pathful_unmatched"))
+
+            org = Organization.query.get_or_404(organization_id)
+            volunteer = Volunteer.query.get_or_404(record.resolved_volunteer_id)
+
+            # 1. Map the volunteer to the newly chosen organization
+            exists = VolunteerOrganization.query.filter_by(
+                volunteer_id=volunteer.id, organization_id=org.id
+            ).first()
+            if not exists:
+                has_primary = VolunteerOrganization.query.filter_by(
+                    volunteer_id=volunteer.id, is_primary=True
+                ).first()
+                vol_org = VolunteerOrganization(
+                    volunteer_id=volunteer.id,
+                    organization_id=org.id,
+                    is_primary=not has_primary,
+                )
+                db.session.add(vol_org)
+
+            # 2. Register the alias so the system "learns" it for next time
+            failed_string = record.attempted_match_organization
+            if (
+                failed_string
+                and failed_string.strip().lower() != org.name.strip().lower()
+            ):
+                # Check if it already exists to prevent integrity errors
+                existing = OrganizationAlias.query.filter(
+                    db.func.lower(OrganizationAlias.name)
+                    == failed_string.strip().lower()
+                ).first()
+                if not existing:
+                    new_alias = OrganizationAlias(
+                        name=failed_string.strip(),
+                        organization_id=org.id,
+                        is_auto_generated=False,
+                    )
+                    db.session.add(new_alias)
+
+            # 3. Mark the record as resolved
+            record.resolve(
+                status=ResolutionStatus.RESOLVED,
+                notes=f"Admin mapped to {org.name}. Background sibling resolution triggered.",
+                resolved_by=current_user.id,
+            )
+            flash(
+                f"Volunteer {volunteer.first_name} {volunteer.last_name} linked to {org.name}.",
+                "success",
+            )
+
+            # 4. Auto-resolve siblings in the queue!
+            if failed_string:
+                siblings = PathfulUnmatchedRecord.query.filter_by(
+                    unmatched_type="volunteer",
+                    attempted_match_organization=failed_string,
+                    resolution_status=ResolutionStatus.PENDING,
+                ).all()
+
+                if siblings:
+                    resolved_count = 0
+                    for sibling in siblings:
+                        if sibling.id == record.id:
+                            continue  # Already resolved
+
+                        # Link sibling volunteer
+                        if sibling.resolved_volunteer_id:
+                            sib_volunteer = Volunteer.query.get(
+                                sibling.resolved_volunteer_id
+                            )
+                            if sib_volunteer:
+                                s_exists = VolunteerOrganization.query.filter_by(
+                                    volunteer_id=sib_volunteer.id,
+                                    organization_id=org.id,
+                                ).first()
+                                if not s_exists:
+                                    s_has_primary = (
+                                        VolunteerOrganization.query.filter_by(
+                                            volunteer_id=sib_volunteer.id,
+                                            is_primary=True,
+                                        ).first()
+                                    )
+                                    s_vol_org = VolunteerOrganization(
+                                        volunteer_id=sib_volunteer.id,
+                                        organization_id=org.id,
+                                        is_primary=not s_has_primary,
+                                    )
+                                    db.session.add(s_vol_org)
+
+                        sibling.resolve(
+                            status=ResolutionStatus.RESOLVED,
+                            notes=f"Auto-resolved via sibling mapping to {org.name}.",
                             resolved_by=current_user.id,
                         )
                         resolved_count += 1

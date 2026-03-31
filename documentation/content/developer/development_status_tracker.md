@@ -85,7 +85,7 @@
 | FR-VIRTUAL-202 | Tag teachers from synced records | ✅ | TC-202, TC-204 |
 | FR-VIRTUAL-203 | Tag presenters from synced records | ✅ | TC-203, TC-204 |
 | FR-VIRTUAL-204 | Historical import from Google Sheets | ✅ | TC-270–TC-275 |
-| FR-VIRTUAL-206 | Pathful import with quality checks | ✅ | TC-250–TC-260 |
+| FR-VIRTUAL-206 | Pathful import with quality checks | ✅ | TC-250–TC-260; TD-052: alias-based org resolution via `resolve_organization()` + Unmatched Queue |
 | FR-VIRTUAL-207 | Automation to pull Pathful exports | 🔮 | Near-term |
 | FR-VIRTUAL-208 | Track local vs non-local volunteers | ✅ | TC-230–TC-232 |
 | FR-VIRTUAL-209 | Automated comms for local volunteers | 🔮 | Near-term |

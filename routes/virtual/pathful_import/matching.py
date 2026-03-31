@@ -133,6 +133,16 @@ def build_import_caches():
         f"  Teacher records: {len(all_teacher_records)} ({len(teacher_record_by_email)} by email, {len(teacher_record_by_name)} by name)"
     )
 
+    # Organization cache (includes aliases for Epic 19 resolution)
+    from models.organization import Organization, OrganizationAlias
+
+    all_orgs = Organization.query.all()
+    organization_by_name = {o.name.lower(): o for o in all_orgs if o.name}
+    all_org_aliases = OrganizationAlias.query.all()
+    for alias in all_org_aliases:
+        organization_by_name[alias.name.lower()] = alias.organization
+    print(f"  Organizations: {len(all_orgs)} ({len(all_org_aliases)} aliases)")
+
     print("Caches built.\n")
 
     return {
@@ -149,6 +159,7 @@ def build_import_caches():
         "event_teacher_set": event_teacher_set,
         "teacher_record_by_email": teacher_record_by_email,
         "teacher_record_by_name": teacher_record_by_name,
+        "organization_by_name": organization_by_name,
     }
 
 
@@ -704,50 +715,27 @@ def match_volunteer(
 
         # Link to organization if company name is provided
         if organization_name:
-            import re
+            volunteer.organization_name = organization_name
 
-            from models.organization import Organization, VolunteerOrganization
+            from models.organization import VolunteerOrganization
+            from services.organization_service import resolve_organization
 
-            def _find_org(name):
-                """Exact match first, then strip common business suffixes and retry."""
-                match = Organization.query.filter(
-                    func.lower(Organization.name) == func.lower(name)
+            org = resolve_organization(organization_name, caches=caches)
+            if org:
+                # Check no duplicate org link
+                exists = VolunteerOrganization.query.filter_by(
+                    volunteer_id=volunteer.id, organization_id=org.id
                 ).first()
-                if match:
-                    return match
-                # Strip suffixes like "Company", "Inc.", "LLC", "Corp", "Co." etc.
-                stripped = re.sub(
-                    r"\s*,?\s*(company|inc\.?|llc\.?|corp\.?|co\.?|ltd\.?|incorporated|limited)$",
-                    "",
-                    name.strip(),
-                    flags=re.IGNORECASE,
-                ).strip()
-                if stripped and stripped.lower() != name.strip().lower():
-                    return Organization.query.filter(
-                        func.lower(Organization.name) == func.lower(stripped)
+                if not exists:
+                    has_primary = VolunteerOrganization.query.filter_by(
+                        volunteer_id=volunteer.id, is_primary=True
                     ).first()
-                return None
-
-            org = _find_org(organization_name)
-            if not org:
-                org = Organization(name=organization_name)
-                db.session.add(org)
-                db.session.flush()
-
-            # Check no duplicate org link
-            exists = VolunteerOrganization.query.filter_by(
-                volunteer_id=volunteer.id, organization_id=org.id
-            ).first()
-            if not exists:
-                has_primary = VolunteerOrganization.query.filter_by(
-                    volunteer_id=volunteer.id, is_primary=True
-                ).first()
-                vol_org = VolunteerOrganization(
-                    volunteer_id=volunteer.id,
-                    organization_id=org.id,
-                    is_primary=not has_primary,
-                )
-                db.session.add(vol_org)
+                    vol_org = VolunteerOrganization(
+                        volunteer_id=volunteer.id,
+                        organization_id=org.id,
+                        is_primary=not has_primary,
+                    )
+                    db.session.add(vol_org)
 
         # Update caches so duplicate rows in this import reuse this volunteer
         if caches and first_name and last_name:
@@ -767,6 +755,7 @@ def match_volunteer(
             attempted_match_email=email_normalized,
             attempted_match_organization=organization_name,
         )
+        unmatched.resolved_volunteer_id = volunteer.id
         if pathful_id_str:
             unmatched.attempted_match_session_id = pathful_id_str
         db.session.add(unmatched)

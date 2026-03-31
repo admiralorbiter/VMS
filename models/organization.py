@@ -182,6 +182,13 @@ class Organization(db.Model):
         overlaps="volunteers",
     )
 
+    aliases = relationship(
+        "OrganizationAlias",
+        back_populates="organization",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
     @property
     def salesforce_url(self):
         """
@@ -213,6 +220,47 @@ class Organization(db.Model):
             .filter(VolunteerOrganization.organization_id == self.id)
             .count()
         )
+
+
+class OrganizationAlias(db.Model):
+    """
+    OrganizationAlias model for alternate names and abbreviations.
+
+    Used strictly during the Pathful Import process to map unpredictable variations
+    of volunteer companies to an exact canonical Organization ID.
+
+    Database Table:
+        organization_alias
+
+    Fields:
+        - organization_id: The canonical Organization to resolve this alias to
+        - name: The alternate string that Pathful keeps throwing at us
+        - is_auto_generated: True if created automatically by the suffix-removal regex algorithm,
+                             False if a manual admin mapping in the Unmatched UI
+    """
+
+    __tablename__ = "organization_alias"
+
+    id = db.Column(Integer, primary_key=True)
+    organization_id = db.Column(
+        Integer,
+        ForeignKey("organization.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    name = db.Column(String(255), nullable=False, unique=True, index=True)
+
+    is_auto_generated = db.Column(
+        Boolean, default=False, server_default="0", nullable=False
+    )
+
+    created_at = db.Column(
+        db.DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    organization = relationship("Organization", back_populates="aliases")
 
 
 class VolunteerOrganization(db.Model):

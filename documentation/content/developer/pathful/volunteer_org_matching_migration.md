@@ -1,7 +1,7 @@
 # TD-052: Volunteer Org Matching — Migrate to Alias-Based Resolution
 
 **Created:** 2026-03-30 · **Priority:** Medium · **Category:** Data Integrity / Architecture
-**Status:** Planned — provisional regex fix active (see [Current State](#current-state))
+**Status:** ✅ Implemented 2026-03-30 — all phases complete
 **Related TD:** TD-010 (DistrictAlias pattern, ✅ resolved), TD-053 (SchoolAlias pattern, ✅ resolved)
 **Related ADR:** *(new ADR recommended — see [ADR Recommendation](#adr-recommendation))*
 
@@ -201,26 +201,20 @@ registers "Example Corp Inc." as an `OrganizationAlias`, and clears the review i
 
 ### Phase 3 — Import Changes
 
-- [ ] Replace org-creation block in `match_volunteer()` with call to `resolve_organization()`.
-- [ ] Remove suffix-stripping regex (`_find_org` function) — now handled by service.
-- [ ] Add `org_by_alias` to cache dict in `build_import_caches()`.
-- [ ] Update unmatched record to include `resolved_volunteer_id` FK (so the review queue
-  knows which volunteer to link when admin resolves).
+- [x] Replace org-creation block in `match_volunteer()` with call to `resolve_organization()`.
+- [x] Remove suffix-stripping regex (`_find_org` function) — now handled by service.
+- [x] Add `org_by_alias` to cache dict in `build_import_caches()`.
+- [x] Update unmatched record to include `resolved_volunteer_id` FK.
 
 ### Phase 4 — Draft Review Queue
 
-- [ ] Add `UNRESOLVED_VOLUNTEER_ORG` type to `DraftReviewType` enum.
-- [ ] Update `get_draft_review_queue()` in `draft_review_service.py` to include unresolved
-  volunteer org records (join `pathful_unmatched_record WHERE volunteer_id IS NOT NULL AND
-  unmatched_type = 'VOLUNTEER' AND ...`).
-- [ ] Add `resolve_volunteer_org(volunteer_id, org_id, user_id)` action to service:
-  - Creates `VolunteerOrganization` FK
-  - Creates `OrganizationAlias` for the Pathful string
-  - Marks the unmatched record as resolved
-  - Audit logs the action
-- [ ] Update the draft review template (`templates/virtual/pathful/draft_review.html`) to
-  render volunteer org cards with org search/select.
-- [ ] Integration tests: `tests/integration/test_draft_review.py` — extend existing suite.
+> [!NOTE]
+> **Implementation deviation:** We used the existing **Unmatched Queue** (`/pathful/unmatched`) rather than the Draft Review Queue as originally planned. This keeps all entity-resolution work in one place and is consistent with the SchoolAlias pattern (TD-053).
+
+- [x] Unresolved volunteers surface in Unmatched Queue with `attempted_match_organization` string displayed.
+- [x] Organization fuzzy-match dropdown renders in the **Match Suggestions** column.
+- [x] `POST resolve_unmatched` with `action=match_organization` creates `VolunteerOrganization`, registers `OrganizationAlias`, marks record resolved.
+- [x] Sibling auto-resolution: all pending records with same `attempted_match_organization` string are auto-resolved.
 
 ### Phase 5 — Admin UI for OrganizationAlias Management
 

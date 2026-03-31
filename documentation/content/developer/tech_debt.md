@@ -440,7 +440,7 @@ Ordered by **what best unblocks future work**:
 | 1 | **TD-009** | `db.session.commit()` Scattered in 44 Route Files | M |
 | 2 | **TD-011** | SQLite in Production | M |
 | 3 | **TD-013** | No True Application Factory Pattern | M |
-| 4 | **TD-052** | Volunteer org matching → alias-based resolution *(provisional regex active)* | M |
+| ~~4~~ | ~~**TD-052**~~ | ~~Volunteer org matching → alias-based resolution~~ ✅ | ~~M~~ |
 | 5 | **TD-016** | Cache Model Proliferation in `reports.py` | M |
 | 6 | **TD-022** | No Test Coverage for Extracted Blueprints | M |
 | ~~7~~ | ~~**TD-033**~~ | ~~Student Import `str(None)` Data Cleanup~~ ✅ | ~~M~~ |
@@ -496,6 +496,7 @@ All resolved items, for historical reference:
 | TD-032 | Pathful Multi-District `district_partner` Mismatch | 2026-03-07 | Removed `district_partner` filter from FK-based EventTeacher counting path. Pathful assigns a single `district_partner` per event, so multi-district sessions get mislabelled (e.g. KCKPS event tagged "Hogan Preparatory Academy"). FK link already proves attendance; filter kept only on supplementary text-matching path. Fixed under-counting for 17 teachers across 2 events in Spring 2025-2026. **Upstream fix needed:** notify Pathful that events with teachers from multiple districts get the wrong `district_partner` value. |
 | TD-038 | Session Status Classification Dedup | 2026-03-16 | CONFIRMED/PUBLISHED sessions silently dropped from teacher progress counting. Extracted ~350 lines of duplicated inline classification from 2 route files into `services/session_status_service.py`. Future CONFIRMED/PUBLISHED → "Planned"; past → "Needs Review". 36 unit tests. See ADR D-010. |
 | TD-039 | Inline `import pytz` in Newsletter | 2026-03-17 | `import pytz` was inside 2 endpoint functions in `newsletter.py`. Moved to module level. |
+| TD-052 | Volunteer Org Matching — Migrate to Alias-Based Resolution | 2026-03-30 | `OrganizationAlias` model created. `resolve_organization()` 4-tier service implemented. `match_volunteer()` refactored to call service; raw org string stored in `Volunteer.organization_name` on miss. Unresolved volunteers surface in Unmatched Queue (`/pathful/unmatched`) with fuzzy org dropdown. Selecting an org creates `VolunteerOrganization`, registers alias, and auto-resolves siblings. 6 unit tests added. |
 | TD-053 | SchoolAlias Admin UI | 2026-03-30 | Implemented the Entity Identity Reconciliation Pattern for School matching. Created SchoolAlias database model, built the unmatched resolving UI with fuzzy match searches, and added auto-bulk-resolving Polish feature. |
 
 ---
