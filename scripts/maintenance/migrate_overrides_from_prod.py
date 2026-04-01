@@ -97,6 +97,77 @@ for row in prod_rows:
             (local_tp_id, event_id, action, reason, created_at, created_by),
         )
         existing_overrides.add(key)
+
+        # For ADD overrides: also copy the EventTeacher record the UI creates on prod.
+        # When an admin adds an override, prod creates an EventTeacher(status='registered')
+        # row to formally link the teacher to the event. Without this local gets the
+        # attendance_override row but the teacher stays "Not Started" in the dashboard.
+        if action == "add":
+            # Get the teacher_id (contact ID) from the teacher_progress email
+            local_teacher_row = lc.execute(
+                "SELECT t.id FROM teacher t "
+                "JOIN contact c ON t.id = c.id "
+                "JOIN teacher_progress tp ON tp.email = c.email "
+                "WHERE tp.id = ? LIMIT 1",
+                (local_tp_id,),
+            ).fetchone()
+
+            if local_teacher_row:
+                local_teacher_id = local_teacher_row[0]
+                # Check if EventTeacher already exists locally
+                et_exists = lc.execute(
+                    "SELECT 1 FROM event_teacher WHERE teacher_id=? AND event_id=?",
+                    (local_teacher_id, event_id),
+                ).fetchone()
+
+                if not et_exists:
+                    # Pull the EventTeacher row from prod to get exact status/metadata
+                    prod_teacher_row = pc.execute(
+                        "SELECT t.id FROM teacher t "
+                        "JOIN contact c ON t.id = c.id "
+                        "JOIN teacher_progress tp ON tp.email = c.email "
+                        "WHERE tp.id = ? LIMIT 1",
+                        (prod_tp_id,),
+                    ).fetchone()
+                    prod_et = None
+                    if prod_teacher_row:
+                        prod_et = pc.execute(
+                            "SELECT * FROM event_teacher WHERE teacher_id=? AND event_id=?",
+                            (prod_teacher_row[0], event_id),
+                        ).fetchone()
+
+                    if prod_et:
+                        # Copy the prod row but substitute the local teacher_id
+                        et_cols = [
+                            r[1]
+                            for r in pc.execute(
+                                "PRAGMA table_info(event_teacher)"
+                            ).fetchall()
+                        ]
+                        et_row = list(prod_et)
+                        teacher_idx = et_cols.index("teacher_id")
+                        et_row[teacher_idx] = local_teacher_id
+                        placeholders = ",".join("?" * len(et_cols))
+                        col_names = ",".join(et_cols)
+                        lc.execute(
+                            f"INSERT OR IGNORE INTO event_teacher ({col_names}) VALUES ({placeholders})",
+                            et_row,
+                        )
+                        print(
+                            f"    → also synced EventTeacher({local_teacher_id}, event={event_id}, "
+                            f"status={prod_et[et_cols.index('status')]})"
+                        )
+                    else:
+                        # Prod doesn't have an EventTeacher row either; insert a 'registered' stub
+                        lc.execute(
+                            "INSERT OR IGNORE INTO event_teacher (teacher_id, event_id, status) "
+                            "VALUES (?, ?, 'registered')",
+                            (local_teacher_id, event_id),
+                        )
+                        print(
+                            f"    → inserted stub EventTeacher({local_teacher_id}, event={event_id})"
+                        )
+
     ov_inserted += 1
 
 if not DRY_RUN:
