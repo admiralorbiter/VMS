@@ -179,6 +179,9 @@ class UnmatchedType:
     SCHOOL_UNRESOLVED = (
         "school_unresolved"  # Teacher found but school name didn't match DB
     )
+    ORGANIZATION = (
+        "organization"  # Volunteer found but organization name didn't match DB
+    )
 
 
 class ResolutionStatus:

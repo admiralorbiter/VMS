@@ -52,6 +52,10 @@
                             <span class="badge bg-primary fs-6">{{ volunteer_pending|default(0) }}</span>
                             <div><small class="text-muted">Volunteers</small></div>
                         </div>
+                        <div>
+                            <span class="badge bg-warning text-dark fs-6">{{ company_pending|default(0) }}</span>
+                            <div><small class="text-muted">Companies</small></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -86,10 +90,20 @@
                                     Volunteers</option>
                                 <option value="school_unresolved" {% if type_filter=='school_unresolved' %}selected{% endif %}>
                                     Schools</option>
+                                <option value="organization" {% if type_filter=='organization' %}selected{% endif %}>
+                                    Companies</option>
                             </select>
                         </div>
-                        <div class="col-auto ms-auto">
-                            <a href="{{ url_for('virtual.pathful_import') }}" class="btn btn-sm btn-outline-primary">
+                        <div class="col-auto">
+                            <label class="form-label mb-0 me-2" style="visibility:hidden">Search</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" name="q" class="form-control" placeholder="Search name or email..." value="{{ search_query|default('') }}">
+                                <button class="btn btn-outline-secondary" type="submit">Search</button>
+                            </div>
+                        </div>
+                        <div class="col-auto ms-auto d-flex align-items-end">
+                            <a href="{{ url_for('virtual.pathful_import') }}" class="btn btn-sm btn-outline-primary me-2">
                                 <i class="fas fa-file-import me-1"></i>New Import
                             </a>
                             <a href="{{ url_for('virtual.pathful_users') }}" class="btn btn-sm btn-outline-secondary">
@@ -147,7 +161,66 @@
                         {% endif %}
                     </div>
                     <div class="card-body p-0">
-                        {% if enriched_records %}
+                        {% if type_filter == 'organization' %}
+                        {# ── Aggregated Company Queue ──────────────────────────────────── #}
+                        {% if company_groups %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Company String (from Pathful)</th>
+                                        <th class="text-center">Volunteers Affected</th>
+                                        <th>Map to Organization</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for company_str, count in company_groups %}
+                                    <tr>
+                                        <td>
+                                            <strong class="text-danger">{{ company_str }}</strong>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-warning text-dark">{{ count }}</span>
+                                        </td>
+                                        <td>
+                                            <form method="POST" action="{{ url_for('virtual.resolve_company_string') }}" class="d-flex gap-2 align-items-center">
+                                                <input type="hidden" name="company_string" value="{{ company_str }}">
+                                                <select name="organization_id" class="form-select form-select-sm" required style="min-width:250px">
+                                                    <option value="">-- Select Organization --</option>
+                                                    {% for org in all_organizations %}
+                                                    <option value="{{ org.id }}">{{ org.name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </form>
+                                        </td>
+                                        <td>
+                                            <form method="POST" action="{{ url_for('virtual.resolve_company_string') }}" class="d-inline">
+                                                <input type="hidden" name="company_string" value="{{ company_str }}">
+                                                <select name="organization_id" class="form-select form-select-sm d-none" id="org-select-{{ loop.index }}"></select>
+                                                <button type="submit"
+                                                    class="btn btn-sm btn-warning text-dark"
+                                                    onclick="return submitCompanyRow(this, '{{ loop.index }}')"
+                                                >
+                                                    <i class="fas fa-link me-1"></i>Map & Fix All
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% elif type_filter != 'organization' %}
+                        <div class="p-4">
+                            <div class="alert alert-success mb-0">
+                                <i class="fas fa-check-circle me-2"></i>
+                                No unmatched records found with the current filters. All records have been resolved!
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                        {% elif enriched_records %}
                         <div class="table-responsive">
                             <table class="table table-hover mb-0">
                                 <thead class="table-light">
@@ -183,6 +256,8 @@
                                             <span class="badge bg-primary">Volunteer</span>
                                             {% elif record.unmatched_type == 'school_unresolved' %}
                                             <span class="badge bg-danger">School</span>
+                                            {% elif record.unmatched_type == 'organization' %}
+                                            <span class="badge bg-warning text-dark">Company</span>
                                             {% else %}
                                             <span class="badge bg-dark">{{ record.unmatched_type }}</span>
                                             {% endif %}
@@ -190,6 +265,8 @@
                                         <td>
                                             {% if record.unmatched_type == 'school_unresolved' %}
                                             <strong>{{ record.attempted_match_school or 'N/A' }}</strong>
+                                            {% elif record.unmatched_type == 'organization' %}
+                                            <strong>{{ record.attempted_match_organization or 'N/A' }}</strong>
                                             {% else %}
                                             <strong>{{ record.attempted_match_name or 'N/A' }}</strong>
                                             {% endif %}
@@ -311,33 +388,55 @@
                                         </td>
                                         <td>
                                             {% if record.resolution_status == 'pending' %}
-                                            <div class="btn-group btn-group-sm">
-                                                <button type="button" class="btn btn-outline-secondary dropdown-toggle"
-                                                    data-bs-toggle="dropdown">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end">
-                                                    <li>
-                                                        <form method="POST"
-                                                            action="{{ url_for('virtual.resolve_unmatched', record_id=record.id) }}"
-                                                            class="d-inline">
-                                                            <input type="hidden" name="action" value="ignore">
-                                                            <button type="submit" class="dropdown-item">
-                                                                <i class="fas fa-times me-1"></i>Ignore
+                                            <div class="d-flex gap-1 align-items-center">
+                                                {% if record.unmatched_type == 'volunteer' and record.raw_data and '_near_match_volunteer_ids' in (record.raw_data | tojson) %}
+                                                <a href="{{ url_for('virtual.pathful_merge_preview', record_id=record.id) }}"
+                                                   class="btn btn-sm btn-warning text-dark"
+                                                   title="Preview who will be merged and which sessions will move">
+                                                    <i class="fas fa-code-branch me-1"></i>Preview Merge
+                                                </a>
+                                                {% endif %}
+                                                <div class="btn-group btn-group-sm">
+                                                    <button type="button" class="btn btn-outline-secondary dropdown-toggle"
+                                                        data-bs-toggle="dropdown">
+                                                        <i class="fas fa-ellipsis-v"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end">
+                                                        <li>
+                                                            <form method="POST"
+                                                                action="{{ url_for('virtual.resolve_unmatched', record_id=record.id) }}"
+                                                                class="d-inline">
+                                                                <input type="hidden" name="action" value="ignore">
+                                                                <button type="submit" class="dropdown-item">
+                                                                    <i class="fas fa-times me-1"></i>Ignore
+                                                                </button>
+                                                            </form>
+                                                        </li>
+                                                        <li>
+                                                            <hr class="dropdown-divider">
+                                                        </li>
+                                                        {% if record.unmatched_type == 'organization' %}
+                                                        <li>
+                                                            <button class="dropdown-item fw-bold text-warning" data-bs-toggle="modal"
+                                                                data-bs-target="#linkOrganizationModal"
+                                                                data-record-id="{{ record.id }}"
+                                                                data-org-name="{{ record.attempted_match_organization }}">
+                                                                <i class="fas fa-link me-1"></i>Manual Link Company
                                                             </button>
-                                                        </form>
-                                                    </li>
-                                                    <li>
-                                                        <hr class="dropdown-divider">
-                                                    </li>
-                                                    <li>
-                                                        <button class="dropdown-item" data-bs-toggle="modal"
-                                                            data-bs-target="#detailModal"
-                                                            data-record="{{ record.raw_data | tojson | e }}">
-                                                            <i class="fas fa-eye me-1"></i>View Raw Data
-                                                        </button>
-                                                    </li>
-                                                </ul>
+                                                        </li>
+                                                        <li>
+                                                            <hr class="dropdown-divider">
+                                                        </li>
+                                                        {% endif %}
+                                                        <li>
+                                                            <button class="dropdown-item" data-bs-toggle="modal"
+                                                                data-bs-target="#detailModal"
+                                                                data-record="{{ record.raw_data | tojson | e }}">
+                                                                <i class="fas fa-eye me-1"></i>View Raw Data
+                                                            </button>
+                                                        </li>
+                                                    </ul>
+                                                </div>
                                             </div>
                                             {% else %}
                                             <small class="text-muted">
@@ -426,6 +525,39 @@
     </div>
 </div>
 
+<!-- Link Organization Modal -->
+<div class="modal fade" id="linkOrganizationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="POST" id="linkOrgForm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Manual Link Company</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Map the unrecognized company string <strong id="linkOrgDisplay" class="text-danger"></strong> to an existing Canonical VMS Organization.</p>
+                    <input type="hidden" name="action" value="match_organization">
+                    <input type="hidden" name="notes" value="Mapped manually via dashboard">
+
+                    <div class="mb-3">
+                        <label class="form-label">Select Organization</label>
+                        <select name="organization_id" class="form-select" required>
+                            <option value="">-- Choose Organization --</option>
+                            {% for org in all_organizations %}
+                            <option value="{{ org.id }}">{{ org.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning text-dark"><i class="fas fa-link me-1"></i>Link</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
     function updateBulkBar() {
         const checkboxes = document.querySelectorAll('.record-checkbox:checked');
@@ -469,5 +601,42 @@
             document.getElementById('raw-data-display').textContent = rawData;
         }
     });
+
+    // Handle link organization modal
+    document.getElementById('linkOrganizationModal')?.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+        var recordId = button.getAttribute('data-record-id');
+        var orgName = button.getAttribute('data-org-name');
+
+        document.getElementById('linkOrgDisplay').textContent = '"' + orgName + '"';
+
+        // Dynamically update the form action url
+        var form = document.getElementById('linkOrgForm');
+        form.action = '/virtual/pathful/unmatched/' + recordId + '/resolve';
+    });
+
+    // Company queue: submit uses the select from the same row
+    function submitCompanyRow(btn, idx) {
+        // Find the select in the same <tr>
+        var row = btn.closest('tr');
+        var sel = row.querySelector('select[name="organization_id"]');
+        if (!sel || !sel.value) {
+            alert('Please select an organization first.');
+            return false;
+        }
+        // Copy selected value into the submit form's hidden-ish select
+        var submitForm = btn.closest('form');
+        var hiddenSel = submitForm.querySelector('select[name="organization_id"]');
+        if (!hiddenSel) {
+            var inp = document.createElement('input');
+            inp.type = 'hidden';
+            inp.name = 'organization_id';
+            inp.value = sel.value;
+            submitForm.appendChild(inp);
+        } else {
+            hiddenSel.value = sel.value;
+        }
+        return true;
+    }
 </script>
 {% endblock %}

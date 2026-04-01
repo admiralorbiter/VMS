@@ -247,7 +247,12 @@ def process_session_report_row(
                     cached_teacher = None
                     if caches:
                         cached_teacher = caches["teacher_record_by_name"].get(norm_key)
+                        # None means a name collision was detected at cache-build time
+                        # (two teachers share the same normalized name). Treat as no-match
+                        # and fall through to find_or_create_teacher so we don't
+                        # silently attribute attendance to the wrong teacher.
                     if cached_teacher:
+
                         teacher_id_to_link = cached_teacher.id
                         teacher_obj = cached_teacher
                     else:

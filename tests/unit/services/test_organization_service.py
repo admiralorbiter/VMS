@@ -59,29 +59,33 @@ def test_tier3_alias_match(app):
         assert result.id == org.id
 
 
-def test_tier4_suffix_auto_learning(app):
+def test_tier4_quarantine_first(app):
+    """B2: T4 now returns None instead of auto-writing an alias.
+
+    Before B2, resolve_organization() would auto-write an OrganizationAlias
+    and return the matched org. After B2 (quarantine-first), it must return
+    None and leave alias creation to admin confirmation.
+    """
     with app.app_context():
-        # Create an org with a clean name
+        from models.organization import Organization, OrganizationAlias
+        from services.organization_service import resolve_organization
+
         org = Organization(name="Next Level")
         db.session.add(org)
         db.session.commit()
 
-        # Pathful sends us "Next Level, Inc."
         incoming_name = "Next Level, Inc."
 
         # Initially, it shouldn't exist as an alias
         assert OrganizationAlias.query.filter_by(name=incoming_name).first() is None
 
-        # Resolve triggers auto-learning
+        # B2: T4 now returns None (quarantine-first, no auto-alias)
         result = resolve_organization(incoming_name)
-        assert result is not None
-        assert result.id == org.id
+        assert result is None  # NOT the org — quarantine-first
 
-        # Verify the auto-learned alias was saved to DB
+        # Critical: verify the alias was NOT auto-written
         learned_alias = OrganizationAlias.query.filter_by(name=incoming_name).first()
-        assert learned_alias is not None
-        assert learned_alias.organization_id == org.id
-        assert learned_alias.is_auto_generated is True
+        assert learned_alias is None  # B2: no auto-alias
 
 
 def test_unresolvable_organization(app):

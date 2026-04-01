@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+{% block title %}Merge Preview — {{ record.attempted_match_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    {# ── Breadcrumb ──────────────────────────────────────────────────────────── #}
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('virtual.pathful_unmatched', type='volunteer') }}">
+                    Unmatched Records
+                </a>
+            </li>
+            <li class="breadcrumb-item active">Merge Preview</li>
+        </ol>
+    </nav>
+
+    {# ── Page header ─────────────────────────────────────────────────────────── #}
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="mb-1">
+                <i class="fas fa-code-branch me-2 text-warning"></i>Volunteer Merge Preview
+            </h1>
+            <p class="text-muted mb-0">
+                Ticket #{{ record.id }} &mdash;
+                Review both records <strong>before</strong> confirming the merge.
+                No data changes until you click <strong>Confirm Merge</strong>.
+            </p>
+        </div>
+    </div>
+
+    {# ── Impact summary banner ───────────────────────────────────────────────── #}
+    <div class="alert alert-warning d-flex align-items-center gap-3 mb-4">
+        <i class="fas fa-exclamation-triangle fa-2x text-warning flex-shrink-0"></i>
+        <div>
+            <strong>What will happen when you Confirm:</strong>
+            <ul class="mb-0 mt-1">
+                <li>All <strong>{{ duplicate_sessions|length }} session(s)</strong> currently attributed to
+                    <em>{{ duplicate.first_name }} {{ duplicate.last_name }}</em>
+                    will be moved to the canonical record you select below.</li>
+                <li><code>pathful_user_id</code> will be backfilled onto the canonical record so future imports resolve via P1.</li>
+                <li>Org links from the duplicate will be copied to the canonical (if not already present).</li>
+                <li>The duplicate volunteer record will be <strong class="text-danger">deleted</strong>.</li>
+            </ul>
+        </div>
+    </div>
+
+    {# ── Side-by-side comparison ─────────────────────────────────────────────── #}
+    {% for item in candidates_data %}
+    {% set canonical = item.volunteer %}
+    {% set canon_sessions = item.sessions %}
+
+    <div class="card mb-4 border-0 shadow-sm">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                Option {{ loop.index }}:
+                Merge <span class="text-danger">{{ duplicate.first_name }} {{ duplicate.last_name }}</span>
+                →
+                <span class="text-success">{{ canonical.first_name }} {{ canonical.last_name }}</span>
+            </h5>
+            <span class="badge bg-secondary">Candidate vol_id={{ canonical.id }}</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="row g-0">
+
+                {# LEFT col: Duplicate (the import-created record) #}
+                <div class="col-md-6 border-end">
+                    <div class="p-3 bg-danger bg-opacity-10 border-bottom">
+                        <h6 class="text-danger mb-0">
+                            <i class="fas fa-trash-alt me-1"></i>
+                            DUPLICATE (will be deleted)
+                        </h6>
+                        <small class="text-muted">vol_id={{ duplicate.id }}</small>
+                    </div>
+                    <div class="p-3">
+                        <table class="table table-sm table-borderless mb-3">
+                            <tbody>
+                                <tr>
+                                    <th class="text-muted w-40">Name</th>
+                                    <td>{{ duplicate.first_name }} {{ duplicate.last_name }}</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted">Pathful ID</th>
+                                    <td>
+                                        {% if duplicate.pathful_user_id %}
+                                        <code>{{ duplicate.pathful_user_id }}</code>
+                                        {% else %}
+                                        <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted">Company</th>
+                                    <td>{{ duplicate.organization_name or '—' }}</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted">Org Links</th>
+                                    <td>
+                                        {% for lnk in duplicate_orgs %}
+                                        <span class="badge bg-secondary me-1">
+                                            {{ lnk.organization.name if lnk.organization else lnk.organization_id }}
+                                        </span>
+                                        {% else %}
+                                        <span class="text-muted">none</span>
+                                        {% endfor %}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        {# Sessions attributed to the duplicate #}
+                        <h6 class="text-danger">
+                            <i class="fas fa-calendar-check me-1"></i>
+                            {{ duplicate_sessions|length }} Session(s) — will be MOVED
+                        </h6>
+                        {% if duplicate_sessions %}
+                        <div style="max-height:220px; overflow-y:auto;">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Session Title</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for ev_id, ev_title, ev_date in duplicate_sessions %}
+                                    <tr>
+                                        <td class="text-nowrap">
+                                            <small>{{ ev_date.strftime('%Y-%m-%d') if ev_date else '—' }}</small>
+                                        </td>
+                                        <td><small>{{ ev_title or '—' }}</small></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-muted mb-0"><small>No sessions — safe to delete.</small></p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {# RIGHT col: Canonical (the Salesforce-synced record to keep) #}
+                <div class="col-md-6">
+                    <div class="p-3 bg-success bg-opacity-10 border-bottom">
+                        <h6 class="text-success mb-0">
+                            <i class="fas fa-check-circle me-1"></i>
+                            CANONICAL (will be kept)
+                        </h6>
+                        <small class="text-muted">vol_id={{ canonical.id }}</small>
+                    </div>
+                    <div class="p-3">
+                        <table class="table table-sm table-borderless mb-3">
+                            <tbody>
+                                <tr>
+                                    <th class="text-muted w-40">Name</th>
+                                    <td>{{ canonical.first_name }} {{ canonical.last_name }}</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted">Pathful ID</th>
+                                    <td>
+                                        {% if canonical.pathful_user_id %}
+                                        <code>{{ canonical.pathful_user_id }}</code>
+                                        {% else %}
+                                        <span class="text-muted">—
+                                            <small class="text-info">(will be backfilled)</small>
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted">Company</th>
+                                    <td>{{ canonical.organization_name or '—' }}</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted">Salesforce ID</th>
+                                    <td>
+                                        {% if canonical.salesforce_individual_id %}
+                                        <a href="{{ canonical.salesforce_contact_url }}" target="_blank" class="text-muted small">
+                                            <i class="fas fa-external-link-alt me-1"></i>{{ canonical.salesforce_individual_id }}
+                                        </a>
+                                        {% else %}
+                                        <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        {# Sessions already on the canonical #}
+                        <h6 class="text-success">
+                            <i class="fas fa-calendar me-1"></i>
+                            {{ canon_sessions|length }} Existing Session(s)
+                            <small class="text-muted fw-normal">+ {{ duplicate_sessions|length }} incoming</small>
+                        </h6>
+                        {% if canon_sessions %}
+                        <div style="max-height:220px; overflow-y:auto;">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Session Title</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for ev_id, ev_title, ev_date in canon_sessions %}
+                                    <tr>
+                                        <td class="text-nowrap">
+                                            <small>{{ ev_date.strftime('%Y-%m-%d') if ev_date else '—' }}</small>
+                                        </td>
+                                        <td><small>{{ ev_title or '—' }}</small></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-muted mb-0"><small>No existing sessions.</small></p>
+                        {% endif %}
+                    </div>
+                </div>
+
+            </div>{# /row #}
+        </div>{# /card-body #}
+
+        {# Action footer #}
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <a href="{{ url_for('virtual.pathful_unmatched', type='volunteer') }}"
+               class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Queue
+            </a>
+            <div class="d-flex gap-2">
+                {# Reject — keep as separate volunteers #}
+                <form method="POST"
+                      action="{{ url_for('virtual.resolve_unmatched', record_id=record.id) }}"
+                      onsubmit="return confirm('Keep {{ duplicate.first_name }} {{ duplicate.last_name }} as a separate volunteer? This ticket will be closed.')">
+                    <input type="hidden" name="action" value="reject_near_match">
+                    <button type="submit" class="btn btn-outline-danger">
+                        <i class="fas fa-times me-1"></i>They Are Different People
+                    </button>
+                </form>
+
+                {# Confirm — merge duplicate → this canonical #}
+                <form method="POST"
+                      action="{{ url_for('virtual.resolve_unmatched', record_id=record.id) }}"
+                      onsubmit="return confirm('Confirm merge? {{ duplicate_sessions|length }} session(s) will be moved and the duplicate record deleted. This cannot be undone.')">
+                    <input type="hidden" name="action" value="confirm_near_match">
+                    <input type="hidden" name="canonical_volunteer_id" value="{{ canonical.id }}">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-code-branch me-1"></i>
+                        Confirm Merge →
+                        {{ canonical.first_name }} {{ canonical.last_name }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    {# No candidates found in raw_data — fall back to a manual picker #}
+    <div class="card mb-4 border-warning">
+        <div class="card-header bg-warning bg-opacity-25">
+            <h5 class="mb-0">
+                <i class="fas fa-exclamation-triangle me-1 text-warning"></i>
+                No Candidate Found in Ticket Data
+            </h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted">
+                This ticket has no <code>_near_match_volunteer_ids</code> in its
+                <code>raw_data</code>. It may be a B3 backfill ticket where the
+                canonical record needs to be selected manually.
+            </p>
+
+            {# Duplicate info panel #}
+            <div class="alert alert-secondary">
+                <strong>Duplicate record:</strong>
+                {{ duplicate.first_name }} {{ duplicate.last_name }}
+                (vol_id={{ duplicate.id }},
+                pathful_id={{ duplicate.pathful_user_id or 'none' }},
+                {{ duplicate_sessions|length }} session(s))
+            </div>
+
+            <form method="POST"
+                  action="{{ url_for('virtual.resolve_unmatched', record_id=record.id) }}"
+                  class="row g-3 align-items-end">
+                <input type="hidden" name="action" value="confirm_near_match">
+                <div class="col-md-8">
+                    <label class="form-label fw-bold">Select canonical volunteer (by vol_id):</label>
+                    <input type="number" name="canonical_volunteer_id" class="form-control"
+                           placeholder="Enter Volunteer ID" required>
+                    <div class="form-text">
+                        Find the canonical record in the
+                        <a href="{{ url_for('virtual.pathful_unmatched') }}" target="_blank">Volunteers list</a>
+                        or the Contacts admin page.
+                    </div>
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <a href="{{ url_for('virtual.pathful_unmatched', type='volunteer') }}"
+                       class="btn btn-outline-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-warning text-dark"
+                            onclick="return confirm('Merge this duplicate into the entered volunteer ID?')">
+                        <i class="fas fa-code-branch me-1"></i>Confirm Merge
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+
+</div>
+{% endblock %}

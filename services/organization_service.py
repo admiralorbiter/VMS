@@ -90,49 +90,57 @@ def resolve_organization(
     if alias_row:
         return alias_row.organization
 
-    # Tier 4: Suffix-Stripper Regex & Auto-Learning
+    # Tier 4: Suffix-Stripper Regex (read-only probe)
+    # B2: We no longer auto-learn aliases here. Instead we return None and let
+    # the caller (_ensure_volunteer_org_link) create a quarantine ticket with
+    # the near-match candidate embedded in raw_data for admin confirmation.
+    # The alias is only written AFTER admin clicks "Confirm" in the quarantine UI.
     stripped_name = clean_organization_suffix(name)
 
-    # If stripping didn't actually change anything meaningful, we can't learn from it
     if not stripped_name or stripped_name == name.lower().strip():
         logger.warning("Could not resolve organization name: '%s'", name)
         return None
 
-    # Load all orgs to find a match for the stripped string
-    # (Since we cleaned all DB orgs in Phase 0, we can safely compare stripped strings)
-    all_orgs = Organization.query.all()
+    # If a near-match exists, log it but do NOT write the alias.
+    candidate = find_org_near_match(name)
+    if candidate:
+        logger.info(
+            "Near-org match found (T4, quarantine-first): '%s' ~~ '%s' (ID %s). "
+            "Queuing for admin confirmation instead of auto-learning alias.",
+            name,
+            candidate.name,
+            candidate.id,
+        )
 
-    fallback_match = None
+    # Not found at all (or found but quarantined)
+    logger.warning("Could not resolve organization name via any tier: '%s'", name)
+    return None
+
+
+def find_org_near_match(name: str) -> "Organization | None":
+    """
+    Probe-only version of the T4 suffix-strip logic.
+
+    Returns the Organization that would have been auto-aliased by the old T4
+    logic, WITHOUT writing anything to the database. Used by callers that want
+    to surface the near-match candidate to an admin for confirmation.
+
+    Returns None if no near-match is found.
+    """
+    if not name or not name.strip():
+        return None
+
+    from models.organization import Organization
+
+    stripped_name = clean_organization_suffix(name.strip())
+    if not stripped_name or stripped_name == name.strip().lower():
+        return None
+
+    all_orgs = Organization.query.all()
     for candidate in all_orgs:
         if (
             candidate.name
             and clean_organization_suffix(candidate.name) == stripped_name
         ):
-            fallback_match = candidate
-            break
-
-    if fallback_match:
-        # We found a match using the fallback logic!
-        # AUTO-LEARNING: Create a permanent OrganizationAlias so Tier 3 catches it instantly next time.
-        logger.info(
-            "Auto-learning OrganizationAlias: '%s' -> '%s' (ID %s)",
-            name,
-            fallback_match.name,
-            fallback_match.id,
-        )
-        try:
-            new_alias = OrganizationAlias(
-                organization_id=fallback_match.id, name=name, is_auto_generated=True
-            )
-            db.session.add(new_alias)
-            db.session.flush()  # Use flush instead of commit to protect outer transactions
-        except Exception as e:
-            # Handle possible race conditions or integrity errors securely
-            db.session.rollback()
-            logger.warning("Failed to auto-learn OrganizationAlias '%s': %s", name, e)
-
-        return fallback_match
-
-    # Not found at all
-    logger.warning("Could not resolve organization name via any tier: '%s'", name)
+            return candidate
     return None

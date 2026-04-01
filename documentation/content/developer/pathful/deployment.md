@@ -532,5 +532,121 @@ All historical Pathful exports have been loaded using the Phase 1 import pipelin
 
 ---
 
-*Last updated: March 19, 2026*
-*Version: 3.0 — Added Phase D-5: Draft Review Queue, updated D-1/D-2 status*
+### Phase E: Import Pipeline Hardening ✅ COMPLETE
+
+**Priority:** HIGH — Data integrity + duplicate prevention
+**Timeline:** April 2026
+**Dependency:** Phases 1–D complete
+**Status:** ✅ Complete (2026-04-01)
+
+> [!IMPORTANT]
+> Triggered by a root-cause investigation into missing sessions on the KCNSC employer
+> report. Full audit revealed five structural data integrity gaps. All fixes are
+> backward-compatible; no DDL changes required.
+
+#### E-A1: Teacher Name Cache Collision Detection ✅
+
+**File:** `routes/virtual/pathful_import/matching.py` — `build_import_caches()`
+
+`teacher_record_by_name` previously used a plain dict assignment that silently let a
+second teacher overwrite a first when two teachers share the same normalised full name.
+Fixed to use the same collision-marker pattern (`None`) as the `teacher_by_name` cache.
+
+#### E-A2: Event P2 Session ID Cross-Check ✅
+
+**File:** `routes/virtual/pathful_import/matching.py` — `match_or_create_event()`
+
+Back-to-back sessions with the same title on the same day (e.g., two "Creative Careers
+Uncovered" sessions) were being silently merged into one Event row. Added a guard: if
+the incoming `session_id` differs from the matched event's stored `session_id`, fall
+through and create a new Event.
+
+#### E-B1: Email Cache Collision Markers ✅
+
+**File:** `routes/virtual/pathful_import/matching.py` — `build_import_caches()`
+
+`volunteer_by_email` and `teacher_by_email` caches used plain dict assignment. Two
+people sharing an email (family inbox, shared department address) caused the second
+to silently overwrite the first. Fixed: collision → `None` marker → lookup falls
+through to name-match tier.
+
+#### E-B2: Organization T4 Quarantine-First ✅
+
+**File:** `services/organization_service.py` — `resolve_organization()` Tier 4
+
+T4 suffix-stripping previously auto-wrote an `OrganizationAlias` immediately. If the
+near-match was spurious, that alias was permanent. Fixed: T4 now returns `None` and
+creates a quarantine ticket instead. Admin confirms → alias written via the existing
+`confirm_org_alias` handler, which also cascades all sibling records.
+
+#### E-C1: Pathful Email Backfill Service ✅
+
+**New file:** `services/pathful_id_backfill_service.py`
+
+After each P3 (name) match or new-volunteer creation, the import calls
+`backfill_volunteer_from_profile()`. This:
+1. Writes `pathful_user_id` onto Volunteer if missing → next import hits P1
+2. Looks up `PathfulUserProfile` by that ID
+3. If profile has `login_email` → adds it to `contact_email` (non-primary) → next
+   import hits P2 even if the profile arrives before the session report
+
+Safety: no standalone commits, idempotent, never overwrites existing data.
+
+**Hook locations in `match_volunteer()`:**
+- After P3 (name) match returns
+- After new-volunteer creation (P4 fallthrough)
+
+#### E-C2: Volunteer Merge Preview UI ✅
+
+**New files:**
+- `templates/virtual/pathful/merge_preview.html`
+- Route: `GET /virtual/pathful/unmatched/<id>/merge-preview` (`pathful_merge_preview`)
+
+Replaces the blind `confirm_near_match` form POST with a full side-by-side preview
+page showing both volunteer records, their field values, their org links, and the
+exact list of `event_volunteers` sessions that will be moved. Confirm/Reject buttons
+POST to the existing `resolve_unmatched` handler.
+
+A **"Preview Merge"** button now appears in the unmatched queue for any volunteer
+ticket that has `_near_match_volunteer_ids` in its `raw_data`.
+
+#### E: Unit Tests ✅
+
+**New file:** `tests/unit/services/test_pathful_hardening.py`
+
+28 tests covering A1 (3), A2 (3), B1 (3), B2 (4+1 regression), C1 (8):
+
+| Class | Epic | Tests |
+|---|---|---|
+| `TestA1TeacherNameCacheCollision` | A1 | 3 |
+| `TestA2EventP2SessionIdGuard` | A2 | 3 |
+| `TestB1EmailCacheCollisions` | B1 | 3 |
+| `TestB2OrgTier4QuarantineFirst` | B2 | 4 |
+| `TestB2Regression` | B2 | 1 |
+| `TestC1PathfulBackfillService` | C1 | 8 |
+
+`test_organization_service.py::test_tier4_quarantine_first` updated to match new B2
+behaviour (was asserting auto-alias behaviour).
+
+#### E: Database Readiness
+
+**No DDL changes required.** All hardening changes:
+- Touch only existing tables/columns
+- New service only reads `pathful_user_profile.login_email` (exists since Phase A-2)
+  and writes to `contact_email` (pre-existing)
+- `db.create_all()` on startup handles any edge cases (new deployment / wipe scenario)
+
+#### Phase E Rollout Checklist
+
+| Step | Action | Verification |
+|------|--------|--------------|
+| 1 | `git pull` on PythonAnywhere | Latest code present |
+| 2 | Reload WSGI app | No import errors in error log |
+| 3 | Visit `/virtual/pathful/unmatched?type=volunteer` | "Preview Merge" button visible on near-match tickets |
+| 4 | Run import with a known P3 match | Check `contact_email` gained a backfilled row |
+| 5 | Run `pytest tests/unit/services/test_pathful_hardening.py -v` | 28 passed |
+
+---
+
+*Last updated: 2026-04-01*
+*Version: 4.0 — Added Phase E: Import Pipeline Hardening (A1, A2, B1, B2, C1, C2)*

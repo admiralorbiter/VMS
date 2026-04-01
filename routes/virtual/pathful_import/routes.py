@@ -33,6 +33,7 @@ from models.pathful_import import (
     PathfulUnmatchedRecord,
     PathfulUserProfile,
     ResolutionStatus,
+    UnmatchedType,
 )
 from models.school_model import School
 from models.teacher_progress import TeacherProgress
@@ -239,7 +240,7 @@ def load_pathful_routes():
             return result
 
         if (
-            unmatched_record.unmatched_type == "volunteer"
+            unmatched_record.unmatched_type in ("volunteer", "organization")
             and unmatched_record.attempted_match_organization
         ):
             from models.organization import Organization
@@ -318,6 +319,51 @@ def load_pathful_routes():
                 for v in volunteer_matches
             ]
 
+        # Add near-name match candidates stored by the import engine
+        # (populated when multiple similar-name records exist and Priority 4
+        # couldn't auto-pick one — the admin needs to choose)
+        near_ids = raw_data.get("_near_match_volunteer_ids", [])
+        if near_ids:
+            near_vols = Volunteer.query.filter(Volunteer.id.in_(near_ids)).all()
+            existing_ids = {v["id"] for v in result["volunteer_matches"]}
+            for v in near_vols:
+                if v.id not in existing_ids:
+                    result["volunteer_matches"].append(
+                        {
+                            "id": v.id,
+                            "name": f"{v.first_name} {v.last_name}".strip(),
+                            "email": v.primary_email or "",
+                            "_near_match": True,  # flag for template highlighting
+                        }
+                    )
+
+        # B2: Add near-org match candidate stored by _ensure_volunteer_org_link.
+        # When T4 finds a suffix-strip near-match, it stores the candidate org_id
+        # in raw_data instead of auto-learning an alias. Surface it here so the
+        # admin sees "Did you mean <org>?" at the top of the organization dropdown.
+        near_org_id = raw_data.get("_near_org_match_id")
+        if near_org_id:
+            from models.organization import Organization
+
+            near_org = Organization.query.get(near_org_id)
+            if near_org:
+                existing_org_ids = {
+                    o.id for o in result.get("organization_matches", [])
+                }
+                if near_org.id not in existing_org_ids:
+                    # Prepend so it appears first in the list
+                    result["organization_matches"] = [
+                        type(
+                            "NearMatchOrg",
+                            (),
+                            {
+                                "id": near_org.id,
+                                "name": near_org.name,
+                                "_near_match": True,
+                            },
+                        )()
+                    ] + list(result.get("organization_matches", []))
+
         return result
 
     @virtual_bp.route("/pathful/unmatched")
@@ -327,10 +373,23 @@ def load_pathful_routes():
         """View and manage unmatched records with enhanced suggestions."""
         status_filter = request.args.get("status", "pending")
         type_filter = request.args.get("type", "all")
+        search_query = request.args.get("q", "").strip()
         page = request.args.get("page", 1, type=int)
         per_page = 50
 
         query = PathfulUnmatchedRecord.query
+
+        if search_query:
+            query = query.filter(
+                db.or_(
+                    PathfulUnmatchedRecord.attempted_match_name.ilike(
+                        f"%{search_query}%"
+                    ),
+                    PathfulUnmatchedRecord.attempted_match_email.ilike(
+                        f"%{search_query}%"
+                    ),
+                )
+            )
 
         if status_filter != "all":
             query = query.filter(
@@ -359,21 +418,58 @@ def load_pathful_routes():
             resolution_status="pending", unmatched_type="volunteer"
         ).count()
 
-        # Paginate results
-        unmatched = query.order_by(PathfulUnmatchedRecord.created_at.desc()).paginate(
-            page=page, per_page=per_page, error_out=False
+        # Company aggregation: unique broken company strings across ALL pending record types
+        company_q = db.session.query(
+            PathfulUnmatchedRecord.attempted_match_organization,
+            db.func.count(PathfulUnmatchedRecord.id).label("count"),
+        ).filter(
+            PathfulUnmatchedRecord.resolution_status == "pending",
+            PathfulUnmatchedRecord.attempted_match_organization.isnot(None),
+            PathfulUnmatchedRecord.attempted_match_organization != "",
+        )
+        # Apply search filter to company queue
+        if search_query and type_filter == "organization":
+            company_q = company_q.filter(
+                PathfulUnmatchedRecord.attempted_match_organization.ilike(
+                    f"%{search_query}%"
+                )
+            )
+        company_groups = (
+            company_q.group_by(PathfulUnmatchedRecord.attempted_match_organization)
+            .order_by(db.func.count(PathfulUnmatchedRecord.id).desc())
+            .all()
+        )
+        # Badge count is always unfiltered (shows true total, not search result count)
+        company_pending = (
+            db.session.query(PathfulUnmatchedRecord.attempted_match_organization)
+            .filter(
+                PathfulUnmatchedRecord.resolution_status == "pending",
+                PathfulUnmatchedRecord.attempted_match_organization.isnot(None),
+                PathfulUnmatchedRecord.attempted_match_organization != "",
+            )
+            .distinct()
+            .count()
         )
 
-        # Enrich with suggestions (only for displayed page)
+        # When viewing company queue, skip normal per-row enrichment
         enriched_records = []
-        for record in unmatched.items:
-            suggestions = get_match_suggestions(record)
-            enriched_records.append(
-                {
-                    "record": record,
-                    "suggestions": suggestions,
-                }
-            )
+        if type_filter != "organization":
+            # Paginate results
+            unmatched = query.order_by(
+                PathfulUnmatchedRecord.created_at.desc()
+            ).paginate(page=page, per_page=per_page, error_out=False)
+            for record in unmatched.items:
+                suggestions = get_match_suggestions(record)
+                enriched_records.append({"record": record, "suggestions": suggestions})
+        else:
+            # Stub paginator so template doesn't break
+            unmatched = query.order_by(
+                PathfulUnmatchedRecord.created_at.desc()
+            ).paginate(page=1, per_page=1, error_out=False)
+
+        from models.organization import Organization
+
+        all_organizations = Organization.query.order_by(Organization.name).all()
 
         return render_template(
             "virtual/pathful/unmatched.html",
@@ -381,11 +477,104 @@ def load_pathful_routes():
             enriched_records=enriched_records,
             status_filter=status_filter,
             type_filter=type_filter,
+            search_query=search_query,
             total_pending=total_pending,
             total_resolved=total_resolved,
             total_ignored=total_ignored,
             teacher_pending=teacher_pending,
             volunteer_pending=volunteer_pending,
+            company_pending=company_pending,
+            company_groups=company_groups,
+            all_organizations=all_organizations,
+        )
+
+    @virtual_bp.route(
+        "/pathful/unmatched/<int:record_id>/merge-preview", methods=["GET"]
+    )
+    @login_required
+    @admin_required
+    def pathful_merge_preview(record_id):
+        """
+        C2: Side-by-side merge preview before committing confirm_near_match.
+
+        Fetches both the duplicate and all candidate canonical volunteers from the
+        quarantine ticket's raw_data, then queries the exact event_volunteers rows
+        that will be re-parented so the admin knows the full impact before clicking
+        Confirm.
+
+        Returns a read-only page — no writes happen here.
+        """
+        import json as _json
+
+        record = PathfulUnmatchedRecord.query.get_or_404(record_id)
+
+        if record.unmatched_type != "volunteer":
+            flash("Merge preview is only available for volunteer tickets.", "warning")
+            return redirect(url_for("virtual.pathful_unmatched", type="volunteer"))
+
+        # The ticket's resolved_volunteer_id is the DUPLICATE created at import time
+        duplicate = Volunteer.query.get(record.resolved_volunteer_id)
+        if not duplicate:
+            flash("Duplicate volunteer record not found.", "error")
+            return redirect(url_for("virtual.pathful_unmatched", type="volunteer"))
+
+        # Build the list of canonical candidates from raw_data
+        raw = record.raw_data
+        if isinstance(raw, str):
+            try:
+                raw = _json.loads(raw)
+            except Exception:
+                raw = {}
+        raw = raw or {}
+
+        candidate_ids = raw.get("_near_match_volunteer_ids", [])
+        candidates = (
+            Volunteer.query.filter(Volunteer.id.in_(candidate_ids)).all()
+            if candidate_ids
+            else []
+        )
+
+        # For each candidate, pre-fetch their session counts so the template can
+        # show "X sessions currently on canonical, Y sessions would be moved"
+        def _session_rows(vol_id):
+            """Return list of (event_id, event.title, event.start_date) for a volunteer."""
+            rows = db.session.execute(
+                db.text(
+                    "SELECT ev.id, ev.title, ev.start_date "
+                    "FROM event_volunteers evl "
+                    "JOIN event ev ON ev.id = evl.event_id "
+                    "WHERE evl.volunteer_id = :vid "
+                    "ORDER BY ev.start_date DESC"
+                ),
+                {"vid": vol_id},
+            ).fetchall()
+            return rows
+
+        duplicate_sessions = _session_rows(duplicate.id)
+        candidates_data = []
+        for c in candidates:
+            candidates_data.append(
+                {
+                    "volunteer": c,
+                    "sessions": _session_rows(c.id),
+                }
+            )
+
+        # Org links for both sides
+        from models.organization import VolunteerOrganization
+
+        duplicate_orgs = VolunteerOrganization.query.filter_by(
+            volunteer_id=duplicate.id
+        ).all()
+
+        return render_template(
+            "virtual/pathful/merge_preview.html",
+            record=record,
+            duplicate=duplicate,
+            duplicate_sessions=duplicate_sessions,
+            duplicate_orgs=duplicate_orgs,
+            candidates_data=candidates_data,
+            raw=raw,
         )
 
     @virtual_bp.route("/pathful/unmatched/<int:record_id>/resolve", methods=["POST"])
@@ -416,8 +605,28 @@ def load_pathful_routes():
             flash("Volunteer creation not yet implemented.", "warning")
 
         elif action == "match_teacher":
+            from models.pathful_import import PathfulImportLog
+            from models.teacher import Teacher
+            from routes.virtual.pathful_import.matching import (
+                _try_resolve_teacher_school,
+            )
+
             teacher_id = request.form.get("teacher_id")
             if teacher_id:
+                teacher = Teacher.query.get(teacher_id)
+                import_log = PathfulImportLog.query.get(record.import_log_id)
+
+                # If they had a school string that failed naturally along with the teacher, re-evaluate it now
+                if teacher and import_log and record.attempted_match_school:
+                    _try_resolve_teacher_school(
+                        teacher=teacher,
+                        school_name=record.attempted_match_school,
+                        import_log=import_log,
+                        row_number=record.row_number,
+                        raw_data=record.raw_data,
+                        caches=None,
+                    )
+
                 record.resolve(
                     status=ResolutionStatus.RESOLVED,
                     notes=notes,
@@ -427,8 +636,28 @@ def load_pathful_routes():
                 flash("Record matched to teacher.", "success")
 
         elif action == "match_volunteer":
+            from models.pathful_import import PathfulImportLog
+            from models.volunteer import Volunteer
+            from routes.virtual.pathful_import.matching import (
+                _ensure_volunteer_org_link,
+            )
+
             volunteer_id = request.form.get("volunteer_id")
             if volunteer_id:
+                volunteer = Volunteer.query.get(volunteer_id)
+                import_log = PathfulImportLog.query.get(record.import_log_id)
+
+                # If they had an organization string that failed naturally along with the volunteer, re-evaluate it now
+                if volunteer and import_log and record.attempted_match_organization:
+                    _ensure_volunteer_org_link(
+                        volunteer=volunteer,
+                        organization_name=record.attempted_match_organization,
+                        import_log=import_log,
+                        row_number=record.row_number,
+                        raw_data=record.raw_data,
+                        caches=None,
+                    )
+
                 record.resolve(
                     status=ResolutionStatus.RESOLVED,
                     notes=notes,
@@ -576,7 +805,7 @@ def load_pathful_routes():
             # 4. Auto-resolve siblings in the queue!
             if failed_string:
                 siblings = PathfulUnmatchedRecord.query.filter_by(
-                    unmatched_type="volunteer",
+                    unmatched_type="organization",
                     attempted_match_organization=failed_string,
                     resolution_status=ResolutionStatus.PENDING,
                 ).all()
@@ -624,8 +853,299 @@ def load_pathful_routes():
                             "info",
                         )
 
+        elif action == "confirm_near_match":
+            # Admin has confirmed that the Pathful person IS the same as the VMS volunteer.
+            # The quarantine ticket's resolved_volunteer_id points to the DUPLICATE created
+            # at import time. The canonical record id comes from the form.
+            import json as _json
+
+            from models.volunteer import Volunteer
+
+            canonical_id = request.form.get("canonical_volunteer_id")
+            if not canonical_id:
+                flash(
+                    "Canonical volunteer ID is required to confirm a near-match.",
+                    "error",
+                )
+                return redirect(url_for("virtual.pathful_unmatched"))
+
+            duplicate = Volunteer.query.get(record.resolved_volunteer_id)
+            canonical = Volunteer.query.get(canonical_id)
+
+            if not duplicate or not canonical:
+                flash("Could not locate one or both volunteer records.", "error")
+                return redirect(url_for("virtual.pathful_unmatched"))
+
+            # 1. Backfill pathful_user_id onto canonical so future imports hit Priority 1
+            if duplicate.pathful_user_id and not canonical.pathful_user_id:
+                canonical.pathful_user_id = duplicate.pathful_user_id
+
+            # 2. Re-parent all event_volunteers rows from duplicate -> canonical
+            ev_count = db.session.execute(
+                db.text(
+                    "UPDATE event_volunteers SET volunteer_id = :cid "
+                    "WHERE volunteer_id = :did"
+                ),
+                {"cid": canonical.id, "did": duplicate.id},
+            ).rowcount
+
+            # 3. Re-parent event_participation rows if they exist
+            db.session.execute(
+                db.text(
+                    "UPDATE event_participation SET volunteer_id = :cid "
+                    "WHERE volunteer_id = :did"
+                ),
+                {"cid": canonical.id, "did": duplicate.id},
+            )
+
+            # 4. Copy org links from duplicate -> canonical (if not already present)
+            from models.organization import VolunteerOrganization
+
+            dup_links = VolunteerOrganization.query.filter_by(
+                volunteer_id=duplicate.id
+            ).all()
+            for lnk in dup_links:
+                exists = VolunteerOrganization.query.filter_by(
+                    volunteer_id=canonical.id, organization_id=lnk.organization_id
+                ).first()
+                if not exists:
+                    has_primary = VolunteerOrganization.query.filter_by(
+                        volunteer_id=canonical.id, is_primary=True
+                    ).first()
+                    db.session.add(
+                        VolunteerOrganization(
+                            volunteer_id=canonical.id,
+                            organization_id=lnk.organization_id,
+                            is_primary=not has_primary,
+                        )
+                    )
+                db.session.delete(lnk)
+
+            # 5. Delete the duplicate volunteer record
+            db.session.delete(duplicate)
+
+            # 6. Resolve the quarantine ticket
+            record.resolved_volunteer_id = canonical.id
+            record.resolve(
+                status=ResolutionStatus.RESOLVED,
+                notes=(
+                    f"Admin confirmed near-name merge: '{record.attempted_match_name}' "
+                    f"(Pathful) → vol_id={canonical.id} '{canonical.first_name} {canonical.last_name}'. "
+                    f"{ev_count} event_volunteers row(s) re-parented. Duplicate deleted."
+                ),
+                resolved_by=current_user.id,
+            )
+            flash(
+                f"Merged '{record.attempted_match_name}' → {canonical.first_name} {canonical.last_name}. "
+                f"{ev_count} session(s) re-attributed. Duplicate record deleted.",
+                "success",
+            )
+
+        elif action == "reject_near_match":
+            # Admin says these are NOT the same person — leave the duplicate as a real
+            # new volunteer and simply close the review ticket.
+            record.resolve(
+                status=ResolutionStatus.RESOLVED,
+                notes=(
+                    f"Admin rejected near-name merge for '{record.attempted_match_name}'. "
+                    f"Treated as a distinct new volunteer (vol_id={record.resolved_volunteer_id})."
+                ),
+                resolved_by=current_user.id,
+            )
+            flash(
+                f"Kept '{record.attempted_match_name}' as a separate volunteer record.",
+                "info",
+            )
+
+        elif action == "confirm_org_alias":
+            # B2: Admin confirmed that the company string IS the same org as the
+            # near-match candidate. Write the OrganizationAlias (what T4 used to
+            # do automatically) so future imports hit T3 instantly, then link the
+            # volunteer and cascade all pending siblings with the same string.
+            from models.organization import (
+                Organization,
+                OrganizationAlias,
+                VolunteerOrganization,
+            )
+            from models.volunteer import Volunteer
+
+            organization_id = request.form.get("organization_id")
+            if not organization_id:
+                flash("Organization ID is required to confirm an org alias.", "error")
+                return redirect(url_for("virtual.pathful_unmatched"))
+
+            org = Organization.query.get_or_404(organization_id)
+            volunteer = Volunteer.query.get_or_404(record.resolved_volunteer_id)
+            failed_string = record.attempted_match_organization
+
+            # 1. Write the OrganizationAlias (admin-confirmed, not auto-generated)
+            if (
+                failed_string
+                and failed_string.strip().lower() != org.name.strip().lower()
+            ):
+                existing_alias = OrganizationAlias.query.filter(
+                    db.func.lower(OrganizationAlias.name)
+                    == failed_string.strip().lower()
+                ).first()
+                if not existing_alias:
+                    db.session.add(
+                        OrganizationAlias(
+                            organization_id=org.id,
+                            name=failed_string.strip(),
+                            is_auto_generated=False,
+                        )
+                    )
+
+            # 2. Link this volunteer to the confirmed org
+            exists = VolunteerOrganization.query.filter_by(
+                volunteer_id=volunteer.id, organization_id=org.id
+            ).first()
+            if not exists:
+                has_primary = VolunteerOrganization.query.filter_by(
+                    volunteer_id=volunteer.id, is_primary=True
+                ).first()
+                db.session.add(
+                    VolunteerOrganization(
+                        volunteer_id=volunteer.id,
+                        organization_id=org.id,
+                        is_primary=not has_primary,
+                    )
+                )
+
+            # 3. Cascade: resolve all sibling records with the same company string
+            resolved_count = 0
+            if failed_string:
+                siblings = PathfulUnmatchedRecord.query.filter(
+                    PathfulUnmatchedRecord.attempted_match_organization
+                    == failed_string,
+                    PathfulUnmatchedRecord.resolution_status
+                    == ResolutionStatus.PENDING,
+                    PathfulUnmatchedRecord.id != record.id,
+                ).all()
+                for sibling in siblings:
+                    if sibling.resolved_volunteer_id:
+                        sib_vol = Volunteer.query.get(sibling.resolved_volunteer_id)
+                        if sib_vol:
+                            s_exists = VolunteerOrganization.query.filter_by(
+                                volunteer_id=sib_vol.id, organization_id=org.id
+                            ).first()
+                            if not s_exists:
+                                s_has_primary = VolunteerOrganization.query.filter_by(
+                                    volunteer_id=sib_vol.id, is_primary=True
+                                ).first()
+                                db.session.add(
+                                    VolunteerOrganization(
+                                        volunteer_id=sib_vol.id,
+                                        organization_id=org.id,
+                                        is_primary=not s_has_primary,
+                                    )
+                                )
+                    sibling.resolve(
+                        status=ResolutionStatus.RESOLVED,
+                        notes=f"Auto-resolved via confirmed alias '{failed_string}' -> {org.name}.",
+                        resolved_by=current_user.id,
+                    )
+                    resolved_count += 1
+
+            # 4. Resolve this ticket
+            record.resolve(
+                status=ResolutionStatus.RESOLVED,
+                notes=(
+                    f"Admin confirmed org alias: '{failed_string}' -> '{org.name}' (ID {org.id}). "
+                    f"Alias written. Volunteer linked. {resolved_count} sibling(s) cascaded."
+                ),
+                resolved_by=current_user.id,
+            )
+            flash(
+                f"Alias confirmed: '{failed_string}' is now '{org.name}'. "
+                f"Volunteer linked. {resolved_count} similar record(s) also resolved.",
+                "success",
+            )
+
         db.session.commit()
         return redirect(url_for("virtual.pathful_unmatched"))
+
+    @virtual_bp.route("/pathful/unmatched/company/resolve", methods=["POST"])
+    @login_required
+    @admin_required
+    def resolve_company_string():
+        """Resolve a broken company string by registering an alias and bulk-linking all affected volunteers."""
+        from models.organization import (
+            Organization,
+            OrganizationAlias,
+            VolunteerOrganization,
+        )
+        from models.volunteer import Volunteer
+
+        company_string = request.form.get("company_string", "").strip()
+        organization_id = request.form.get("organization_id")
+
+        if not company_string or not organization_id:
+            flash("Company string and organization are required.", "error")
+            return redirect(url_for("virtual.pathful_unmatched", type="organization"))
+
+        org = Organization.query.get_or_404(organization_id)
+
+        # 1. Register alias (so future imports resolve this string automatically)
+        if company_string.lower() != org.name.lower():
+            existing_alias = OrganizationAlias.query.filter(
+                db.func.lower(OrganizationAlias.name) == company_string.lower()
+            ).first()
+            if not existing_alias:
+                new_alias = OrganizationAlias(
+                    name=company_string,
+                    organization_id=org.id,
+                    is_auto_generated=False,
+                )
+                db.session.add(new_alias)
+
+        # 2. Sweep ALL pending records with this company string (any ticket type)
+        affected = PathfulUnmatchedRecord.query.filter(
+            PathfulUnmatchedRecord.resolution_status == ResolutionStatus.PENDING,
+            PathfulUnmatchedRecord.attempted_match_organization == company_string,
+        ).all()
+
+        linked_count = 0
+        for record in affected:
+            # If the volunteer record exists, link them to the org directly
+            if record.resolved_volunteer_id:
+                volunteer = Volunteer.query.get(record.resolved_volunteer_id)
+                if volunteer:
+                    exists = VolunteerOrganization.query.filter_by(
+                        volunteer_id=volunteer.id, organization_id=org.id
+                    ).first()
+                    if not exists:
+                        has_primary = VolunteerOrganization.query.filter_by(
+                            volunteer_id=volunteer.id, is_primary=True
+                        ).first()
+                        vol_org = VolunteerOrganization(
+                            volunteer_id=volunteer.id,
+                            organization_id=org.id,
+                            is_primary=not has_primary,
+                        )
+                        db.session.add(vol_org)
+                    linked_count += 1
+
+            # Clear the company string from the record so it leaves the company queue
+            # (Volunteer-type records stay in the volunteer queue for person confirmation)
+            record.attempted_match_organization = None
+
+            # Fully resolve organization-type tickets
+            if record.unmatched_type == UnmatchedType.ORGANIZATION:
+                record.resolve(
+                    status=ResolutionStatus.RESOLVED,
+                    notes=f"Company '{company_string}' mapped to {org.name} via bulk company resolver.",
+                    resolved_by=current_user.id,
+                )
+
+        db.session.commit()
+
+        flash(
+            f"Mapped '{company_string}' → {org.name}. "
+            f"Alias registered. {linked_count} volunteer(s) directly linked.",
+            "success",
+        )
+        return redirect(url_for("virtual.pathful_unmatched", type="organization"))
 
     @virtual_bp.route("/pathful/unmatched/bulk-resolve", methods=["POST"])
     @login_required

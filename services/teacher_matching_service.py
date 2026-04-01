@@ -251,17 +251,6 @@ def resolve_teacher_for_tp(tp):
 
                 if len(name_matches) == 1:
                     teacher = name_matches[0]
-                elif len(name_matches) > 1:
-                    # Multiple matches — prefer the one with EventTeacher records
-                    from models.event import EventTeacher
-
-                    for t in name_matches:
-                        if EventTeacher.query.filter_by(teacher_id=t.id).first():
-                            teacher = t
-                            break
-                    if not teacher:
-                        # None have ETs — fall back to first match
-                        teacher = name_matches[0]
 
     # --- Priority 4: Create new Teacher ---
     if not teacher and tp.email and tp.name:
@@ -350,10 +339,13 @@ def match_tp_to_profile(tp):
                 PathfulUserProfile.teacher_progress_id.is_(None),
                 PathfulUserProfile.name.isnot(None),
             ).all()
+            name_matches = []
             for p in candidates:
                 if normalize_name(p.name) == tp_normalized:
-                    profile = p
-                    break
+                    name_matches.append(p)
+
+            if len(name_matches) == 1:
+                profile = name_matches[0]
 
     # --- Link ---
     if profile:
