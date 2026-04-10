@@ -536,6 +536,15 @@ cp instance/vms_backup_YYYYMMDD_HHMMSS.db instance/vms.db
 flask db upgrade
 ```
 
+#### 3. Downloading Production Data for Local Dev
+
+If you download the raw database files (`.db`, `.db-wal`, `.db-shm`) via SFTP while the server is running, the database will be in a Write-Ahead Logging (WAL) state and must be merged locally. Place all three files in the same directory and run:
+
+**Merge downloaded WAL files locally:**
+```bash
+python scripts/utilities/merge_prod_wal.py instance/prod/your_database.db
+```
+
 **Reference:** [Runbook](runbook) for detailed troubleshooting procedures
 
 ## Performance Optimization

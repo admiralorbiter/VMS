@@ -138,6 +138,9 @@ cp instance/vms.db instance/vms_backup_$(date +%Y%m%d_%H%M%S).db
 
 # Restore from backup
 cp instance/vms_backup_YYYYMMDD_HHMMSS.db instance/vms.db
+
+# Merge production WAL files downloaded locally
+python scripts/utilities/merge_prod_wal.py instance/prod/your_database.db
 ```
 
 ---
