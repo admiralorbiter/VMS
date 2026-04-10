@@ -177,6 +177,20 @@ def build_import_caches():
         organization_by_name[alias.name.lower()] = alias.organization
     print(f"  Organizations: {len(all_orgs)} ({len(all_org_aliases)} aliases)")
 
+    # Undated session queue cache — for dedup and auto-resolve fast path
+    from models.pathful_import import ResolutionStatus, UnmatchedType
+    existing_undated = PathfulUnmatchedRecord.query.filter(
+        PathfulUnmatchedRecord.unmatched_type == UnmatchedType.NO_DATE_SESSION,
+        PathfulUnmatchedRecord.resolution_status.in_([
+            ResolutionStatus.PENDING, ResolutionStatus.IGNORED
+        ]),
+    ).all()
+    undated_by_session_id = {}
+    for rec in existing_undated:
+        key = rec.attempted_match_session_id or rec.attempted_match_name
+        if key:
+            undated_by_session_id[key] = rec
+
     print("Caches built.\n")
 
     return {
@@ -194,6 +208,7 @@ def build_import_caches():
         "teacher_record_by_email": teacher_record_by_email,
         "teacher_record_by_name": teacher_record_by_name,
         "organization_by_name": organization_by_name,
+        "undated_by_session_id": undated_by_session_id,
     }
 
 
@@ -347,7 +362,7 @@ def match_or_create_event(
         new_order = STATUS_ORDER.get(new_status, -1)
         return new_order > cur_order
 
-    def _update_matched_event(event, status_str, career_cluster):
+    def _update_matched_event(event, status_str, career_cluster, session_date=None):
         """Update fields on a matched event that may have changed since last import."""
         if career_cluster and not event.career_cluster:
             event.career_cluster = career_cluster
@@ -359,6 +374,31 @@ def match_or_create_event(
                 event.status = new_status
                 event.original_status_string = status_str
 
+        # Date update: Pathful import is authoritative for Pathful-owned fields.
+        if session_date and event.start_date:
+            incoming = session_date.date()
+            existing = (
+                event.start_date.date()
+                if hasattr(event.start_date, "date")
+                else event.start_date
+            )
+            if incoming != existing:
+                from routes.utils import log_audit_action
+                log_audit_action(
+                    action="pol.virtual.session.date_updated_via_import",
+                    resource_type="virtual_session",
+                    resource_id=event.id,
+                    metadata={
+                        "pathful_session_id": event.pathful_session_id,
+                        "old_date": str(existing),
+                        "new_date": str(incoming),
+                        "source": "pathful_import",
+                        "note": "Import date differs from stored date; import is authoritative.",
+                    },
+                )
+                event.start_date = session_date
+                event.end_date = session_date
+
     session_id_str = str(session_id) if session_id and not pd.isna(session_id) else None
 
     # Priority 1: Match by pathful_session_id
@@ -369,7 +409,7 @@ def match_or_create_event(
             else Event.query.filter(Event.pathful_session_id == session_id_str).first()
         )
         if event:
-            _update_matched_event(event, status_str, career_cluster)
+            _update_matched_event(event, status_str, career_cluster, session_date)
             return event, "matched_by_session_id"
 
     # Priority 2: Match by title + date
@@ -401,7 +441,7 @@ def match_or_create_event(
                 # Update pathful_session_id if not set
                 if session_id_str and not event.pathful_session_id:
                     event.pathful_session_id = session_id_str
-                _update_matched_event(event, status_str, career_cluster)
+                _update_matched_event(event, status_str, career_cluster, session_date)
                 return event, "matched_by_title_date"
 
     # No match: Create new event

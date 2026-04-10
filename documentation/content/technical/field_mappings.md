@@ -280,7 +280,8 @@ The import derives `EventTeacher.status` using this logic:
 | Admin override (notes field set) | Re-import **does not** overwrite status if `EventTeacher.notes` is populated |
 | Professional role rows | Skipped for EventTeacher creation (only Educator rows create EventTeacher) |
 | Teacher not found in system | Row flagged as unmatched in `PathfulUnmatchedRecord` table |
-
+| Session missing date | Row queued in `PathfulUnmatchedRecord` table as `no_date_session` for manual resolution |
+| Session missing date + "Draft" status | Row silently skipped (abandoned session) |
 ### Admin Override Protection
 
 When an admin manually corrects an `EventTeacher.status` and adds a note (via the event detail page), re-imports will preserve that manual correction. This is detected by checking `EventTeacher.notes IS NOT NULL`.

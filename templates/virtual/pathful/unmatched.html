@@ -56,6 +56,10 @@
                             <span class="badge bg-warning text-dark fs-6">{{ company_pending|default(0) }}</span>
                             <div><small class="text-muted">Companies</small></div>
                         </div>
+                        <div>
+                            <span class="badge text-white fs-6" style="background-color: #6f42c1;">{{ undated_pending|default(0) }}</span>
+                            <div><small class="text-muted">No Date</small></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -92,6 +96,8 @@
                                     Schools</option>
                                 <option value="organization" {% if type_filter=='organization' %}selected{% endif %}>
                                     Companies</option>
+                                <option value="no_date_session" {% if type_filter=='no_date_session' %}selected{% endif %}>
+                                    No Date Sessions</option>
                             </select>
                         </div>
                         <div class="col-auto">
@@ -102,6 +108,17 @@
                                 <button class="btn btn-outline-secondary" type="submit">Search</button>
                             </div>
                         </div>
+                        {% if type_filter == 'no_date_session' %}
+                        <div class="col-auto">
+                            <label class="form-label mb-0 me-2" style="visibility:hidden">Published Filter</label>
+                            <div class="form-check mt-1 ms-2">
+                                <input class="form-check-input" type="checkbox" id="show_published" name="show_published" value="true" {% if show_published %}checked{% endif %} onchange="this.form.submit()">
+                                <label class="form-check-label small mt-1" for="show_published" style="white-space: nowrap;">
+                                    Include 'Published' Status
+                                </label>
+                            </div>
+                        </div>
+                        {% endif %}
                         <div class="col-auto ms-auto d-flex align-items-end">
                             <a href="{{ url_for('virtual.pathful_import') }}" class="btn btn-sm btn-outline-primary me-2">
                                 <i class="fas fa-file-import me-1"></i>New Import
@@ -211,7 +228,7 @@
                                 </tbody>
                             </table>
                         </div>
-                        {% elif type_filter != 'organization' %}
+                        {% else %}
                         <div class="p-4">
                             <div class="alert alert-success mb-0">
                                 <i class="fas fa-check-circle me-2"></i>
@@ -219,7 +236,7 @@
                             </div>
                         </div>
                         {% endif %}
-                    </div>
+                        
                         {% elif enriched_records %}
                         <div class="table-responsive">
                             <table class="table table-hover mb-0">
@@ -233,7 +250,7 @@
                                         <th>Name</th>
                                         <th>Email</th>
                                         <th>School / Org</th>
-                                        <th>Match Suggestions</th>
+                                        <th>Resolution / Suggestions</th>
                                         <th>Status</th>
                                         <th>Actions</th>
                                     </tr>
@@ -258,6 +275,8 @@
                                             <span class="badge bg-danger">School</span>
                                             {% elif record.unmatched_type == 'organization' %}
                                             <span class="badge bg-warning text-dark">Company</span>
+                                            {% elif record.unmatched_type == 'no_date_session' %}
+                                            <span class="badge text-white" style="background-color: #6f42c1;">No Date</span>
                                             {% else %}
                                             <span class="badge bg-dark">{{ record.unmatched_type }}</span>
                                             {% endif %}
@@ -267,6 +286,9 @@
                                             <strong>{{ record.attempted_match_school or 'N/A' }}</strong>
                                             {% elif record.unmatched_type == 'organization' %}
                                             <strong>{{ record.attempted_match_organization or 'N/A' }}</strong>
+                                            {% elif record.unmatched_type == 'no_date_session' %}
+                                            <strong>{{ record.attempted_match_name or 'N/A' }}</strong>
+                                            <br><small class="text-muted">Session ID: {{ record.attempted_match_session_id or 'N/A' }}</small>
                                             {% else %}
                                             <strong>{{ record.attempted_match_name or 'N/A' }}</strong>
                                             {% endif %}
@@ -288,12 +310,28 @@
                                             <small>{{ record.attempted_match_school }}</small>
                                             {% elif record.attempted_match_organization %}
                                             <small><i class="fas fa-building me-1"></i>{{ record.attempted_match_organization }}</small>
+                                            {% elif record.unmatched_type == 'no_date_session' and record.raw_data %}
+                                            <small><i class="fas fa-users me-1"></i>{{ record.raw_data.get('participant_count', 0) }} Participants</small>
+                                            <br>
+                                            <small class="text-muted"><i class="fas fa-info-circle me-1"></i>Pathful Status: <span class="fw-bold">{{ record.raw_data.get('session_status', 'Unknown') }}</span></small>
                                             {% else %}
                                             <small class="text-muted">-</small>
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {% if suggestions.teacher_matches or suggestions.volunteer_matches or suggestions.school_matches or suggestions.organization_matches %}
+                                            {% if record.unmatched_type == 'no_date_session' %}
+                                                {% if record.resolution_status == 'pending' %}
+                                                    <form method="POST" action="{{ url_for('virtual.resolve_unmatched', record_id=record.id) }}" class="d-flex align-items-center">
+                                                        <input type="hidden" name="action" value="provide_date">
+                                                        <input type="date" name="session_date" class="form-control form-control-sm me-2" required style="max-width: 140px;">
+                                                        <button type="submit" class="btn btn-sm btn-success"><i class="fas fa-check"></i></button>
+                                                    </form>
+                                                {% elif record.resolution_status == 'ignored' %}
+                                                    <form method="POST" action="{{ url_for('virtual.revert_undated_session', record_id=record.id) }}" class="d-inline">
+                                                        <button type="submit" class="btn btn-sm btn-outline-warning"><i class="fas fa-undo me-1"></i>Revert to Pending</button>
+                                                    </form>
+                                                {% endif %}
+                                            {% elif suggestions.teacher_matches or suggestions.volunteer_matches or suggestions.school_matches or suggestions.organization_matches %}
                                             <div class="dropdown">
                                                 <button class="btn btn-sm btn-success dropdown-toggle" type="button"
                                                     data-bs-toggle="dropdown">
@@ -472,7 +510,7 @@
                                     {% else %}
                                     <li class="page-item">
                                         <a class="page-link"
-                                            href="{{ url_for('virtual.pathful_unmatched', page=page_num, status=status_filter, type=type_filter) }}">{{
+                                            href="{{ url_for('virtual.pathful_unmatched', page=page_num, status=status_filter, type=type_filter, show_published='true' if show_published else 'false') }}">{{
                                             page_num }}</a>
                                     </li>
                                     {% endif %}
@@ -484,7 +522,7 @@
                                     {% if unmatched.has_next %}
                                     <li class="page-item">
                                         <a class="page-link"
-                                            href="{{ url_for('virtual.pathful_unmatched', page=unmatched.next_num, status=status_filter, type=type_filter) }}">Next</a>
+                                            href="{{ url_for('virtual.pathful_unmatched', page=unmatched.next_num, status=status_filter, type=type_filter, show_published='true' if show_published else 'false') }}">Next</a>
                                     </li>
                                     {% endif %}
                                 </ul>

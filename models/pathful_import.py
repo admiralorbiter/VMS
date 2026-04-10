@@ -32,6 +32,7 @@ class PathfulImportType:
 
     SESSION_REPORT = "session_report"
     USER_REPORT = "user_report"
+    UNDATED_RESOLUTION = "undated_resolution"
 
 
 class PathfulImportLog(db.Model):
@@ -96,6 +97,7 @@ class PathfulImportLog(db.Model):
 
     # Error tracking
     unmatched_count = Column(Integer, default=0)
+    queued_undated_count = Column(Integer, default=0)
     error_count = Column(Integer, default=0)
     error_details = Column(Text)  # JSON array of error messages
 
@@ -182,6 +184,7 @@ class UnmatchedType:
     ORGANIZATION = (
         "organization"  # Volunteer found but organization name didn't match DB
     )
+    NO_DATE_SESSION = "no_date_session"
 
 
 class ResolutionStatus:
@@ -196,6 +199,14 @@ class ResolutionStatus:
 class PathfulUnmatchedRecord(db.Model):
     """
     Stores unmatched records from Pathful imports for manual review.
+
+    raw_data schema varies by unmatched_type:
+      - Standard types (teacher, volunteer, school_unresolved, organization):
+          Flat dict of the original CSV row columns.
+      - no_date_session:
+          Envelope dict: {"session_id", "session_title", "rows": [list of row dicts], ...}
+          Use get_session_rows() to access participant rows safely.
+          See _queue_undated_session() in processing.py for the full schema.
 
     When the import process cannot match a teacher, volunteer, or event
     to existing records, it creates an entry here for staff review.
@@ -332,6 +343,12 @@ class PathfulUnmatchedRecord(db.Model):
         self.resolved_teacher_id = teacher_id
         self.resolved_volunteer_id = volunteer_id
         self.resolved_event_id = event_id
+
+    def get_session_rows(self):
+        """For NO_DATE_SESSION records, return the participant row list from the envelope."""
+        if self.unmatched_type != UnmatchedType.NO_DATE_SESSION:
+            return []
+        return (self.raw_data or {}).get("rows", [])
 
     def to_dict(self):
         """Convert to dictionary for API responses."""

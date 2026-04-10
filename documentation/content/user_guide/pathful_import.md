@@ -116,6 +116,7 @@ The Session Report is the primary import—it creates sessions and tracks partic
    - Teachers matched
    - Volunteers matched
    - Unmatched records
+   - Queued undated sessions
 
 **What Gets Imported:**
 - Session ID, title, date, status
@@ -128,7 +129,13 @@ The Session Report is the primary import—it creates sessions and tracks partic
 |------------|--------------------|-----------------------|
 | Completed | `attended` | Yes |
 | Cancelled / No Show | `no_show` | No |
-| Draft / other | `registered` | No |
+| Requested / Published / other | `registered` | No |
+
+> [!CAUTION]
+> **Draft Sessions and Missing Dates**
+> If a session in the import file has no date and its status is "Draft", it is **silently ignored** by the import process as an abandoned session. 
+> 
+> If a session has no date but its status is **Requested**, **Published**, or **Completed**, it cannot be imported directly. Instead, it is placed into the **No Date Sessions** queue for manual resolution.
 
 > [!IMPORTANT]
 > On re-import, attendance status is updated if it has progressed (e.g., `registered` → `attended`). The import also **auto-links** TeacherProgress records to Teacher records when a match is found, resolving any missing `teacher_id` links.
@@ -185,7 +192,11 @@ When imports can't automatically match a teacher or volunteer, records are queue
 
 **Filters:**
 - Status: Pending / Resolved / Ignored / All
-- Type: Teachers / Volunteers
+- Type: Teachers / Volunteers / Companies / No Date Sessions
+
+> [!TIP]
+> **Filtering Published Sessions**
+> Because Pathful allows users to "Publish" sessions without confirming a date, you may see many messy or duplicate sessions in the No Date queue. By default, "Published" sessions are hidden from the "No Date Sessions" queue to reduce noise. You can view them by checking the **Include 'Published' Status** box in the filter bar.
 
 ### Resolving Individual Records
 
@@ -205,6 +216,18 @@ Each unmatched record shows:
 2. **Ignore** (if not applicable):
    - Click **Actions** → **Ignore**
    - Record is removed from pending queue
+
+### Resolving Undated Sessions
+
+When managing the **No Date Sessions** queue:
+
+1. **Provide Date**:
+   - Locate the session in the No Date queue.
+   - Enter the actual session date in the date picker input.
+   - Click the green checkmark button.
+   - The session will immediately be grouped, processed, and injected into the VMS just like a normal Pathful import row, updating teacher usage dashboards instantly.
+2. **Ignore**:
+   - If the session was a mistake, use the Actions menu to Ignore it.
 
 ### Bulk Resolution
 

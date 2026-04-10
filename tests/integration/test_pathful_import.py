@@ -16,6 +16,14 @@ Test Coverage:
 - TC-258: Unknown event - Row flagged
 - TC-259: Attendance status mapping - Pathful status → Polaris status correct
 - TC-260: Bulk import performance - Large files process within timeout
+- TC-261: Draft + no date → silently skipped, not queued
+- TC-262: Requested + no date → queued in No Date Sessions
+- TC-263: Draft + no date case-insensitive filter (DRAFT, draft, Draft all skipped)
+- TC-264: Multiple participants for same undated session deduplicated in queue
+- TC-265: Auto-resolve undated queue when date provided in subsequent import
+- TC-266: Published + no date → queued in No Date Sessions
+- TC-267: Completed + no date → queued in No Date Sessions
+- TC-268: Undated queue record stores correct session_status in envelope
 """
 
 import io
@@ -1167,4 +1175,307 @@ def test_reverse_backfill_name_match_with_middle_name(app):
         assert tp.teacher_id == t.id, (
             f"Name match should link 'Sarah Jean Williams' to Teacher "
             f"'Sarah Williams', got teacher_id={tp.teacher_id}"
+        )
+
+
+# ── Undated Session Queue Tests (TC-261 through TC-268) ─────────────────────
+
+
+def _make_no_date_row(session_id, title, status, role="Educator"):
+    """Helper: build a Pathful row dict with no date (NaN)."""
+    return {
+        "Session ID": session_id,
+        "Title": title,
+        "Date": float("nan"),
+        "Status": status,
+        "Duration": 60,
+        "User Auth Id": f"uid-{session_id}",
+        "Name": "Test Teacher",
+        "SignUp Role": role,
+        "School": "Test School",
+        "District or Company": "Test District",
+        "Partner": "PREP-KC",
+        "Registered Student Count": 10,
+        "Attended Student Count": 8,
+        "Career Cluster": "Technology",
+    }
+
+
+def _upload_df(client, headers, df, filename="test.xlsx"):
+    """Helper: upload a DataFrame as a session report."""
+    output = io.BytesIO()
+    df.to_excel(output, index=False, engine="openpyxl")
+    output.seek(0)
+    return client.post(
+        "/virtual/pathful/import",
+        headers=headers,
+        data={"file": (output, filename), "report_type": "session_report"},
+        content_type="multipart/form-data",
+    )
+
+
+def test_tc261_draft_no_date_silently_skipped(client, pathful_admin_login, app):
+    """TC-261: Draft + no date → silently skipped, no queue record, no event."""
+    session_id = "tc261-draft-nodate-001"
+    df = pd.DataFrame([_make_no_date_row(session_id, "Draft Session No Date", "Draft")])
+
+    with app.app_context():
+        initial_unmatched = PathfulUnmatchedRecord.query.filter_by(
+            attempted_match_session_id=session_id
+        ).count()
+
+    response = _upload_df(client, pathful_admin_login, df, "tc261.xlsx")
+    assert response.status_code in [200, 302]
+
+    with app.app_context():
+        # No event should have been created
+        event = Event.query.filter_by(pathful_session_id=session_id).first()
+        assert event is None, "Draft + no date should not create an Event"
+
+        # No unmatched record should have been created
+        final_unmatched = PathfulUnmatchedRecord.query.filter_by(
+            attempted_match_session_id=session_id
+        ).count()
+        assert final_unmatched == initial_unmatched, (
+            "Draft + no date should not create an unmatched record"
+        )
+
+
+def test_tc262_requested_no_date_queued(client, pathful_admin_login, app):
+    """TC-262: Requested + no date → placed in No Date Sessions queue."""
+    from models.pathful_import import UnmatchedType, ResolutionStatus
+
+    session_id = "tc262-requested-nodate-001"
+    df = pd.DataFrame([_make_no_date_row(session_id, "Requested Session No Date", "Requested")])
+
+    response = _upload_df(client, pathful_admin_login, df, "tc262.xlsx")
+    assert response.status_code in [200, 302]
+
+    with app.app_context():
+        # No event should have been created
+        event = Event.query.filter_by(pathful_session_id=session_id).first()
+        assert event is None, "Undated session should not create an Event directly"
+
+        # A queue record should exist
+        record = PathfulUnmatchedRecord.query.filter_by(
+            attempted_match_session_id=session_id,
+            unmatched_type=UnmatchedType.NO_DATE_SESSION,
+        ).first()
+        assert record is not None, "Requested + no date should create a No Date queue record"
+        assert record.resolution_status == ResolutionStatus.PENDING
+
+
+def test_tc263_draft_no_date_case_insensitive(client, pathful_admin_login, app):
+    """TC-263: Draft filter is case-insensitive — DRAFT, draft, and Draft all skipped."""
+    from models.pathful_import import UnmatchedType
+
+    variants = [
+        ("tc263-upper-001", "DRAFT"),
+        ("tc263-lower-001", "draft"),
+        ("tc263-mixed-001", "Draft"),
+    ]
+
+    for session_id, status_variant in variants:
+        df = pd.DataFrame([_make_no_date_row(session_id, f"Draft Variant {status_variant}", status_variant)])
+        response = _upload_df(client, pathful_admin_login, df, f"tc263_{status_variant}.xlsx")
+        assert response.status_code in [200, 302]
+
+    with app.app_context():
+        for session_id, status_variant in variants:
+            event = Event.query.filter_by(pathful_session_id=session_id).first()
+            assert event is None, f"Draft variant '{status_variant}' should not create event"
+
+            record = PathfulUnmatchedRecord.query.filter_by(
+                attempted_match_session_id=session_id,
+                unmatched_type=UnmatchedType.NO_DATE_SESSION,
+            ).first()
+            assert record is None, (
+                f"Draft variant '{status_variant}' should not create a queue record"
+            )
+
+
+def test_tc264_undated_multi_participant_deduplication(client, pathful_admin_login, app):
+    """TC-264: Multiple participant rows for same undated session merge into one queue record."""
+    from models.pathful_import import UnmatchedType
+
+    session_id = "tc264-dedup-nodate-001"
+    df = pd.DataFrame([
+        _make_no_date_row(session_id, "Dedup Undated Session", "Requested"),
+        {
+            **_make_no_date_row(session_id, "Dedup Undated Session", "Requested"),
+            "Name": "Second Teacher",
+            "User Auth Id": "uid-second",
+        },
+    ])
+
+    response = _upload_df(client, pathful_admin_login, df, "tc264.xlsx")
+    assert response.status_code in [200, 302]
+
+    with app.app_context():
+        records = PathfulUnmatchedRecord.query.filter_by(
+            attempted_match_session_id=session_id,
+            unmatched_type=UnmatchedType.NO_DATE_SESSION,
+        ).all()
+        assert len(records) == 1, (
+            f"Two rows for same undated session should create exactly 1 queue record, got {len(records)}"
+        )
+        # Both participant rows should be stored in the envelope
+        assert records[0].raw_data is not None
+        assert len(records[0].raw_data.get("rows", [])) == 2, (
+            "Both participant rows should be stored in the queue record's rows envelope"
+        )
+        assert records[0].raw_data.get("participant_count") == 2
+
+
+def test_tc265_auto_resolve_undated_queue_on_subsequent_import(
+    client, pathful_admin_login, app
+):
+    """TC-265: When a session is re-imported with a date, pending queue record auto-resolves."""
+    from models.pathful_import import UnmatchedType, ResolutionStatus
+
+    session_id = "tc265-autoresolve-001"
+
+    # Import 1: No date → should queue
+    df_no_date = pd.DataFrame([
+        _make_no_date_row(session_id, "Auto Resolve Session", "Requested")
+    ])
+    response1 = _upload_df(client, pathful_admin_login, df_no_date, "tc265_nodate.xlsx")
+    assert response1.status_code in [200, 302]
+
+    with app.app_context():
+        record = PathfulUnmatchedRecord.query.filter_by(
+            attempted_match_session_id=session_id,
+            unmatched_type=UnmatchedType.NO_DATE_SESSION,
+            resolution_status=ResolutionStatus.PENDING,
+        ).first()
+        assert record is not None, "Session should be queued after first import"
+        record_id = record.id
+
+    # Import 2: Same session ID but now has a date → should auto-resolve queue
+    df_with_date = pd.DataFrame([{
+        "Session ID": session_id,
+        "Title": "Auto Resolve Session",
+        "Date": "2026-09-15 10:00:00",
+        "Status": "Completed",
+        "Duration": 60,
+        "User Auth Id": f"uid-{session_id}",
+        "Name": "Test Teacher",
+        "SignUp Role": "Educator",
+        "School": "Test School",
+        "District or Company": "Test District",
+        "Partner": "PREP-KC",
+        "Registered Student Count": 20,
+        "Attended Student Count": 18,
+        "Registered Educator Count": 1,
+        "Attended Educator Count": 1,
+        "Career Cluster": "Technology",
+    }])
+    response2 = _upload_df(client, pathful_admin_login, df_with_date, "tc265_withdate.xlsx")
+    assert response2.status_code in [200, 302]
+
+    with app.app_context():
+        # The original queue record should now be auto-resolved
+        record = PathfulUnmatchedRecord.query.get(record_id)
+        assert record is not None
+        assert record.resolution_status == ResolutionStatus.RESOLVED, (
+            f"Queue record should be auto-resolved after session ID re-imported with date, "
+            f"got status='{record.resolution_status}'"
+        )
+        assert record.resolved_event_id is not None, (
+            "Auto-resolved record should link to the created Event"
+        )
+        # The event should now exist
+        event = Event.query.filter_by(pathful_session_id=session_id).first()
+        assert event is not None, "Event should be created on second import with date"
+
+
+def test_tc266_published_no_date_queued(client, pathful_admin_login, app):
+    """TC-266: Published + no date → placed in No Date Sessions queue."""
+    from models.pathful_import import UnmatchedType
+
+    session_id = "tc266-published-nodate-001"
+    df = pd.DataFrame([_make_no_date_row(session_id, "Published Session No Date", "Published")])
+
+    response = _upload_df(client, pathful_admin_login, df, "tc266.xlsx")
+    assert response.status_code in [200, 302]
+
+    with app.app_context():
+        record = PathfulUnmatchedRecord.query.filter_by(
+            attempted_match_session_id=session_id,
+            unmatched_type=UnmatchedType.NO_DATE_SESSION,
+        ).first()
+        assert record is not None, "Published + no date should create a No Date queue record"
+
+
+def test_tc267_completed_no_date_queued(client, pathful_admin_login, app):
+    """TC-267: Completed + no date → placed in No Date Sessions queue (unusual but valid)."""
+    from models.pathful_import import UnmatchedType
+
+    session_id = "tc267-completed-nodate-001"
+    df = pd.DataFrame([_make_no_date_row(session_id, "Completed Session No Date", "Completed")])
+
+    response = _upload_df(client, pathful_admin_login, df, "tc267.xlsx")
+    assert response.status_code in [200, 302]
+
+    with app.app_context():
+        record = PathfulUnmatchedRecord.query.filter_by(
+            attempted_match_session_id=session_id,
+            unmatched_type=UnmatchedType.NO_DATE_SESSION,
+        ).first()
+        assert record is not None, "Completed + no date should create a No Date queue record"
+
+
+def test_tc268_undated_queue_stores_correct_session_status(client, pathful_admin_login, app):
+    """TC-268: Queue record's raw_data envelope stores the original Pathful session_status."""
+    from models.pathful_import import UnmatchedType
+
+    session_id = "tc268-status-check-001"
+    df = pd.DataFrame([_make_no_date_row(session_id, "Status Check Session", "Requested")])
+
+    response = _upload_df(client, pathful_admin_login, df, "tc268.xlsx")
+    assert response.status_code in [200, 302]
+
+    with app.app_context():
+        record = PathfulUnmatchedRecord.query.filter_by(
+            attempted_match_session_id=session_id,
+            unmatched_type=UnmatchedType.NO_DATE_SESSION,
+        ).first()
+        assert record is not None
+        assert record.raw_data is not None
+        stored_status = record.raw_data.get("session_status", "").lower()
+        assert stored_status == "requested", (
+            f"Queue record should store 'Requested' as session_status, got '{stored_status}'"
+        )
+        # And critically, the queue should NOT store "Draft" (since those get silently dropped)
+        assert stored_status != "draft", (
+            "Draft sessions should never appear in the No Date queue"
+        )
+
+
+def test_tc261_draft_no_date_increments_skipped_not_queued_count(
+    client, pathful_admin_login, app
+):
+    """TC-261 (log counter): Draft + no date increments skipped_rows, NOT queued_undated_count."""
+    session_id = "tc261-log-counter-001"
+    df = pd.DataFrame([_make_no_date_row(session_id, "Draft Log Counter Test", "Draft")])
+
+    with app.app_context():
+        initial_log_count = PathfulImportLog.query.count()
+
+    response = _upload_df(client, pathful_admin_login, df, "tc261_log.xlsx")
+    assert response.status_code in [200, 302]
+
+    with app.app_context():
+        latest_log = (
+            PathfulImportLog.query.order_by(PathfulImportLog.id.desc()).first()
+        )
+        assert latest_log is not None
+        # Should have been skipped, not queued
+        assert latest_log.queued_undated_count == 0, (
+            f"Draft + no date should not increment queued_undated_count, "
+            f"got {latest_log.queued_undated_count}"
+        )
+        # Should have skip counter incremented (1 skipped row)
+        assert latest_log.skipped_rows >= 1, (
+            "Draft + no date row should increment skipped_rows"
         )

@@ -196,7 +196,10 @@ def load_pathful_routes():
     @admin_required
     def pathful_import_history():
         """View history of Pathful imports."""
-        imports = PathfulImportLog.query.order_by(
+        from models.pathful_import import PathfulImportType
+        imports = PathfulImportLog.query.filter(
+            PathfulImportLog.import_type != PathfulImportType.UNDATED_RESOLUTION
+        ).order_by(
             PathfulImportLog.started_at.desc()
         ).all()
 
@@ -211,6 +214,18 @@ def load_pathful_routes():
         Returns dict with profile data and potential matches.
         """
         import json
+        from models.pathful_import import UnmatchedType
+
+        # No profile suggestions for undated sessions — UI renders from raw_data["rows"] directly
+        if unmatched_record.unmatched_type == UnmatchedType.NO_DATE_SESSION:
+            return {
+                "profile": None,
+                "email": None,
+                "school": None,
+                "organization": None,
+                "teacher_matches": [],
+                "volunteer_matches": [],
+            }
 
         result = {
             "profile": None,
@@ -374,6 +389,7 @@ def load_pathful_routes():
         status_filter = request.args.get("status", "pending")
         type_filter = request.args.get("type", "all")
         search_query = request.args.get("q", "").strip()
+        show_published = request.args.get("show_published", "false").lower() == "true"
         page = request.args.get("page", 1, type=int)
         per_page = 50
 
@@ -398,6 +414,14 @@ def load_pathful_routes():
 
         if type_filter != "all":
             query = query.filter(PathfulUnmatchedRecord.unmatched_type == type_filter)
+            
+        if type_filter == "no_date_session" and not show_published:
+            query = query.filter(
+                db.or_(
+                    func.lower(func.json_extract(PathfulUnmatchedRecord.raw_data, "$.session_status")) != "published",
+                    func.json_extract(PathfulUnmatchedRecord.raw_data, "$.session_status").is_(None)
+                )
+            )
 
         # Get summary counts
         total_pending = PathfulUnmatchedRecord.query.filter_by(
@@ -416,6 +440,9 @@ def load_pathful_routes():
         ).count()
         volunteer_pending = PathfulUnmatchedRecord.query.filter_by(
             resolution_status="pending", unmatched_type="volunteer"
+        ).count()
+        undated_pending = PathfulUnmatchedRecord.query.filter_by(
+            resolution_status="pending", unmatched_type="no_date_session"
         ).count()
 
         # Company aggregation: unique broken company strings across ALL pending record types
@@ -478,12 +505,14 @@ def load_pathful_routes():
             status_filter=status_filter,
             type_filter=type_filter,
             search_query=search_query,
+            show_published=show_published,
             total_pending=total_pending,
             total_resolved=total_resolved,
             total_ignored=total_ignored,
             teacher_pending=teacher_pending,
             volunteer_pending=volunteer_pending,
             company_pending=company_pending,
+            undated_pending=undated_pending,
             company_groups=company_groups,
             all_organizations=all_organizations,
         )
@@ -594,6 +623,116 @@ def load_pathful_routes():
                 resolved_by=current_user.id,
             )
             flash("Record marked as ignored.", "success")
+
+            from models.pathful_import import UnmatchedType
+            if record.unmatched_type == UnmatchedType.NO_DATE_SESSION:
+                from routes.utils import log_audit_action
+                envelope = record.raw_data or {}
+                log_audit_action(
+                    action="pol.pathful.undated_session.ignored",
+                    resource_type="pathful_unmatched_record",
+                    resource_id=record.id,
+                    metadata={
+                        "session_id": record.attempted_match_session_id,
+                        "session_title": record.attempted_match_name,
+                        "participant_count": envelope.get("participant_count", 0),
+                        "notes": notes,
+                    },
+                )
+
+        elif action == "provide_date":
+            from models.pathful_import import UnmatchedType
+            # Issue 8 fix: Guard against wrong record type
+            if record.unmatched_type != UnmatchedType.NO_DATE_SESSION:
+                flash("This action is only valid for undated session records.", "warning")
+                return redirect(url_for("virtual.pathful_unmatched"))
+
+            # Issue 6 fix: Guard against double-submission
+            if record.resolution_status != ResolutionStatus.PENDING:
+                flash("This record has already been resolved.", "warning")
+                return redirect(url_for("virtual.pathful_unmatched", type="no_date_session"))
+
+            date_str = request.form.get("session_date", "").strip()
+            if not date_str:
+                flash("A date is required.", "error")
+                return redirect(url_for("virtual.pathful_unmatched", type="no_date_session"))
+
+            try:
+                provided_date = datetime.strptime(date_str, "%Y-%m-%d")
+            except ValueError:
+                flash("Invalid date format.", "error")
+                return redirect(url_for("virtual.pathful_unmatched", type="no_date_session"))
+
+            from models.pathful_import import PathfulImportLog, PathfulImportType
+            from routes.virtual.pathful_import.matching import build_import_caches
+            from routes.virtual.pathful_import.processing import process_session_report_row
+
+            # Create resolution import log (filtered from main history by import_type)
+            resolution_log = PathfulImportLog(
+                filename=f"[Resolution] Queue item #{record.id} — {record.attempted_match_name}",
+                import_type=PathfulImportType.UNDATED_RESOLUTION,   # Issue 5 fix
+                imported_by=current_user.id,
+            )
+            db.session.add(resolution_log)
+            db.session.flush()
+
+            caches = build_import_caches()
+            processed_events = {}
+
+            envelope = record.raw_data or {}
+            rows = envelope.get("rows", [])
+
+            for i, row_dict in enumerate(rows):
+                # Issue 1 fix: Use strftime (space separator) not isoformat (T separator)
+                # so parse_pathful_date can parse it via the existing "%Y-%m-%d %H:%M:%S" format
+                row_dict = dict(row_dict)   # Shallow copy — don't mutate stored envelope
+                row_dict["Date"] = provided_date.strftime("%Y-%m-%d %H:%M:%S")
+                import pandas as pd
+                row_series = pd.Series(row_dict)
+                process_session_report_row(
+                    row=row_series,
+                    row_index=i + 1,
+                    import_log=resolution_log,
+                    processed_events=processed_events,
+                    caches=caches,
+                )
+
+            from services.teacher_service import sync_event_participant_fields
+            for evt in processed_events.values():
+                sync_event_participant_fields(evt)
+
+            resolution_log.mark_complete()
+
+            resolved_event = next(iter(processed_events.values()), None)
+            record.resolve(
+                status=ResolutionStatus.RESOLVED,
+                notes=(
+                    f"Admin provided date: {date_str}. "
+                    f"{len(rows)} participant row(s) re-processed."
+                ),
+                resolved_by=current_user.id,
+                event_id=resolved_event.id if resolved_event else None,
+            )
+
+            from routes.utils import log_audit_action
+            log_audit_action(
+                action="pol.pathful.undated_session.resolved",
+                resource_type="pathful_unmatched_record",
+                resource_id=record.id,
+                metadata={
+                    "session_id": record.attempted_match_session_id,
+                    "session_title": record.attempted_match_name,
+                    "provided_date": date_str,
+                    "participant_rows": len(rows),
+                    "event_id": resolved_event.id if resolved_event else None,
+                },
+            )
+            flash(
+                f"Session '{record.attempted_match_name}' resolved. "
+                f"{resolution_log.created_events} event(s), "
+                f"{resolution_log.processed_rows} participant(s) processed.",
+                "success",
+            )
 
         elif action == "create_teacher":
             # Create a new TeacherProgress record
@@ -1064,6 +1203,52 @@ def load_pathful_routes():
 
         db.session.commit()
         return redirect(url_for("virtual.pathful_unmatched"))
+
+    @virtual_bp.route("/pathful/unmatched/<int:record_id>/revert", methods=["POST"])
+    @login_required
+    @admin_required
+    def revert_undated_session(record_id):
+        """
+        Revert an IGNORED undated session back to PENDING.
+        Admin supplies a date via the normal provide_date action after reverting.
+        Only valid for NO_DATE_SESSION records in IGNORED status.
+        """
+        record = PathfulUnmatchedRecord.query.get_or_404(record_id)
+        from models.pathful_import import UnmatchedType, ResolutionStatus
+
+        if record.unmatched_type != UnmatchedType.NO_DATE_SESSION:
+            flash("Revert is only available for undated session records.", "warning")
+            return redirect(url_for("virtual.pathful_unmatched"))
+
+        if record.resolution_status != ResolutionStatus.IGNORED:
+            flash("Only ignored records can be reverted.", "warning")
+            return redirect(url_for("virtual.pathful_unmatched", type="no_date_session"))
+
+        record.resolution_status = ResolutionStatus.PENDING
+        record.resolved_by = None
+        record.resolved_at = None
+        record.resolved_event_id = None
+        record.resolution_notes = None
+
+        from routes.utils import log_audit_action
+        log_audit_action(
+            action="pol.pathful.undated_session.reverted",
+            resource_type="pathful_unmatched_record",
+            resource_id=record.id,
+            metadata={
+                "session_id": record.attempted_match_session_id,
+                "session_title": record.attempted_match_name,
+                "reverted_by": current_user.id,
+            },
+        )
+
+        db.session.commit()
+        flash(
+            f"'{record.attempted_match_name}' returned to pending queue. "
+            "Use 'Provide Date' to resolve it.",
+            "info",
+        )
+        return redirect(url_for("virtual.pathful_unmatched", type="no_date_session"))
 
     @virtual_bp.route("/pathful/unmatched/company/resolve", methods=["POST"])
     @login_required
