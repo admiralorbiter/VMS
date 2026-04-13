@@ -122,15 +122,8 @@ def process_session_report_row(
         partner = safe_str(row.get("Partner", ""))
         signup_role = safe_str(row.get("SignUp Role", "")).lower()
 
-        # Filter: Only PREP-KC partner
-        if partner.upper() != PARTNER_FILTER:
-            import_log.skipped_rows += 1
-            return True
-
-        # Filter: Skip students and parents
-        if signup_role in ["student", "parent"]:
-            import_log.skipped_rows += 1
-            return True
+        # Note: PREP-KC partner and student/parent role filtering
+        # is now handled at the DataFrame level in routes.py before iteration.
 
         # Extract session data
         session_id = row.get("Session ID")
@@ -146,7 +139,7 @@ def process_session_report_row(
             if status.lower().strip() == "draft":
                 import_log.skipped_rows += 1
                 return True
-                
+
             _queue_undated_session(
                 row=row,
                 row_index=row_index,
@@ -196,9 +189,13 @@ def process_session_report_row(
 
         # After event is matched/created: auto-resolve any pending undated queue items
         # for this session (Case 2 re-import). Cache-first — zero cost when queue is empty.
-        session_id_str_raw = str(session_id) if session_id and not pd.isna(session_id) else None
+        session_id_str_raw = (
+            str(session_id) if session_id and not pd.isna(session_id) else None
+        )
         if session_id_str_raw:
-            _auto_resolve_undated_queue(session_id_str_raw, event.id, import_log, caches=caches)
+            _auto_resolve_undated_queue(
+                session_id_str_raw, event.id, import_log, caches=caches
+            )
 
         # Update student counts on event
         registered_students = safe_int(row.get("Registered Student Count"))
@@ -456,8 +453,17 @@ def process_session_report_row(
         return False
 
 
-def _queue_undated_session(row, row_index, session_id, title, status,
-                           duration, career_cluster, import_log, caches):
+def _queue_undated_session(
+    row,
+    row_index,
+    session_id,
+    title,
+    status,
+    duration,
+    career_cluster,
+    import_log,
+    caches,
+):
     """
     Queue an undated Pathful session for admin review instead of silently skipping.
 
@@ -470,14 +476,16 @@ def _queue_undated_session(row, row_index, session_id, title, status,
     3. Create new record if neither finds a match
     """
     import pandas as pd
+
     from models.pathful_import import (
-        PathfulUnmatchedRecord, ResolutionStatus, UnmatchedType,
+        PathfulUnmatchedRecord,
+        ResolutionStatus,
+        UnmatchedType,
     )
+
     from .parsing import safe_str, serialize_row_for_json
 
-    session_id_str = (
-        str(session_id) if session_id and not pd.isna(session_id) else None
-    )
+    session_id_str = str(session_id) if session_id and not pd.isna(session_id) else None
     dedup_key = session_id_str or safe_str(title)
     if not dedup_key:
         import_log.skipped_rows += 1
@@ -493,9 +501,9 @@ def _queue_undated_session(row, row_index, session_id, title, status,
     if existing is None and session_id_str:
         existing = PathfulUnmatchedRecord.query.filter(
             PathfulUnmatchedRecord.unmatched_type == UnmatchedType.NO_DATE_SESSION,
-            PathfulUnmatchedRecord.resolution_status.in_([
-                ResolutionStatus.PENDING, ResolutionStatus.IGNORED
-            ]),
+            PathfulUnmatchedRecord.resolution_status.in_(
+                [ResolutionStatus.PENDING, ResolutionStatus.IGNORED]
+            ),
             PathfulUnmatchedRecord.attempted_match_session_id == session_id_str,
         ).first()
 
@@ -561,7 +569,11 @@ def _auto_resolve_undated_queue(session_id_str, event_id, import_log, caches=Non
         if session_id_str not in caches.get("undated_by_session_id", {}):
             return
 
-    from models.pathful_import import PathfulUnmatchedRecord, UnmatchedType, ResolutionStatus
+    from models.pathful_import import (
+        PathfulUnmatchedRecord,
+        ResolutionStatus,
+        UnmatchedType,
+    )
 
     pending = PathfulUnmatchedRecord.query.filter_by(
         unmatched_type=UnmatchedType.NO_DATE_SESSION,
@@ -576,12 +588,13 @@ def _auto_resolve_undated_queue(session_id_str, event_id, import_log, caches=Non
                 f"Auto-resolved: date received in subsequent import "
                 f"(Import #{import_log.id}). No admin action required."
             ),
-            resolved_by=None,   # System action
+            resolved_by=None,  # System action
             event_id=event_id,
         )
         current_app.logger.info(
             "Auto-resolved undated queue item for session %s → Event %s",
-            session_id_str, event_id,
+            session_id_str,
+            event_id,
         )
         # Remove from cache so no further resolution attempts for this session
         if caches and "undated_by_session_id" in caches:

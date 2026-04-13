@@ -44,7 +44,12 @@ from services.scoping import get_user_district_name, is_tenant_user, scope_event
 
 # Import from sibling modules
 from .matching import build_import_caches
-from .parsing import admin_or_tenant_required, validate_session_report_columns
+from .parsing import (
+    PARTNER_FILTER,
+    admin_or_tenant_required,
+    compute_cutoff_date,
+    validate_session_report_columns,
+)
 from .processing import process_session_report_row
 
 
@@ -99,11 +104,17 @@ def load_pathful_routes():
             return redirect(url_for("virtual.pathful_import"))
 
         try:
+            import_mode = request.form.get("import_mode", "semester")
+            custom_date_str = request.form.get("custom_date")
+            cutoff_date = compute_cutoff_date(import_mode, custom_date_str)
+
             # Create import log
             import_log = PathfulImportLog(
                 filename=filename,
                 import_type=PathfulImportType.SESSION_REPORT,
                 imported_by=current_user.id,
+                import_mode=import_mode,
+                cutoff_date=cutoff_date,
             )
             db.session.add(import_log)
             db.session.flush()  # Get the ID
@@ -119,11 +130,38 @@ def load_pathful_routes():
                 db.session.rollback()
                 return redirect(url_for("virtual.pathful_import"))
 
+            # Phase 1/2: Pre-filter DataFrame before row loop
+            # Remove non-prep-kc and student/parent rows completely from calculation
+            original_len = len(df)
+            df = df[df["Partner"].str.upper() == PARTNER_FILTER]
+
+            # Use lowercase for role check
+            if "SignUp Role" in df.columns:
+                df = df[~df["SignUp Role"].str.lower().isin(["student", "parent"])]
+
+            skipped_by_role_partner = original_len - len(df)
+            import_log.skipped_rows += skipped_by_role_partner
+
+            # Date Range Filter
+            if cutoff_date:
+                # Convert Pathful date column for comparison
+                # We need to keep rows where date >= cutoff_date, or date is null/NaT (undated queue)
+                temp_date = pd.to_datetime(df["Date"], errors="coerce")
+
+                # Rows to keep
+                keep_mask = (temp_date.isna()) | (temp_date >= cutoff_date)
+
+                rows_before_date_filter = len(df)
+                df = df[keep_mask]
+
+                import_log.skipped_historic_rows = rows_before_date_filter - len(df)
+                import_log.skipped_rows += import_log.skipped_historic_rows
+
             # Build caches to avoid per-row DB queries
             import time as import_time
 
             cache_start = import_time.time()
-            caches = build_import_caches()
+            caches = build_import_caches(cutoff_date=cutoff_date)
             print(f"Cache build time: {import_time.time() - cache_start:.1f}s")
 
             # Process rows
@@ -197,11 +235,14 @@ def load_pathful_routes():
     def pathful_import_history():
         """View history of Pathful imports."""
         from models.pathful_import import PathfulImportType
-        imports = PathfulImportLog.query.filter(
-            PathfulImportLog.import_type != PathfulImportType.UNDATED_RESOLUTION
-        ).order_by(
-            PathfulImportLog.started_at.desc()
-        ).all()
+
+        imports = (
+            PathfulImportLog.query.filter(
+                PathfulImportLog.import_type != PathfulImportType.UNDATED_RESOLUTION
+            )
+            .order_by(PathfulImportLog.started_at.desc())
+            .all()
+        )
 
         return render_template(
             "virtual/pathful/import_history.html",
@@ -214,6 +255,7 @@ def load_pathful_routes():
         Returns dict with profile data and potential matches.
         """
         import json
+
         from models.pathful_import import UnmatchedType
 
         # No profile suggestions for undated sessions — UI renders from raw_data["rows"] directly
@@ -414,12 +456,19 @@ def load_pathful_routes():
 
         if type_filter != "all":
             query = query.filter(PathfulUnmatchedRecord.unmatched_type == type_filter)
-            
+
         if type_filter == "no_date_session" and not show_published:
             query = query.filter(
                 db.or_(
-                    func.lower(func.json_extract(PathfulUnmatchedRecord.raw_data, "$.session_status")) != "published",
-                    func.json_extract(PathfulUnmatchedRecord.raw_data, "$.session_status").is_(None)
+                    func.lower(
+                        func.json_extract(
+                            PathfulUnmatchedRecord.raw_data, "$.session_status"
+                        )
+                    )
+                    != "published",
+                    func.json_extract(
+                        PathfulUnmatchedRecord.raw_data, "$.session_status"
+                    ).is_(None),
                 )
             )
 
@@ -625,8 +674,10 @@ def load_pathful_routes():
             flash("Record marked as ignored.", "success")
 
             from models.pathful_import import UnmatchedType
+
             if record.unmatched_type == UnmatchedType.NO_DATE_SESSION:
                 from routes.utils import log_audit_action
+
                 envelope = record.raw_data or {}
                 log_audit_action(
                     action="pol.pathful.undated_session.ignored",
@@ -642,35 +693,46 @@ def load_pathful_routes():
 
         elif action == "provide_date":
             from models.pathful_import import UnmatchedType
+
             # Issue 8 fix: Guard against wrong record type
             if record.unmatched_type != UnmatchedType.NO_DATE_SESSION:
-                flash("This action is only valid for undated session records.", "warning")
+                flash(
+                    "This action is only valid for undated session records.", "warning"
+                )
                 return redirect(url_for("virtual.pathful_unmatched"))
 
             # Issue 6 fix: Guard against double-submission
             if record.resolution_status != ResolutionStatus.PENDING:
                 flash("This record has already been resolved.", "warning")
-                return redirect(url_for("virtual.pathful_unmatched", type="no_date_session"))
+                return redirect(
+                    url_for("virtual.pathful_unmatched", type="no_date_session")
+                )
 
             date_str = request.form.get("session_date", "").strip()
             if not date_str:
                 flash("A date is required.", "error")
-                return redirect(url_for("virtual.pathful_unmatched", type="no_date_session"))
+                return redirect(
+                    url_for("virtual.pathful_unmatched", type="no_date_session")
+                )
 
             try:
                 provided_date = datetime.strptime(date_str, "%Y-%m-%d")
             except ValueError:
                 flash("Invalid date format.", "error")
-                return redirect(url_for("virtual.pathful_unmatched", type="no_date_session"))
+                return redirect(
+                    url_for("virtual.pathful_unmatched", type="no_date_session")
+                )
 
             from models.pathful_import import PathfulImportLog, PathfulImportType
             from routes.virtual.pathful_import.matching import build_import_caches
-            from routes.virtual.pathful_import.processing import process_session_report_row
+            from routes.virtual.pathful_import.processing import (
+                process_session_report_row,
+            )
 
             # Create resolution import log (filtered from main history by import_type)
             resolution_log = PathfulImportLog(
                 filename=f"[Resolution] Queue item #{record.id} — {record.attempted_match_name}",
-                import_type=PathfulImportType.UNDATED_RESOLUTION,   # Issue 5 fix
+                import_type=PathfulImportType.UNDATED_RESOLUTION,  # Issue 5 fix
                 imported_by=current_user.id,
             )
             db.session.add(resolution_log)
@@ -685,9 +747,10 @@ def load_pathful_routes():
             for i, row_dict in enumerate(rows):
                 # Issue 1 fix: Use strftime (space separator) not isoformat (T separator)
                 # so parse_pathful_date can parse it via the existing "%Y-%m-%d %H:%M:%S" format
-                row_dict = dict(row_dict)   # Shallow copy — don't mutate stored envelope
+                row_dict = dict(row_dict)  # Shallow copy — don't mutate stored envelope
                 row_dict["Date"] = provided_date.strftime("%Y-%m-%d %H:%M:%S")
                 import pandas as pd
+
                 row_series = pd.Series(row_dict)
                 process_session_report_row(
                     row=row_series,
@@ -698,6 +761,7 @@ def load_pathful_routes():
                 )
 
             from services.teacher_service import sync_event_participant_fields
+
             for evt in processed_events.values():
                 sync_event_participant_fields(evt)
 
@@ -715,6 +779,7 @@ def load_pathful_routes():
             )
 
             from routes.utils import log_audit_action
+
             log_audit_action(
                 action="pol.pathful.undated_session.resolved",
                 resource_type="pathful_unmatched_record",
@@ -1214,7 +1279,7 @@ def load_pathful_routes():
         Only valid for NO_DATE_SESSION records in IGNORED status.
         """
         record = PathfulUnmatchedRecord.query.get_or_404(record_id)
-        from models.pathful_import import UnmatchedType, ResolutionStatus
+        from models.pathful_import import ResolutionStatus, UnmatchedType
 
         if record.unmatched_type != UnmatchedType.NO_DATE_SESSION:
             flash("Revert is only available for undated session records.", "warning")
@@ -1222,7 +1287,9 @@ def load_pathful_routes():
 
         if record.resolution_status != ResolutionStatus.IGNORED:
             flash("Only ignored records can be reverted.", "warning")
-            return redirect(url_for("virtual.pathful_unmatched", type="no_date_session"))
+            return redirect(
+                url_for("virtual.pathful_unmatched", type="no_date_session")
+            )
 
         record.resolution_status = ResolutionStatus.PENDING
         record.resolved_by = None
@@ -1231,6 +1298,7 @@ def load_pathful_routes():
         record.resolution_notes = None
 
         from routes.utils import log_audit_action
+
         log_audit_action(
             action="pol.pathful.undated_session.reverted",
             resource_type="pathful_unmatched_record",

@@ -21,7 +21,7 @@ from models.volunteer import Volunteer
 from .parsing import parse_name, safe_int, safe_str
 
 
-def build_import_caches():
+def build_import_caches(cutoff_date=None):
     """
     Pre-load all lookup data into dicts to avoid per-row DB queries.
 
@@ -105,7 +105,10 @@ def build_import_caches():
     print(f"  Districts: {len(all_districts)} ({len(all_aliases)} aliases)")
 
     # Event caches
-    all_events = Event.query.filter(Event.type == EventType.VIRTUAL_SESSION).all()
+    event_filter = [Event.type == EventType.VIRTUAL_SESSION]
+    if cutoff_date:
+        event_filter.append(Event.start_date >= cutoff_date)
+    all_events = Event.query.filter(*event_filter).all()
     event_by_session_id = {}
     event_by_title_date = {}
     for e in all_events:
@@ -118,7 +121,13 @@ def build_import_caches():
     # EventTeacher existence cache — avoids per-row SELECT in ensure_event_teacher
     from models.event import EventTeacher
 
-    all_et = EventTeacher.query.all()
+    if cutoff_date:
+        event_ids_in_window = {e.id for e in all_events}
+        all_et = EventTeacher.query.filter(
+            EventTeacher.event_id.in_(event_ids_in_window)
+        ).all()
+    else:
+        all_et = EventTeacher.query.all()
     event_teacher_set = {(et.event_id, et.teacher_id) for et in all_et}
     print(f"  EventTeacher links: {len(event_teacher_set)}")
 
@@ -177,13 +186,20 @@ def build_import_caches():
         organization_by_name[alias.name.lower()] = alias.organization
     print(f"  Organizations: {len(all_orgs)} ({len(all_org_aliases)} aliases)")
 
+    from models.organization import VolunteerOrganization
+
+    vol_orgs = VolunteerOrganization.query.all()
+    vol_org_set = {(vo.volunteer_id, vo.organization_id) for vo in vol_orgs}
+    print(f"  VolunteerOrganization links: {len(vol_org_set)}")
+
     # Undated session queue cache — for dedup and auto-resolve fast path
     from models.pathful_import import ResolutionStatus, UnmatchedType
+
     existing_undated = PathfulUnmatchedRecord.query.filter(
         PathfulUnmatchedRecord.unmatched_type == UnmatchedType.NO_DATE_SESSION,
-        PathfulUnmatchedRecord.resolution_status.in_([
-            ResolutionStatus.PENDING, ResolutionStatus.IGNORED
-        ]),
+        PathfulUnmatchedRecord.resolution_status.in_(
+            [ResolutionStatus.PENDING, ResolutionStatus.IGNORED]
+        ),
     ).all()
     undated_by_session_id = {}
     for rec in existing_undated:
@@ -209,6 +225,7 @@ def build_import_caches():
         "teacher_record_by_name": teacher_record_by_name,
         "organization_by_name": organization_by_name,
         "undated_by_session_id": undated_by_session_id,
+        "vol_org_set": vol_org_set,
     }
 
 
@@ -384,6 +401,7 @@ def match_or_create_event(
             )
             if incoming != existing:
                 from routes.utils import log_audit_action
+
                 log_audit_action(
                     action="pol.virtual.session.date_updated_via_import",
                     resource_type="virtual_session",
@@ -527,6 +545,9 @@ def _try_resolve_teacher_school(
     def _lookup(name_str):
         """Try exact then normalized match for a single name string."""
         n = name_str.strip().lower()
+        if caches and "school_by_name" in caches:
+            if n in caches["school_by_name"]:
+                return caches["school_by_name"][n]
         hit = School.query.filter(func.lower(School.name) == n).first()
         if not hit:
             hit = School.query.filter(func.lower(School.normalized_name) == n).first()
@@ -720,9 +741,18 @@ def _ensure_volunteer_org_link(
     org = resolve_organization(organization_name, caches=caches)
     if org:
         # Check no duplicate org link
-        exists = VolunteerOrganization.query.filter_by(
-            volunteer_id=volunteer.id, organization_id=org.id
-        ).first()
+        vol_org_set = caches.get("vol_org_set") if caches else None
+
+        if vol_org_set is not None:
+            exists = (volunteer.id, org.id) in vol_org_set
+        else:
+            exists = (
+                VolunteerOrganization.query.filter_by(
+                    volunteer_id=volunteer.id, organization_id=org.id
+                ).first()
+                is not None
+            )
+
         if not exists:
             has_primary = VolunteerOrganization.query.filter_by(
                 volunteer_id=volunteer.id, is_primary=True
@@ -733,6 +763,8 @@ def _ensure_volunteer_org_link(
                 is_primary=not has_primary,
             )
             db.session.add(vol_org)
+            if vol_org_set is not None:
+                vol_org_set.add((volunteer.id, org.id))
     else:
         # Create an unmatched record for the organization.
         # B2: Also probe for a T4 near-match so the suggestion engine can show

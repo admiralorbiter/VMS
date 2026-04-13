@@ -108,14 +108,23 @@ Polaris supports three Pathful export types. Import them in this recommended ord
 
 The Session Report is the primary import—it creates sessions and tracks participation.
 
+**Import Modes:**
+You can choose a specific import mode to control how much historical data is processed:
+- **Current Semester** (Default): Fast mode. Skips past sessions and only processes data from this semester (since Jan 1 for Spring, Aug 1 for Fall) onwards.
+- **Last 6 Months**: A slightly broader window to catch any semester edge cases.
+- **Full Import**: Processes every row without skipping. Recommended every ~2 weeks to catch deep retroactive changes.
+- **Custom Date**: Processes sessions on or after the date you specify.
+
 **Steps:**
 1. Click **"Choose File"** and select your Session Report (.xlsx)
-2. Click **"Upload & Process"**
-3. Review the import summary showing:
+2. Select your desired **Import Mode**
+3. Click **"Import"**
+4. Review the import summary showing:
    - Sessions created/updated
    - Teachers matched
    - Volunteers matched
    - Unmatched records
+   - Skipped rows (Historical vs. Other)
    - Queued undated sessions
 
 **What Gets Imported:**
@@ -133,8 +142,8 @@ The Session Report is the primary import—it creates sessions and tracks partic
 
 > [!CAUTION]
 > **Draft Sessions and Missing Dates**
-> If a session in the import file has no date and its status is "Draft", it is **silently ignored** by the import process as an abandoned session. 
-> 
+> If a session in the import file has no date and its status is "Draft", it is **silently ignored** by the import process as an abandoned session.
+>
 > If a session has no date but its status is **Requested**, **Published**, or **Completed**, it cannot be imported directly. Instead, it is placed into the **No Date Sessions** queue for manual resolution.
 
 > [!IMPORTANT]

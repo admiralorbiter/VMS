@@ -5,7 +5,7 @@ Provides date/name parsing, type coercion helpers, column definitions,
 and the admin_or_tenant_required decorator.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 
 import pandas as pd
@@ -251,3 +251,26 @@ def validate_session_report_columns(df):
             missing.append(col)
 
     return len(missing) == 0, missing
+
+
+def compute_cutoff_date(mode: str, custom_date_str=None) -> datetime | None:
+    """Return the cutoff datetime for the given import mode."""
+    now = datetime.now()
+    if mode == "full":
+        return None
+    if mode == "semester":
+        # Spring: Jan-May → cutoff Jan 1; Summer/Fall: Jun-Dec → cutoff Aug 1
+        if now.month >= 8:
+            return datetime(now.year, 8, 1)
+        elif now.month >= 6:
+            return datetime(now.year, 1, 1)  # summer defaults to spring start
+        else:
+            return datetime(now.year, 1, 1)
+    if mode == "six_month":
+        return now - timedelta(days=180)
+    if mode == "custom" and custom_date_str:
+        try:
+            return datetime.strptime(custom_date_str, "%Y-%m-%d")
+        except ValueError:
+            return None
+    return None

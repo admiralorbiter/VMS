@@ -78,6 +78,13 @@ class PathfulImportLog(db.Model):
     imported_by = Column(Integer, ForeignKey("users.id"))
     importer = relationship("User", backref="pathful_imports")
 
+    # Import modes and filtering
+    import_mode = Column(
+        String(20), default="full"
+    )  # 'full', 'semester', 'six_month', 'custom'
+    cutoff_date = Column(DateTime(timezone=True), nullable=True)
+    skipped_historic_rows = Column(Integer, default=0)
+
     # Processing statistics
     total_rows = Column(Integer, default=0)
     processed_rows = Column(Integer, default=0)
@@ -108,7 +115,14 @@ class PathfulImportLog(db.Model):
         cascade="all, delete-orphan",
     )
 
-    def __init__(self, filename, import_type, imported_by=None):
+    def __init__(
+        self,
+        filename,
+        import_type,
+        imported_by=None,
+        import_mode="full",
+        cutoff_date=None,
+    ):
         """
         Initialize a new import log entry.
 
@@ -116,10 +130,14 @@ class PathfulImportLog(db.Model):
             filename: Name of the uploaded file
             import_type: Type of import ('session_report' or 'user_report')
             imported_by: User ID of the person running the import
+            import_mode: Import filter mode ('full', 'semester', 'six_month', 'custom')
+            cutoff_date: Cutoff date for filtering old rows
         """
         self.filename = filename
         self.import_type = import_type
         self.imported_by = imported_by
+        self.import_mode = import_mode
+        self.cutoff_date = cutoff_date
         self.started_at = datetime.now(timezone.utc)
 
     def mark_complete(self):
@@ -155,6 +173,9 @@ class PathfulImportLog(db.Model):
             "total_rows": self.total_rows,
             "processed_rows": self.processed_rows,
             "skipped_rows": self.skipped_rows,
+            "skipped_historic_rows": self.skipped_historic_rows,
+            "import_mode": self.import_mode,
+            "cutoff_date": self.cutoff_date.isoformat() if self.cutoff_date else None,
             "created_events": self.created_events,
             "updated_events": self.updated_events,
             "matched_teachers": self.matched_teachers,

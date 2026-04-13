@@ -648,5 +648,41 @@ behaviour (was asserting auto-alias behaviour).
 
 ---
 
-*Last updated: 2026-04-01*
-*Version: 4.0 — Added Phase E: Import Pipeline Hardening (A1, A2, B1, B2, C1, C2)*
+### Phase F: Pathful Import Performance Optimizations ✅ COMPLETE
+
+**Priority:** HIGH — Significantly speeds up daily imports
+**Timeline:** April 2026
+**Dependency:** Phases 1–E complete
+**Status:** ✅ Complete (2026-04-13)
+
+> [!INFO]
+> Daily imports were slowing down due to repeated cache generation and processing loops for `~30,000+` rows of data. This phase resolves this by adding specific "import modes" and aggressive scope bounding to cache generation.
+
+#### F-1: Native DataFrame Pre-Filtering
+**File:** `routes/virtual/pathful_import/routes.py`
+Previously, `pandas` iterated over all rows. Non-PREPKC and non-educator/professional rows were filtered inside the loop. This was moved to a native pandas slice applied immediately after loading, extracting ~5,000+ rows instantly.
+
+#### F-2: Import Mode Date Bounds
+**File:** `routes/virtual/pathful_import/routes.py`, `parsing.py`
+Introduced new Import Modes (Semester, 6-Month, Full, Custom). The selected mode generates a `cutoff_date`. The DataFrame is sliced again prior to the iterative loop keeping only sessions missing a date or `>= cutoff_date`.
+
+#### F-3: Bounded In-Memory Cache Scoping
+**File:** `routes/virtual/pathful_import/matching.py`
+`build_import_caches` now respects the `cutoff_date`.
+- `Event` cache: Only retrieves virtual sessions inside the time window.
+- `EventTeacher` cache: In memory footprint is drastically reduced by restricting the query to only the `Event_id`'s corresponding to the bounded `Event` cache.
+
+#### F-4: Memory Dict Fallthrough Misses Fixed
+**File:** `routes/virtual/pathful_import/matching.py`
+Fixed missed potential memory hits:
+- `_try_resolve_teacher_school`: Re-wired to consult `caches["school_by_name"]` instead of directly hitting `School.query` every time.
+- `_ensure_volunteer_org_link`: Added `vol_org_set` into the global `caches` block, checking memory tuples instead of un-cached DB lookup per professional.
+
+#### F-5: Audit Log Breakouts
+**File:** `models/pathful_import.py`, `templates/virtual/pathful/import_history.html`
+Enhanced the `PathfulImportLog` schema to record `import_mode`, `cutoff_date`, and `skipped_historic_rows`. The UI has been enhanced to visually clarify what was intentionally skipped (historic data) vs skipped for other reasons (non-prep-kc/student rows).
+
+---
+
+*Last updated: April 13, 2026*
+*Version: 4.1 — Added Phase F: Pathful Import Performance Optimizations*
