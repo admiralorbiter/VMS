@@ -52,6 +52,7 @@ from flask_login import current_user, login_required
 
 from models import db
 from models.bug_report import BugReport, BugReportType
+from routes.decorators import admin_required
 
 bug_reports_bp = Blueprint("bug_reports", __name__)
 
@@ -147,6 +148,7 @@ def submit_report():
 
 @bug_reports_bp.route("/bug-reports")
 @login_required
+@admin_required
 def list_reports():
     """
     Admin view to list all bug reports.
@@ -163,8 +165,5 @@ def list_reports():
     Raises:
         403: Unauthorized access attempt
     """
-    if not current_user.is_admin:
-        return jsonify({"error": "Unauthorized"}), 403
-
     reports = BugReport.query.order_by(BugReport.created_at.desc()).all()
     return render_template("bug_reports/list.html", reports=reports)

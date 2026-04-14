@@ -432,62 +432,78 @@ Last Updated: 2024
             </div>
         </div>
 
-        {# Connector Information - Moved next to Skills & Activity Summary #}
-        {% if volunteer.connector %}
+        {# Pathful Profile Information — replaces old Connector card (TD-034 Phase 3) #}
+        {% set profile = volunteer.pathful_profile %}
+        {% if profile %}
         <div class="profile-card connector-info">
             <div class="card-header">
                 <i class="fa-solid fa-plug"></i>
-                <h2>Connector Information</h2>
+                <h2>Pathful Profile</h2>
             </div>
             <div class="card-content">
                 <div class="demographics-row">
-                    {% if volunteer.connector.active_subscription %}
-                    <div class="info-group">
-                        <label>Status</label>
-                        <span class="subscription-badge {{ volunteer.connector.active_subscription }}">
-                            {{ volunteer.connector.active_subscription.value if volunteer.connector.active_subscription
-                            }}
-                        </span>
-                    </div>
-                    {% endif %}
-                    {% if volunteer.connector.role %}
+                    {% if profile.signup_role %}
                     <div class="info-group">
                         <label>Role</label>
-                        <span class="role-badge">{{ volunteer.connector.role }}</span>
+                        <span class="role-badge">{{ profile.signup_role }}</span>
+                    </div>
+                    {% endif %}
+                    {% if profile.subscription_type %}
+                    <div class="info-group">
+                        <label>Subscription</label>
+                        <span class="subscription-badge">{{ profile.subscription_type }}</span>
                     </div>
                     {% endif %}
                 </div>
 
-                {# Connector Dates and ID #}
                 <div class="demographics-row">
-                    {% if volunteer.connector.joining_date %}
+                    {% if profile.join_date %}
                     <div class="info-group">
                         <label>Joined</label>
-                        <p>{{ volunteer.connector.joining_date }}</p>
+                        <p>{{ profile.join_date.strftime('%m/%d/%y') }}</p>
                     </div>
                     {% endif %}
-                    {% if volunteer.connector.last_update_date %}
+                    {% if profile.last_login_date %}
                     <div class="info-group">
-                        <label>Last Update</label>
-                        <p>{{ volunteer.connector.last_update_date.strftime('%m/%d/%y') if
-                            volunteer.connector.last_update_date else 'N/A' }}</p>
+                        <label>Last Login</label>
+                        <p>{{ profile.last_login_date.strftime('%m/%d/%y') }}</p>
+                    </div>
+                    {% endif %}
+                    {% if profile.login_count %}
+                    <div class="info-group">
+                        <label>Login Count</label>
+                        <p>{{ profile.login_count }}</p>
                     </div>
                     {% endif %}
                 </div>
 
-                {% if volunteer.connector.user_auth_id %}
+                {% if profile.pathful_user_id %}
                 <div class="info-group">
-                    <label>Connector User ID</label>
-                    <p class="connector-user-id">{{ volunteer.connector.user_auth_id }}</p>
+                    <label>Pathful User ID</label>
+                    <p class="connector-user-id">{{ profile.pathful_user_id }}</p>
                 </div>
                 {% endif %}
 
-                {# Connector Profile Link #}
-                {% if volunteer.connector.user_auth_id %}
+                {% if profile.district_or_company %}
                 <div class="info-group">
-                    <label>Connector Profile</label>
+                    <label>Company / District</label>
+                    <p>{{ profile.district_or_company }}</p>
+                </div>
+                {% endif %}
+
+                {% if profile.job_title %}
+                <div class="info-group">
+                    <label>Job Title</label>
+                    <p>{{ profile.job_title }}</p>
+                </div>
+                {% endif %}
+
+                {# Profile link #}
+                {% if profile.pathful_user_id %}
+                <div class="info-group">
+                    <label>Pathful Profile</label>
                     <div class="connector-profile-link">
-                        <a href="https://prepkc.nepris.com/app/user/{{ volunteer.connector.user_auth_id }}"
+                        <a href="https://prepkc.nepris.com/app/user/{{ profile.pathful_user_id }}"
                             target="_blank" class="btn btn-outline-primary btn-sm">
                             <i class="fa-solid fa-external-link-alt"></i>
                             View Profile
@@ -496,10 +512,10 @@ Last Updated: 2024
                 </div>
                 {% endif %}
 
-                {% if volunteer.connector.last_login_datetime %}
+                {% if profile.last_session_date %}
                 <div class="info-group">
-                    <label>Last Login</label>
-                    <p>{{ volunteer.connector.last_login_datetime }}</p>
+                    <label>Last Session</label>
+                    <p>{{ profile.last_session_date.strftime('%m/%d/%y') }}</p>
                 </div>
                 {% endif %}
             </div>

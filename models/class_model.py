@@ -68,7 +68,7 @@ Usage Examples:
     active_students = class_obj.get_active_students()
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Index
 from sqlalchemy.orm import relationship
@@ -164,9 +164,13 @@ class Class(db.Model):
     class_year = db.Column(db.Integer, nullable=False)  # Academic year number
 
     # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
-    created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
+    created_at = db.Column(
+        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
     updated_at = db.Column(
-        db.DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     # Explicit relationship with School model

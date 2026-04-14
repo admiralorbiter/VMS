@@ -58,12 +58,16 @@ from routes.client_projects.routes import client_projects_bp
 from routes.district import district_bp
 from routes.district.tenant_teacher_import import teacher_import_bp
 from routes.district.tenant_teacher_usage import teacher_usage_bp
+
+# Documentation and Quality routes (extracted from app.py, TD-006)
+from routes.docs import docs_bp
 from routes.email.routes import email_bp
 from routes.events.routes import events_bp
 from routes.history.routes import history_bp
+from routes.management import management_bp
 from routes.management.cache_management import cache_management_bp
-from routes.management.management import management_bp
 from routes.organizations.routes import organizations_bp
+from routes.quality import quality_bp
 from routes.reports import report_bp
 from routes.salesforce.event_import import sf_event_import_bp
 from routes.salesforce.history_import import sf_history_import_bp
@@ -77,6 +81,9 @@ from routes.salesforce.volunteer_import import sf_volunteer_import_bp
 from routes.students.routes import students_bp
 from routes.teachers.routes import teachers_bp
 from routes.tenants import tenant_users_bp, tenants_bp
+
+# Tools (Newsletter Formatter, etc.)
+from routes.tools import tools_bp
 
 # Import virtual __init__ to register usage routes
 from routes.virtual.routes import virtual_bp
@@ -144,6 +151,9 @@ def init_routes(app):
     app.register_blueprint(api_bp, url_prefix="/api/v1")
     app.register_blueprint(public_api_bp)  # District Suite Public API
     app.register_blueprint(virtual_sessions_api_bp)
+    app.register_blueprint(quality_bp)  # Quality scoring & validation (TD-006)
+    app.register_blueprint(docs_bp)  # Documentation serving (TD-006)
+    app.register_blueprint(tools_bp)  # Internal productivity tools
 
     @app.route("/")
     def index():

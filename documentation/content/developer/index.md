@@ -270,8 +270,13 @@ flask run --port 5051
 
 ### Resources
 
-- [Salesforce Import Roadmap](salesforce_import_roadmap) — **NEW** Active development checklist
-- [Development Status Tracker](development-status-tracker) — FR-by-FR implementation status
-- [Codebase Structure](codebase-structure) — Detailed code organization
-- [CLI Reference](cli-reference) — Common commands
-- [Architecture](architecture) — System design
+- [Development Plan](development_plan) — Prioritized backlog (Tiers 1–4), tech debt, MySQL migration
+- [Tech Debt Tracker](tech_debt) — Active debt items with descriptions
+- [Salesforce Import Roadmap](salesforce_import_roadmap) — Import-specific improvements
+- [Development Status Tracker](development_status_tracker) — FR-by-FR implementation status
+- [Codebase Structure](../technical/codebase_structure) — Detailed code organization
+- [CLI Reference](cli_reference) — Common commands
+- [Architecture](../technical/architecture) — System design
+- [Public Event API Reference](api_reference) — Existing district event API docs
+- [Intern Project: Virtual Events API](intern_virtual_events_api) — Guided intern project for building the virtual sessions API
+- [AI Collaboration Guide](ai_collab_guide) — AI pair-programming conventions for this project

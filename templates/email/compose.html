@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Compose Email - Admin Panel{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/email_compose.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="compose-container">
+    <!-- Navigation Bar -->
+    <nav class="email-nav"
+        style="background: white; padding: 1rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); margin-bottom: 1.5rem;">
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+            <a href="{{ url_for('email.email_overview') }}"
+                style="text-decoration: none; color: var(--delft-blue); font-weight: 600; padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-home"></i> Overview
+            </a>
+            <span style="color: #d1d5db;">|</span>
+            <a href="{{ url_for('email.email_templates') }}"
+                style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-file-alt"></i> Templates
+            </a>
+            <a href="{{ url_for('email.compose') }}"
+                style="text-decoration: none; color: white; background: var(--ucla-blue); padding: 0.5rem 1rem; border-radius: 5px; font-weight: 600;">
+                <i class="fas fa-pen"></i> Compose
+            </a>
+            <a href="{{ url_for('email.email_outbox') }}"
+                style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-inbox"></i> Outbox
+            </a>
+            <a href="{{ url_for('email.email_attempts') }}"
+                style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-paper-plane"></i> Delivery Attempts
+            </a>
+            <a href="{{ url_for('email.email_settings') }}"
+                style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-cog"></i> Settings
+            </a>
+        </div>
+    </nav>
+
+    <h1><i class="fas fa-pen" style="margin-right: 0.5rem;"></i>Compose Email</h1>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div style="margin-bottom: 1.5rem;">
+        {% for category, message in messages %}
+        <div class="alert alert-{{ 'danger' if category == 'error' else 'warning' if category == 'warning' else 'info' if category == 'info' else 'success' }} alert-dismissible fade show"
+            role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('email.compose') }}" id="compose-form">
+
+        <!-- Template Selection -->
+        <div class="compose-section">
+            <h3><i class="fas fa-file-alt" style="margin-right: 0.5rem;"></i>Template</h3>
+            <div class="form-group">
+                <label for="template_id">Select Template <span class="required">*</span></label>
+                <select id="template_id" name="template_id" required>
+                    <option value="">Choose a template...</option>
+                    {% for template in templates %}
+                    <option value="{{ template.id }}">{{ template.name }} — {{ template.purpose_key }} (v{{
+                        template.version }})</option>
+                    {% endfor %}
+                </select>
+                <p class="help-text">The template determines the email structure and required placeholder values.</p>
+            </div>
+
+            <div id="template-subject" style="display: none; margin-top: 1rem;">
+                <strong>Subject:</strong> <code id="subject-preview"></code>
+            </div>
+        </div>
+
+        <!-- Recipients -->
+        <div class="compose-section">
+            <h3><i class="fas fa-users" style="margin-right: 0.5rem;"></i>Recipients</h3>
+            <div class="form-group">
+                <label for="recipients">Email Addresses <span class="required">*</span></label>
+                <textarea id="recipients" name="recipients" rows="5" required
+                    placeholder="Enter email addresses, one per line or comma-separated&#10;&#10;example@domain.com&#10;another@domain.com"></textarea>
+                <p class="help-text">Enter one email per line, or separate with commas. Duplicates and invalid addresses
+                    will be automatically filtered.</p>
+            </div>
+
+            {% if not is_production %}
+            <div class="allowlist-notice">
+                <strong><i class="fas fa-shield-alt"></i> Non-Production Mode</strong> —
+                {% if allowlist %}
+                Only these addresses/domains will receive delivery: <strong>{{ allowlist|join(', ') }}</strong>.
+                Other recipients will be excluded.
+                {% else %}
+                No allowlist configured. All emails will be blocked. Set <code>EMAIL_ALLOWLIST</code> to allow specific
+                addresses.
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Placeholder Values -->
+        <div class="compose-section">
+            <h3><i class="fas fa-code" style="margin-right: 0.5rem;"></i>Placeholder Values</h3>
+            <div id="placeholder-container">
+                <p class="no-placeholders">Select a template to see its placeholder fields.</p>
+            </div>
+        </div>
+
+        <!-- Options & Actions -->
+        <div class="compose-section">
+            <h3><i class="fas fa-sliders-h" style="margin-right: 0.5rem;"></i>Send Options</h3>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="dry_run" name="dry_run" value="true">
+                    <strong>Dry-run mode</strong> — validate and render without actual delivery
+                </label>
+            </div>
+
+            <div class="action-buttons">
+                <button type="submit" name="action" value="draft" class="btn-draft">
+                    <i class="fas fa-save"></i> Save as Draft
+                </button>
+                <button type="submit" name="action" value="send" class="btn-send">
+                    <i class="fas fa-paper-plane"></i> Queue & Send
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/email_compose.js"></script>
+{% endblock %}

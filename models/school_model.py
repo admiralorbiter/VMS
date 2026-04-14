@@ -184,3 +184,31 @@ class School(db.Model):
             str: Debug representation showing school name
         """
         return f"<School {self.name}>"
+
+
+class SchoolAlias(db.Model):
+    """
+    Alias mapping for school names.
+
+    Stores alternative names / abbreviations that should resolve to a
+    canonical School record. For example:
+        alias="M.E. Pearson"  →  school.name="M E PEARSON ELEM"
+        alias="Douglass"      →  school.name="Douglass Elementary"
+
+    Used heavily by the Pathful UI Unmatched matching logic (TD-053).
+    """
+
+    __tablename__ = "school_alias"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    alias = db.Column(db.String(255), nullable=False, unique=True, index=True)
+    school_id = db.Column(
+        db.String(255), db.ForeignKey("school.id"), nullable=False, index=True
+    )
+
+    school = db.relationship(
+        "School", backref=db.backref("aliases", cascade="all, delete-orphan")
+    )
+
+    def __repr__(self):
+        return f"<SchoolAlias '{self.alias}' → school_id={self.school_id}>"

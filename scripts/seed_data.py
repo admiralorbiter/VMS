@@ -31,7 +31,14 @@ from app import create_app
 from models import db
 from models.contact import ContactTypeEnum, Email
 from models.district_model import District
-from models.event import Event, EventFormat, EventStatus, EventTeacher, EventType
+from models.event import (
+    CancellationReason,
+    Event,
+    EventFormat,
+    EventStatus,
+    EventTeacher,
+    EventType,
+)
 from models.school_model import School
 from models.teacher import Teacher, TeacherStatus
 from models.user import SecurityLevel, TenantRole, User
@@ -472,7 +479,7 @@ def seed_virtual_events():
             "school_idx": 5,
             "has_teacher": True,
             "has_presenter": False,
-            "cancellation_reason": "weather",
+            "cancellation_reason": CancellationReason.WEATHER,
         },
         # Draft events in the past (should get NEEDS_ATTENTION flag)
         {

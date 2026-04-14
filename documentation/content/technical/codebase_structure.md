@@ -18,6 +18,7 @@ VMS/
 ├── config/                # Application configuration
 ├── models/                # SQLAlchemy database models
 ├── routes/                # Flask blueprints and route handlers
+├── services/              # Business logic services (DRY extraction layer)
 ├── templates/             # Jinja2 HTML templates
 ├── static/                # CSS, JavaScript, images
 ├── utils/                 # Utility modules (clients, validators)
@@ -45,6 +46,28 @@ The Flask application factory. Creates and configures the app, registers bluepri
 
 ### `forms.py`
 WTForms form classes for HTML form handling and validation.
+
+---
+
+## Services (`services/`)
+
+Business logic extracted from route handlers to follow the DRY principle. Routes remain thin (request parsing, permission checks, response formatting) and delegate to services for shared operations.
+
+| File | Purpose |
+|------|---------|
+| `academic_year_service.py` | School year / semester date calculations |
+| `audit_service.py` | Audit log recording |
+| `cache_service.py` | Virtual session cache CRUD (5 functions) |
+| `district_service.py` | District name resolution, tenant district lookup |
+| `flag_scanner.py` | Data quality flag scanning |
+| `recruitment_scoring_service.py` | Keyword derivation and scoring helpers for recruitment matching |
+| `scoping.py` | User scope filtering (district/school) |
+| `session_status_service.py` | Session status classification (Completed/Planned/Needs Review) |
+| `teacher_import_service.py` | Teacher roster import logic |
+| `teacher_matching_service.py` | Teacher identity resolution across systems |
+| `teacher_service.py` | Teacher CRUD and querying |
+| `user_service.py` | User validation, creation, update, privilege escalation guards |
+| `virtual_computation_service.py` | Shared virtual session computation helpers (attendance, filters, district resolution) |
 
 ---
 
@@ -104,6 +127,7 @@ Flask blueprints organized by feature domain. Each subdirectory contains a `rout
 | `district/` | `district_bp` | Tenant teacher import, usage dashboard, magic links |
 | `tenants/` | `tenants_bp` | Tenant management (PrepKC admin) |
 | `quality/` | `quality_bp` | Data quality dashboards |
+| `tools/` | `tools_bp` | Internal tools (newsletter formatter) |
 
 ### Key Files in `routes/`
 
@@ -116,8 +140,9 @@ Flask blueprints organized by feature domain. Each subdirectory contains a `rout
 ### Virtual Routes (`routes/virtual/`)
 
 The largest route module, handling:
-- `routes.py` - Session management, Google Sheets import
-- `usage.py` - District dashboards, teacher progress tracking, semester reset
+- `routes.py` - Session management, legacy Google Sheets import (deprecated — see `pathful_import.py`)
+- `pathful_import.py` - Pathful direct import (primary virtual session import)
+- `usage/` - District dashboards, teacher progress tracking, semester reset (extracted package)
 
 ---
 
@@ -137,6 +162,7 @@ Jinja2 HTML templates organized to mirror the route structure.
 | `volunteers/` | Volunteer management templates |
 | `events/` | Event management templates |
 | `management/` | Admin templates |
+| `tools/` | Internal tool UIs (newsletter formatter) |
 | `email/` | Email templates (HTML for sending) |
 
 **Template Conventions:**
@@ -181,7 +207,8 @@ Service layer modules for business logic and shared utilities.
 |------|---------|
 | `teacher_import_service.py` | Teacher roster import logic (CSV/Google Sheets) |
 | `academic_year_service.py` | Academic year, semester, and date range calculations |
-| `teacher_matching_service.py` | Teacher name matching and session counting |
+| `teacher_matching_service.py` | Centralized identity resolution (`resolve_teacher_for_tp`, `match_tp_to_profile`), name normalization, and session counting |
+| `session_status_service.py` | Shared session status classification (`classify_teacher_session`). Single source of truth for no-show detection, completion, planned/needs-review status |
 
 ---
 
@@ -328,4 +355,4 @@ def admin_page():
 
 ---
 
-*Last updated: February 2026*
+*Last updated: March 2026*

@@ -108,20 +108,46 @@ Polaris supports three Pathful export types. Import them in this recommended ord
 
 The Session Report is the primary import—it creates sessions and tracks participation.
 
+**Import Modes:**
+You can choose a specific import mode to control how much historical data is processed:
+- **Current Semester** (Default): Fast mode. Skips past sessions and only processes data from this semester (since Jan 1 for Spring, Aug 1 for Fall) onwards.
+- **Last 6 Months**: A slightly broader window to catch any semester edge cases.
+- **Full Import**: Processes every row without skipping. Recommended every ~2 weeks to catch deep retroactive changes.
+- **Custom Date**: Processes sessions on or after the date you specify.
+
 **Steps:**
 1. Click **"Choose File"** and select your Session Report (.xlsx)
-2. Click **"Upload & Process"**
-3. Review the import summary showing:
+2. Select your desired **Import Mode**
+3. Click **"Import"**
+4. Review the import summary showing:
    - Sessions created/updated
    - Teachers matched
    - Volunteers matched
    - Unmatched records
+   - Skipped rows (Historical vs. Other)
+   - Queued undated sessions
 
 **What Gets Imported:**
 - Session ID, title, date, status
 - Teacher names (matched to TeacherProgress)
 - Presenter names (matched to Volunteer)
 - Student attendance counts
+- **Teacher attendance status** — derived from the CSV's `Status` column:
+
+| CSV Status | EventTeacher.status | Counted as Completed? |
+|------------|--------------------|-----------------------|
+| Completed | `attended` | Yes |
+| Cancelled / No Show | `no_show` | No |
+| Requested / Published / other | `registered` | No |
+
+> [!CAUTION]
+> **Draft Sessions and Missing Dates**
+> If a session in the import file has no date and its status is "Draft", it is **silently ignored** by the import process as an abandoned session.
+>
+> If a session has no date but its status is **Requested**, **Published**, or **Completed**, it cannot be imported directly. Instead, it is placed into the **No Date Sessions** queue for manual resolution.
+
+> [!IMPORTANT]
+> On re-import, attendance status is updated if it has progressed (e.g., `registered` → `attended`). The import also **auto-links** TeacherProgress records to Teacher records when a match is found, resolving any missing `teacher_id` links.
 
 > [!TIP]
 > Imports are **idempotent**—you can safely re-import the same file without duplicating data.
@@ -175,7 +201,11 @@ When imports can't automatically match a teacher or volunteer, records are queue
 
 **Filters:**
 - Status: Pending / Resolved / Ignored / All
-- Type: Teachers / Volunteers
+- Type: Teachers / Volunteers / Companies / No Date Sessions
+
+> [!TIP]
+> **Filtering Published Sessions**
+> Because Pathful allows users to "Publish" sessions without confirming a date, you may see many messy or duplicate sessions in the No Date queue. By default, "Published" sessions are hidden from the "No Date Sessions" queue to reduce noise. You can view them by checking the **Include 'Published' Status** box in the filter bar.
 
 ### Resolving Individual Records
 
@@ -195,6 +225,18 @@ Each unmatched record shows:
 2. **Ignore** (if not applicable):
    - Click **Actions** → **Ignore**
    - Record is removed from pending queue
+
+### Resolving Undated Sessions
+
+When managing the **No Date Sessions** queue:
+
+1. **Provide Date**:
+   - Locate the session in the No Date queue.
+   - Enter the actual session date in the date picker input.
+   - Click the green checkmark button.
+   - The session will immediately be grouped, processed, and injected into the VMS just like a normal Pathful import row, updating teacher usage dashboards instantly.
+2. **Ignore**:
+   - If the session was a mistake, use the Actions menu to Ignore it.
 
 ### Bulk Resolution
 
@@ -255,4 +297,4 @@ When a User Profile's `pathful_user_id` matches an existing TeacherProgress reco
 
 ---
 
-*Last updated: January 30, 2026*
+*Last updated: March 3, 2026*

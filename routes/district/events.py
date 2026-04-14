@@ -42,6 +42,7 @@ from models.district_participation import DistrictParticipation
 from models.district_volunteer import DistrictVolunteer
 from models.event import Event, EventFormat, EventStatus, EventType
 from models.volunteer import Volunteer
+from routes.decorators import require_tenant_context  # Canonical location
 from routes.district import district_bp
 
 # District event types (simplified subset)
@@ -53,22 +54,6 @@ DISTRICT_EVENT_TYPES = [
     (EventType.MENTORING.value, "Mentoring"),
     (EventType.WORKPLACE_VISIT.value, "Workplace Visit"),
 ]
-
-
-def require_tenant_context(f):
-    """Decorator to require tenant context for district routes."""
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not g.get("tenant"):
-            flash(
-                "You must be logged in with a district account to access this page.",
-                "error",
-            )
-            return redirect(url_for("index"))
-        return f(*args, **kwargs)
-
-    return decorated_function
 
 
 def require_district_admin(f):
@@ -211,7 +196,7 @@ def create_event():
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Error creating event: {e}")
+        current_app.logger.error("Error creating event: %s", e)
         flash("An error occurred while creating the event.", "error")
         return redirect(url_for("district.new_event"))
 
@@ -315,14 +300,16 @@ def update_event(event_id):
 
         db.session.commit()
 
-        current_app.logger.info(f"Event updated: {event.id} by user {current_user.id}")
+        current_app.logger.info(
+            "Event updated: %s by user %s", event.id, current_user.id
+        )
 
         flash("Event updated successfully!", "success")
         return redirect(url_for("district.view_event", event_id=event_id))
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Error updating event: {e}")
+        current_app.logger.error("Error updating event: %s", e)
         flash("An error occurred while updating the event.", "error")
         return redirect(url_for("district.edit_event", event_id=event_id))
 
@@ -359,7 +346,7 @@ def cancel_event(event_id):
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Error cancelling event: {e}")
+        current_app.logger.error("Error cancelling event: %s", e)
         flash("An error occurred while cancelling the event.", "error")
         return redirect(url_for("district.view_event", event_id=event_id))
 
@@ -386,7 +373,7 @@ def publish_event(event_id):
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Error publishing event: {e}")
+        current_app.logger.error("Error publishing event: %s", e)
         flash("An error occurred while publishing the event.", "error")
         return redirect(url_for("district.view_event", event_id=event_id))
 
@@ -568,7 +555,7 @@ def add_to_roster(event_id):
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Error adding to roster: {e}")
+        current_app.logger.error("Error adding to roster: %s", e)
         flash("An error occurred while adding the volunteer.", "error")
 
     return redirect(url_for("district.view_event", event_id=event_id))
@@ -617,7 +604,7 @@ def update_participation_status(event_id, participation_id):
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Error updating participation status: {e}")
+        current_app.logger.error("Error updating participation status: %s", e)
         flash("An error occurred while updating the status.", "error")
 
     return redirect(url_for("district.view_event", event_id=event_id))
@@ -650,7 +637,7 @@ def remove_from_roster(event_id, participation_id):
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Error removing from roster: {e}")
+        current_app.logger.error("Error removing from roster: %s", e)
         flash("An error occurred.", "error")
 
     return redirect(url_for("district.view_event", event_id=event_id))

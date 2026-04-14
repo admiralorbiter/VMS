@@ -32,6 +32,7 @@ class PathfulImportType:
 
     SESSION_REPORT = "session_report"
     USER_REPORT = "user_report"
+    UNDATED_RESOLUTION = "undated_resolution"
 
 
 class PathfulImportLog(db.Model):
@@ -77,6 +78,13 @@ class PathfulImportLog(db.Model):
     imported_by = Column(Integer, ForeignKey("users.id"))
     importer = relationship("User", backref="pathful_imports")
 
+    # Import modes and filtering
+    import_mode = Column(
+        String(20), default="full"
+    )  # 'full', 'semester', 'six_month', 'custom'
+    cutoff_date = Column(DateTime(timezone=True), nullable=True)
+    skipped_historic_rows = Column(Integer, default=0)
+
     # Processing statistics
     total_rows = Column(Integer, default=0)
     processed_rows = Column(Integer, default=0)
@@ -96,6 +104,7 @@ class PathfulImportLog(db.Model):
 
     # Error tracking
     unmatched_count = Column(Integer, default=0)
+    queued_undated_count = Column(Integer, default=0)
     error_count = Column(Integer, default=0)
     error_details = Column(Text)  # JSON array of error messages
 
@@ -106,7 +115,14 @@ class PathfulImportLog(db.Model):
         cascade="all, delete-orphan",
     )
 
-    def __init__(self, filename, import_type, imported_by=None):
+    def __init__(
+        self,
+        filename,
+        import_type,
+        imported_by=None,
+        import_mode="full",
+        cutoff_date=None,
+    ):
         """
         Initialize a new import log entry.
 
@@ -114,10 +130,14 @@ class PathfulImportLog(db.Model):
             filename: Name of the uploaded file
             import_type: Type of import ('session_report' or 'user_report')
             imported_by: User ID of the person running the import
+            import_mode: Import filter mode ('full', 'semester', 'six_month', 'custom')
+            cutoff_date: Cutoff date for filtering old rows
         """
         self.filename = filename
         self.import_type = import_type
         self.imported_by = imported_by
+        self.import_mode = import_mode
+        self.cutoff_date = cutoff_date
         self.started_at = datetime.now(timezone.utc)
 
     def mark_complete(self):
@@ -153,6 +173,9 @@ class PathfulImportLog(db.Model):
             "total_rows": self.total_rows,
             "processed_rows": self.processed_rows,
             "skipped_rows": self.skipped_rows,
+            "skipped_historic_rows": self.skipped_historic_rows,
+            "import_mode": self.import_mode,
+            "cutoff_date": self.cutoff_date.isoformat() if self.cutoff_date else None,
             "created_events": self.created_events,
             "updated_events": self.updated_events,
             "matched_teachers": self.matched_teachers,
@@ -176,6 +199,13 @@ class UnmatchedType:
     EVENT = "event"
     TEACHER_AND_EVENT = "teacher_and_event"
     VOLUNTEER_AND_EVENT = "volunteer_and_event"
+    SCHOOL_UNRESOLVED = (
+        "school_unresolved"  # Teacher found but school name didn't match DB
+    )
+    ORGANIZATION = (
+        "organization"  # Volunteer found but organization name didn't match DB
+    )
+    NO_DATE_SESSION = "no_date_session"
 
 
 class ResolutionStatus:
@@ -190,6 +220,14 @@ class ResolutionStatus:
 class PathfulUnmatchedRecord(db.Model):
     """
     Stores unmatched records from Pathful imports for manual review.
+
+    raw_data schema varies by unmatched_type:
+      - Standard types (teacher, volunteer, school_unresolved, organization):
+          Flat dict of the original CSV row columns.
+      - no_date_session:
+          Envelope dict: {"session_id", "session_title", "rows": [list of row dicts], ...}
+          Use get_session_rows() to access participant rows safely.
+          See _queue_undated_session() in processing.py for the full schema.
 
     When the import process cannot match a teacher, volunteer, or event
     to existing records, it creates an entry here for staff review.
@@ -327,6 +365,12 @@ class PathfulUnmatchedRecord(db.Model):
         self.resolved_volunteer_id = volunteer_id
         self.resolved_event_id = event_id
 
+    def get_session_rows(self):
+        """For NO_DATE_SESSION records, return the participant row list from the envelope."""
+        if self.unmatched_type != UnmatchedType.NO_DATE_SESSION:
+            return []
+        return (self.raw_data or {}).get("rows", [])
+
     def to_dict(self):
         """Convert to dictionary for API responses."""
         return {
@@ -430,7 +474,11 @@ class PathfulUserProfile(db.Model):
     teacher_progress = relationship(
         "TeacherProgress", foreign_keys=[teacher_progress_id]
     )
-    volunteer = relationship("Volunteer", foreign_keys=[volunteer_id])
+    volunteer = relationship(
+        "Volunteer",
+        foreign_keys=[volunteer_id],
+        backref=db.backref("pathful_profile", uselist=False),
+    )
 
     # Timestamps
     created_at = Column(

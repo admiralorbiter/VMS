@@ -276,7 +276,7 @@ def report_issue(slug: str, teacher_id: int):
                 db.session.commit()
         except Exception as e:
             # If bug report creation fails, just log it
-            current_app.logger.warning(f"Could not create bug report: {e}")
+            current_app.logger.warning("Could not create bug report: %s", e)
 
         return jsonify(
             {
@@ -289,5 +289,5 @@ def report_issue(slug: str, teacher_id: int):
         db.session.rollback()
         from flask import current_app
 
-        current_app.logger.error(f"Error reporting issue: {e}", exc_info=True)
+        current_app.logger.error("Error reporting issue: %s", e, exc_info=True)
         return jsonify({"success": False, "message": str(e)}), 500

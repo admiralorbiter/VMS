@@ -302,3 +302,146 @@ class EmailDeliveryAttempt(db.Model):
             ),
             "is_dry_run": self.is_dry_run,
         }
+
+
+class BatchEmailJobStatus(IntEnum):
+    """Status enum for batch email job lifecycle.
+
+    State machine:
+        DRAFT → CANARY_SENT → CONFIRMED → COMPLETED
+                    ↓              ↓
+               CANCELLED      CANCELLED
+                (timeout)      (manual)
+    """
+
+    DRAFT = 0  # Job created, under review
+    CANARY_SENT = 1  # Canary email sent, cooldown timer started
+    CONFIRMED = 2  # Confirmation code entered, batch sending in progress
+    COMPLETED = 3  # All emails sent successfully
+    CANCELLED = 4  # Cancelled (manual, timeout, or error)
+    FAILED = 5  # Fatal error during batch send
+
+
+class BatchEmailJob(db.Model):
+    """
+    Batch email job model for safe, multi-gate bulk email sending.
+
+    Implements a 5-gate safety system:
+        1. Create (DRAFT) — preview recipients + rendered email
+        2. Review — explicit "Send Canary" click required
+        3. Canary (CANARY_SENT) — ONE email to test address
+        4. Cooldown — auto-cancel if no confirmation within deadline
+        5. Confirm (CONFIRMED) — enter confirmation code to start batch
+
+    Database Table:
+        batch_email_jobs - Stores batch job state and progress
+
+    Key Safety Features:
+        - Dead man's switch (auto-cancel on timeout)
+        - Random confirmation code prevents accidental clicks
+        - Canary email for visual verification before batch
+        - Full audit trail of every state transition
+    """
+
+    __tablename__ = "batch_email_jobs"
+
+    id = db.Column(Integer, primary_key=True)
+    template_id = db.Column(Integer, ForeignKey("email_templates.id"), nullable=False)
+    template = relationship("EmailTemplate", foreign_keys=[template_id])
+
+    # Job status
+    status = db.Column(
+        Integer, default=BatchEmailJobStatus.DRAFT, nullable=False, index=True
+    )
+
+    # Safety gates
+    confirmation_code = db.Column(
+        String(10), nullable=False
+    )  # Random code (e.g., "A3X9K2")
+    canary_email = db.Column(
+        String(255), nullable=False
+    )  # Test address for canary send
+    cooldown_minutes = db.Column(
+        Integer, nullable=False, default=10
+    )  # Minutes before auto-cancel
+
+    # Timing
+    created_at = db.Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    canary_sent_at = db.Column(DateTime(timezone=True), nullable=True)
+    expires_at = db.Column(
+        DateTime(timezone=True), nullable=True
+    )  # Auto-cancel deadline
+    confirmed_at = db.Column(DateTime(timezone=True), nullable=True)
+    completed_at = db.Column(DateTime(timezone=True), nullable=True)
+    cancelled_at = db.Column(DateTime(timezone=True), nullable=True)
+    cancel_reason = db.Column(String(50), nullable=True)  # "manual", "timeout", "error"
+
+    # Batch context
+    district_name = db.Column(
+        String(255), nullable=False, default="Kansas City Kansas Public Schools"
+    )
+    tenant_id = db.Column(Integer, nullable=True)
+    context_data = db.Column(JSON, nullable=True)  # Shared template context overrides
+
+    # Progress tracking
+    total_recipients = db.Column(Integer, nullable=False, default=0)
+    sent_count = db.Column(Integer, nullable=False, default=0)
+    skipped_count = db.Column(Integer, nullable=False, default=0)
+    error_count = db.Column(Integer, nullable=False, default=0)
+
+    # Audit
+    created_by_id = db.Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_by = relationship("User", foreign_keys=[created_by_id])
+
+    def __repr__(self) -> str:
+        return f"<BatchEmailJob {self.id} " f"{BatchEmailJobStatus(self.status).name}>"
+
+    @property
+    def is_expired(self) -> bool:
+        """Check if the cooldown timer has expired."""
+        if self.expires_at is None:
+            return False
+        return datetime.now(timezone.utc) > self.expires_at
+
+    @property
+    def seconds_remaining(self) -> int:
+        """Seconds remaining before auto-cancel. Returns 0 if expired."""
+        if self.expires_at is None:
+            return 0
+        remaining = (self.expires_at - datetime.now(timezone.utc)).total_seconds()
+        return max(0, int(remaining))
+
+    def to_dict(self) -> Dict:
+        """Convert job to dictionary for API responses."""
+        return {
+            "id": self.id,
+            "template_id": self.template_id,
+            "status": BatchEmailJobStatus(self.status).name,
+            "confirmation_code": self.confirmation_code,
+            "canary_email": self.canary_email,
+            "cooldown_minutes": self.cooldown_minutes,
+            "district_name": self.district_name,
+            "total_recipients": self.total_recipients,
+            "sent_count": self.sent_count,
+            "skipped_count": self.skipped_count,
+            "error_count": self.error_count,
+            "is_expired": self.is_expired,
+            "seconds_remaining": self.seconds_remaining,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "canary_sent_at": (
+                self.canary_sent_at.isoformat() if self.canary_sent_at else None
+            ),
+            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "confirmed_at": (
+                self.confirmed_at.isoformat() if self.confirmed_at else None
+            ),
+            "completed_at": (
+                self.completed_at.isoformat() if self.completed_at else None
+            ),
+            "cancelled_at": (
+                self.cancelled_at.isoformat() if self.cancelled_at else None
+            ),
+            "cancel_reason": self.cancel_reason,
+        }

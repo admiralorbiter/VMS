@@ -3,141 +3,8 @@
 {% block title %}District Year-End Report{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="/static/css/district_year_end.css">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/district_year_end.css') }}">
-<style>
-#loadingIndicator {
-    text-align: center;
-    padding: 20px;
-}
-.districts-grid {
-    transition: opacity 0.3s ease;
-}
-.header-controls {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex-wrap: wrap;
-}
-.refresh-button {
-    background-color: var(--ucla-blue);
-    color: var(--mint-green);
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    font-weight: 600;
-    font-size: 1rem;
-    box-shadow: 0 4px 0 var(--delft-blue);
-    transition: all 0.1s ease;
-    text-decoration: none;
-    position: relative;
-    height: 44px;
-    white-space: nowrap;
-    min-width: fit-content;
-}
-.refresh-button:hover {
-    background-color: var(--delft-blue);
-    color: var(--mint-green);
-    transform: translateY(2px);
-    box-shadow: 0 2px 0 var(--delft-blue);
-}
-.refresh-button:active {
-    transform: translateY(4px);
-    box-shadow: 0 0 0 var(--delft-blue);
-}
-.refresh-button:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-}
-.refresh-button:disabled:hover {
-    background-color: #ccc;
-    transform: none;
-}
-.fa-spin {
-    animation: fa-spin 2s infinite linear;
-}
-@keyframes fa-spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-.host-filter-toggle {
-    background: white;
-    border-radius: 8px;
-    padding: 1rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    margin: 1.5rem 0;
-    display: flex;
-    justify-content: center;
-}
-.host-filter-btn {
-    background: #f8f9fa;
-    border: 2px solid #dee2e6;
-    color: #495057;
-    padding: 0.75rem 1.5rem;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.2s ease;
-    text-decoration: none;
-    display: inline-block;
-    margin-right: 0.5rem;
-}
-.host-filter-btn.selected {
-    background: var(--ucla-blue);
-    border-color: var(--ucla-blue);
-    color: white;
-    box-shadow: 0 2px 4px rgba(70, 117, 153, 0.3);
-}
-.host-filter-btn:hover {
-    background: #e9ecef;
-    border-color: #adb5bd;
-    color: #495057;
-    text-decoration: none;
-}
-.host-filter-btn.selected:hover {
-    background: var(--delft-blue);
-    border-color: var(--delft-blue);
-    color: white;
-}
-
-/* Report header wrapper with sidebar on the right */
-.report-header-wrapper {
-    display: flex;
-    gap: 1.5rem;
-    align-items: flex-start;
-    margin-bottom: 1.5rem;
-}
-
-.header-sidebar {
-    flex: 0 0 320px;
-    min-width: 320px;
-    flex-shrink: 0;
-}
-
-/* Responsive layout */
-@media (max-width: 1200px) {
-    .report-header-wrapper {
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .header-sidebar {
-        flex: none;
-        width: 100%;
-        max-width: 100%;
-    }
-    
-    .header-sidebar .google-sheets-sidebar {
-        position: static;
-    }
-}
-</style>
 {% endblock %}
 
 {% block content %}
@@ -266,7 +133,7 @@
                         </div>
                         {% endfor %}
                     {% endif %}
-                    
+
                     {% if schools_by_level.Middle %}
                         {% for school in schools_by_level.Middle %}
                         <div class="school-item">
@@ -275,7 +142,7 @@
                         </div>
                         {% endfor %}
                     {% endif %}
-                    
+
                     {% if schools_by_level.Elementary %}
                         {% for school in schools_by_level.Elementary %}
                         <div class="school-item">
@@ -284,7 +151,7 @@
                         </div>
                         {% endfor %}
                     {% endif %}
-                    
+
                     {% if schools_by_level.Other %}
                         {% for school in schools_by_level.Other %}
                         <div class="school-item">
@@ -357,26 +224,26 @@ function toggleDistrictCard(districtId) {
     const schoolsSection = document.getElementById(`schools-${districtId}`);
     const toggleIcon = document.getElementById(`district-toggle-${districtId}`);
     const districtCard = schoolsSection.closest('.district-card');
-    
+
     if (schoolsSection.classList.contains('collapsed')) {
         // Expand - Horizontal first, then vertical
         schoolsSection.style.height = '0';
         schoolsSection.classList.remove('collapsed');
         schoolsSection.classList.add('expanded');
-        
+
         // Expand card horizontally first
         districtCard.classList.add('expanded');
-        
+
         // Small delay to let grid expand, then expand content vertically
         setTimeout(() => {
             const height = schoolsSection.scrollHeight;
             schoolsSection.style.height = height + 'px';
-            
+
             // Animate icon with transform
             toggleIcon.style.transform = 'rotate(90deg)';
             toggleIcon.classList.remove('fa-chevron-right');
             toggleIcon.classList.add('fa-chevron-down');
-            
+
             // Clean up after animation
             setTimeout(() => {
                 if (schoolsSection.classList.contains('expanded')) {
@@ -388,20 +255,20 @@ function toggleDistrictCard(districtId) {
         // Collapse - Vertical first, then horizontal
         const height = schoolsSection.scrollHeight;
         schoolsSection.style.height = height + 'px';
-        
+
         // Force reflow
         schoolsSection.offsetHeight;
-        
+
         // Start vertical collapse
         schoolsSection.style.height = '0';
         schoolsSection.classList.remove('expanded');
         schoolsSection.classList.add('collapsed');
-        
+
         // Animate icon back
         toggleIcon.style.transform = 'rotate(0deg)';
         toggleIcon.classList.remove('fa-chevron-down');
         toggleIcon.classList.add('fa-chevron-right');
-        
+
         // After vertical collapse completes, collapse horizontally
         setTimeout(() => {
             districtCard.classList.remove('expanded');
@@ -418,7 +285,7 @@ let allDistricts = [];
 document.addEventListener('DOMContentLoaded', function() {
     // Get all district cards
     allDistricts = Array.from(document.querySelectorAll('.district-card'));
-    
+
     // Initial display
     updateDisplay();
 });
@@ -427,7 +294,7 @@ function changePage(direction) {
     const totalPages = Math.ceil(allDistricts.length / ITEMS_PER_PAGE);
     currentPage = Math.max(1, Math.min(currentPage + direction, totalPages));
     updateDisplay();
-    
+
     // Scroll to top of grid
     document.querySelector('.districts-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -437,25 +304,25 @@ function updateDisplay() {
     const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalItems);
-    
+
     // Hide all districts first
     allDistricts.forEach(card => {
         card.style.display = 'none';
     });
-    
+
     // Show only current page items
     allDistricts.slice(startIndex, endIndex).forEach(card => {
         card.style.display = 'flex';
     });
-    
+
     // Update pagination info
     document.getElementById('currentPage').textContent = currentPage;
     document.getElementById('totalPages').textContent = totalPages;
-    
+
     // Update button states
     document.getElementById('prevBtn').disabled = currentPage <= 1;
     document.getElementById('nextBtn').disabled = currentPage >= totalPages;
-    
+
     // Show/hide pagination if only 1 page
     document.getElementById('paginationControls').style.display = totalPages > 1 ? 'flex' : 'none';
 }

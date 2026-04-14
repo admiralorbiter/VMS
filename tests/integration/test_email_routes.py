@@ -21,7 +21,6 @@ from models.email import (
 )
 from models.user import User
 from tests.conftest import assert_route_response, safe_route_test
-from utils.email import get_email_allowlist, is_email_delivery_enabled
 
 
 @pytest.fixture
@@ -128,6 +127,198 @@ class TestEmailTemplates:
             headers=test_admin_headers,
         )
         assert_route_response(response, expected_statuses=[200, 404, 500])
+
+
+class TestTemplateCRUD:
+    """Tests for email template CRUD and versioning routes"""
+
+    def test_create_template_get(self, client, test_admin_headers):
+        """Test create template form renders"""
+        response = safe_route_test(
+            client, "/management/email/templates/new", headers=test_admin_headers
+        )
+        assert_route_response(response, expected_statuses=[200, 404, 500])
+
+    def test_create_template_post(self, client, test_admin_headers, app):
+        """Test successful template creation"""
+        response = safe_route_test(
+            client,
+            "/management/email/templates/new",
+            method="POST",
+            data={
+                "name": "CRUD Test Template",
+                "purpose_key": "crud_test_unique",
+                "description": "Created by test",
+                "subject_template": "Test: {{user_name}}",
+                "html_template": "<p>Hello {{user_name}}</p>",
+                "text_template": "Hello {{user_name}}",
+                "required_placeholders": "user_name",
+                "optional_placeholders": "district_name",
+            },
+            headers=test_admin_headers,
+        )
+        assert_route_response(response, expected_statuses=[200, 302, 404, 500])
+
+        # Clean up
+        with app.app_context():
+            t = EmailTemplate.query.filter_by(purpose_key="crud_test_unique").first()
+            if t:
+                db.session.delete(t)
+                db.session.commit()
+
+    def test_create_template_duplicate_purpose_key(
+        self, client, test_admin_headers, test_email_template
+    ):
+        """Test that duplicate purpose_key is rejected"""
+        response = safe_route_test(
+            client,
+            "/management/email/templates/new",
+            method="POST",
+            data={
+                "name": "Duplicate Test",
+                "purpose_key": test_email_template.purpose_key,
+                "subject_template": "Test",
+                "html_template": "<p>Test</p>",
+                "text_template": "Test",
+            },
+            headers=test_admin_headers,
+        )
+        # Should re-render the form (200) with error flash, not redirect
+        assert_route_response(response, expected_statuses=[200, 404, 500])
+
+    def test_edit_template_get(self, client, test_admin_headers, test_email_template):
+        """Test edit form renders with pre-filled data"""
+        response = safe_route_test(
+            client,
+            f"/management/email/templates/{test_email_template.id}/edit",
+            headers=test_admin_headers,
+        )
+        assert_route_response(response, expected_statuses=[200, 404, 500])
+
+    def test_edit_template_post(
+        self, client, test_admin_headers, test_email_template, app
+    ):
+        """Test successful template update"""
+        response = safe_route_test(
+            client,
+            f"/management/email/templates/{test_email_template.id}/edit",
+            method="POST",
+            data={
+                "name": "Updated Test Template",
+                "description": "Updated description",
+                "subject_template": test_email_template.subject_template,
+                "html_template": test_email_template.html_template,
+                "text_template": test_email_template.text_template,
+                "required_placeholders": "user_name",
+            },
+            headers=test_admin_headers,
+        )
+        assert_route_response(response, expected_statuses=[200, 302, 404, 500])
+
+    def test_create_new_version(
+        self, client, test_admin_headers, test_email_template, app
+    ):
+        """Test creating a new version deactivates old and increments version"""
+        response = safe_route_test(
+            client,
+            f"/management/email/templates/{test_email_template.id}/new-version",
+            method="POST",
+            headers=test_admin_headers,
+        )
+        assert_route_response(response, expected_statuses=[200, 302, 404, 500])
+
+        # Clean up: delete the new version
+        with app.app_context():
+            new_ver = (
+                EmailTemplate.query.filter_by(
+                    purpose_key=test_email_template.purpose_key
+                )
+                .filter(EmailTemplate.id != test_email_template.id)
+                .first()
+            )
+            if new_ver:
+                db.session.delete(new_ver)
+                # Re-activate the original
+                orig = db.session.get(EmailTemplate, test_email_template.id)
+                if orig:
+                    orig.is_active = True
+                db.session.commit()
+
+    def test_activate_template(self, client, test_admin_headers, test_email_template):
+        """Test activating a template version"""
+        response = safe_route_test(
+            client,
+            f"/management/email/templates/{test_email_template.id}/activate",
+            method="POST",
+            headers=test_admin_headers,
+        )
+        assert_route_response(response, expected_statuses=[200, 302, 404, 500])
+
+    def test_delete_template_no_messages(
+        self, client, test_admin_headers, app, test_admin
+    ):
+        """Test deleting a template with no messages succeeds"""
+        # Create a disposable template
+        with app.app_context():
+            t = EmailTemplate(
+                purpose_key="delete_me_test",
+                version=1,
+                name="Delete Me",
+                subject_template="Test",
+                html_template="<p>Test</p>",
+                text_template="Test",
+                is_active=True,
+                created_by_id=test_admin.id,
+            )
+            db.session.add(t)
+            db.session.commit()
+            t_id = t.id
+
+        response = safe_route_test(
+            client,
+            f"/management/email/templates/{t_id}/delete",
+            method="POST",
+            headers=test_admin_headers,
+        )
+        assert_route_response(response, expected_statuses=[200, 302, 404, 500])
+
+        # Verify deletion
+        with app.app_context():
+            assert db.session.get(EmailTemplate, t_id) is None
+
+    def test_delete_template_with_messages(
+        self, client, test_admin_headers, test_email_template, test_email_message
+    ):
+        """Test that deleting a template with messages is rejected"""
+        response = safe_route_test(
+            client,
+            f"/management/email/templates/{test_email_template.id}/delete",
+            method="POST",
+            headers=test_admin_headers,
+        )
+        # Should redirect back with error flash (template still exists)
+        assert_route_response(response, expected_statuses=[200, 302, 404, 500])
+
+    def test_crud_requires_admin(self, client, auth_headers, test_email_template):
+        """Test that all CRUD routes require admin access"""
+        routes = [
+            ("/management/email/templates/new", "GET"),
+            ("/management/email/templates/new", "POST"),
+            (f"/management/email/templates/{test_email_template.id}/edit", "GET"),
+            (f"/management/email/templates/{test_email_template.id}/edit", "POST"),
+            (
+                f"/management/email/templates/{test_email_template.id}/new-version",
+                "POST",
+            ),
+            (f"/management/email/templates/{test_email_template.id}/activate", "POST"),
+            (f"/management/email/templates/{test_email_template.id}/delete", "POST"),
+        ]
+
+        for route, method in routes:
+            response = safe_route_test(
+                client, route, method=method, headers=auth_headers
+            )
+            assert_route_response(response, expected_statuses=[403, 404, 500])
 
 
 class TestEmailOutbox:
@@ -325,6 +516,271 @@ class TestEmailSettings:
             db.session.commit()
 
 
+class TestEmailQualityAssurance:
+    """Tests for email quality assurance pipeline (FR-EMAIL-860–863)"""
+
+    def test_recipient_validation_rejects_invalid_email(self, app, test_admin):
+        """FR-EMAIL-860: Validate recipient email addresses before queuing"""
+        with app.app_context():
+            from utils.email import validate_recipients
+
+            valid, excluded = validate_recipients(
+                ["good@example.com", "not-an-email", "", "also@valid.org"]
+            )
+            assert "good@example.com" in valid
+            assert "also@valid.org" in valid
+            assert len(excluded) >= 1
+            # The invalid entries should be excluded with reasons
+            excluded_emails = [e["email"] for e in excluded]
+            assert "not-an-email" in excluded_emails
+
+    def test_placeholder_validation_catches_missing(
+        self, app, test_email_template, test_admin
+    ):
+        """FR-EMAIL-861: Validate required placeholders before sending"""
+        with app.app_context():
+            from utils.email import EmailQualityError, create_email_message
+
+            # Template requires 'user_name' — provide empty context
+            with pytest.raises(EmailQualityError, match="missing placeholders"):
+                create_email_message(
+                    template=test_email_template,
+                    recipients=["test@example.com"],
+                    context={},  # Missing required 'user_name'
+                    created_by_id=test_admin.id,
+                    status=EmailMessageStatus.DRAFT,
+                )
+
+    def test_template_rendering_validation(self, app, test_email_template, test_admin):
+        """FR-EMAIL-862: Template rendering validation before queuing"""
+        with app.app_context():
+            from utils.email import create_email_message
+
+            # Provide all required placeholders — should succeed
+            message = create_email_message(
+                template=test_email_template,
+                recipients=["test@example.com"],
+                context={"user_name": "Integration Test User"},
+                created_by_id=test_admin.id,
+                status=EmailMessageStatus.DRAFT,
+            )
+            assert message.id is not None
+            assert message.subject == "Test: Integration Test User"
+            assert "Integration Test User" in message.html_body
+            assert message.quality_score is not None
+            assert message.quality_score > 0
+
+            # Clean up
+            db.session.delete(message)
+            db.session.commit()
+
+    @patch("utils.email.send_email_via_mailjet")
+    def test_bug_report_created_on_delivery_failure(
+        self, mock_send, app, test_email_template, test_admin
+    ):
+        """FR-EMAIL-863: Auto-generate BugReport on delivery failure"""
+        with app.app_context():
+            from models.bug_report import BugReport
+            from utils.email import create_delivery_attempt, create_email_message
+
+            # Count existing bug reports
+            initial_count = BugReport.query.count()
+
+            # Create a message
+            message = create_email_message(
+                template=test_email_template,
+                recipients=["test@example.com"],
+                context={"user_name": "Bug Report Test"},
+                created_by_id=test_admin.id,
+                status=EmailMessageStatus.QUEUED,
+            )
+            db.session.commit()
+
+            # Mock Mailjet to fail
+            mock_send.return_value = (
+                False,
+                "Connection refused",
+                {"error": "mocked failure"},
+            )
+
+            attempt = create_delivery_attempt(message, is_dry_run=False)
+
+            assert attempt.status == DeliveryAttemptStatus.FAILED
+            assert message.status == EmailMessageStatus.FAILED
+
+            # Verify a BugReport was created
+            new_count = BugReport.query.count()
+            assert (
+                new_count > initial_count
+            ), "BugReport should be auto-created on delivery failure"
+
+            # Check the bug report content
+            latest_bug = BugReport.query.order_by(BugReport.id.desc()).first()
+            assert "EMAIL_DELIVERY_FAILED" in latest_bug.description
+            assert str(message.id) in latest_bug.description
+
+            # Clean up
+            db.session.delete(latest_bug)
+            db.session.delete(attempt)
+            db.session.delete(message)
+            db.session.commit()
+
+    @patch("utils.email.send_email_via_mailjet")
+    def test_dry_run_skips_actual_delivery(
+        self, mock_send, app, test_email_template, test_admin
+    ):
+        """FR-EMAIL-854: Dry-run validates without actual delivery"""
+        with app.app_context():
+            from utils.email import create_delivery_attempt, create_email_message
+
+            message = create_email_message(
+                template=test_email_template,
+                recipients=["test@example.com"],
+                context={"user_name": "Dry Run Test"},
+                created_by_id=test_admin.id,
+                status=EmailMessageStatus.DRAFT,
+            )
+            db.session.commit()
+
+            # Mock Mailjet to return success for dry-run
+            mock_send.return_value = (True, None, {"status": "dry_run"})
+
+            attempt = create_delivery_attempt(message, is_dry_run=True)
+
+            assert attempt.status == DeliveryAttemptStatus.DRY_RUN
+            assert attempt.is_dry_run is True
+            # Message should NOT be marked as SENT
+            assert message.status != EmailMessageStatus.SENT
+
+            # Clean up
+            db.session.delete(attempt)
+            db.session.delete(message)
+            db.session.commit()
+
+
+class TestComposeEmail:
+    """Tests for email compose and send to arbitrary recipients"""
+
+    def test_compose_page_renders(
+        self, client, test_admin_headers, test_email_template
+    ):
+        """FR-EMAIL-880: Compose page renders with template dropdown"""
+        response = safe_route_test(
+            client, "/management/email/compose", headers=test_admin_headers
+        )
+        assert_route_response(response, expected_statuses=[200])
+        html = response.data.decode()
+        assert "Compose Email" in html
+        assert "template_id" in html
+        assert "recipients" in html
+
+    def test_compose_save_as_draft(
+        self, client, test_admin_headers, test_email_template, app
+    ):
+        """FR-EMAIL-881: Compose POST saves message as draft"""
+        response = safe_route_test(
+            client,
+            "/management/email/compose",
+            method="POST",
+            data={
+                "template_id": test_email_template.id,
+                "recipients": "draft@example.com",
+                "placeholder_user_name": "Draft Test User",
+                "action": "draft",
+            },
+            headers=test_admin_headers,
+        )
+        assert_route_response(response, expected_statuses=[200, 302])
+
+        # Verify the message was created as DRAFT
+        with app.app_context():
+            message = (
+                EmailMessage.query.filter_by(template_id=test_email_template.id)
+                .order_by(EmailMessage.id.desc())
+                .first()
+            )
+            if message:
+                assert message.status == EmailMessageStatus.DRAFT
+                assert message.recipient_count >= 1
+
+    @patch("utils.email.send_email_via_mailjet")
+    def test_compose_send_dry_run(
+        self, mock_send, client, test_admin_headers, test_email_template, app
+    ):
+        """FR-EMAIL-882: Compose POST with dry-run sends without actual delivery"""
+        mock_send.return_value = (True, None, {"status": "dry_run"})
+
+        response = safe_route_test(
+            client,
+            "/management/email/compose",
+            method="POST",
+            data={
+                "template_id": test_email_template.id,
+                "recipients": "dryrun@example.com",
+                "placeholder_user_name": "Dry Run User",
+                "action": "send",
+                "dry_run": "true",
+            },
+            headers=test_admin_headers,
+        )
+        assert_route_response(response, expected_statuses=[200, 302])
+
+    def test_compose_missing_recipients(
+        self, client, test_admin_headers, test_email_template
+    ):
+        """FR-EMAIL-883: Compose POST rejects empty recipients"""
+        response = safe_route_test(
+            client,
+            "/management/email/compose",
+            method="POST",
+            data={
+                "template_id": test_email_template.id,
+                "recipients": "",
+                "placeholder_user_name": "No Recipient",
+                "action": "draft",
+            },
+            headers=test_admin_headers,
+        )
+        assert_route_response(response, expected_statuses=[200])
+        html = response.data.decode()
+        assert "recipient" in html.lower()
+
+    def test_compose_missing_required_placeholder(
+        self, client, test_admin_headers, test_email_template
+    ):
+        """FR-EMAIL-884: Compose POST rejects missing required placeholder"""
+        response = safe_route_test(
+            client,
+            "/management/email/compose",
+            method="POST",
+            data={
+                "template_id": test_email_template.id,
+                "recipients": "test@example.com",
+                # Deliberately omit placeholder_user_name
+                "action": "draft",
+            },
+            headers=test_admin_headers,
+        )
+        assert_route_response(response, expected_statuses=[200])
+        html = response.data.decode()
+        assert "placeholder" in html.lower() or "user_name" in html.lower()
+
+    def test_template_placeholders_endpoint(
+        self, client, test_admin_headers, test_email_template
+    ):
+        """FR-EMAIL-885: JSON API returns template placeholders"""
+        response = safe_route_test(
+            client,
+            f"/management/email/templates/{test_email_template.id}/placeholders",
+            headers=test_admin_headers,
+        )
+        assert_route_response(response, expected_statuses=[200])
+        data = response.get_json()
+        assert "required" in data
+        assert "user_name" in data["required"]
+        assert "subject" in data
+
+
 class TestEmailAccessControl:
     """Tests for email route access control"""
 
@@ -333,6 +789,8 @@ class TestEmailAccessControl:
         routes = [
             "/management/email",
             "/management/email/templates",
+            "/management/email/templates/new",
+            "/management/email/compose",
             "/management/email/outbox",
             "/management/email/attempts",
             "/management/email/settings",
@@ -344,97 +802,6 @@ class TestEmailAccessControl:
             assert_route_response(response, expected_statuses=[403, 404, 500])
 
 
-class TestEmailRealSending:
-    """
-    Tests for REAL email sending (only runs if explicitly enabled).
-
-    WARNING: These tests will send REAL emails if:
-    - EMAIL_DELIVERY_ENABLED=true in environment
-    - EMAIL_ALLOWLIST is configured
-    - RUN_REAL_EMAIL_TESTS environment variable is set to 'true'
-
-    To run these tests:
-        RUN_REAL_EMAIL_TESTS=true pytest tests/integration/test_email_routes.py::TestEmailRealSending -v
-
-    These tests will ONLY send to emails in EMAIL_ALLOWLIST.
-    """
-
-    @pytest.mark.skipif(
-        os.environ.get("RUN_REAL_EMAIL_TESTS", "").lower() != "true",
-        reason="Real email tests require RUN_REAL_EMAIL_TESTS=true",
-    )
-    def test_send_real_email_end_to_end(self, app, test_email_template, test_admin):
-        """
-        End-to-end test that sends a REAL email.
-
-        This test will:
-        1. Create a message
-        2. Queue it
-        3. Send it via Mailjet (REAL EMAIL)
-
-        Only runs if RUN_REAL_EMAIL_TESTS=true and EMAIL_DELIVERY_ENABLED=true
-        """
-        # Check prerequisites
-        if not is_email_delivery_enabled():
-            pytest.skip("EMAIL_DELIVERY_ENABLED is not true")
-
-        allowlist = get_email_allowlist()
-        if not allowlist:
-            pytest.skip("EMAIL_ALLOWLIST is not configured")
-
-        # Use first allowlisted email
-        test_recipient = allowlist[0]
-        if test_recipient.startswith("@"):
-            pytest.skip(
-                "Domain allowlist not supported for this test - use specific email"
-            )
-
-        with app.app_context():
-            from utils.email import (
-                create_delivery_attempt,
-                create_email_message,
-                queue_message_for_delivery,
-            )
-
-            # Create message
-            message = create_email_message(
-                template=test_email_template,
-                recipients=[test_recipient],
-                context={
-                    "user_name": "Pytest Test User",
-                    "district_name": "Test District",
-                    "test_mode": "AUTOMATED_TEST",
-                },
-                created_by_id=test_admin.id,
-                status=EmailMessageStatus.DRAFT,
-            )
-            db.session.commit()
-
-            assert message.id is not None
-            assert message.recipient_count == 1
-            assert message.recipients[0] == test_recipient
-
-            # Queue message
-            message = queue_message_for_delivery(message.id)
-            assert message.status == EmailMessageStatus.QUEUED
-
-            # Send for real (no dry-run, no mocks)
-            attempt = create_delivery_attempt(message, is_dry_run=False)
-
-            # Verify attempt was created
-            assert attempt.id is not None
-            assert attempt.status in [
-                DeliveryAttemptStatus.SUCCESS,
-                DeliveryAttemptStatus.FAILED,
-            ]
-
-            if attempt.status == DeliveryAttemptStatus.SUCCESS:
-                assert attempt.mailjet_message_id is not None
-                print(f"\n✓ REAL EMAIL SENT SUCCESSFULLY")
-                print(f"  Recipient: {test_recipient}")
-                print(f"  Mailjet Message ID: {attempt.mailjet_message_id}")
-                print(f"  Check your inbox!")
-            else:
-                print(f"\n✗ Email send failed: {attempt.error_message}")
-                # Don't fail the test - we want to see what happened
-                pytest.fail(f"Email send failed: {attempt.error_message}")
+# TestEmailRealSending removed — sent real emails via Mailjet which is
+# no longer available. All email delivery tests use mocks instead.
+# See TestEmailSending and TestEmailQualityAssurance for mock-based coverage.

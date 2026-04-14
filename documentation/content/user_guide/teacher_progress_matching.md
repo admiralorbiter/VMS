@@ -4,71 +4,73 @@ Links imported `TeacherProgress` entries (from Google Sheets/Pathful) to actual 
 
 ## Overview
 
-The matching system enables the teacher detail view to work correctly when clicking on teachers in the progress tracking interface.
+The matching system enables the teacher detail view to work correctly when clicking on teachers in the progress tracking interface. All matching is centralized in `services/teacher_matching_service.py`.
 
 ---
 
 ## How Matching Works
 
-### Two-Tier Matching Strategy
+### Centralized Identity Resolution
 
-#### 1. Email Matching (Primary)
+All teacher matching flows through two canonical functions in `teacher_matching_service.py`:
 
-- Compares `TeacherProgress.email` to `Teacher` primary email
-- Exact match (case-insensitive)
-- **Priority**: Highest — if email match found, name matching skipped
+#### `resolve_teacher_for_tp(tp)` — Link TP → Teacher
 
-**Example:**
-- TeacherProgress: `tiffany.pattison@kckps.org`
-- Teacher primary email: `tiffany.pattison@kckps.org`
-- Result: ✅ Match
+Priority chain:
+1. **Email match** — `tp.email` → `Teacher.cached_email` (case-insensitive)
+2. **Profile bridge** — `tp.pathful_user_id` → `PathfulUserProfile` → `Teacher` (via stored email or linked teacher_id)
+3. **Normalized name match** — full name normalization (lowercase, punctuation removed)
+4. **First+last name match** — ignores middle names (e.g., "Sarah Jean Williams" → matches "Sarah Williams")
+5. **Create new Teacher** — if no match found, creates a new `Teacher` record with `cached_email` populated
 
-#### 2. Name Matching (Secondary)
+#### `match_tp_to_profile(tp)` — Link TP → PathfulUserProfile
 
-- Uses fuzzy string matching (85%+ similarity threshold)
-- Only used if email matching fails
-- Names normalized before comparison (lowercase, punctuation removed)
+Priority chain:
+1. **pathful_user_id** — exact FK match
+2. **Email match** — `tp.email` → `PathfulUserProfile.email`
+3. **Normalized name match** — handles variations
 
-**Example:**
-- TeacherProgress: `"John A. Smith"`
-- Teacher: `"John Smith"`
-- Normalized: `"john a smith"` vs `"john smith"`
-- Similarity: ~85% → ✅ Match
+> [!NOTE]
+> Name normalization (`normalize_name()`) strips punctuation, lowercases, and removes extra whitespace. The first+last name fallback handles middle names, hyphenated names, and maiden/married name differences.
 
 ---
 
-## Usage
+## Automatic Matching
 
-### Running Automatic Matching
+### On Import
 
-#### Via Admin Interface
+Matching runs automatically during:
+- **Roster import** — `_link_progress_to_teachers()` in `roster_import.py` uses email-first + normalized name matching
+- **Pathful session import** — `_reverse_link_teacher_progress()` resolves TP links for each session
+- **Pathful user report** — `match_tp_to_profile()` links TPs to user profiles
 
-1. Navigate to: `/virtual/usage/district/<district>/teacher-progress/matching`
-2. Select the virtual year
-3. Click **"Run Auto-Match"** button
-4. Review results in statistics dashboard
+### Backfill
 
-#### Via Command Line
+The dashboard route runs `_backfill_teacher_ids()` on each page load, catching any TPs that still have `teacher_id = NULL`. This delegates to `resolve_teacher_for_tp()`.
 
-```bash
-python scripts/utilities/match_teacher_progress.py [virtual_year]
-```
+---
 
-Example:
-```bash
-python scripts/utilities/match_teacher_progress.py 2025-2026
-```
+## Dashboard Session Counting
 
-### Manual Matching
+### Counting Strategy
 
-**Location**: `/virtual/usage/district/<district>/teacher-progress/matching`
+Session counts use a two-tier approach (in `compute_teacher_progress()`):
 
-**Features:**
-- View all TeacherProgress entries with match status
-- Filter by unmatched only
-- Search by name, email, or building
-- Select teacher from dropdown and match
-- Unmatch existing matches
+1. **EventTeacher path (primary):** Count FK-linked events where `EventTeacher.status IN ('attended', 'completed')` — does **not** filter by `Event.district_partner` (the FK link itself proves attendance; see TD-032)
+2. **Text path (supplementary):** Match teacher names in `Event.educators` for events NOT linked via EventTeacher — **does** filter by `district_partner` since there's no FK to prove attendance
+
+### Deduplication
+
+Two sets prevent double-counting:
+- `all_et_event_ids` — all EventTeacher-linked events (any status, including no_show) — used to exclude from text-matching
+- `counted_events_per_tp` — (tp_id, event_id) pairs actually counted — used for override logic
+
+### Attendance Overrides
+
+Both ADD and REMOVE overrides are **event-aware**:
+- **ADD:** Only increments if the event was NOT already counted via EventTeacher
+- **REMOVE:** Only decrements if the event WAS counted
+- **Stale ADDs:** If an ADD override's event is already counted via import data, the override is auto-resolved and logged
 
 ---
 
@@ -81,34 +83,15 @@ python scripts/utilities/match_teacher_progress.py 2025-2026
 
 ---
 
-## Matching Function
+## Key Files
 
-**Location**: `routes/virtual/usage.py`
-
-**Function**: `match_teacher_progress_to_teachers(virtual_year=None, min_similarity=0.85)`
-
-**Returns:**
-```python
-{
-    "total_processed": 462,
-    "matched_by_email": 326,
-    "matched_by_name": 135,
-    "unmatched": 1,
-    "errors": []
-}
-```
-
----
-
-## Best Practices
-
-1. **Run Auto-Match After Import** — Always run after importing new teacher data
-2. **Review Unmatched Teachers** — Check regularly for manual matching needs
-3. **Verify Matches** — Sample check a few matches for accuracy
-4. **Handle Edge Cases:**
-   - Teachers with multiple email addresses
-   - Name variations (middle names, nicknames)
-   - Teachers who changed names
+| Category | Files |
+|----------|-------|
+| **Matching Service** | `services/teacher_matching_service.py` |
+| **Teacher Service** | `services/teacher_service.py` |
+| **Dashboard Route** | `routes/district/tenant_teacher_usage.py` |
+| **Import Processing** | `routes/virtual/pathful_import/processing.py` |
+| **Models** | `models/teacher_progress.py`, `models/teacher.py`, `models/attendance_override.py` |
 
 ---
 
@@ -117,19 +100,18 @@ python scripts/utilities/match_teacher_progress.py 2025-2026
 ### No Teachers Matched
 
 - Check: Are there Teacher records in the database?
-- Check: Do Teacher records have primary emails set?
+- Check: Do Teacher records have `cached_email` populated?
 - Check: Are email addresses in TeacherProgress valid?
 
 ### Low Match Rate
 
 - Review name formats in both systems
-- Use manual matching for difficult cases
-- Consider adjusting similarity threshold (with caution)
+- Check for middle names or hyphenated names causing mismatches
+- Run the reconciliation script: `scripts/reconcile_teacher_links.py`
 
 ### False Matches
 
 - Review matches manually
-- Unmatch incorrect matches
 - Report patterns for logic adjustment
 
 ---
@@ -138,25 +120,10 @@ python scripts/utilities/match_teacher_progress.py 2025-2026
 
 | Action | Access |
 |--------|--------|
-| Matching Interface | Admin only |
-| Auto-Match Endpoint | Admin only |
-| Manual Match/Unmatch | Admin only |
+| Dashboard View | Admin + district-scoped users |
+| Attendance Overrides | Virtual admins (tenant-scoped) |
 | Progress View (read) | District-scoped users |
 
 ---
 
-## Technical Details
-
-### Database Schema
-
-The `teacher_progress` table includes:
-- `teacher_id` (Integer, nullable): Foreign key to `teacher.id`
-- Relationship: `TeacherProgress.teacher` → `Teacher` model
-
-### Key Files
-
-| Category | Files |
-|----------|-------|
-| **Route** | `routes/virtual/usage.py` |
-| **Models** | `models/teacher_progress.py`, `models/teacher.py` |
-| **Script** | `scripts/utilities/match_teacher_progress.py` |
+*Last updated: March 2026*

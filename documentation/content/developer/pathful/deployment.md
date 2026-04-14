@@ -357,25 +357,26 @@ All historical Pathful exports have been loaded using the Phase 1 import pipelin
 ### Phase D: Post-Import Data Management Features
 
 **Priority:** HIGH — Enables data quality management workflow
-**Timeline:** February 2026
+**Timeline:** February–March 2026
 **Dependency:** Phases 1-3 complete
-**Status:** 📋 PLANNED
+**Status:** 🔧 IN PROGRESS
 
 > [!INFO]
 > **Phase Purpose**
 >
 > This phase adds the tooling needed to manage virtual session data after Pathful import. It enables staff and district admins to flag issues, make corrections, set cancellation reasons, and verify data accuracy — all with full audit logging.
 
-#### D-1: Auto-Flagging System
+#### D-1: Auto-Flagging System ✅ COMPLETE
 
 **Priority:** HIGH
 **Dependency:** None (builds on existing import)
+**Status:** ✅ Deployed (March 2026)
 
 | Task | Description | Status |
 |------|-------------|--------|
-| Create `EventFlag` model | Flag type enum, resolution tracking | 📋 Planned |
-| Implement flag scanner | Auto-flag after import completes | 📋 Planned |
-| Create flag queue UI | `/virtual/flags` with filtering | 📋 Planned |
+| Create `EventFlag` model | Flag type enum, resolution tracking | ✅ |
+| Implement flag scanner | Auto-flag after import completes | ✅ |
+| Create flag queue UI | `/virtual/flags` with filtering | ✅ |
 
 **Flag Types:**
 - `NEEDS_ATTENTION` — Draft events with past session dates
@@ -387,17 +388,18 @@ All historical Pathful exports have been loaded using the Phase 1 import pipelin
 
 ---
 
-#### D-2: Cancellation Reasons
+#### D-2: Cancellation Reasons ✅ COMPLETE
 
 **Priority:** HIGH
 **Dependency:** D-1 complete
+**Status:** ✅ Deployed (March 2026)
 
 | Task | Description | Status |
 |------|-------------|--------|
-| Add `CancellationReason` enum | 8 predefined reasons + OTHER | 📋 Planned |
-| Add Event model fields | `cancellation_reason`, `cancellation_notes` | 📋 Planned |
-| Update event edit UI | Reason dropdown for cancelled events | 📋 Planned |
-| Validation logic | Notes required when reason=OTHER | 📋 Planned |
+| Add `CancellationReason` enum | 8 predefined reasons + OTHER | ✅ |
+| Add Event model fields | `cancellation_reason`, `cancellation_notes` | ✅ |
+| Update event edit UI | Reason dropdown for cancelled events | ✅ |
+| Validation logic | Notes required when reason=OTHER | ✅ |
 
 **Reason Codes:** WEATHER, PRESENTER_CANCELLED, TEACHER_CANCELLED, SCHOOL_CONFLICT, TECHNICAL_ISSUES, LOW_ENROLLMENT, SCHEDULING_ERROR, OTHER
 
@@ -444,18 +446,46 @@ All historical Pathful exports have been loaded using the Phase 1 import pipelin
 
 ---
 
+#### D-5: Draft Review Queue ✅ COMPLETE
+
+**Priority:** HIGH
+**Dependency:** D-1, D-2 complete
+**Status:** ✅ Deployed (March 2026)
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Create `draft_review_service.py` | Queue query, confidence scoring, bulk promote/dismiss | ✅ |
+| Create review UI | `/virtual/pathful/draft-review` with summary stats, filtering, bulk actions | ✅ |
+| Add navigation link | Button on Virtual Sessions page | ✅ |
+| Fix teacher detail view | Exclude Draft events from teacher session history | ✅ |
+| Integration tests | 28 tests (17 happy-path + 11 edge-case) | ✅ |
+
+**Confidence Heuristic:**
+- **High** ("Likely Completed") — `attended_student_count > 0`
+- **Medium** ("Needs Review") — `registered_student_count > 0` but no attendance
+- **Low** ("Likely Never Happened") — no student data
+
+**Implementation:**
+- [draft_review_service.py](file:///c:/Users/admir/Github/VMS/services/draft_review_service.py)
+- [draft_review.html](file:///c:/Users/admir/Github/VMS/templates/virtual/pathful/draft_review.html)
+- [routes.py (draft review routes)](file:///c:/Users/admir/Github/VMS/routes/virtual/pathful_import/routes.py)
+- [test_draft_review.py](file:///c:/Users/admir/Github/VMS/tests/integration/test_draft_review.py)
+
+---
+
 #### Phase D Rollout Checklist
 
 | Step | Action | Verification |
 |------|--------|--------------|
 | 1 | Run database migrations | Tables created |
-| 2 | Deploy flag scanner | Flags created on next import |
-| 3 | Deploy flag queue UI | Staff can view/resolve flags |
-| 4 | Deploy cancellation reasons | Can set reasons on cancelled events |
-| 5 | Create district_admin test user | User can log in |
-| 6 | Deploy scoped views | District admin sees only their data |
-| 7 | Deploy edit capabilities | District admin can make edits |
-| 8 | Verify audit logging | All edits logged |
+| 2 | Deploy flag scanner | ✅ Flags created on import |
+| 3 | Deploy flag queue UI | ✅ Staff can view/resolve flags |
+| 4 | Deploy cancellation reasons | ✅ Can set reasons on cancelled events |
+| 5 | Deploy Draft Review Queue | ✅ 268 events triaged via confidence scoring |
+| 6 | Create district_admin test user | User can log in |
+| 7 | Deploy scoped views | District admin sees only their data |
+| 8 | Deploy edit capabilities | District admin can make edits |
+| 9 | Verify audit logging | All edits logged |
 
 #### Phase D Success Criteria
 
@@ -502,5 +532,157 @@ All historical Pathful exports have been loaded using the Phase 1 import pipelin
 
 ---
 
-*Last updated: January 30, 2026*
-*Version: 2.1 — Added Phase B: Enhanced Unmatched Resolution*
+### Phase E: Import Pipeline Hardening ✅ COMPLETE
+
+**Priority:** HIGH — Data integrity + duplicate prevention
+**Timeline:** April 2026
+**Dependency:** Phases 1–D complete
+**Status:** ✅ Complete (2026-04-01)
+
+> [!IMPORTANT]
+> Triggered by a root-cause investigation into missing sessions on the KCNSC employer
+> report. Full audit revealed five structural data integrity gaps. All fixes are
+> backward-compatible; no DDL changes required.
+
+#### E-A1: Teacher Name Cache Collision Detection ✅
+
+**File:** `routes/virtual/pathful_import/matching.py` — `build_import_caches()`
+
+`teacher_record_by_name` previously used a plain dict assignment that silently let a
+second teacher overwrite a first when two teachers share the same normalised full name.
+Fixed to use the same collision-marker pattern (`None`) as the `teacher_by_name` cache.
+
+#### E-A2: Event P2 Session ID Cross-Check ✅
+
+**File:** `routes/virtual/pathful_import/matching.py` — `match_or_create_event()`
+
+Back-to-back sessions with the same title on the same day (e.g., two "Creative Careers
+Uncovered" sessions) were being silently merged into one Event row. Added a guard: if
+the incoming `session_id` differs from the matched event's stored `session_id`, fall
+through and create a new Event.
+
+#### E-B1: Email Cache Collision Markers ✅
+
+**File:** `routes/virtual/pathful_import/matching.py` — `build_import_caches()`
+
+`volunteer_by_email` and `teacher_by_email` caches used plain dict assignment. Two
+people sharing an email (family inbox, shared department address) caused the second
+to silently overwrite the first. Fixed: collision → `None` marker → lookup falls
+through to name-match tier.
+
+#### E-B2: Organization T4 Quarantine-First ✅
+
+**File:** `services/organization_service.py` — `resolve_organization()` Tier 4
+
+T4 suffix-stripping previously auto-wrote an `OrganizationAlias` immediately. If the
+near-match was spurious, that alias was permanent. Fixed: T4 now returns `None` and
+creates a quarantine ticket instead. Admin confirms → alias written via the existing
+`confirm_org_alias` handler, which also cascades all sibling records.
+
+#### E-C1: Pathful Email Backfill Service ✅
+
+**New file:** `services/pathful_id_backfill_service.py`
+
+After each P3 (name) match or new-volunteer creation, the import calls
+`backfill_volunteer_from_profile()`. This:
+1. Writes `pathful_user_id` onto Volunteer if missing → next import hits P1
+2. Looks up `PathfulUserProfile` by that ID
+3. If profile has `login_email` → adds it to `contact_email` (non-primary) → next
+   import hits P2 even if the profile arrives before the session report
+
+Safety: no standalone commits, idempotent, never overwrites existing data.
+
+**Hook locations in `match_volunteer()`:**
+- After P3 (name) match returns
+- After new-volunteer creation (P4 fallthrough)
+
+#### E-C2: Volunteer Merge Preview UI ✅
+
+**New files:**
+- `templates/virtual/pathful/merge_preview.html`
+- Route: `GET /virtual/pathful/unmatched/<id>/merge-preview` (`pathful_merge_preview`)
+
+Replaces the blind `confirm_near_match` form POST with a full side-by-side preview
+page showing both volunteer records, their field values, their org links, and the
+exact list of `event_volunteers` sessions that will be moved. Confirm/Reject buttons
+POST to the existing `resolve_unmatched` handler.
+
+A **"Preview Merge"** button now appears in the unmatched queue for any volunteer
+ticket that has `_near_match_volunteer_ids` in its `raw_data`.
+
+#### E: Unit Tests ✅
+
+**New file:** `tests/unit/services/test_pathful_hardening.py`
+
+28 tests covering A1 (3), A2 (3), B1 (3), B2 (4+1 regression), C1 (8):
+
+| Class | Epic | Tests |
+|---|---|---|
+| `TestA1TeacherNameCacheCollision` | A1 | 3 |
+| `TestA2EventP2SessionIdGuard` | A2 | 3 |
+| `TestB1EmailCacheCollisions` | B1 | 3 |
+| `TestB2OrgTier4QuarantineFirst` | B2 | 4 |
+| `TestB2Regression` | B2 | 1 |
+| `TestC1PathfulBackfillService` | C1 | 8 |
+
+`test_organization_service.py::test_tier4_quarantine_first` updated to match new B2
+behaviour (was asserting auto-alias behaviour).
+
+#### E: Database Readiness
+
+**No DDL changes required.** All hardening changes:
+- Touch only existing tables/columns
+- New service only reads `pathful_user_profile.login_email` (exists since Phase A-2)
+  and writes to `contact_email` (pre-existing)
+- `db.create_all()` on startup handles any edge cases (new deployment / wipe scenario)
+
+#### Phase E Rollout Checklist
+
+| Step | Action | Verification |
+|------|--------|--------------|
+| 1 | `git pull` on PythonAnywhere | Latest code present |
+| 2 | Reload WSGI app | No import errors in error log |
+| 3 | Visit `/virtual/pathful/unmatched?type=volunteer` | "Preview Merge" button visible on near-match tickets |
+| 4 | Run import with a known P3 match | Check `contact_email` gained a backfilled row |
+| 5 | Run `pytest tests/unit/services/test_pathful_hardening.py -v` | 28 passed |
+
+---
+
+### Phase F: Pathful Import Performance Optimizations ✅ COMPLETE
+
+**Priority:** HIGH — Significantly speeds up daily imports
+**Timeline:** April 2026
+**Dependency:** Phases 1–E complete
+**Status:** ✅ Complete (2026-04-13)
+
+> [!INFO]
+> Daily imports were slowing down due to repeated cache generation and processing loops for `~30,000+` rows of data. This phase resolves this by adding specific "import modes" and aggressive scope bounding to cache generation.
+
+#### F-1: Native DataFrame Pre-Filtering
+**File:** `routes/virtual/pathful_import/routes.py`
+Previously, `pandas` iterated over all rows. Non-PREPKC and non-educator/professional rows were filtered inside the loop. This was moved to a native pandas slice applied immediately after loading, extracting ~5,000+ rows instantly.
+
+#### F-2: Import Mode Date Bounds
+**File:** `routes/virtual/pathful_import/routes.py`, `parsing.py`
+Introduced new Import Modes (Semester, 6-Month, Full, Custom). The selected mode generates a `cutoff_date`. The DataFrame is sliced again prior to the iterative loop keeping only sessions missing a date or `>= cutoff_date`.
+
+#### F-3: Bounded In-Memory Cache Scoping
+**File:** `routes/virtual/pathful_import/matching.py`
+`build_import_caches` now respects the `cutoff_date`.
+- `Event` cache: Only retrieves virtual sessions inside the time window.
+- `EventTeacher` cache: In memory footprint is drastically reduced by restricting the query to only the `Event_id`'s corresponding to the bounded `Event` cache.
+
+#### F-4: Memory Dict Fallthrough Misses Fixed
+**File:** `routes/virtual/pathful_import/matching.py`
+Fixed missed potential memory hits:
+- `_try_resolve_teacher_school`: Re-wired to consult `caches["school_by_name"]` instead of directly hitting `School.query` every time.
+- `_ensure_volunteer_org_link`: Added `vol_org_set` into the global `caches` block, checking memory tuples instead of un-cached DB lookup per professional.
+
+#### F-5: Audit Log Breakouts
+**File:** `models/pathful_import.py`, `templates/virtual/pathful/import_history.html`
+Enhanced the `PathfulImportLog` schema to record `import_mode`, `cutoff_date`, and `skipped_historic_rows`. The UI has been enhanced to visually clarify what was intentionally skipped (historic data) vs skipped for other reasons (non-prep-kc/student rows).
+
+---
+
+*Last updated: April 13, 2026*
+*Version: 4.1 — Added Phase F: Pathful Import Performance Optimizations*

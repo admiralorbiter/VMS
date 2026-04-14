@@ -45,13 +45,13 @@ def test_rolling_averages():
                 days=30,
             )
 
-            logger.info(f"Rolling averages result: {rolling_avg_result}")
+            logger.info("Rolling averages result: %s", rolling_avg_result)
 
             if rolling_avg_result.get("rolling_averages"):
                 logger.info(
                     f"✅ Successfully calculated {len(rolling_avg_result['rolling_averages'])} rolling averages"
                 )
-                logger.info(f"   Data points: {rolling_avg_result['data_points']}")
+                logger.info("   Data points: %s", rolling_avg_result["data_points"])
                 logger.info(
                     f"   Overall average: {rolling_avg_result['overall_average']:.2f}"
                 )
@@ -63,12 +63,16 @@ def test_rolling_averages():
 
             # Assert that we got a valid result
             assert rolling_avg_result is not None, "Rolling averages calculation failed"
-            assert "rolling_averages" in rolling_avg_result, "Missing rolling_averages in result"
+            assert (
+                "rolling_averages" in rolling_avg_result
+            ), "Missing rolling_averages in result"
             assert "data_points" in rolling_avg_result, "Missing data_points in result"
-            assert "overall_average" in rolling_avg_result, "Missing overall_average in result"
+            assert (
+                "overall_average" in rolling_avg_result
+            ), "Missing overall_average in result"
 
         except Exception as e:
-            logger.error(f"❌ Error testing rolling averages: {e}")
+            logger.error("❌ Error testing rolling averages: %s", e)
             import traceback
 
             traceback.print_exc()
@@ -92,7 +96,7 @@ def test_moving_windows():
                 days=30,
             )
 
-            logger.info(f"Moving windows result: {moving_windows_result}")
+            logger.info("Moving windows result: %s", moving_windows_result)
 
             if moving_windows_result.get("windows"):
                 logger.info(
@@ -110,12 +114,14 @@ def test_moving_windows():
                 logger.warning("⚠️ No moving windows calculated - insufficient data")
 
             # Assert that we got a valid result
-            assert moving_windows_result is not None, "Moving windows calculation failed"
+            assert (
+                moving_windows_result is not None
+            ), "Moving windows calculation failed"
             assert "windows" in moving_windows_result, "Missing windows in result"
             assert "comparison" in moving_windows_result, "Missing comparison in result"
 
         except Exception as e:
-            logger.error(f"❌ Error testing moving windows: {e}")
+            logger.error("❌ Error testing moving windows: %s", e)
             import traceback
 
             traceback.print_exc()
@@ -139,7 +145,7 @@ def test_trend_patterns():
                 min_pattern_length=3,
             )
 
-            logger.info(f"Pattern detection result: {patterns_result}")
+            logger.info("Pattern detection result: %s", patterns_result)
 
             if patterns_result.get("patterns"):
                 logger.info(
@@ -151,8 +157,8 @@ def test_trend_patterns():
                     description = pattern.get("description", "No description")
                     confidence = pattern.get("confidence", 0)
 
-                    logger.info(f"   Pattern: {pattern_type} - {description}")
-                    logger.info(f"     Confidence: {confidence:.3f}")
+                    logger.info("   Pattern: %s - %s", pattern_type, description)
+                    logger.info("     Confidence: %.3f", confidence)
             else:
                 logger.warning(
                     "⚠️ No patterns detected - insufficient data or no patterns found"
@@ -163,7 +169,7 @@ def test_trend_patterns():
             assert "patterns" in patterns_result, "Missing patterns in result"
 
         except Exception as e:
-            logger.error(f"❌ Error testing trend patterns: {e}")
+            logger.error("❌ Error testing trend patterns: %s", e)
             import traceback
 
             traceback.print_exc()
@@ -184,10 +190,10 @@ def test_data_summary():
                 entity_type="volunteer", days=30, include_patterns=True
             )
 
-            logger.info(f"Data summary result: {summary_result}")
+            logger.info("Data summary result: %s", summary_result)
 
             if summary_result.get("metrics_summary"):
-                logger.info(f"✅ Successfully generated data summary")
+                logger.info("✅ Successfully generated data summary")
                 logger.info(
                     f"   Metrics analyzed: {summary_result['performance_summary']['total_metrics_analyzed']}"
                 )
@@ -212,7 +218,7 @@ def test_data_summary():
             assert "summary" in summary_result, "Missing summary in result"
 
         except Exception as e:
-            logger.error(f"❌ Error testing data summary: {e}")
+            logger.error("❌ Error testing data summary: %s", e)
             import traceback
 
             traceback.print_exc()
@@ -235,11 +241,11 @@ def test_performance_optimization():
                 target_response_time=1.0,
             )
 
-            logger.info(f"Performance optimization result: {optimization_result}")
+            logger.info("Performance optimization result: %s", optimization_result)
 
             if optimization_result.get("recommended_strategy"):
-                logger.info(f"✅ Successfully generated optimization recommendations")
-                logger.info(f"   Dataset size: {optimization_result['dataset_size']}")
+                logger.info("✅ Successfully generated optimization recommendations")
+                logger.info("   Dataset size: %s", optimization_result["dataset_size"])
                 logger.info(
                     f"   Recommended strategy: {optimization_result['recommended_strategy']}"
                 )
@@ -255,16 +261,18 @@ def test_performance_optimization():
                 if tips:
                     logger.info("   Optimization tips:")
                     for tip in tips:
-                        logger.info(f"     • {tip}")
+                        logger.info("     • %s", tip)
             else:
                 logger.warning("⚠️ No optimization recommendations generated")
 
             # Assert that we got a valid result
             assert optimization_result is not None, "Performance optimization failed"
-            assert "recommendations" in optimization_result, "Missing recommendations in result"
+            assert (
+                "recommendations" in optimization_result
+            ), "Missing recommendations in result"
 
         except Exception as e:
-            logger.error(f"❌ Error testing performance optimization: {e}")
+            logger.error("❌ Error testing performance optimization: %s", e)
             import traceback
 
             traceback.print_exc()
@@ -283,13 +291,13 @@ def test_metric_trends():
                 metric_name="field_completeness", entity_type="volunteer", days=30
             )
 
-            logger.info(f"Metric trend result: {trend_result}")
+            logger.info("Metric trend result: %s", trend_result)
 
             if trend_result.get("trend") != "insufficient_data":
-                logger.info(f"✅ Successfully calculated metric trends")
-                logger.info(f"   Trend: {trend_result['trend']}")
-                logger.info(f"   Confidence: {trend_result['confidence']:.3f}")
-                logger.info(f"   Data points: {trend_result['data_points']}")
+                logger.info("✅ Successfully calculated metric trends")
+                logger.info("   Trend: %s", trend_result["trend"])
+                logger.info("   Confidence: %.3f", trend_result["confidence"])
+                logger.info("   Data points: %s", trend_result["data_points"])
                 logger.info(
                     f"   Change percentage: {trend_result['change_percentage']:.2f}%"
                 )
@@ -304,12 +312,12 @@ def test_metric_trends():
                 days=30,
             )
 
-            logger.info(f"Period summary result: {period_summary}")
+            logger.info("Period summary result: %s", period_summary)
 
             if period_summary.get("periods"):
-                logger.info(f"✅ Successfully generated period summary")
-                logger.info(f"   Total periods: {period_summary['total_periods']}")
-                logger.info(f"   Total values: {period_summary['total_values']}")
+                logger.info("✅ Successfully generated period summary")
+                logger.info("   Total periods: %s", period_summary["total_periods"])
+                logger.info("   Total values: %s", period_summary["total_values"])
             else:
                 logger.warning("⚠️ No period summary generated - insufficient data")
 
@@ -320,7 +328,7 @@ def test_metric_trends():
             assert "summary" in period_summary, "Missing summary in period_summary"
 
         except Exception as e:
-            logger.error(f"❌ Error testing metric trends: {e}")
+            logger.error("❌ Error testing metric trends: %s", e)
             import traceback
 
             traceback.print_exc()
@@ -357,12 +365,14 @@ def main():
     successful_tests = sum(1 for result in results.values() if result is not None)
     total_tests = len(results)
 
-    logger.info(f"   Successful tests: {successful_tests}/{total_tests}")
+    logger.info("   Successful tests: %s/%s", successful_tests, total_tests)
 
     if successful_tests == total_tests:
         logger.info("🎉 All tests completed successfully!")
     else:
-        logger.warning(f"⚠️ {total_tests - successful_tests} tests failed or had issues")
+        logger.warning(
+            "⚠️ %s tests failed or had issues", total_tests - successful_tests
+        )
 
     return results
 

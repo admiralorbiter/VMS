@@ -57,7 +57,7 @@ def rotate_api_key():
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Error rotating API key: {e}")
+        current_app.logger.error("Error rotating API key: %s", e)
         flash("An error occurred while generating the API key.", "error")
 
     return redirect(url_for("district.settings"))
@@ -88,7 +88,7 @@ def update_cors_origins():
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Error updating CORS origins: {e}")
+        current_app.logger.error("Error updating CORS origins: %s", e)
         flash("An error occurred while updating origins.", "error")
 
     return redirect(url_for("district.settings"))

@@ -21,8 +21,11 @@ Usage:
         success, error, skipped = process_event_row(row, ...)
 """
 
+import logging
 from datetime import datetime
 from typing import Dict, List, Optional, Set, Tuple
+
+logger = logging.getLogger(__name__)
 
 from models import db
 from models.district_model import District
@@ -31,14 +34,14 @@ from models.school_model import School
 from models.student import Student
 from models.volunteer import EventParticipation, Skill, Volunteer
 from routes.utils import (
-    DISTRICT_MAPPINGS,
     map_cancellation_reason,
     map_event_format,
     map_session_type,
     parse_date,
     parse_event_skills,
 )
-from services.salesforce.utils import safe_parse_delivery_hours
+from services.district_service import resolve_district
+from services.salesforce.utils import extract_href_from_html, safe_parse_delivery_hours
 
 
 def process_event_row(
@@ -113,6 +116,12 @@ def process_event_row(
         event.additional_information = row.get("Additional_Information__c", "")
         event.session_host = row.get("Session_Host__c", "")
 
+        # Registration Link — Salesforce stores this as HTML:
+        #   <a href="https://..." target="_blank">Sign up</a>
+        # Extract the clean URL for storage.
+        raw_reg_link = row.get("Registration_Link__c", "")
+        event.registration_link = extract_href_from_html(raw_reg_link)
+
         # Handle numeric fields with constraint protection
         def safe_convert_to_int(value, default=0):
             if value is None:
@@ -141,9 +150,8 @@ def process_event_row(
             district_name = parent_account
 
         district = None
-        if district_name and district_name in DISTRICT_MAPPINGS:
-            mapped_name = DISTRICT_MAPPINGS[district_name]
-            district = District.query.filter_by(name=mapped_name).first()
+        if district_name:
+            district = resolve_district(district_name)
 
         if district or school_district:
             event.districts = []
@@ -244,7 +252,7 @@ def process_participation_row(
 
     except Exception as e:
         error_msg = f"Error processing participation row: {str(e)}"
-        print(error_msg)
+        logger.exception("Error processing participation row: %s", e)
         db.session.rollback()
         errors.append(error_msg)
         return success_count, error_count + 1
@@ -458,4 +466,4 @@ def fix_missing_participation_records(event: Event) -> None:
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        print(f"Error committing participation fixes: {str(e)}")
+        logger.exception("Error committing participation fixes: %s", e)

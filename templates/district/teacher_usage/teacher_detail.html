@@ -3,375 +3,8 @@
 {% block title %}{{ teacher_progress.name }} - Session Details{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="/static/css/teacher_detail.css">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/teacher_dashboard.css') }}">
-<style>
-    .teacher-detail-container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 20px;
-    }
-
-    .back-link {
-        color: #28a745;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 20px;
-        font-weight: 500;
-        font-size: 0.95em;
-    }
-
-    .back-link:hover {
-        text-decoration: underline;
-        color: #1e7e34;
-    }
-
-    .teacher-detail-header {
-        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        color: white;
-        padding: 25px 30px;
-        border-radius: 10px;
-        margin-bottom: 25px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    .teacher-detail-header h1 {
-        margin: 0 0 8px 0;
-        font-size: 1.8em;
-    }
-
-    .teacher-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 15px;
-        opacity: 0.9;
-        font-size: 0.95em;
-    }
-
-    .teacher-meta span {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .progress-summary-card {
-        background: white;
-        border-radius: 10px;
-        padding: 20px 25px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        margin-bottom: 25px;
-        display: flex;
-        align-items: center;
-        gap: 20px;
-    }
-
-    .progress-summary-card .progress-bar-lg {
-        flex: 1;
-        height: 12px;
-        background: #e9ecef;
-        border-radius: 6px;
-        overflow: hidden;
-    }
-
-    .progress-summary-card .progress-fill {
-        height: 100%;
-        border-radius: 6px;
-        transition: width 0.3s ease;
-    }
-
-    .progress-summary-card .progress-fill.achieved {
-        background: #28a745;
-    }
-
-    .progress-summary-card .progress-fill.in_progress {
-        background: #ffd700;
-    }
-
-    .progress-summary-card .progress-fill.not_started {
-        background: #dc3545;
-    }
-
-    .progress-summary-card .progress-text {
-        font-weight: 700;
-        font-size: 1.1em;
-        white-space: nowrap;
-    }
-
-    .goal-badge {
-        font-size: 0.85em;
-        font-weight: 600;
-        padding: 4px 12px;
-        border-radius: 20px;
-        white-space: nowrap;
-    }
-
-    .goal-badge.achieved {
-        background: #d4edda;
-        color: #155724;
-    }
-
-    .goal-badge.in_progress {
-        background: #fff3cd;
-        color: #856404;
-    }
-
-    .goal-badge.not_started {
-        background: #f8d7da;
-        color: #721c24;
-    }
-
-    .no-link-alert {
-        background: #fff3cd;
-        border: 1px solid #ffc107;
-        border-radius: 8px;
-        padding: 15px 20px;
-        margin-bottom: 25px;
-        color: #856404;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .no-link-alert i {
-        font-size: 1.2em;
-    }
-
-    /* Override badge */
-    .override-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        background: #e8f4fd;
-        color: #0c5460;
-        border: 1px solid #bee5eb;
-        border-radius: 12px;
-        padding: 2px 10px;
-        font-size: 0.78em;
-        font-weight: 600;
-        cursor: help;
-    }
-
-    .override-badge i {
-        font-size: 0.85em;
-    }
-
-    /* Override action buttons */
-    .override-actions {
-        display: flex;
-        gap: 8px;
-        margin-top: 10px;
-        flex-wrap: wrap;
-    }
-
-    .btn-override {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 4px 12px;
-        border-radius: 6px;
-        font-size: 0.82em;
-        font-weight: 500;
-        cursor: pointer;
-        border: 1px solid;
-        transition: all 0.2s ease;
-    }
-
-    .btn-override-remove {
-        background: #fff5f5;
-        color: #c53030;
-        border-color: #feb2b2;
-    }
-
-    .btn-override-remove:hover {
-        background: #fed7d7;
-    }
-
-    .btn-add-session {
-        background: #ebf8ff;
-        color: #2b6cb0;
-        border-color: #90cdf4;
-    }
-
-    .btn-add-session:hover {
-        background: #bee3f8;
-    }
-
-    /* Modal styles */
-    .override-modal-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 1000;
-        justify-content: center;
-        align-items: center;
-    }
-
-    .override-modal-overlay.active {
-        display: flex;
-    }
-
-    .override-modal {
-        background: white;
-        border-radius: 12px;
-        padding: 30px;
-        max-width: 550px;
-        width: 90%;
-        max-height: 80vh;
-        overflow-y: auto;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    }
-
-    .override-modal h3 {
-        margin: 0 0 20px 0;
-        font-size: 1.2em;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .override-modal .form-group {
-        margin-bottom: 16px;
-    }
-
-    .override-modal label {
-        display: block;
-        font-weight: 600;
-        font-size: 0.9em;
-        margin-bottom: 6px;
-        color: #333;
-    }
-
-    .override-modal input,
-    .override-modal textarea,
-    .override-modal select {
-        width: 100%;
-        padding: 8px 12px;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        font-size: 0.95em;
-        box-sizing: border-box;
-    }
-
-    .override-modal textarea {
-        min-height: 80px;
-        resize: vertical;
-    }
-
-    .override-modal .btn-group {
-        display: flex;
-        gap: 10px;
-        justify-content: flex-end;
-        margin-top: 20px;
-    }
-
-    .override-modal .btn-cancel {
-        padding: 8px 20px;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        background: white;
-        cursor: pointer;
-        font-size: 0.9em;
-    }
-
-    .override-modal .btn-submit {
-        padding: 8px 20px;
-        border: none;
-        border-radius: 6px;
-        color: white;
-        cursor: pointer;
-        font-weight: 600;
-        font-size: 0.9em;
-    }
-
-    .override-modal .btn-submit.add {
-        background: #28a745;
-    }
-
-    .override-modal .btn-submit.remove {
-        background: #dc3545;
-    }
-
-    .override-modal .btn-submit:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
-
-    /* Session search results */
-    .session-search-results {
-        max-height: 200px;
-        overflow-y: auto;
-        border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        margin-top: 8px;
-    }
-
-    .session-search-item {
-        padding: 10px 14px;
-        border-bottom: 1px solid #f0f0f0;
-        cursor: pointer;
-        transition: background 0.15s ease;
-    }
-
-    .session-search-item:hover {
-        background: #f7fafc;
-    }
-
-    .session-search-item.selected {
-        background: #ebf8ff;
-        border-left: 3px solid #3182ce;
-    }
-
-    .session-search-item .session-search-title {
-        font-weight: 600;
-        font-size: 0.9em;
-    }
-
-    .session-search-item .session-search-meta {
-        font-size: 0.8em;
-        color: #666;
-        margin-top: 2px;
-    }
-
-    /* Toast notification */
-    .override-toast {
-        display: none;
-        position: fixed;
-        bottom: 30px;
-        right: 30px;
-        padding: 14px 24px;
-        border-radius: 8px;
-        color: white;
-        font-weight: 600;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        z-index: 2000;
-        animation: slideUp 0.3s ease;
-    }
-
-    .override-toast.success {
-        background: #28a745;
-    }
-
-    .override-toast.error {
-        background: #dc3545;
-    }
-
-    @keyframes slideUp {
-        from {
-            transform: translateY(20px);
-            opacity: 0;
-        }
-
-        to {
-            transform: translateY(0);
-            opacity: 1;
-        }
-    }
-</style>
 {% endblock %}
 
 {% block content %}
@@ -397,7 +30,9 @@
     </div>
 
     <!-- Progress Summary -->
-    {% set completed = past_sessions|length %}
+    {# Only count sessions where teacher actually attended (not no-shows or registered) #}
+    {% set attended_statuses = ['attended', 'completed'] %}
+    {% set completed = past_sessions|selectattr('attendance_status', 'in', attended_statuses)|list|length %}
     {% set target = teacher_progress.target_sessions or 1 %}
     {% set pct = [((completed / target) * 100), 100] | min %}
     {% if completed >= target %}
@@ -433,13 +68,24 @@
             <h2 class="sessions-title">
                 <i class="fas fa-calendar-alt"></i>
                 Upcoming Sessions
+                <button class="btn-override btn-add-session" onclick="openSignUpModal()" style="margin-left: auto;">
+                    <i class="fas fa-plus"></i> Sign Up for Session
+                </button>
             </h2>
             {% if upcoming_sessions %}
             <div class="sessions-list">
                 {% for session in upcoming_sessions %}
                 <div class="session-card upcoming">
                     <div class="session-header">
-                        <h3 class="session-title">{{ session.title }}</h3>
+                        <h3 class="session-title">
+                            {{ session.title }}
+                            {% if session.is_override %}
+                            <span class="override-badge"
+                                title="Admin override: {{ session.override_reason|default('Signed up by admin') }}">
+                                <i class="fas fa-wrench"></i> Override
+                            </span>
+                            {% endif %}
+                        </h3>
                         {% if session.is_simulcast %}
                         <span class="simulcast-badge">Simulcast</span>
                         {% endif %}
@@ -484,6 +130,15 @@
                     <div class="session-status">
                         <span class="status-badge status-{{ session.status }}">{{ session.status }}</span>
                     </div>
+                    {% if session.is_override %}
+                    <div class="override-actions">
+                        <button class="btn-override btn-override-remove"
+                            onclick="openRemoveModal({{ session.id }}, {{ session.title|tojson|forceescape }}, {{ session.override_id|default(0) }})"
+                            title="Remove this teacher's sign-up for this session">
+                            <i class="fas fa-times"></i> Remove
+                        </button>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>
@@ -491,6 +146,9 @@
             <div class="no-sessions">
                 <i class="fas fa-calendar-times"></i>
                 <p>No upcoming sessions scheduled</p>
+                <button class="btn-override btn-add-session" onclick="openSignUpModal()" style="margin-top: 12px;">
+                    <i class="fas fa-plus"></i> Sign Up for Session
+                </button>
             </div>
             {% endif %}
         </div>
@@ -560,14 +218,23 @@
                         {% endif %}
                     </div>
                     <div class="session-status">
+                        {% if session.status in ['Confirmed', 'Published', 'Requested', 'Draft'] %}
+                        <span class="status-badge status-in-planning">Needs Review</span>
+                        {% else %}
                         <span class="status-badge status-{{ session.status }}">{{ session.status }}</span>
-                        {% if session.attendance_status %}
+                        {% endif %}
+                        {% if session.attendance_status == 'registered' %}
+                        <span class="awaiting-badge"
+                            title="Admin signed up this teacher; awaiting Pathful import confirmation">
+                            <i class="fas fa-clock"></i> Awaiting Pathful Data
+                        </span>
+                        {% elif session.attendance_status %}
                         <span class="attendance-badge">{{ session.attendance_status }}</span>
                         {% endif %}
                     </div>
                     <div class="override-actions">
                         <button class="btn-override btn-override-remove"
-                            onclick="openRemoveModal({{ session.id }}, '{{ session.title|e }}')"
+                            onclick="openRemoveModal({{ session.id }}, {{ session.title|tojson|forceescape }}, {{ session.override_id|default(0) }})"
                             title="Remove this teacher from this session">
                             <i class="fas fa-times"></i> Remove
                         </button>
@@ -630,6 +297,29 @@
     </div>
 </div>
 
+<!-- Sign Up for Session Modal -->
+<div id="signUpModal" class="override-modal-overlay" onclick="if(event.target===this) closeModals()">
+    <div class="override-modal">
+        <h3><i class="fas fa-calendar-plus" style="color: #2b6cb0;"></i> Sign Up for Upcoming Session</h3>
+        <div class="form-group">
+            <label for="signUpSessionSearch">Search Upcoming Sessions</label>
+            <input type="text" id="signUpSessionSearch" placeholder="Search by title or topic..."
+                oninput="searchSignUpSessions(this.value)">
+            <div id="signUpSearchResults" class="session-search-results" style="display: none;"></div>
+        </div>
+        <div class="form-group">
+            <label for="signUpReason">Reason (required)</label>
+            <textarea id="signUpReason" placeholder="Why is this teacher being signed up for this session?"></textarea>
+        </div>
+        <div class="btn-group">
+            <button class="btn-cancel" onclick="closeModals()">Cancel</button>
+            <button id="signUpSubmitBtn" class="btn-submit add" onclick="submitSignUp()" disabled>
+                <i class="fas fa-calendar-check"></i> Sign Up
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Toast notification -->
 <div id="overrideToast" class="override-toast"></div>
 
@@ -656,7 +346,23 @@
         searchSessions('');
     }
 
-    function openRemoveModal(eventId, sessionTitle) {
+    let selectedSignUpEventId = null;
+    let signUpSearchTimeout = null;
+
+    function openSignUpModal() {
+        document.getElementById('signUpModal').classList.add('active');
+        document.getElementById('signUpSessionSearch').value = '';
+        document.getElementById('signUpReason').value = '';
+        document.getElementById('signUpSearchResults').style.display = 'none';
+        selectedSignUpEventId = null;
+        updateSignUpButton();
+        // Load upcoming sessions by default
+        searchSignUpSessions('');
+    }
+
+    let removeOverrideId = null;
+    function openRemoveModal(eventId, sessionTitle, overrideId) {
+        removeOverrideId = overrideId || null;
         document.getElementById('removeModal').classList.add('active');
         document.getElementById('removeEventId').value = eventId;
         document.getElementById('removeReason').value = '';
@@ -667,6 +373,7 @@
     function closeModals() {
         document.getElementById('addModal').classList.remove('active');
         document.getElementById('removeModal').classList.remove('active');
+        document.getElementById('signUpModal').classList.remove('active');
     }
 
     // ── Session Search ──────────────────────────────────────────────
@@ -694,7 +401,7 @@
         <div class="session-search-item ${s.id === selectedEventId ? 'selected' : ''}"
              onclick="selectSession(${s.id}, this)">
             <div class="session-search-title">${escapeHtml(s.title)}</div>
-            <div class="session-search-meta">${s.date_display} ${s.series ? '· ' + escapeHtml(s.series) : ''}</div>
+            <div class="session-search-meta">${s.date_display} · <em>${s.status || 'Unknown'}</em> ${s.series ? '· ' + escapeHtml(s.series) : ''}</div>
         </div>
     `).join('');
         container.style.display = 'block';
@@ -713,11 +420,58 @@
         document.getElementById('addSubmitBtn').disabled = !selectedEventId || !reason;
     }
 
+    // ── Sign Up Session Search ───────────────────────────────────────
+    function searchSignUpSessions(query) {
+        clearTimeout(signUpSearchTimeout);
+        signUpSearchTimeout = setTimeout(async () => {
+            try {
+                const resp = await fetch(SEARCH_URL + '?q=' + encodeURIComponent(query) + '&upcoming_only=1');
+                const data = await resp.json();
+                renderSignUpSearchResults(data.sessions);
+            } catch (err) {
+                console.error('Search failed:', err);
+            }
+        }, 300);
+    }
+
+    function renderSignUpSearchResults(sessions) {
+        const container = document.getElementById('signUpSearchResults');
+        if (!sessions.length) {
+            container.innerHTML = '<div style="padding: 12px; color: #999; text-align: center;">No upcoming sessions found</div>';
+            container.style.display = 'block';
+            return;
+        }
+        container.innerHTML = sessions.map(s => `
+        <div class="session-search-item ${s.id === selectedSignUpEventId ? 'selected' : ''}"
+             onclick="selectSignUpSession(${s.id}, this)">
+            <div class="session-search-title">${escapeHtml(s.title)}</div>
+            <div class="session-search-meta">${s.date_display} · <em>${s.status || 'Unknown'}</em> ${s.series ? '· ' + escapeHtml(s.series) : ''}</div>
+        </div>
+    `).join('');
+        container.style.display = 'block';
+    }
+
+    function selectSignUpSession(eventId, element) {
+        selectedSignUpEventId = eventId;
+        document.querySelectorAll('#signUpSearchResults .session-search-item').forEach(el => el.classList.remove('selected'));
+        element.classList.add('selected');
+        updateSignUpButton();
+    }
+
+    function updateSignUpButton() {
+        const reason = document.getElementById('signUpReason').value.trim();
+        document.getElementById('signUpSubmitBtn').disabled = !selectedSignUpEventId || !reason;
+    }
+
     // Keep button state updated as user types reason
     document.addEventListener('DOMContentLoaded', function () {
         const addReason = document.getElementById('addReason');
         if (addReason) {
             addReason.addEventListener('input', updateAddButton);
+        }
+        const signUpReason = document.getElementById('signUpReason');
+        if (signUpReason) {
+            signUpReason.addEventListener('input', updateSignUpButton);
         }
     });
 
@@ -770,15 +524,26 @@
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Removing...';
 
         try {
-            const resp = await fetch(OVERRIDE_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'remove',
-                    event_id: parseInt(eventId),
-                    reason: reason,
-                }),
-            });
+            let resp;
+            if (removeOverrideId) {
+                // Reverse the existing add-override
+                resp = await fetch('/district/teacher-usage/overrides/' + removeOverrideId + '/reverse', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason: reason }),
+                });
+            } else {
+                // Create a new remove override
+                resp = await fetch(OVERRIDE_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'remove',
+                        event_id: parseInt(eventId),
+                        reason: reason,
+                    }),
+                });
+            }
             const data = await resp.json();
             if (resp.ok) {
                 showToast('Session removed successfully!', 'success');
@@ -793,6 +558,42 @@
             showToast('Network error. Please try again.', 'error');
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-times"></i> Remove from Session';
+        }
+    }
+
+    // ── Submit Sign Up ────────────────────────────────────────────────
+    async function submitSignUp() {
+        const reason = document.getElementById('signUpReason').value.trim();
+        if (!selectedSignUpEventId || !reason) return;
+
+        const btn = document.getElementById('signUpSubmitBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing Up...';
+
+        try {
+            const resp = await fetch(OVERRIDE_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'add',
+                    event_id: selectedSignUpEventId,
+                    reason: reason,
+                }),
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                showToast('Teacher signed up for session!', 'success');
+                closeModals();
+                setTimeout(() => location.reload(), 800);
+            } else {
+                showToast(data.error || 'Failed to sign up', 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-calendar-check"></i> Sign Up';
+            }
+        } catch (err) {
+            showToast('Network error. Please try again.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-calendar-check"></i> Sign Up';
         }
     }
 

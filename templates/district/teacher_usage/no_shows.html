@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}No Shows Report - {{ district_name }}{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="/static/css/no_shows.css">
+{% endblock %}
+
+{% block content %}
+<div class="noshows-container">
+    <div class="noshows-header">
+        <a href="{{ url_for('teacher_usage.index', year=academic_year, semester=semester, tenant_id=admin_tenant_id) if admin_tenant_id else url_for('teacher_usage.index', year=academic_year, semester=semester) }}"
+            class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Teacher Usage Dashboard
+        </a>
+        <h1><i class="fas fa-user-times"></i> No Shows Report</h1>
+        <p>{{ district_name }} — {{ academic_year }} {{ 'Fall' if semester == 'fall' else 'Spring' }} Semester</p>
+        <div style="margin-top: 14px;">
+            <a href="{{ url_for('teacher_usage.no_shows_export_csv', year=academic_year, semester=semester, tenant_id=admin_tenant_id) if admin_tenant_id else url_for('teacher_usage.no_shows_export_csv', year=academic_year, semester=semester) }}"
+                style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: rgba(255,255,255,0.2); color: white; border-radius: 6px; text-decoration: none; font-weight: 600; border: 1px solid rgba(255,255,255,0.35); transition: background 0.2s;"
+                onmouseover="this.style.background='rgba(255,255,255,0.35)'"
+                onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                <i class="fas fa-file-csv"></i> Export CSV
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="summary-stats">
+        <div class="stat-card no-shows">
+            <span class="stat-value red">{{ total_no_shows }}</span>
+            <span class="stat-label">Total No Shows</span>
+        </div>
+        <div class="stat-card schools">
+            <span class="stat-value orange">{{ total_schools }}</span>
+            <span class="stat-label">Schools Affected</span>
+        </div>
+        <div class="stat-card teachers">
+            <span class="stat-value yellow">{{ total_teachers }}</span>
+            <span class="stat-label">Teachers with No Shows</span>
+        </div>
+    </div>
+
+    {% if school_data %}
+    <!-- School Sections -->
+    {% for school_name, teachers in school_data.items() %}
+    {% set school_no_show_count = teachers.values() | map('length') | sum %}
+    <div class="school-section" id="school-{{ loop.index }}">
+        <div class="school-section-header" onclick="toggleSection('school-{{ loop.index }}')">
+            <h2>
+                <i class="fas fa-school school-icon"></i>
+                {{ school_name }}
+                <span class="school-badge">{{ school_no_show_count }} no show{{ 's' if school_no_show_count != 1
+                    }}</span>
+            </h2>
+            <span class="toggle-icon"><i class="fas fa-chevron-down"></i></span>
+        </div>
+        <div class="school-body">
+            {% set school_idx = loop.index %}
+            {% for teacher_name, sessions in teachers.items() %}
+            <div class="teacher-row" id="teacher-{{ school_idx }}-{{ loop.index }}">
+                <div class="teacher-row-header" onclick="toggleTeacher('teacher-{{ school_idx }}-{{ loop.index }}')">
+                    <span class="teacher-name">{{ teacher_name }}</span>
+                    <span class="teacher-no-show-count">{{ sessions | length }} session{{ 's' if sessions | length != 1
+                        }}</span>
+                </div>
+                <div class="teacher-sessions">
+                    {% for session in sessions %}
+                    <div class="session-item {{ 'overridden' if session.is_overridden }}" id="session-{{ session.teacher_progress_id }}-{{ session.event_id }}">
+                        <span class="session-date">{{ session.date }}</span>
+                        <span class="session-title">{{ session.title }}</span>
+                        {% if session.series %}
+                        <span class="session-series">{{ session.series }}</span>
+                        {% endif %}
+                        {% if session.is_overridden %}
+                        <span class="overridden-badge"><i class="fas fa-check-circle"></i> Revised</span>
+                        {% elif session.teacher_progress_id %}
+                        <button class="btn-revise"
+                            onclick="event.stopPropagation(); openReviseModal({{ session.teacher_progress_id }}, {{ session.event_id }}, '{{ session.title|e }}', '{{ session.date|e }}', '{{ teacher_name|e }}')"
+                            title="Override this no-show — mark teacher as attended">
+                            <i class="fas fa-undo"></i> Revise No-Show
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="no-data">
+        <i class="fas fa-check-circle" style="font-size: 3em; color: #28a745; margin-bottom: 15px; display: block;"></i>
+        <p>No teacher no-shows found for this semester. 🎉</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Revise No-Show Modal -->
+<div id="reviseModal" class="override-modal-overlay" onclick="if(event.target===this) closeModal()">
+    <div class="override-modal">
+        <h3><i class="fas fa-undo" style="color: #28a745;"></i> Revise No-Show</h3>
+        <div class="modal-info">
+            <strong>Teacher:</strong> <span id="reviseTeacherName"></span><br>
+            <strong>Session:</strong> <span id="reviseSessionTitle"></span><br>
+            <strong>Date:</strong> <span id="reviseSessionDate"></span>
+        </div>
+        <p style="margin-bottom: 16px; color: #555; font-size: 0.9em;">
+            This will mark the teacher as <strong>attended</strong> instead of no-show. An audit log entry will be created.
+        </p>
+        <input type="hidden" id="reviseTeacherProgressId">
+        <input type="hidden" id="reviseEventId">
+        <div class="form-group">
+            <label for="reviseReason">Reason (required)</label>
+            <textarea id="reviseReason" placeholder="Why is this no-show being revised? (e.g., teacher was present but not recorded)"></textarea>
+        </div>
+        <div class="btn-group">
+            <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+            <button id="reviseSubmitBtn" class="btn-submit" onclick="submitRevise()" disabled>
+                <i class="fas fa-check"></i> Mark as Attended
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast notification -->
+<div id="overrideToast" class="override-toast"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/no_shows.js"></script>
+{% endblock %}

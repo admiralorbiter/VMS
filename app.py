@@ -1,837 +1,298 @@
 # app.py
 
 import os
-from datetime import datetime, timezone  # Keep this as it might be used elsewhere
 
 from dotenv import load_dotenv
 
 # Load environment variables from .env file FIRST, before any other imports
 load_dotenv()
 
-from flask import Flask, abort, jsonify, render_template, request, send_from_directory
+from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
 from flask_login import LoginManager
 from sqlalchemy import text
 
-from config import DevelopmentConfig, ProductionConfig
-from forms import LoginForm
-from models import User, db
+from models import db
 from models.user import SecurityLevel
-from routes.routes import init_routes
-from utils import format_event_type_for_badge, short_date
-from utils.cache_refresh_scheduler import start_cache_refresh_scheduler
-
-app = Flask(__name__)
-
-# Load configuration based on the environment
-flask_env = os.environ.get("FLASK_ENV", "development")
-
-if flask_env == "production":
-    app.config.from_object(ProductionConfig)
-    # Enforce SECRET_KEY in production - fail fast if not set properly
-    if app.config.get("SECRET_KEY") == "dev-secret-key-change-in-production":
-        raise RuntimeError(
-            "CRITICAL: SECRET_KEY must be set in production. "
-            "Do not use the default development key."
-        )
-else:
-    app.config.from_object(DevelopmentConfig)
-
-# Security: Request size limit (16MB max)
-app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
-
-# CORS configuration - restrict origins in production
-if flask_env == "production":
-    allowed_origins = os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
-    allowed_origins = [origin.strip() for origin in allowed_origins if origin.strip()]
-    if allowed_origins:
-        CORS(app, origins=allowed_origins)
-    else:
-        # Default to same-origin only in production if not specified
-        CORS(app, origins=[os.environ.get("APP_BASE_URL", "").rstrip("/")])
-else:
-    # Allow all origins in development
-    CORS(app)
-
-# Initialize extensions
-db.init_app(app)
-
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = "auth.login"  # Redirect to 'login' view if unauthorized
-login_manager.login_message_category = "info"
-
-# Create instance directory if it doesn't exist
-instance_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "instance")
-if not os.path.exists(instance_path):
-    os.makedirs(instance_path)
-
-# Create DB tables on startup (idempotent). This will create any missing tables for new models.
-with app.app_context():
-    try:
-        # Always call create_all; it only creates tables that don't exist
-        db.create_all()
-    except Exception as e:
-        # Fallback/diagnostic output if something goes wrong creating tables
-        inspector = db.inspect(db.engine)
-        existing_tables = inspector.get_table_names()
-        print(f"Database initialization error: {e}")
-        print(f"Existing tables: {existing_tables}")
-
-# Configure structured logging (JSON in production, readable in development)
-from utils.logging_config import configure_logging
-
-configure_logging(app)
-
-# Initialize rate limiter (Flask-Limiter)
-from utils.rate_limiter import init_rate_limiter
-
-init_rate_limiter(app)
 
 
-# User loader callback for Flask-Login
-@login_manager.user_loader
-def load_user(user_id):
-    return db.session.get(User, int(user_id))
-
-
-# Add SecurityLevel to Flask's template context
-@app.context_processor
-def inject_security_levels():
-    return {
-        "SecurityLevel": SecurityLevel,
-        "USER": SecurityLevel.USER,
-        "SUPERVISOR": SecurityLevel.SUPERVISOR,
-        "MANAGER": SecurityLevel.MANAGER,
-        "ADMIN": SecurityLevel.ADMIN,
-    }
-
-
-# Tenant context middleware (FR-TENANT-103)
-@app.before_request
-def set_tenant_context():
-    """Set tenant context from authenticated user or admin override."""
-    from flask import g
-
-    from utils.tenant_context import init_tenant_context
-
-    # Initialize tenant context for this request
-    init_tenant_context()
-
-
-# Add tenant context to template context (FR-TENANT-105)
-@app.context_processor
-def inject_tenant_context():
-    """Make tenant context available in all templates."""
-    from flask import g, session
-
-    from utils.tenant_context import get_current_tenant, is_admin_viewing_as_tenant
-
-    return {
-        "current_tenant": get_current_tenant(),
-        "is_admin_viewing_as_tenant": is_admin_viewing_as_tenant(),
-    }
-
-
-# Initialize routes
-init_routes(app)
-
-app.jinja_env.filters["short_date"] = short_date
-app.jinja_env.filters["event_type_badge"] = format_event_type_for_badge
-
-# Add custom JSON filter for district scoping
-import json
-
-
-def from_json_filter(json_string):
-    """Custom Jinja2 filter to parse JSON strings."""
-    if not json_string or json_string == "None" or json_string == "null":
-        return []
-    try:
-        if isinstance(json_string, str):
-            return json.loads(json_string)
-        return json_string
-    except (json.JSONDecodeError, TypeError):
-        return []
-
-
-app.jinja_env.filters["from_json"] = from_json_filter
-
-
-# =============================================================================
-# Global Error Handlers (Production Hardening)
-# =============================================================================
-@app.errorhandler(404)
-def not_found_error(error):
-    """Handle 404 Not Found errors."""
-    app.logger.warning(f"404 error: {request.url}")
-    return render_template("errors/404.html"), 404
-
-
-@app.errorhandler(500)
-def internal_error(error):
-    """Handle 500 Internal Server errors."""
-    app.logger.error(f"500 error: {error}")
-    db.session.rollback()  # Rollback any failed transactions
-    return render_template("errors/500.html"), 500
-
-
-@app.errorhandler(403)
-def forbidden_error(error):
-    """Handle 403 Forbidden errors."""
-    app.logger.warning(f"403 error: {request.url} - {error}")
-    return render_template("errors/403.html"), 403
-
-
-@app.errorhandler(413)
-def request_entity_too_large(error):
-    """Handle 413 Request Entity Too Large errors."""
-    app.logger.warning(f"413 error: File too large - {request.url}")
-    return (
-        jsonify(
-            {
-                "error": "File too large",
-                "message": "The uploaded file exceeds the maximum allowed size (16MB).",
-            }
-        ),
-        413,
-    )
-
-
-# =============================================================================
-# Health Check Endpoint (For Monitoring & Load Balancers)
-# =============================================================================
-@app.route("/health")
-def health_check():
+# ---------------------------------------------------------------------------
+# Application Factory
+# ---------------------------------------------------------------------------
+def create_app(config_class=None):
     """
-    Health check endpoint for monitoring and load balancers.
+    Application factory for the VMS Flask application.
+
+    Args:
+        config_class: Configuration class to use. If None, auto-detects
+                      from FLASK_ENV environment variable.
 
     Returns:
-        200: System is healthy (database connected)
-        503: System is unhealthy (database connection failed)
+        Configured Flask application instance.
     """
-    try:
-        # Verify database connectivity
-        db.session.execute(text("SELECT 1"))
-        return (
-            jsonify(
-                {"status": "healthy", "database": "connected", "environment": flask_env}
-            ),
-            200,
-        )
-    except Exception as e:
-        app.logger.error(f"Health check failed: {e}")
-        return (
-            jsonify(
-                {"status": "unhealthy", "database": "disconnected", "error": str(e)}
-            ),
-            503,
-        )
+    app = Flask(__name__)
 
+    # ------------------------------------------------------------------
+    # Configuration
+    # ------------------------------------------------------------------
+    if config_class:
+        app.config.from_object(config_class)
+    else:
+        flask_env = os.environ.get("FLASK_ENV", "development")
+        if flask_env == "production":
+            from config import ProductionConfig
 
-@app.route("/docs/")
-@app.route("/docs")
-def documentation_index():
-    """Serve the documentation home page"""
-    return send_from_directory("documentation", "index.html")
-
-
-@app.route("/docs/<path:filename>")
-def documentation(filename):
-    """Serve documentation assets"""
-    # If the filename doesn't contain a dot (no extension), it's likely a frontend route
-    # Let the frontend handle it by serving index.html
-    if "." not in filename or filename.endswith("/"):
-        return send_from_directory("documentation", "index.html")
-    return send_from_directory("documentation", filename)
-
-
-# Quality Scoring Dashboard
-@app.route("/quality_dashboard")
-def quality_dashboard():
-    """Quality scoring dashboard page."""
-    return render_template("data_quality/quality_dashboard.html")
-
-
-@app.route("/business_rules")
-def business_rules():
-    """Business rules documentation page."""
-    return render_template("data_quality/business_rules.html")
-
-
-@app.route("/api/quality-score", methods=["POST"])
-def api_quality_score():
-    """API endpoint for calculating quality scores."""
-    try:
-        data = request.get_json()
-        entity_type = data.get("entity_type", "volunteer")
-        days = data.get("days", 30)
-        include_trends = data.get("include_trends", True)
-        validation_type = data.get("validation_type")
-        severity_level = data.get("severity_level")
-        quality_threshold = data.get("quality_threshold", 80)
-        include_anomalies = data.get("include_anomalies", True)
-
-        # Initialize quality scoring service
-        from models.validation import ValidationHistory, ValidationResult
-        from utils.services.quality_scoring_service import QualityScoringService
-        from utils.services.score_weighting_engine import ScoreWeightingEngine
-        from utils.services.threshold_manager import ThresholdManager
-
-        quality_service = QualityScoringService()
-        threshold_manager = ThresholdManager()
-        weighting_engine = ScoreWeightingEngine()
-
-        # Apply custom threshold if provided
-        if quality_threshold != 80:
-            threshold_manager.set_entity_threshold(entity_type, quality_threshold)
-
-        if entity_type == "all":
-            # Generate comprehensive report
-            result = quality_service.calculate_comprehensive_quality_report(
-                entity_types=None,  # Use default entity types
-                days=days,
-                include_trends=include_trends,
-            )
-
-            # Add validation results for all entities
-            all_validation_results = []
-            for entity in [
-                "volunteer",
-                "organization",
-                "event",
-                "student",
-                "teacher",
-                "school",
-                "district",
-            ]:
-                entity_results = get_filtered_validation_results(
-                    entity, days, validation_type, severity_level
+            app.config.from_object(ProductionConfig)
+            # Enforce SECRET_KEY in production - fail fast if not set properly
+            if app.config.get("SECRET_KEY") == "dev-secret-key-change-in-production":
+                raise RuntimeError(
+                    "CRITICAL: SECRET_KEY must be set in production. "
+                    "Do not use the default development key."
                 )
-                all_validation_results.extend(entity_results)
-            result["validation_results"] = all_validation_results
+            if (
+                app.config.get("WTF_CSRF_SECRET_KEY")
+                == "csrf-secret-key-change-in-production"
+            ):
+                raise RuntimeError(
+                    "CRITICAL: WTF_CSRF_SECRET_KEY must be set in production. "
+                    "Do not use the default development key."
+                )
         else:
-            # Calculate score for specific entity
-            app.logger.info(
-                f"Calculating quality score for entity: {entity_type}, days: {days}"
-            )
-            result = quality_service.calculate_entity_quality_score(
-                entity_type=entity_type, days=days, include_details=True
-            )
-            app.logger.info(f"Quality service result: {result}")
+            from config import DevelopmentConfig
 
-            # Add detailed validation results (always include for dashboard)
-            validation_results = get_filtered_validation_results(
-                entity_type, days, validation_type, severity_level
-            )
-            app.logger.info(f"Validation results count: {len(validation_results)}")
-            result["validation_results"] = validation_results
+            app.config.from_object(DevelopmentConfig)
 
-            # Add performance metrics
-            result["performance_metrics"] = get_performance_metrics(entity_type, days)
+    # Security: Request size limit (16MB max)
+    app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 
-            # Add anomaly detection if requested
-            if include_anomalies:
-                anomalies = get_anomalies(entity_type, days)
-                result["anomalies"] = anomalies
-
-        return jsonify(result)
-
-    except Exception as e:
-        app.logger.error(f"Error in quality score API: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/clear-validation-data", methods=["POST"])
-def api_clear_validation_data():
-    """API endpoint for clearing old validation data."""
-    try:
-        data = request.get_json()
-        entity_type = data.get("entity_type")
-        older_than_days = data.get("older_than_days", 1)
-        user_id = data.get("user_id")  # Optional user ID filter
-
-        # Log the request for debugging
-        app.logger.info(
-            f"Clear validation data request: entity_type={entity_type}, older_than_days={older_than_days}, user_id={user_id}"
-        )
-
-        # Import required modules
-        from datetime import datetime, timedelta
-
-        from app import db
-        from models.validation import (
-            ValidationHistory,
-            ValidationMetric,
-            ValidationResult,
-            ValidationRun,
-        )
-
-        # Build query filters for ValidationRun (only by date and user)
-        run_filters = []
-
-        # If older_than_days is 0, clear ALL data regardless of age
-        if older_than_days > 0:
-            cutoff_date = datetime.utcnow() - timedelta(days=older_than_days)
-            run_filters.append(ValidationRun.started_at < cutoff_date)
-            app.logger.info(
-                f"Filtering by date: older than {older_than_days} days (before {cutoff_date})"
-            )
-        else:
-            app.logger.info("Clearing ALL validation data regardless of age")
-
-        if user_id:
-            run_filters.append(ValidationRun.created_by == user_id)
-
-        # Get run IDs that match the basic filters
-        base_run_ids = [
-            run.id for run in ValidationRun.query.filter(*run_filters).all()
+    # ------------------------------------------------------------------
+    # CORS
+    # ------------------------------------------------------------------
+    flask_env = os.environ.get("FLASK_ENV", "development")
+    if flask_env == "production":
+        allowed_origins = os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
+        allowed_origins = [
+            origin.strip() for origin in allowed_origins if origin.strip()
         ]
-
-        # If entity_type is specified, filter by ValidationResult.entity_type
-        if entity_type and entity_type != "all":
-            # Get run IDs that have results for the specified entity_type
-            entity_run_ids = [
-                result.run_id
-                for result in ValidationResult.query.filter_by(
-                    entity_type=entity_type
-                ).all()
-                if result.run_id in base_run_ids
-            ]
-            run_ids = entity_run_ids
+        if allowed_origins:
+            CORS(app, origins=allowed_origins)
         else:
-            run_ids = base_run_ids
+            # Default to same-origin only in production if not specified
+            CORS(app, origins=[os.environ.get("APP_BASE_URL", "").rstrip("/")])
+    else:
+        # Allow all origins in development
+        CORS(app)
 
-        # Count records to be deleted
-        runs_to_delete = len(run_ids)
+    # ------------------------------------------------------------------
+    # Initialize extensions
+    # ------------------------------------------------------------------
+    db.init_app(app)
 
-        if run_ids:
-            results_to_delete = ValidationResult.query.filter(
-                ValidationResult.run_id.in_(run_ids)
-            ).count()
-            history_to_delete = ValidationHistory.query.filter(
-                ValidationHistory.run_id.in_(run_ids)
-            ).count()
-            metrics_to_delete = ValidationMetric.query.filter(
-                ValidationMetric.run_id.in_(run_ids)
-            ).count()
-        else:
-            results_to_delete = 0
-            history_to_delete = 0
-            metrics_to_delete = 0
+    login_manager = LoginManager()
+    login_manager.init_app(app)
+    login_manager.login_view = "auth.login"
+    login_manager.login_message_category = "info"
 
-        total_records = (
-            runs_to_delete + results_to_delete + history_to_delete + metrics_to_delete
-        )
+    @login_manager.user_loader
+    def load_user(user_id):
+        from models import User
 
-        if total_records == 0:
-            return jsonify(
-                {
-                    "success": True,
-                    "message": "No old validation data found to clear",
-                    "records_deleted": 0,
-                }
-            )
+        return db.session.get(User, int(user_id))
 
-        # Delete in correct order (respecting foreign keys)
-        if results_to_delete > 0:
-            ValidationResult.query.filter(ValidationResult.run_id.in_(run_ids)).delete(
-                synchronize_session=False
-            )
+    # ------------------------------------------------------------------
+    # Database initialization
+    # ------------------------------------------------------------------
+    # Create instance directory if it doesn't exist
+    instance_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "instance")
+    if not os.path.exists(instance_path):
+        os.makedirs(instance_path)
 
-        if history_to_delete > 0:
-            ValidationHistory.query.filter(
-                ValidationHistory.run_id.in_(run_ids)
-            ).delete(synchronize_session=False)
+    # Create DB tables on startup (idempotent)
+    # In test mode, conftest handles DB setup with PRAGMA and safety checks
+    if not app.config.get("TESTING", False):
+        with app.app_context():
+            try:
+                db.create_all()
+                # Auto-sync file-based email templates to the database
+                from utils.template_sync import sync_file_templates
 
-        if metrics_to_delete > 0:
-            ValidationMetric.query.filter(ValidationMetric.run_id.in_(run_ids)).delete(
-                synchronize_session=False
-            )
+                sync_file_templates()
+            except Exception as e:
+                inspector = db.inspect(db.engine)
+                existing_tables = inspector.get_table_names()
+                print(f"Database initialization error: {e}")
+                print(f"Existing tables: {existing_tables}")
 
-        if runs_to_delete > 0:
-            ValidationRun.query.filter(ValidationRun.id.in_(run_ids)).delete(
-                synchronize_session=False
-            )
+    # ------------------------------------------------------------------
+    # Logging
+    # ------------------------------------------------------------------
+    from utils.logging_config import configure_logging
 
-        # Commit the changes
-        db.session.commit()
+    configure_logging(app)
 
-        app.logger.info(
-            f"Cleared {total_records} old validation records (older than {older_than_days} days)"
-        )
+    # ------------------------------------------------------------------
+    # Rate limiter
+    # ------------------------------------------------------------------
+    from utils.rate_limiter import init_rate_limiter
 
-        return jsonify(
-            {
-                "success": True,
-                "message": f"Successfully cleared {total_records} old validation records",
-                "records_deleted": total_records,
-                "details": {
-                    "validation_runs": runs_to_delete,
-                    "validation_results": results_to_delete,
-                    "validation_history": history_to_delete,
-                    "validation_metrics": metrics_to_delete,
-                },
-            }
-        )
+    init_rate_limiter(app)
 
-    except Exception as e:
-        app.logger.error(f"Error clearing validation data: {e}")
-        return jsonify({"error": str(e)}), 500
+    # ------------------------------------------------------------------
+    # Error handlers
+    # ------------------------------------------------------------------
+    from utils.error_handlers import register_error_handlers
 
+    register_error_handlers(app)
 
-def get_filtered_validation_results(
-    entity_type, days, validation_type=None, severity_level=None
-):
-    """Get filtered validation results based on criteria."""
-    try:
-        from datetime import datetime, timedelta
-
-        from models.validation import ValidationResult, ValidationRun
-
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
-        app.logger.info(
-            f"Looking for validation results for {entity_type} in last {days} days (cutoff: {cutoff_date})"
-        )
-
-        # Get recent validation runs
-        recent_runs = ValidationRun.query.filter(
-            ValidationRun.completed_at >= cutoff_date,
-            ValidationRun.status == "completed",
-        ).all()
-
-        run_ids = [run.id for run in recent_runs]
-        app.logger.info(f"Found {len(run_ids)} completed validation runs: {run_ids}")
-
-        if not run_ids:
-            app.logger.warning(
-                f"No completed validation runs found in last {days} days"
-            )
-            return []
-
-        # Build query
-        query = ValidationResult.query.filter(
-            ValidationResult.run_id.in_(run_ids),
-            ValidationResult.entity_type == entity_type,
-        )
-
-        if validation_type:
-            query = query.filter(ValidationResult.validation_type == validation_type)
-
-        if severity_level:
-            query = query.filter(ValidationResult.severity == severity_level)
-
-        # Limit results for performance
-        results = query.limit(100).all()
-        app.logger.info(f"Found {len(results)} validation results for {entity_type}")
-
-        return [result.to_dict() for result in results]
-
-    except Exception as e:
-        app.logger.error(f"Error getting filtered validation results: {e}")
-        return []
-
-
-def get_performance_metrics(entity_type, days):
-    """Get performance metrics for validation runs."""
-    try:
-        from datetime import datetime, timedelta
-
-        from sqlalchemy import func
-
-        from models.validation import ValidationRun
-
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
-
-        # Get performance metrics from recent runs
-        metrics = (
-            db.session.query(
-                func.avg(ValidationRun.execution_time_seconds).label(
-                    "avg_execution_time"
-                ),
-                func.avg(ValidationRun.memory_usage_mb).label("avg_memory_usage"),
-                func.avg(ValidationRun.cpu_usage_percent).label("avg_cpu_usage"),
-                func.count(ValidationRun.id).label("total_runs"),
-            )
-            .filter(
-                ValidationRun.completed_at >= cutoff_date,
-                ValidationRun.status == "completed",
-            )
-            .first()
-        )
-
+    # ------------------------------------------------------------------
+    # Context processors
+    # ------------------------------------------------------------------
+    @app.context_processor
+    def inject_security_levels():
         return {
-            "execution_time_seconds": round(metrics.avg_execution_time or 0, 2),
-            "memory_usage_mb": round(metrics.avg_memory_usage or 0, 2),
-            "cpu_usage_percent": round(metrics.avg_cpu_usage or 0, 2),
-            "records_processed": metrics.total_runs or 0,
+            "SecurityLevel": SecurityLevel,
+            "USER": SecurityLevel.USER,
+            "SUPERVISOR": SecurityLevel.SUPERVISOR,
+            "MANAGER": SecurityLevel.MANAGER,
+            "ADMIN": SecurityLevel.ADMIN,
         }
 
-    except Exception as e:
-        app.logger.error(f"Error getting performance metrics: {e}")
-        return {}
+    @app.context_processor
+    def inject_tenant_context():
+        """Make tenant context available in all templates."""
+        from utils.tenant_context import get_current_tenant, is_admin_viewing_as_tenant
 
+        return {
+            "current_tenant": get_current_tenant(),
+            "is_admin_viewing_as_tenant": is_admin_viewing_as_tenant(),
+        }
 
-def get_anomalies(entity_type, days):
-    """Get statistical anomalies for the entity type."""
-    try:
-        from models.validation import ValidationHistory
+    # ------------------------------------------------------------------
+    # Before-request hooks
+    # ------------------------------------------------------------------
+    @app.before_request
+    def set_tenant_context():
+        """Set tenant context from authenticated user or admin override."""
+        from utils.tenant_context import init_tenant_context
 
-        anomalies = ValidationHistory.get_anomalies(
-            entity_type=entity_type, days=days, anomaly_threshold=2.0
-        )
+        init_tenant_context()
 
-        return [anomaly.to_dict() for anomaly in anomalies]
+    # ------------------------------------------------------------------
+    # Routes
+    # ------------------------------------------------------------------
+    from routes.routes import init_routes
 
-    except Exception as e:
-        app.logger.error(f"Error getting anomalies: {e}")
-        return []
+    init_routes(app)
 
+    # ------------------------------------------------------------------
+    # Jinja filters
+    # ------------------------------------------------------------------
+    import json
 
-@app.route("/api/run-validation", methods=["POST"])
-def api_run_validation():
-    """API endpoint for running validation checks to generate data."""
-    try:
-        data = request.get_json()
-        entity_type = data.get("entity_type", "volunteer")
-        validation_type = data.get("validation_type", "comprehensive")
+    from utils import format_event_type_for_badge, short_date
 
-        app.logger.info(
-            f"Running validation: entity_type={entity_type}, validation_type={validation_type}"
-        )
+    app.jinja_env.filters["short_date"] = short_date
+    app.jinja_env.filters["event_type_badge"] = format_event_type_for_badge
 
-        # Import validation engine
-        from utils.validation_engine import get_validation_engine
+    def from_json_filter(json_string):
+        """Custom Jinja2 filter to parse JSON strings."""
+        if not json_string or json_string == "None" or json_string == "null":
+            return []
+        try:
+            if isinstance(json_string, str):
+                return json.loads(json_string)
+            return json_string
+        except (json.JSONDecodeError, TypeError):
+            return []
 
-        with app.app_context():
-            # Run comprehensive validation (all validation types)
-            engine = get_validation_engine()
-            run = engine.run_comprehensive_validation(
-                entity_type=entity_type,
-                run_type="comprehensive",
-                name=f"Comprehensive Validation - {entity_type.title()}",
-                user_id=None,
-            )
+    app.jinja_env.filters["from_json"] = from_json_filter
 
-            app.logger.info(f"Comprehensive validation completed: Run ID {run.id}")
+    # ------------------------------------------------------------------
+    # HTTP error handlers (HTML responses)
+    # ------------------------------------------------------------------
+    @app.errorhandler(404)
+    def not_found_error(error):
+        """Handle 404 Not Found errors."""
+        app.logger.warning("404 error: %s", request.url)
+        return render_template("errors/404.html"), 404
 
-            return jsonify(
+    @app.errorhandler(403)
+    def forbidden_error(error):
+        """Handle 403 Forbidden errors."""
+        app.logger.warning("403 error: %s - %s", request.url, error)
+        return render_template("errors/403.html"), 403
+
+    @app.errorhandler(413)
+    def request_entity_too_large(error):
+        """Handle 413 Request Entity Too Large errors."""
+        app.logger.warning("413 error: File too large - %s", request.url)
+        return (
+            jsonify(
                 {
-                    "success": True,
-                    "message": f"Comprehensive validation completed successfully",
-                    "run_id": run.id,
-                    "status": run.status,
-                    "total_checks": run.total_checks,
+                    "error": "File too large",
+                    "message": "The uploaded file exceeds the maximum allowed size (16MB).",
                 }
+            ),
+            413,
+        )
+
+    # ------------------------------------------------------------------
+    # Health check endpoint
+    # ------------------------------------------------------------------
+    @app.route("/health")
+    def health_check():
+        """
+        Health check endpoint for monitoring and load balancers.
+
+        Returns:
+            200: System is healthy (database connected)
+            503: System is unhealthy (database connection failed)
+        """
+        try:
+            db.session.execute(text("SELECT 1"))
+            return (
+                jsonify(
+                    {
+                        "status": "healthy",
+                        "database": "connected",
+                        "environment": flask_env,
+                    }
+                ),
+                200,
+            )
+        except Exception as e:
+            app.logger.error("Health check failed: %s", e)
+            return (
+                jsonify(
+                    {
+                        "status": "unhealthy",
+                        "database": "disconnected",
+                        "error": str(e),
+                    }
+                ),
+                503,
             )
 
-    except Exception as e:
-        app.logger.error(f"Error running validation: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/run-multiple-validations", methods=["POST"])
-def api_run_multiple_validations():
-    """API endpoint for running validation checks for multiple entity types."""
-    try:
-        data = request.get_json()
-        entity_types = data.get(
-            "entity_types",
-            [
-                "volunteer",
-                "organization",
-                "event",
-                "student",
-                "teacher",
-                "school",
-                "district",
-            ],
-        )
-        validation_type = data.get("validation_type", "comprehensive")
-
-        app.logger.info(
-            f"Running multiple comprehensive validations: entity_types={entity_types}"
-        )
-
-        # Import validation engine
-        from utils.validation_engine import get_validation_engine
-
-        results = []
-
-        with app.app_context():
-            engine = get_validation_engine()
-
-            for entity_type in entity_types:
-                try:
-                    # Run comprehensive validation for this entity type
-                    run = engine.run_comprehensive_validation(
-                        entity_type=entity_type,
-                        run_type="comprehensive",
-                        name=f"Comprehensive Validation - {entity_type.title()}",
-                        user_id=None,
-                    )
-
-                    results.append(
-                        {
-                            "entity_type": entity_type,
-                            "success": True,
-                            "run_id": run.id,
-                            "status": run.status,
-                            "total_checks": run.total_checks,
-                        }
-                    )
-
-                    app.logger.info(
-                        f"Comprehensive validation completed for {entity_type}: Run ID {run.id}"
-                    )
-
-                except Exception as e:
-                    app.logger.error(
-                        f"Error running comprehensive validation for {entity_type}: {e}"
-                    )
-                    results.append(
-                        {"entity_type": entity_type, "success": False, "error": str(e)}
-                    )
-
-        # Count successful runs
-        successful_runs = sum(1 for r in results if r["success"])
-        total_runs = len(results)
-
-        return jsonify(
-            {
-                "success": True,
-                "message": f"Multiple comprehensive validations completed: {successful_runs}/{total_runs} successful",
-                "total_runs": total_runs,
-                "successful_runs": successful_runs,
-                "results": results,
-            }
-        )
-
-    except Exception as e:
-        app.logger.error(f"Error running multiple validations: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/debug-validation-data", methods=["GET"])
-def api_debug_validation_data():
-    """Debug endpoint to show current validation data in database."""
-    try:
-        from models.validation import (
-            ValidationHistory,
-            ValidationMetric,
-            ValidationResult,
-            ValidationRun,
-        )
-
-        # Get counts of all validation data
-        total_runs = ValidationRun.query.count()
-        total_results = ValidationResult.query.count()
-        total_history = ValidationHistory.query.count()
-        total_metrics = ValidationMetric.query.count()
-
-        # Get recent runs
-        recent_runs = (
-            ValidationRun.query.order_by(ValidationRun.started_at.desc()).limit(5).all()
-        )
-        recent_runs_data = []
-        for run in recent_runs:
-            recent_runs_data.append(
-                {
-                    "id": run.id,
-                    "name": run.name,
-                    "started_at": (
-                        run.started_at.isoformat() if run.started_at else None
-                    ),
-                    "status": run.status,
-                    "total_checks": run.total_checks,
-                }
-            )
-
-        # Get entity type breakdown
-        entity_breakdown = (
-            db.session.query(
-                ValidationResult.entity_type, db.func.count(ValidationResult.id)
-            )
-            .group_by(ValidationResult.entity_type)
-            .all()
-        )
-
-        entity_counts = {entity: count for entity, count in entity_breakdown}
-
-        return jsonify(
-            {
-                "success": True,
-                "total_counts": {
-                    "validation_runs": total_runs,
-                    "validation_results": total_results,
-                    "validation_history": total_history,
-                    "validation_metrics": total_metrics,
-                },
-                "recent_runs": recent_runs_data,
-                "entity_breakdown": entity_counts,
-            }
-        )
-
-    except Exception as e:
-        app.logger.error(f"Error in debug validation data API: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/quality-settings", methods=["GET", "POST"])
-def api_quality_settings():
-    """API endpoint for managing quality scoring settings."""
-    try:
-        from config.quality_scoring import QUALITY_THRESHOLDS, QUALITY_WEIGHTS
-        from utils.services.score_weighting_engine import ScoreWeightingEngine
-        from utils.services.threshold_manager import ThresholdManager
-
-        threshold_manager = ThresholdManager()
-        weighting_engine = ScoreWeightingEngine()
-
-        if request.method == "GET":
-            # Return current settings
-            settings = {
-                "weights": weighting_engine.get_weight_summary(),
-                "thresholds": threshold_manager.get_threshold_summary(),
-                "default_weights": QUALITY_WEIGHTS,
-                "default_thresholds": QUALITY_THRESHOLDS,
-            }
-            return jsonify(settings)
-
-        elif request.method == "POST":
-            # Update settings
-            data = request.get_json()
-
-            # Update thresholds
-            if "thresholds" in data:
-                for entity_type, threshold in data["thresholds"].items():
-                    threshold_manager.set_entity_threshold(entity_type, threshold)
-
-            # Update weights
-            if "weights" in data:
-                for entity_type, weights in data["weights"].items():
-                    weighting_engine.set_entity_weight_override(entity_type, weights)
-
-            return jsonify({"message": "Settings updated successfully"})
-
-    except Exception as e:
-        app.logger.error(f"Error in quality settings API: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
-def create_app():
-    """Minimal app factory to integrate with WSGI servers and tests."""
     return app
 
 
+# ---------------------------------------------------------------------------
+# Module-level app instance (backward compatibility for scripts & WSGI)
+# ---------------------------------------------------------------------------
+app = create_app()
+
 if __name__ == "__main__":
+    from utils.cache_refresh_scheduler import start_cache_refresh_scheduler
+
+    flask_env = os.environ.get("FLASK_ENV", "development")
+
     # Start cache refresh scheduler in production
     if flask_env == "production":
         try:
             start_cache_refresh_scheduler()
             app.logger.info("Cache refresh scheduler started")
         except Exception as e:
-            app.logger.error(f"Failed to start cache refresh scheduler: {e}")
+            app.logger.error("Failed to start cache refresh scheduler: %s", e)
 
     # Use production-ready server configuration
     port = int(os.environ.get("PORT", 5050))

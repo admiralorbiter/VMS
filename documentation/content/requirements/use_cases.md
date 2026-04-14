@@ -23,6 +23,7 @@
 | [UC-13: Semester Rollover](#uc-13) | |
 | [UC-20: District Admin Virtual Review](#uc-20) | |
 | [UC-21: Virtual Admin Attendance Override](#uc-21) | |
+| [UC-22: Newsletter Formatter](#uc-22) | |
 
 ---
 
@@ -67,6 +68,7 @@ graph LR
 | [UC-13](#uc-13) | Semester Progress Rollover | [US-509](user-stories#us-509) | [Test Pack 1](test-pack-1) |
 | [UC-20](#uc-20) | District Admin Virtual Review | [US-310](user-stories#us-310), [US-311](user-stories#us-311) | [Test Pack 3](test-pack-3) |
 | [UC-21](#uc-21) | Virtual Admin Attendance Override | [US-313](user-stories#us-313), [US-314](user-stories#us-314), [US-315](user-stories#us-315) | *TBD* |
+| [UC-22](#uc-22) | Newsletter Formatter | [US-1401](user-stories#us-1401) | [Integration Tests](../../tests/integration/test_newsletter_formatter.py) |
 | **District Suite** | | | |
 | [UC-14](#uc-14) | Onboard New District Tenant | [US-1001](user-stories#us-1001), [US-1002](user-stories#us-1002) | *Phase 1* |
 | [UC-15](#uc-15) | District Creates/Manages Event | [US-1101](user-stories#us-1101), [US-1102](user-stories#us-1102), [US-1104](user-stories#us-1104) | *Phase 2* |
@@ -651,6 +653,30 @@ flowchart LR
 
 ---
 
+### <a id="uc-22"></a>UC-22: Newsletter Formatter
+
+| Actor | System | Outcome |
+|-------|--------|---------|
+| Staff | Polaris (Tools) | Formatted newsletter text with hyperlinks copied to clipboard |
+
+**Workflow:**
+1. Staff opens Tools → Newsletter Formatter
+2. System loads upcoming Confirmed/Published virtual sessions
+3. Sessions are auto-grouped by grade level (parsed from title prefix)
+4. General / KC Series sessions are deselected by default
+5. Staff reviews and toggles sessions per grade group
+6. Preview shows formatted output with hyperlinked session titles
+7. Staff clicks "Copy to Clipboard"
+8. Rich HTML is copied (preserving hyperlinks for email clients)
+9. Staff pastes into newsletter email
+
+**Requirements:** [FR-TOOLS-101](requirements-tools#fr-tools-101)–[FR-TOOLS-109](requirements-tools#fr-tools-109)
+**User Stories:** [US-1401](user-stories#us-1401)
+
+[↑ Back to Index](#use-case-index)
+
+---
+
 ## Related Documentation
 
 - [Requirements Overview](requirements) — Functional requirements hub
@@ -659,4 +685,4 @@ flowchart LR
 
 ---
 
-*Last updated: February 2026 · Version 2.1*
+*Last updated: March 2026 · Version 2.2*

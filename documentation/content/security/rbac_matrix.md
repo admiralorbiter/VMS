@@ -90,6 +90,7 @@ Data access scope stored in `User.scope_type`:
 | Link district to event | ✅ | ✅ | 🚫 | 🚫 |
 | Create virtual event | ✅ | ✅ | 🚫 | 🚫 |
 | Import Pathful/roster | ✅ | ✅ | 🚫 | 🚫 |
+| Merge duplicate teachers | ✅ | 🚫 | 🚫 | 🚫 |
 
 **Implementation:**
 - Event management: `routes/events/routes.py` with `@global_users_only`
@@ -188,6 +189,7 @@ Data access scope stored in `User.scope_type`:
 
 **Implementation:**
 - Teacher routes: `routes/teachers/routes.py` with `@global_users_only`
+- Teacher merge: `routes/teachers/routes.py` `/teachers/merge` with `@admin_required`
 - District dashboards: Show teacher names and progress for assigned districts
 - Teacher dashboard: Magic link shows only own progress
 - Teacher entity: See [Data Dictionary](data_dictionary#entity-teacher)

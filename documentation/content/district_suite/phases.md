@@ -14,8 +14,9 @@ District Suite transforms Polaris from a single-tenant system to a multi-tenant 
 | **Phase 1** ✅ | Foundation | Complete | Tenant provisioning, database isolation, basic auth |
 | **Phase 2** ✅ | District Events | Complete | Event CRUD, calendar views, public API |
 | **Phase 3** ✅ | District Volunteers | Complete | Volunteer management, import, event assignment |
-| **Phase 4** | District Recruitment | Planned | Recruitment tools, matching, public signup |
+| **Phase 4** | District Recruitment | 🔧 Verification | Recruitment tools, matching, public signup |
 | **Phase 5** | PrepKC Visibility | Planned | Read-only PrepKC event access |
+| **Phase 6** | Teacher Self-Service | 📋 Proposed | Direct teacher add, roster search, audit logging |
 
 ---
 
@@ -174,39 +175,58 @@ District Suite transforms Polaris from a single-tenant system to a multi-tenant 
 
 ---
 
-## Phase 4: District Recruitment
+## Phase 4: District Recruitment — 🔧 Verification
 
 **Objective:** Provide recruitment tools for proactive volunteer management.
 
+**Status:** Code implemented (March 2026). Needs end-to-end verification and production testing.
+
 ### Deliverables
 
-| Component | Description | Requirements |
-|-----------|-------------|--------------|
-| Recruitment Dashboard | Events needing volunteers | [FR-SELFSERV-401](requirements#fr-selfserv-401) |
-| Volunteer Matching | Score-based recommendations | [FR-SELFSERV-402](requirements#fr-selfserv-402) |
-| Outreach Tracking | Log attempts and outcomes | [FR-SELFSERV-403](requirements#fr-selfserv-403) |
-| Public Signup Forms | No-login volunteer registration | [FR-SELFSERV-404](requirements#fr-selfserv-404) |
-| Confirmation Emails | Email + calendar invite | [FR-SELFSERV-405](requirements#fr-selfserv-405) |
+| Component | Description | Requirements | Status |
+|-----------|-------------|--------------|--------|
+| Recruitment Dashboard | Events needing volunteers | [FR-SELFSERV-401](requirements#fr-selfserv-401) | ✅ |
+| Volunteer Matching | Score-based recommendations | [FR-SELFSERV-402](requirements#fr-selfserv-402) | ✅ |
+| Outreach Tracking | Log attempts and outcomes | [FR-SELFSERV-403](requirements#fr-selfserv-403) | ✅ |
+| Public Signup Forms | No-login volunteer registration | [FR-SELFSERV-404](requirements#fr-selfserv-404) | ✅ |
+| Confirmation Emails | Email + calendar invite | [FR-SELFSERV-405](requirements#fr-selfserv-405) | ✅ |
+
+### Implementation Details
+
+| File | Purpose |
+|------|---------|
+| `routes/district/recruitment.py` | Recruitment dashboard, scoring, outreach logging |
+| `templates/district/recruitment/*.html` | Recruitment UI templates |
 
 ### Technical Tasks
 
-1. **Build recruitment dashboard** with urgency indicators
-2. **Implement volunteer scoring algorithm**
-3. **Create volunteer recommendation component**
-4. **Build outreach logging interface**
-5. **Create public signup form** per event
-6. **Implement confirmation email** with calendar attachment
-7. **Add volunteer to pool** on signup
-8. **Create participation record** on signup
+1. ~~**Build recruitment dashboard** with urgency indicators~~ ✅
+2. ~~**Implement volunteer scoring algorithm**~~ ✅
+3. ~~**Create volunteer recommendation component**~~ ✅
+4. ~~**Build outreach logging interface**~~ ✅
+5. ~~**Create public signup form** per event~~ ✅
+6. ~~**Implement confirmation email** with calendar attachment~~ ✅
+7. ~~**Add volunteer to pool** on signup~~ ✅
+8. ~~**Create participation record** on signup~~ ✅
 
 ### Success Criteria
 
-- [ ] Dashboard shows events needing volunteers
-- [ ] Volunteers are ranked by relevance
-- [ ] Outreach can be logged with outcomes
-- [ ] Public can sign up without login
-- [ ] Confirmation email sent with calendar invite
-- [ ] Signup creates volunteer record if new
+- [x] Dashboard shows events needing volunteers
+- [x] Volunteers are ranked by relevance
+- [x] Outreach can be logged with outcomes
+- [x] Public can sign up without login
+- [x] Confirmation email sent with calendar invite
+- [x] Signup creates volunteer record if new
+- [ ] End-to-end production verification completed
+
+### Test Coverage
+
+| Test Pack | Test Cases | Tests |
+|-----------|------------|-------|
+| [Test Pack 8](test_packs/test_pack_8) | TC-1101–TC-1104 | Recruitment dashboard |
+| [Test Pack 8](test_packs/test_pack_8) | TC-1110–TC-1113 | Volunteer matching |
+| [Test Pack 8](test_packs/test_pack_8) | TC-1120–TC-1123 | Outreach tracking |
+| [Test Pack 8](test_packs/test_pack_8) | TC-1130–TC-1134 | Public signup + calendar |
 
 ---
 
@@ -237,6 +257,60 @@ District Suite transforms Polaris from a single-tenant system to a multi-tenant 
 - [ ] PrepKC events appear on calendar with distinct styling
 - [ ] Event details are read-only
 - [ ] Statistics show aggregate metrics
+
+---
+
+## Phase 6: Teacher Self-Service — 📋 Proposed
+
+**Objective:** Enable districts to manage their own teacher rosters directly in Polaris, eliminating spreadsheet dependency.
+
+**Status:** Proposed (March 2026). See [Feature Proposal](teacher_roster_management) for full analysis.
+
+> [!NOTE]
+> This phase mirrors the **Phase 3 (District Volunteers)** pattern — districts already have CRUD for volunteers; this extends the same self-service model to teachers.
+
+### Deliverables
+
+| Component | Description | Proposed Req |
+|-----------|-------------|--------------|
+| Teacher Add Form | In-app form to add a teacher (Building, Name, Email, Grade) | FR-DISTRICT-601 |
+| Teacher Edit/Deactivate | Edit or soft-delete existing roster entries | FR-DISTRICT-605–606 |
+| Validation | Email uniqueness, building fuzzy-match | FR-DISTRICT-602–603 |
+| Teacher Linking | Auto-link to `Teacher` entity via `find_or_create_teacher()` | FR-DISTRICT-604 |
+| Audit Logging | All changes logged to `AuditLog` | FR-DISTRICT-607 |
+| Roster Search | Filter roster by building, name, or status | FR-DISTRICT-609 |
+
+### Short-Term Alternative
+
+Until Phase 6 is built, a **documented self-service workflow** is planned to make the existing spreadsheet import process district-friendly. See [Feature Proposal — Solution 1](teacher_roster_management#solution-1-documented-self-service-workflow-short-term).
+
+### Success Criteria
+
+- [ ] District admin can add a teacher without touching a spreadsheet
+- [ ] New teacher is auto-linked to the `Teacher` entity
+- [ ] Building name is fuzzy-matched to a `School` record
+- [ ] All changes are audit-logged
+- [ ] Spreadsheet import remains available as a bulk alternative
+
+---
+
+## Cross-Phase: Volunteer Data Enrichment — 📋 Proposed
+
+**Objective:** Bulk-import volunteer metadata (local status, POC flag) and introduce a tenant-scoped preference/rating system.
+
+**Status:** Proposed (March 2026). See [Feature Proposal](volunteer_data_enrichment) for full analysis.
+
+> [!NOTE]
+> This feature is **cross-phase** — the enrichment import is an admin tool (independent of district phases), while the preference system will extend to tenant-facing UIs in Phase 6+.
+
+### Key Components
+
+| Component | Effort | Phase Dependency |
+|-----------|--------|-----------------|
+| Enrichment Import (CSV → existing fields) | 1 sprint | None |
+| Prefer/Avoid Preference Model + UI | 1 sprint | None |
+| Preference in Enrichment Import | 0.5 sprint | Above two |
+| District-Facing Preferences | 1 sprint | Phase 6 tenant scoping |
 
 ---
 
@@ -278,5 +352,5 @@ Each phase must pass these gates before production release:
 
 ---
 
-*Last updated: 2026-01-26*
-*Version: 3.0 - Phase 3 Complete*
+*Last updated: 2026-03-12*
+*Version: 4.0 - Phase 4 code complete, verification pending*

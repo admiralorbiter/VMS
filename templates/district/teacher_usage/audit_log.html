@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+
+{% block title %}Teacher Usage Audit Log{% endblock %}
+
+{% block extra_css %}
+<style>
+    .audit-container {
+        max-width: 98vw;
+        margin: 0 auto;
+        padding: 8px 8px 20px 8px;
+    }
+
+    .audit-header {
+        background: linear-gradient(135deg, #495057 0%, #6c757d 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .audit-header h1 {
+        margin: 0 0 8px 0;
+        font-size: 2em;
+        font-weight: 700;
+    }
+
+    .audit-header p {
+        margin: 0;
+        opacity: 0.9;
+        font-size: 1.05em;
+    }
+
+    .back-link {
+        color: white;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+        font-weight: 500;
+    }
+
+    .back-link:hover {
+        color: #f0f0f0;
+        text-decoration: underline;
+    }
+
+    .filters-section {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 24px;
+    }
+
+    .filters-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        align-items: end;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .filter-group label {
+        font-weight: 600;
+        color: #333;
+        font-size: 0.88em;
+    }
+
+    .filter-group select,
+    .filter-group input {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .filter-btn {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        background: #495057;
+        color: white;
+    }
+
+    .filter-btn:hover {
+        background: #343a40;
+    }
+
+    .export-csv-btn {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        background: #28a745;
+        color: white;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .export-csv-btn:hover {
+        background: #218838;
+        color: white;
+    }
+
+    .clear-btn {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        background: #dc3545;
+        color: white;
+        text-decoration: none;
+    }
+
+    .clear-btn:hover {
+        background: #c82333;
+        color: white;
+    }
+
+    .audit-table-wrap {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        overflow-x: auto;
+    }
+
+    .audit-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.92em;
+    }
+
+    .audit-table thead th {
+        background: #f8f9fa;
+        padding: 12px 14px;
+        text-align: left;
+        font-weight: 600;
+        color: #333;
+        border-bottom: 2px solid #dee2e6;
+        white-space: nowrap;
+    }
+
+    .audit-table tbody td {
+        padding: 10px 14px;
+        border-bottom: 1px solid #eee;
+        vertical-align: top;
+    }
+
+    .audit-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .action-badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 0.82em;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .action-badge.add {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .action-badge.remove {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .action-badge.reverse {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .meta-reason {
+        font-size: 0.88em;
+        color: #555;
+        max-width: 250px;
+    }
+
+    .no-data {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+        font-size: 1.1em;
+    }
+
+    .pagination-wrap {
+        display: flex;
+        justify-content: center;
+        padding: 16px 0;
+    }
+
+    .result-count {
+        font-size: 0.9em;
+        color: #666;
+        margin-bottom: 12px;
+    }
+
+    @media (max-width: 768px) {
+        .filters-form {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="audit-container">
+    <div class="audit-header">
+        <a href="{{ url_for('teacher_usage.index', tenant_id=admin_tenant_id) if admin_tenant_id else url_for('teacher_usage.index') }}" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Teacher Usage Dashboard
+        </a>
+        <h1><i class="fas fa-clipboard-list"></i> Teacher Usage Audit Log</h1>
+        <p>Review all attendance overrides and changes made to teacher session data</p>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-section">
+        <form class="filters-form" method="GET">
+            {% if admin_tenant_id %}
+            <input type="hidden" name="tenant_id" value="{{ admin_tenant_id }}">
+            {% endif %}
+
+            <div class="filter-group">
+                <label for="action">Action</label>
+                <select id="action" name="action">
+                    <option value="">All Actions</option>
+                    {% for ac in action_choices %}
+                    <option value="{{ ac }}" {% if filters.action == ac %}selected{% endif %}>{{ ac | replace('_', ' ') | title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="start_date">From</label>
+                <input type="datetime-local" id="start_date" name="start_date" value="{{ filters.start_date }}">
+            </div>
+
+            <div class="filter-group">
+                <label for="end_date">To</label>
+                <input type="datetime-local" id="end_date" name="end_date" value="{{ filters.end_date }}">
+            </div>
+
+            <div class="filter-group">
+                <label for="per_page">Per Page</label>
+                <select id="per_page" name="per_page">
+                    {% for n in [25, 50, 100, 200] %}
+                    <option value="{{ n }}" {% if filters.per_page == n %}selected{% endif %}>{{ n }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" class="filter-btn"><i class="fas fa-filter"></i> Apply</button>
+            <a href="{{ url_for('teacher_usage.audit_log', tenant_id=admin_tenant_id) if admin_tenant_id else url_for('teacher_usage.audit_log') }}" class="clear-btn">Clear</a>
+            <a href="{{ url_for('teacher_usage.audit_export_csv', action=filters.action, start_date=filters.start_date, end_date=filters.end_date, tenant_id=admin_tenant_id) if admin_tenant_id else url_for('teacher_usage.audit_export_csv', action=filters.action, start_date=filters.start_date, end_date=filters.end_date) }}"
+               class="export-csv-btn">
+                <i class="fas fa-file-csv"></i> Export CSV
+            </a>
+        </form>
+    </div>
+
+    <!-- Results -->
+    <p class="result-count">
+        Showing {{ logs | length }} of {{ pagination.total }} entries
+        {% if filters.action or filters.start_date or filters.end_date %} (filtered){% endif %}
+    </p>
+
+    <div class="audit-table-wrap">
+        <table class="audit-table">
+            <thead>
+                <tr>
+                    <th>Time (UTC)</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Teacher</th>
+                    <th>Event / Session</th>
+                    <th>Reason</th>
+                    <th>IP</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                {% set meta = log.meta or {} %}
+                <tr>
+                    <td style="white-space: nowrap;">{{ log.created_at.strftime('%Y-%m-%d %H:%M') if log.created_at else '' }}</td>
+                    <td>{{ users_map.get(log.user_id, 'System') }}</td>
+                    <td>
+                        {% if 'add' in (log.action or '') %}
+                        <span class="action-badge add">{{ log.action | replace('_', ' ') | title }}</span>
+                        {% elif 'remove' in (log.action or '') %}
+                        <span class="action-badge remove">{{ log.action | replace('_', ' ') | title }}</span>
+                        {% elif 'reverse' in (log.action or '') %}
+                        <span class="action-badge reverse">{{ log.action | replace('_', ' ') | title }}</span>
+                        {% else %}
+                        <span class="action-badge">{{ log.action | replace('_', ' ') | title }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ meta.get('teacher_name', '') }}</td>
+                    <td>{{ meta.get('event_title', '') }}</td>
+                    <td class="meta-reason">{{ meta.get('reason', meta.get('reversal_reason', '')) }}</td>
+                    <td>{{ log.ip or '' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="no-data">No audit entries found. Try adjusting your filters.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if pagination and pagination.pages > 1 %}
+    <div class="pagination-wrap">
+        <nav aria-label="Audit pagination">
+            <ul class="pagination">
+                <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('teacher_usage.audit_log', page=pagination.prev_num, per_page=filters.per_page, action=filters.action, start_date=filters.start_date, end_date=filters.end_date, tenant_id=admin_tenant_id) }}">Previous</a>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+                </li>
+                <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('teacher_usage.audit_log', page=pagination.next_num, per_page=filters.per_page, action=filters.action, start_date=filters.start_date, end_date=filters.end_date, tenant_id=admin_tenant_id) }}">Next</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

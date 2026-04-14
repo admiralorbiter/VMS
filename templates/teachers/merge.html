@@ -1,0 +1,76 @@
+{#
+Teacher Merge Tool
+==================
+Admin-only page to search for duplicate teachers, compare them side-by-side,
+and merge with full audit trail. Status-aware: "attended" wins over "registered".
+#}
+
+{% extends "base.html" %}
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/teachers_merge.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+{% block content %}
+<div class="merge-container">
+    <h1><i class="fas fa-code-branch me-2"></i>Teacher Merge Tool</h1>
+    <p class="text-muted">Search for duplicate teachers, compare side-by-side, and merge records with full audit trail.</p>
+
+    <!-- Flagged Candidates -->
+    <div class="candidates-section">
+        <h5><i class="fas fa-flag text-warning me-2"></i>Flagged Duplicate Candidates</h5>
+        <p class="text-muted" style="font-size: 0.85rem;">Teachers with the same first name, different last name, and 2+ shared events. Click to load.</p>
+        <div id="candidatesList" class="row g-3">
+            <div class="candidates-loading"><i class="fas fa-spinner fa-spin me-2"></i>Scanning for duplicates...</div>
+        </div>
+    </div>
+
+    <hr>
+
+    <!-- Search -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <label class="form-label fw-bold">Search Teachers</label>
+            <div class="search-box">
+                <input type="text" id="searchInput" class="form-control" placeholder="Type a name to search..." autocomplete="off">
+                <div id="searchResults" class="search-results" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Side-by-side Slots -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-5">
+            <div id="slotA" class="slot-card" data-teacher-id="">
+                <span class="slot-placeholder"><i class="fas fa-user-plus me-2"></i>Select first teacher</span>
+            </div>
+        </div>
+        <div class="col-md-2 d-flex flex-column align-items-center justify-content-center">
+            <button id="swapBtn" class="swap-btn mb-2" title="Swap" disabled><i class="fas fa-exchange-alt"></i></button>
+            <small class="text-muted">Swap</small>
+        </div>
+        <div class="col-md-5">
+            <div id="slotB" class="slot-card" data-teacher-id="">
+                <span class="slot-placeholder"><i class="fas fa-user-plus me-2"></i>Select second teacher</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comparison -->
+    <div id="compareSection" class="compare-section" style="display: none;">
+        <h5><i class="fas fa-balance-scale me-2"></i>Comparison</h5>
+        <div id="compareDetails"></div>
+    </div>
+
+    <!-- Merge Button -->
+    <div class="text-center mt-4" id="mergeSection" style="display: none;">
+        <p class="text-muted mb-2">
+            <i class="fas fa-arrow-left text-primary me-1"></i><strong class="text-primary">KEEP</strong> left &mdash;
+            <strong class="text-warning">MERGE</strong> right <i class="fas fa-arrow-right text-warning ms-1"></i>
+        </p>
+        <button id="mergeBtn" class="merge-btn" disabled>
+            <i class="fas fa-code-branch me-2"></i>Merge Right Into Left
+        </button>
+    </div>
+</div>
+<script src="/static/js/teachers_merge.js"></script>
+{% endblock %}

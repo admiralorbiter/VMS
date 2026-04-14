@@ -7,25 +7,10 @@ from flask_login import login_required
 from models.district_model import District
 from models.event import Event, EventStatus, EventStudentParticipation
 from models.volunteer import EventParticipation
+from services.academic_year_service import get_school_year_dates
 
 # Create blueprint
 attendance_bp = Blueprint("reports_attendance", __name__)
-
-
-def get_school_year_dates(school_year):
-    """Convert school year (e.g., '24-25') to start and end dates"""
-    start_year = int(school_year.split("-")[0])
-    end_year = int(school_year.split("-")[1])
-
-    # Convert to full years
-    start_year = 2000 + start_year
-    end_year = 2000 + end_year
-
-    # School year starts June 1st
-    start_date = datetime(start_year, 6, 1)
-    end_date = datetime(end_year, 5, 31)
-
-    return start_date, end_date
 
 
 def load_routes(bp):

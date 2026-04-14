@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+{% block title %}Edit Virtual Session{% endblock %}
+
+{% block extra_css %}
+<style>
+    main {
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div
+    style="padding: 20px 30px; background: linear-gradient(180deg, #e8f4f8 0%, #f5f7fa 100%); min-height: calc(100vh - 60px);">
+
+    <!-- Header -->
+    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;">
+        <a href="{{ url_for('virtual.virtual_sessions') }}"
+            style="color: #667eea; text-decoration: none; font-size: 1.2em;" title="Back to Sessions">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <h1 style="color: #2c3e50; margin: 0; font-size: 1.6em;">Edit Virtual Session</h1>
+        <span
+            style="background: #e3f2fd; color: #1565c0; padding: 4px 12px; border-radius: 20px; font-size: 0.8em; font-weight: 500;">ID:
+            {{ event.id }}</span>
+        {% if event.import_source %}
+        <span
+            style="background: #f3e5f5; color: #7b1fa2; padding: 4px 12px; border-radius: 20px; font-size: 0.8em; font-weight: 500;">{{
+            event.import_source }}</span>
+        {% endif %}
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; max-width: 1200px;">
+
+        <!-- Left: Session Details Form -->
+        <div style="background: white; border-radius: 12px; box-shadow: 0 2px 15px rgba(0,0,0,0.08); overflow: hidden;">
+            <div
+                style="padding: 16px 22px; background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; font-weight: 600; font-size: 1.05em;">
+                <i class="fas fa-edit"></i> Session Details
+            </div>
+            <form method="POST" style="padding: 22px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div style="grid-column: 1/-1;">
+                        <label
+                            style="display:block; font-weight:600; margin-bottom:5px; color:#555; font-size:0.9em;">Title
+                            <span style="color:#e74c3c;">*</span></label>
+                        <input type="text" name="title" required value="{{ event.title or '' }}"
+                            style="width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:0.95em; box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <label
+                            style="display:block; font-weight:600; margin-bottom:5px; color:#555; font-size:0.9em;">Date
+                            <span style="color:#e74c3c;">*</span></label>
+                        <input type="date" name="start_date" required
+                            value="{{ event.start_date.strftime('%Y-%m-%d') if event.start_date else '' }}"
+                            style="width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:0.95em; box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <label
+                            style="display:block; font-weight:600; margin-bottom:5px; color:#555; font-size:0.9em;">Status</label>
+                        <select name="status"
+                            style="width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:0.95em; box-sizing:border-box; background:white;">
+                            {% set current_status = event.status.value if event.status else 'Confirmed' %}
+                            <option value="Confirmed" {% if current_status=='Confirmed' %}selected{% endif %}>Confirmed
+                            </option>
+                            <option value="Completed" {% if current_status=='Completed' %}selected{% endif %}>Completed
+                            </option>
+                            <option value="Requested" {% if current_status=='Requested' %}selected{% endif %}>Requested
+                            </option>
+                            <option value="Draft" {% if current_status=='Draft' %}selected{% endif %}>Draft</option>
+                            <option value="Cancelled" {% if current_status=='Cancelled' %}selected{% endif %}>Cancelled
+                            </option>
+                            <option value="No Show" {% if current_status=='No Show' %}selected{% endif %}>No Show
+                            </option>
+                            <option value="Simulcast" {% if current_status=='Simulcast' %}selected{% endif %}>Simulcast
+                            </option>
+                        </select>
+                    </div>
+                    <div>
+                        <label
+                            style="display:block; font-weight:600; margin-bottom:5px; color:#555; font-size:0.9em;">District</label>
+                        <input type="text" name="district_partner" list="editDistrictList"
+                            value="{{ event.district_partner or '' }}"
+                            style="width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:0.95em; box-sizing:border-box;">
+                        <datalist id="editDistrictList">
+                            {% for dist in districts %}
+                            <option value="{{ dist }}">
+                                {% endfor %}
+                        </datalist>
+                    </div>
+                    <div>
+                        <label
+                            style="display:block; font-weight:600; margin-bottom:5px; color:#555; font-size:0.9em;">Career
+                            Cluster</label>
+                        <input type="text" name="career_cluster" list="editClusterList"
+                            value="{{ event.career_cluster or '' }}"
+                            style="width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:0.95em; box-sizing:border-box;">
+                        <datalist id="editClusterList">
+                            {% for cluster in career_clusters %}
+                            <option value="{{ cluster }}">
+                                {% endfor %}
+                        </datalist>
+                    </div>
+                    <div>
+                        <label
+                            style="display:block; font-weight:600; margin-bottom:5px; color:#555; font-size:0.9em;">Students</label>
+                        <input type="number" name="registered_student_count"
+                            value="{{ event.registered_student_count or 0 }}" min="0"
+                            style="width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:0.95em; box-sizing:border-box;">
+                    </div>
+                </div>
+                <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+                    <a href="{{ url_for('virtual.virtual_sessions') }}"
+                        style="padding:10px 22px; border:1px solid #ddd; border-radius:8px; background:#f8f9fa; text-decoration:none; color:#555; font-weight:500;">Cancel</a>
+                    <button type="submit"
+                        style="padding:10px 22px; background:linear-gradient(135deg, #3498db 0%, #2980b9 100%); color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600; box-shadow:0 2px 8px rgba(52,152,219,0.3);"><i
+                            class="fas fa-save"></i> Save Changes</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Right: Teacher Management -->
+        <div style="background: white; border-radius: 12px; box-shadow: 0 2px 15px rgba(0,0,0,0.08); overflow: hidden;">
+            <div
+                style="padding: 16px 22px; background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; font-weight: 600; font-size: 1.05em;">
+                <i class="fas fa-chalkboard-teacher"></i> Teachers
+                <span id="teacherCount"
+                    style="background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 12px; font-size: 0.85em; margin-left: 8px;">{{
+                    linked_teachers|length }}</span>
+            </div>
+            <div style="padding: 22px;">
+                <!-- Search + Add -->
+                <div style="position: relative; margin-bottom: 18px;">
+                    <input type="text" id="editTeacherSearch" placeholder="Search teachers to add..." autocomplete="off"
+                        style="width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:0.95em; box-sizing:border-box;">
+                    <div id="editTeacherResults"
+                        style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #ddd; border-top:none; border-radius:0 0 8px 8px; max-height:200px; overflow-y:auto; z-index:10; box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+                    </div>
+                </div>
+
+                <!-- Current Teachers List -->
+                <div id="teacherList">
+                    {% if linked_teachers %}
+                    {% for t in linked_teachers %}
+                    {% if t.source == 'text_field' %}
+                    <div class="teacher-row" data-source="text_field"
+                        style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border:1px solid #eef2f7; border-radius:8px; margin-bottom:8px; background:#f8f9fa;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <div
+                                style="width:36px; height:36px; background:linear-gradient(135deg, #43a047, #66bb6a); border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:600; font-size:0.85em;">
+                                {{ t.name[0] if t.name else '?' }}
+                            </div>
+                            <div>
+                                <div style="font-weight:600; color:#2c3e50; font-size:0.95em;">{{ t.name }}</div>
+                                <div style="color:#999; font-size:0.8em;">
+                                    <span
+                                        style="background:#e8f5e9; color:#2e7d32; padding:1px 8px; border-radius:10px; font-size:0.85em;">Imported</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="teacher-row" data-id="{{ t.id }}"
+                        style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border:1px solid #eef2f7; border-radius:8px; margin-bottom:8px; transition: all 0.2s;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <div
+                                style="width:36px; height:36px; background:linear-gradient(135deg, #667eea, #764ba2); border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:600; font-size:0.85em;">
+                                {{ t.name[0] if t.name else '?' }}
+                            </div>
+                            <div>
+                                <div style="font-weight:600; color:#2c3e50; font-size:0.95em;">{{ t.name }}</div>
+                                {% if t.school_name %}
+                                <div style="color:#999; font-size:0.8em;">{{ t.school_name }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <button onclick="removeTeacher({{ t.id }}, this)"
+                            style="background:none; border:1px solid #ffcdd2; color:#e53935; padding:5px 12px; border-radius:6px; cursor:pointer; font-size:0.8em; transition: all 0.2s;"
+                            onmouseover="this.style.background='#ffebee'" onmouseout="this.style.background='none'">
+                            <i class="fas fa-times"></i> Remove
+                        </button>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                    {% else %}
+                    <div id="noTeachersMsg" style="text-align:center; padding:30px; color:#999;">
+                        <i class="fas fa-user-plus"
+                            style="font-size:2em; margin-bottom:10px; display:block; color:#ddd;"></i>
+                        No teachers linked. Use the search above to add teachers.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div id="sessionData" data-session-id="{{ event.id }}" data-search-url="{{ url_for('virtual.api_search_teachers') }}"
+    style="display:none;"></div>
+
+<script>
+    (function () {
+        var SESSION_ID = parseInt(document.getElementById('sessionData').getAttribute('data-session-id'));
+        var searchInput = document.getElementById('editTeacherSearch');
+        var resultsDiv = document.getElementById('editTeacherResults');
+        var teacherList = document.getElementById('teacherList');
+        var teacherCount = document.getElementById('teacherCount');
+        var debounceTimer;
+
+        function updateCount(delta) {
+            var current = parseInt(teacherCount.textContent) || 0;
+            teacherCount.textContent = current + delta;
+        }
+
+        searchInput.addEventListener('input', function () {
+            clearTimeout(debounceTimer);
+            var q = this.value.trim();
+            if (q.length < 2) { resultsDiv.style.display = 'none'; return; }
+
+            debounceTimer = setTimeout(function () {
+                fetch(document.getElementById('sessionData').getAttribute('data-search-url') + '?q=' + encodeURIComponent(q))
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (!data.length) {
+                            resultsDiv.innerHTML = '<div style="padding:10px 14px; color:#999; font-size:0.9em;">No teachers found</div>';
+                        } else {
+                            resultsDiv.innerHTML = data.map(function (t) {
+                                return '<div style="padding:8px 14px; cursor:pointer; border-bottom:1px solid #f0f0f0; font-size:0.9em;" ' +
+                                    'onmouseover="this.style.background=\'#f0f7ff\'" onmouseout="this.style.background=\'white\'" ' +
+                                    'onclick="addTeacher(' + t.id + ', \'' + t.name.replace(/'/g, "\\'") + '\', \'' + (t.school_name || '').replace(/'/g, "\\'") + '\')">' +
+                                    '<strong>' + t.name + '</strong>' +
+                                    (t.school_name ? ' <span style="color:#999;">\u2014 ' + t.school_name + '</span>' : '') +
+                                    '</div>';
+                            }).join('');
+                        }
+                        resultsDiv.style.display = 'block';
+                    });
+            }, 300);
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
+                resultsDiv.style.display = 'none';
+            }
+        });
+
+        window.addTeacher = function (id, name, schoolName) {
+            if (document.querySelector('.teacher-row[data-id="' + id + '"]')) {
+                resultsDiv.style.display = 'none';
+                searchInput.value = '';
+                return;
+            }
+
+            fetch('/virtual/sessions/' + SESSION_ID + '/teachers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ teacher_id: id })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        var noMsg = document.getElementById('noTeachersMsg');
+                        if (noMsg) noMsg.remove();
+
+                        var initial = name.charAt(0).toUpperCase();
+                        var row = document.createElement('div');
+                        row.className = 'teacher-row';
+                        row.setAttribute('data-id', id);
+                        row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border:1px solid #eef2f7; border-radius:8px; margin-bottom:8px; transition: all 0.2s; background:#e8f5e9;';
+                        row.innerHTML =
+                            '<div style="display:flex; align-items:center; gap:10px;">' +
+                            '<div style="width:36px; height:36px; background:linear-gradient(135deg, #667eea, #764ba2); border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:600; font-size:0.85em;">' + initial + '</div>' +
+                            '<div>' +
+                            '<div style="font-weight:600; color:#2c3e50; font-size:0.95em;">' + name + '</div>' +
+                            (schoolName ? '<div style="color:#999; font-size:0.8em;">' + schoolName + '</div>' : '') +
+                            '</div>' +
+                            '</div>' +
+                            '<button onclick="removeTeacher(' + id + ', this)" style="background:none; border:1px solid #ffcdd2; color:#e53935; padding:5px 12px; border-radius:6px; cursor:pointer; font-size:0.8em;" onmouseover="this.style.background=\'#ffebee\'" onmouseout="this.style.background=\'none\'">' +
+                            '<i class="fas fa-times"></i> Remove' +
+                            '</button>';
+                        teacherList.appendChild(row);
+                        updateCount(1);
+                        setTimeout(function () { row.style.background = 'white'; }, 1500);
+                    } else {
+                        alert(data.error || 'Failed to add teacher');
+                    }
+                });
+
+            searchInput.value = '';
+            resultsDiv.style.display = 'none';
+        };
+
+        window.removeTeacher = function (id, btn) {
+            if (!confirm('Remove this teacher from the session?')) return;
+
+            fetch('/virtual/sessions/' + SESSION_ID + '/teachers/' + id + '/remove', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        var row = btn.closest('.teacher-row');
+                        row.style.opacity = '0';
+                        row.style.transform = 'translateX(20px)';
+                        setTimeout(function () {
+                            row.remove();
+                            updateCount(-1);
+                            if (!document.querySelector('.teacher-row')) {
+                                teacherList.innerHTML = '<div id="noTeachersMsg" style="text-align:center; padding:30px; color:#999;">' +
+                                    '<i class="fas fa-user-plus" style="font-size:2em; margin-bottom:10px; display:block; color:#ddd;"></i>' +
+                                    'No teachers linked. Use the search above to add teachers.</div>';
+                            }
+                        }, 300);
+                    } else {
+                        alert(data.error || 'Failed to remove teacher');
+                    }
+                });
+        };
+    })();
+</script>
+{% endblock %}

@@ -125,4 +125,4 @@ def init_rate_limiter(app):
             429,
         )
 
-    app.logger.info(f"Rate limiter initialized with storage: {_storage_uri}")
+    app.logger.info("Rate limiter initialized with storage: %s", _storage_uri)

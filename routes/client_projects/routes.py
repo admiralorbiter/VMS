@@ -86,6 +86,7 @@ from sqlalchemy import func
 
 from models import db
 from models.client_project_model import ClientProject, ProjectStatus
+from routes.decorators import admin_required, handle_route_errors
 
 client_projects_bp = Blueprint(
     "client_projects", __name__, url_prefix="/management/client-projects"
@@ -94,6 +95,7 @@ client_projects_bp = Blueprint(
 
 @client_projects_bp.route("/")
 @login_required
+@admin_required
 def index():
     """
     Display the main client projects listing page.
@@ -110,9 +112,6 @@ def index():
     Raises:
         Redirect to main index if unauthorized
     """
-    if not current_user.is_admin:
-        flash("Access denied. Admin privileges required.", "error")
-        return redirect(url_for("index"))
 
     # Filters and pagination
     q = request.args.get("q", "").strip()
@@ -159,6 +158,7 @@ def index():
 
 @client_projects_bp.route("/form")
 @login_required
+@admin_required
 def form():
     """
     Display the project creation form.
@@ -175,8 +175,6 @@ def form():
     Raises:
         403: Unauthorized access attempt
     """
-    if not current_user.is_admin:
-        return jsonify({"error": "Unauthorized"}), 403
 
     return render_template(
         "client_connected_projects/client_project_form.html",
@@ -189,6 +187,7 @@ def form():
 
 @client_projects_bp.route("/create", methods=["POST"])
 @login_required
+@admin_required
 def create():
     """
     Create a new client project.
@@ -218,9 +217,6 @@ def create():
         403: Unauthorized access attempt
         500: Database or server error
     """
-    if not current_user.is_admin:
-        return jsonify({"error": "Unauthorized"}), 403
-
     try:
         # Process contact information
         contact_names = request.form.getlist("contact_names[]")
@@ -261,6 +257,7 @@ def create():
 
 @client_projects_bp.route("/<int:project_id>/edit")
 @login_required
+@admin_required
 def edit_form(project_id):
     """
     Display the project editing form.
@@ -281,9 +278,6 @@ def edit_form(project_id):
         403: Unauthorized access attempt
         404: Project not found
     """
-    if not current_user.is_admin:
-        return jsonify({"error": "Unauthorized"}), 403
-
     project = ClientProject.query.get_or_404(project_id)
     return render_template(
         "client_connected_projects/client_project_form.html",
@@ -296,6 +290,7 @@ def edit_form(project_id):
 
 @client_projects_bp.route("/<int:project_id>/update", methods=["POST"])
 @login_required
+@admin_required
 def update(project_id):
     """
     Update an existing client project.
@@ -329,9 +324,6 @@ def update(project_id):
         404: Project not found
         500: Database or server error
     """
-    if not current_user.is_admin:
-        return jsonify({"error": "Unauthorized"}), 403
-
     try:
         project = ClientProject.query.get_or_404(project_id)
 
@@ -371,6 +363,7 @@ def update(project_id):
 
 @client_projects_bp.route("/<int:project_id>", methods=["DELETE"])
 @login_required
+@admin_required
 def delete(project_id):
     """
     Delete a client project.
@@ -392,9 +385,6 @@ def delete(project_id):
         404: Project not found
         500: Database or server error
     """
-    if not current_user.is_admin:
-        return jsonify({"error": "Unauthorized"}), 403
-
     try:
         project = ClientProject.query.get_or_404(project_id)
         db.session.delete(project)
@@ -422,6 +412,7 @@ def cancel_form():
 
 @client_projects_bp.route("/import-sheet", methods=["POST"])
 @login_required
+@admin_required
 def import_sheet():
     """
     Import client projects from Google Sheets.
@@ -446,9 +437,6 @@ def import_sheet():
         403: Unauthorized access attempt
         500: Import or database error
     """
-    if not current_user.is_admin:
-        return jsonify({"error": "Unauthorized"}), 403
-
     try:
         sheet_id = os.getenv("CLIENT_PROJECTS_SHEET_ID")
         if not sheet_id:
@@ -459,13 +447,13 @@ def import_sheet():
             f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv"
         )
 
-        current_app.logger.info(f"Attempting to fetch sheet with ID: {sheet_id}")
-        current_app.logger.info(f"URL: {csv_url}")
+        current_app.logger.info("Attempting to fetch sheet with ID: %s", sheet_id)
+        current_app.logger.info("URL: %s", csv_url)
 
         try:
             df = pd.read_csv(csv_url)
         except Exception as e:
-            current_app.logger.error(f"Failed to read CSV: {str(e)}")
+            current_app.logger.error("Failed to read CSV: %s", str(e))
             # Try alternative URL format
             csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid=0"
             df = pd.read_csv(csv_url)
@@ -525,7 +513,7 @@ def import_sheet():
                 error_count += 1
                 errors.append(f"Error processing row: {str(e)}")
                 db.session.rollback()
-                current_app.logger.error(f"Import error: {e}", exc_info=True)
+                current_app.logger.error("Import error: %s", e, exc_info=True)
 
         # After successful import, get updated projects
         projects = ClientProject.query.order_by(ClientProject.created_at.desc()).all()

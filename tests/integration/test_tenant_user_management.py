@@ -402,7 +402,7 @@ class TestTenantNavigationIsolation:
     def test_tenant_user_sees_tenant_nav_only(
         self, client, test_tenant, tenant_regular_user
     ):
-        """TC-1216: Tenant user sees only Events, Volunteers, Recruitment, Settings"""
+        """TC-1216: Tenant user sees only tenant-scoped navigation (Events, Settings, Teacher Progress)"""
         # Login without following redirects
         client.post(
             "/login",
@@ -415,9 +415,7 @@ class TestTenantNavigationIsolation:
         if response.status_code == 200:
             # Check for tenant navigation items
             assert b"Events" in response.data or b"events" in response.data.lower()
-            assert (
-                b"Volunteers" in response.data or b"volunteers" in response.data.lower()
-            )
+            assert b"Settings" in response.data or b"settings" in response.data.lower()
 
     def test_no_polaris_admin_links(self, client, test_tenant, tenant_regular_user):
         """TC-1217: Tenant user doesn't see Polaris admin navigation"""
@@ -560,12 +558,14 @@ class TestPasswordSecurity:
             follow_redirects=False,
         )
 
-        # Login should fail - either stay on login page (200) or redirect back to login (302)
-        # The key is that they should NOT be logged in and redirected to dashboard
+        # Login should fail - inactive user stays on login page with error
         assert response.status_code in [200, 302]
         if response.status_code == 302:
             # Should redirect back to login, not to dashboard
             assert "login" in response.location.lower() or response.location == "/"
+        if response.status_code == 200:
+            # Should show deactivation error message
+            assert b"deactivated" in response.data.lower()
 
         # Cleanup
         with app.app_context():

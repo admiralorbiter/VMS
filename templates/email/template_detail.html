@@ -5,53 +5,214 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 <style>
-.template-detail-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 2rem 1rem;
-}
+    .template-detail-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
 
-.detail-section {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 10px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    margin-bottom: 1.5rem;
-}
+    .detail-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1.5rem;
+    }
 
-.template-preview {
-    border: 1px solid #e5e7eb;
-    border-radius: 5px;
-    padding: 1rem;
-    background: #f9fafb;
-    margin-top: 1rem;
-}
+    .detail-section h3 {
+        margin-top: 0;
+        color: var(--delft-blue);
+        border-bottom: 2px solid var(--non-photo-blue);
+        padding-bottom: 0.5rem;
+    }
 
-.email-nav a:hover:not([style*="background"]) {
-    background: #f3f4f6;
-}
+    .template-preview {
+        border: 1px solid #e5e7eb;
+        border-radius: 5px;
+        padding: 1rem;
+        background: #f9fafb;
+        margin-top: 1rem;
+    }
+
+    .action-bar {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        align-items: center;
+        background: white;
+        padding: 1rem 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1.5rem;
+    }
+
+    .btn-action {
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-weight: 600;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        transition: background 0.2s, opacity 0.2s;
+    }
+
+    .btn-edit {
+        background: var(--ucla-blue);
+        color: white;
+    }
+
+    .btn-edit:hover {
+        background: var(--delft-blue);
+    }
+
+    .btn-version {
+        background: #7c3aed;
+        color: white;
+    }
+
+    .btn-version:hover {
+        background: #6d28d9;
+    }
+
+    .btn-activate {
+        background: #10b981;
+        color: white;
+    }
+
+    .btn-activate:hover {
+        background: #059669;
+    }
+
+    .btn-delete {
+        background: #ef4444;
+        color: white;
+    }
+
+    .btn-delete:hover {
+        background: #dc2626;
+    }
+
+    .version-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 5px;
+        margin: 0.5rem 0;
+        transition: background 0.15s;
+    }
+
+    .version-item:hover {
+        background: #f9fafb;
+    }
+
+    .version-item.active {
+        border-color: #10b981;
+        background: #f0fdf4;
+    }
+
+    .version-item.current {
+        border-color: var(--ucla-blue);
+        background: #eff6ff;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 0.15rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .badge-active {
+        background: #10b981;
+        color: white;
+    }
+
+    .badge-inactive {
+        background: #9ca3af;
+        color: white;
+    }
+
+    .badge-current {
+        background: var(--ucla-blue);
+        color: white;
+    }
+
+    .meta-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .meta-item label {
+        font-weight: 600;
+        color: #6b7280;
+        font-size: 0.85rem;
+        display: block;
+    }
+
+    .meta-item span {
+        font-size: 1rem;
+        color: #111827;
+    }
+
+    .placeholder-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-top: 0.5rem;
+    }
+
+    .placeholder-tag {
+        background: #e0e7ff;
+        color: #3730a3;
+        padding: 0.2rem 0.6rem;
+        border-radius: 4px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.85rem;
+    }
+
+    .email-nav a:hover:not([style*="background"]) {
+        background: #f3f4f6;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="template-detail-container">
     <!-- Navigation Bar -->
-    <nav class="email-nav" style="background: white; padding: 1rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); margin-bottom: 1.5rem;">
+    <nav class="email-nav"
+        style="background: white; padding: 1rem; border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); margin-bottom: 1.5rem;">
         <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
-            <a href="{{ url_for('email.email_overview') }}" style="text-decoration: none; color: var(--delft-blue); font-weight: 600; padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+            <a href="{{ url_for('email.email_overview') }}"
+                style="text-decoration: none; color: var(--delft-blue); font-weight: 600; padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
                 <i class="fas fa-home"></i> Overview
             </a>
             <span style="color: #d1d5db;">|</span>
-            <a href="{{ url_for('email.email_templates') }}" style="text-decoration: none; color: white; background: var(--ucla-blue); padding: 0.5rem 1rem; border-radius: 5px; font-weight: 600;">
+            <a href="{{ url_for('email.email_templates') }}"
+                style="text-decoration: none; color: white; background: var(--ucla-blue); padding: 0.5rem 1rem; border-radius: 5px; font-weight: 600;">
                 <i class="fas fa-file-alt"></i> Templates
             </a>
-            <a href="{{ url_for('email.email_outbox') }}" style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+            <a href="{{ url_for('email.compose') }}"
+                style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+                <i class="fas fa-pen"></i> Compose
+            </a>
+            <a href="{{ url_for('email.email_outbox') }}"
+                style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
                 <i class="fas fa-inbox"></i> Outbox
             </a>
-            <a href="{{ url_for('email.email_attempts') }}" style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+            <a href="{{ url_for('email.email_attempts') }}"
+                style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
                 <i class="fas fa-paper-plane"></i> Delivery Attempts
             </a>
-            <a href="{{ url_for('email.email_settings') }}" style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
+            <a href="{{ url_for('email.email_settings') }}"
+                style="text-decoration: none; color: var(--delft-blue); padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.2s;">
                 <i class="fas fa-cog"></i> Settings
             </a>
         </div>
@@ -59,15 +220,123 @@
 
     <h1>Template: {{ template.purpose_key }} v{{ template.version }}</h1>
 
-    <div class="detail-section">
-        <h3>Template Information</h3>
-        <p><strong>Name:</strong> {{ template.name }}</p>
-        {% if template.description %}
-        <p><strong>Description:</strong> {{ template.description }}</p>
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div style="margin-bottom: 1.5rem;">
+        {% for category, message in messages %}
+        <div class="alert" role="alert"
+            style="padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 0.5rem; {% if category == 'error' %}background: #fef2f2; color: #991b1b; border: 1px solid #fecaca;{% elif category == 'warning' %}background: #fffbeb; color: #92400e; border: 1px solid #fde68a;{% elif category == 'success' %}background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0;{% else %}background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe;{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+        <a href="{{ url_for('email.edit_template', template_id=template.id) }}" class="btn-action btn-edit">
+            <i class="fas fa-edit"></i> Edit
+        </a>
+        <form method="POST" action="{{ url_for('email.create_template_version', template_id=template.id) }}"
+            style="display: inline;">
+            <button type="submit" class="btn-action btn-version">
+                <i class="fas fa-code-branch"></i> Create New Version
+            </button>
+        </form>
+        {% if not template.is_active %}
+        <form method="POST" action="{{ url_for('email.activate_template', template_id=template.id) }}"
+            style="display: inline;">
+            <button type="submit" class="btn-action btn-activate">
+                <i class="fas fa-check-circle"></i> Activate This Version
+            </button>
+        </form>
         {% endif %}
-        <p><strong>Status:</strong> {% if template.is_active %}Active{% else %}Inactive{% endif %}</p>
+        {% if message_count == 0 %}
+        <form method="POST" action="{{ url_for('email.delete_template', template_id=template.id) }}"
+            style="display: inline;"
+            onsubmit="return confirm('Are you sure you want to delete this template version? This cannot be undone.');">
+            <button type="submit" class="btn-action btn-delete">
+                <i class="fas fa-trash"></i> Delete
+            </button>
+        </form>
+        {% endif %}
     </div>
 
+    <!-- Template Information -->
+    <div class="detail-section">
+        <h3>Template Information</h3>
+        <div class="meta-grid">
+            <div class="meta-item">
+                <label>Name</label>
+                <span>{{ template.name }}</span>
+            </div>
+            <div class="meta-item">
+                <label>Purpose Key</label>
+                <span><code>{{ template.purpose_key }}</code></span>
+            </div>
+            <div class="meta-item">
+                <label>Version</label>
+                <span>{{ template.version }}</span>
+            </div>
+            <div class="meta-item">
+                <label>Status</label>
+                <span>
+                    {% if template.is_active %}
+                    <span class="badge badge-active">Active</span>
+                    {% else %}
+                    <span class="badge badge-inactive">Inactive</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="meta-item">
+                <label>Created</label>
+                <span>{{ template.created_at.strftime('%Y-%m-%d %H:%M') if template.created_at else 'N/A' }}</span>
+            </div>
+            <div class="meta-item">
+                <label>Created By</label>
+                <span>{{ template.created_by.username if template.created_by else 'System' }}</span>
+            </div>
+            <div class="meta-item">
+                <label>Messages Sent</label>
+                <span>{{ message_count }}</span>
+            </div>
+        </div>
+        {% if template.description %}
+        <p style="margin-top: 1rem; color: #4b5563;"><strong>Description:</strong> {{ template.description }}</p>
+        {% endif %}
+    </div>
+
+    <!-- Placeholders -->
+    {% if template.required_placeholders or template.optional_placeholders %}
+    <div class="detail-section">
+        <h3>Placeholders</h3>
+        {% if template.required_placeholders %}
+        <div style="margin-bottom: 1rem;">
+            <strong>Required:</strong>
+            <div class="placeholder-list">
+                {% for p in template.required_placeholders %}
+                <span class="placeholder-tag">{{ "{{" }}{{ p }}{{ "}}" }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% if template.optional_placeholders %}
+        <div>
+            <strong>Optional:</strong>
+            <div class="placeholder-list">
+                {% for p in template.optional_placeholders %}
+                <span class="placeholder-tag">{{ "{{" }}{{ p }}{{ "}}" }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Subject Template -->
     <div class="detail-section">
         <h3>Subject Template</h3>
         <div class="template-preview">
@@ -75,6 +344,7 @@
         </div>
     </div>
 
+    <!-- Text Template -->
     <div class="detail-section">
         <h3>Text Template</h3>
         <div class="template-preview">
@@ -82,6 +352,7 @@
         </div>
     </div>
 
+    <!-- HTML Template -->
     <div class="detail-section">
         <h3>HTML Template</h3>
         <div class="template-preview">
@@ -89,19 +360,49 @@
         </div>
     </div>
 
+    <!-- Preview with Sample Data -->
     <div class="detail-section">
         <h3>Preview with Sample Data</h3>
         <div class="template-preview">
-            <strong>Subject:</strong> {{ template.subject_template|replace('{{user_name}}', sample_context.user_name)|replace('{{district_name}}', sample_context.district_name) }}
+            <strong>Subject:</strong> {{ template.subject_template|replace('{{user_name}}',
+            sample_context.user_name)|replace('{{district_name}}', sample_context.district_name) }}
             <hr>
             <strong>Text:</strong>
             <pre>{{ template.text_template|replace('{{user_name}}', sample_context.user_name)|replace('{{district_name}}', sample_context.district_name) }}</pre>
             <hr>
             <strong>HTML:</strong>
             <div style="border: 1px solid #e5e7eb; padding: 1rem; background: white;">
-                {{ template.html_template|replace('{{user_name}}', sample_context.user_name)|replace('{{district_name}}', sample_context.district_name)|safe }}
+                {{ template.html_template|replace('{{user_name}}',
+                sample_context.user_name)|replace('{{district_name}}', sample_context.district_name)|safe }}
             </div>
         </div>
     </div>
+
+    <!-- Version History -->
+    {% if version_history and version_history|length > 1 %}
+    <div class="detail-section">
+        <h3>Version History</h3>
+        {% for ver in version_history %}
+        <div
+            class="version-item {% if ver.is_active %}active{% endif %} {% if ver.id == template.id %}current{% endif %}">
+            <div>
+                <strong>Version {{ ver.version }}</strong>
+                {% if ver.is_active %}<span class="badge badge-active">Active</span>{% endif %}
+                {% if ver.id == template.id %}<span class="badge badge-current">Viewing</span>{% endif %}
+                <span style="color: #6b7280; margin-left: 0.5rem; font-size: 0.85rem;">
+                    {{ ver.created_at.strftime('%Y-%m-%d %H:%M') if ver.created_at else '' }}
+                    {% if ver.created_by %} by {{ ver.created_by.username }}{% endif %}
+                </span>
+            </div>
+            <div>
+                {% if ver.id != template.id %}
+                <a href="{{ url_for('email.email_template_detail', template_id=ver.id) }}"
+                    class="btn btn-sm btn-primary" style="text-decoration: none;">View</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

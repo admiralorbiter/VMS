@@ -47,7 +47,7 @@ Author: VMS Development Team
 Last Updated: 2024
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import declared_attr, relationship, validates
@@ -63,92 +63,13 @@ from models.contact import (
 )
 from models.history import History
 
+# Enums extracted to volunteer_enums.py (TD-012)
+from models.volunteer_enums import (  # noqa: F401 — re-exported for backward compat
+    VolunteerStatus,
+)
 
-class ConnectorSubscriptionEnum(FormEnum):
-    """
-    Enum representing the subscription status of a connector.
-
-    Used to track whether a volunteer is actively participating in the connector program.
-    This is a specialized program within the volunteer system that has additional
-    requirements and tracking mechanisms.
-
-    Values:
-    - NONE: No subscription status (default)
-    - ACTIVE: Currently active in connector program
-    - INACTIVE: Previously active but currently inactive
-    - PENDING: Awaiting activation or approval
-    """
-
-    NONE = ""
-    ACTIVE = "Active"
-    INACTIVE = "Inactive"
-    PENDING = "Pending"
-
-
-class ConnectorData(db.Model):
-    """
-    Model for storing connector-specific data for volunteers.
-    Connectors are volunteers who have additional responsibilities and access.
-    """
-
-    __tablename__ = "connector_data"
-
-    id = db.Column(Integer, primary_key=True)
-    volunteer_id = db.Column(Integer, db.ForeignKey("volunteer.id"), nullable=False)
-
-    # Authentication and identification
-    user_auth_id = db.Column(
-        String(7), unique=True
-    )  # Unique identifier for authentication
-    # Tracking important dates
-    joining_date = db.Column(String(50))  # When they joined as a connector
-    last_login_datetime = db.Column(String(50))  # Last time they logged in
-    last_update_date = db.Column(Date)  # Last time their record was updated
-
-    # Tracks whether the connector is currently participating in the program
-    active_subscription = db.Column(
-        Enum(ConnectorSubscriptionEnum),
-        default=ConnectorSubscriptionEnum.NONE,
-        index=True,
-    )
-    active_subscription_name = db.Column(String(255))
-
-    # Role information - both current and initial signup role
-    role = db.Column(String(20))
-    signup_role = db.Column(String(20))
-
-    # External profile and professional information
-    profile_link = db.Column(String(1300))  # URL to connector's external profile
-    affiliations = db.Column(Text)  # Organizations/groups they're affiliated with
-    industry = db.Column(String(255))  # Their professional industry
-
-    # Automatic timestamp tracking (timezone-aware, Python-side defaults)
-    created_at = db.Column(
-        DateTime(timezone=True), default=datetime.utcnow, nullable=True
-    )
-    updated_at = db.Column(
-        DateTime(timezone=True),
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
-        nullable=True,
-    )
-
-    # Bidirectional relationship with Volunteer model
-    # This allows easy access between volunteer and their connector data
-    volunteer = relationship("Volunteer", back_populates="connector")
-
-    # Ensure each connector has unique user_auth_id and volunteer_id
-    __table_args__ = (
-        db.UniqueConstraint("user_auth_id", name="uix_connector_user_auth_id"),
-        db.UniqueConstraint("volunteer_id", name="uix_connector_volunteer_id"),
-    )
-
-    @property
-    def connector_profile_url(self):
-        """Generate the connector profile URL if user_auth_id exists."""
-        if self.user_auth_id:
-            return f"https://prepkc.nepris.com/app/user/{self.user_auth_id}"
-        return None
+# ConnectorData model removed (TD-034 Phase 3)
+# Connector data is now sourced from PathfulUserProfile
 
 
 class VolunteerStatus(FormEnum):
@@ -381,47 +302,6 @@ class Volunteer(Contact):
             )
             return None
 
-    def _check_local_status_from_events(self):
-        """
-        Check local status based on event participation.
-
-        If a volunteer has participated in any in-person events (non-virtual),
-        they are very likely local since they physically attended.
-
-        Returns:
-            LocalStatusEnum or None: Local status if determinable from events
-        """
-        try:
-            from models.event import Event, EventFormat, EventType
-
-            # Check for participation in non-virtual events with attended status
-            in_person_participation = (
-                EventParticipation.query.filter(
-                    EventParticipation.volunteer_id == self.id,
-                    EventParticipation.status.in_(
-                        ["Attended", "Completed", "Successfully Completed"]
-                    ),
-                )
-                .join(Event, EventParticipation.event_id == Event.id)
-                .filter(
-                    Event.type != EventType.VIRTUAL_SESSION,
-                    Event.format != EventFormat.VIRTUAL,
-                )
-                .first()
-            )
-
-            if in_person_participation:
-                # Strong indicator they are local - they attended in-person
-                return LocalStatusEnum.local
-
-            return None
-
-        except Exception as e:
-            print(
-                f"Error checking local status from events for volunteer {self.id}: {str(e)}"
-            )
-            return None
-
     @validates("first_volunteer_date", "last_volunteer_date", "last_activity_date")
     def validate_dates(self, key, value):
         """
@@ -570,24 +450,8 @@ class Volunteer(Contact):
         """
         return relationship("EventParticipation", backref="volunteer")
 
-    @declared_attr
-    def connector(cls):
-        """
-        One-to-one relationship with connector data.
-
-        This relationship provides access to specialized connector program data
-        for volunteers who participate in the connector program.
-
-        Returns:
-            relationship: SQLAlchemy relationship to ConnectorData model
-        """
-        return relationship(
-            "ConnectorData",
-            uselist=False,
-            back_populates="volunteer",
-            cascade="all, delete-orphan",
-            single_parent=True,
-        )
+    # connector relationship removed (TD-034 Phase 3)
+    # Use volunteer.pathful_profile instead (backref from PathfulUserProfile)
 
 
 # Skill Model
@@ -606,7 +470,7 @@ class Skill(db.Model):
     __tablename__ = "skill"
 
     id = db.Column(Integer, primary_key=True)
-    name = db.Column(String(50), unique=True, nullable=False)
+    name = db.Column(String(200), unique=True, nullable=False)
 
     def __str__(self):
         """String representation of the skill."""

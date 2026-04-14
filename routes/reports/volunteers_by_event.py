@@ -11,13 +11,7 @@ from models.contact import Email
 from models.event import Event, EventStatus, EventType
 from models.history import History
 from models.organization import Organization, VolunteerOrganization
-from models.volunteer import (
-    ConnectorData,
-    EventParticipation,
-    Skill,
-    Volunteer,
-    VolunteerSkill,
-)
+from models.volunteer import EventParticipation, Skill, Volunteer, VolunteerSkill
 
 # Blueprint is provided by parent reports package via load_routes
 volunteers_by_event_bp = Blueprint("volunteers_by_event", __name__)
@@ -389,10 +383,15 @@ def _query_volunteers_with_search(
 
     # Apply connector filter if requested
     if connector_only:
-        # Use INNER JOIN to only get volunteers with VALID connector data (with user_auth_id)
-        query = query.join(ConnectorData, Volunteer.id == ConnectorData.volunteer_id)
+        # Use PathfulUserProfile to filter volunteers with Pathful accounts
+        from models.pathful_import import PathfulUserProfile
+
+        query = query.join(
+            PathfulUserProfile, Volunteer.id == PathfulUserProfile.volunteer_id
+        )
         query = query.filter(
-            ConnectorData.user_auth_id.isnot(None), ConnectorData.user_auth_id != ""
+            PathfulUserProfile.pathful_user_id.isnot(None),
+            PathfulUserProfile.pathful_user_id != "",
         )
 
     query = query.group_by(
@@ -557,10 +556,12 @@ def _query_volunteers_with_search(
             .order_by(VolunteerSkill.volunteer_id, Skill.name)
         )
 
-        # Get connector data for volunteers
-        connector_query = db.session.query(
-            ConnectorData.volunteer_id, ConnectorData.user_auth_id
-        ).filter(ConnectorData.volunteer_id.in_(volunteer_ids))
+        # Get Pathful profile data for volunteers
+        from models.pathful_import import PathfulUserProfile
+
+        profile_query = db.session.query(
+            PathfulUserProfile.volunteer_id, PathfulUserProfile.pathful_user_id
+        ).filter(PathfulUserProfile.volunteer_id.in_(volunteer_ids))
 
         # Create mappings
         email_map = {row.contact_id: row.email for row in emails_query.all()}
@@ -575,14 +576,14 @@ def _query_volunteers_with_search(
         # Convert to comma-separated strings
         skills_map = {k: ", ".join(v) for k, v in skills_map.items()}
 
-        # Create connector mapping
-        connector_map = {
-            row.volunteer_id: row.user_auth_id for row in connector_query.all()
+        # Create Pathful profile mapping
+        profile_map = {
+            row.volunteer_id: row.pathful_user_id for row in profile_query.all()
         }
 
         # Build volunteer details dictionary
         for volunteer_id in volunteer_ids:
-            user_auth_id = connector_map.get(volunteer_id)
+            pathful_user_id = profile_map.get(volunteer_id)
             # Get the actual last email date from Contact model
             last_email_date = email_dates_map.get(volunteer_id)
 
@@ -591,8 +592,8 @@ def _query_volunteers_with_search(
                 "skills": skills_map.get(volunteer_id, ""),
                 "last_email_date": last_email_date,
                 "connector_profile_url": (
-                    f"https://prepkc.nepris.com/app/user/{user_auth_id}"
-                    if user_auth_id
+                    f"https://prepkc.nepris.com/app/user/{pathful_user_id}"
+                    if pathful_user_id
                     else None
                 ),
             }

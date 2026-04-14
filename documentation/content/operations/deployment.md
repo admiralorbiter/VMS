@@ -154,7 +154,7 @@ SF_SECURITY_TOKEN=your-salesforce-security-token
 ```bash
 MJ_APIKEY_PUBLIC=your-mailjet-public-key
 MJ_APIKEY_PRIVATE=your-mailjet-private-key
-MAIL_FROM=your-email@domain.com
+MAIL_FROM=no-reply@ineedhelp.pro
 EMAIL_DELIVERY_ENABLED=true
 EMAIL_ALLOWLIST=email1@domain.com,email2@domain.com
 ```
@@ -534,6 +534,15 @@ cp instance/vms_backup_YYYYMMDD_HHMMSS.db instance/vms.db
 **Recreate database:**
 ```bash
 flask db upgrade
+```
+
+#### 3. Downloading Production Data for Local Dev
+
+If you download the raw database files (`.db`, `.db-wal`, `.db-shm`) via SFTP while the server is running, the database will be in a Write-Ahead Logging (WAL) state and must be merged locally. Place all three files in the same directory and run:
+
+**Merge downloaded WAL files locally:**
+```bash
+python scripts/utilities/merge_prod_wal.py instance/prod/your_database.db
 ```
 
 **Reference:** [Runbook](runbook) for detailed troubleshooting procedures

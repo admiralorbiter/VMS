@@ -339,7 +339,7 @@ def test_organization_report_detail_with_filters(client, auth_headers):
 def test_organization_report_detail_excel_export(client, auth_headers):
     """Test organization report detail excel export"""
     response = safe_route_test(
-        client, "/reports/organization/detail/1/export", headers=auth_headers
+        client, "/reports/organization/report/detail/1/excel", headers=auth_headers
     )
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
@@ -348,7 +348,7 @@ def test_organization_report_detail_excel_export_with_filters(client, auth_heade
     """Test organization report detail excel export with filters"""
     response = safe_route_test(
         client,
-        "/reports/organization/detail/1/export?year=2024-2025",
+        "/reports/organization/report/detail/1/excel?year=2024-2025",
         headers=auth_headers,
     )
     assert_route_response(response, expected_statuses=[200, 404, 500])
@@ -365,7 +365,7 @@ def test_organization_report_invalid_org_id(client, auth_headers):
 def test_organization_report_excel_invalid_org_id(client, auth_headers):
     """Test organization report excel export with invalid organization ID"""
     response = safe_route_test(
-        client, "/reports/organization/detail/999999/export", headers=auth_headers
+        client, "/reports/organization/report/detail/999999/excel", headers=auth_headers
     )
     assert_route_response(response, expected_statuses=[404, 500])
 

@@ -209,7 +209,7 @@ def magic_link_request_submit(slug: str):
             )
         except Exception as e:
             db.session.rollback()
-            current_app.logger.error(f"Error creating magic link: {e}", exc_info=True)
+            current_app.logger.error("Error creating magic link: %s", e, exc_info=True)
     else:
         # Log that email was not found (but don't reveal to user)
         current_app.logger.info(
@@ -410,7 +410,7 @@ def magic_link_flag_issue(slug: str):
                 f"BugReport {bug_report.id} created for teacher data flag"
             )
         except Exception as e:
-            current_app.logger.warning(f"Could not create bug report: {e}")
+            current_app.logger.warning("Could not create bug report: %s", e)
             db.session.rollback()
 
         return jsonify(
@@ -425,7 +425,7 @@ def magic_link_flag_issue(slug: str):
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Error submitting flag: {e}", exc_info=True)
+        current_app.logger.error("Error submitting flag: %s", e, exc_info=True)
         return (
             jsonify(
                 {
@@ -460,7 +460,7 @@ def _send_magic_link_email(
     base_url = current_app.config.get("BASE_URL", request.host_url.rstrip("/"))
     link_url = magic_link.get_url(base_url)
 
-    current_app.logger.info(f"Magic link URL for {email}: {link_url}")
+    current_app.logger.info("Magic link URL for %s: %s", email, link_url)
 
     # Try to send via Mailjet
     try:
@@ -500,7 +500,7 @@ def _send_magic_link_email(
             "Messages": [
                 {
                     "From": {
-                        "Email": os.environ.get("MAIL_FROM", "noreply@prepkc.org"),
+                        "Email": os.environ.get("MAIL_FROM", "no-reply@ineedhelp.pro"),
                         "Name": "PrepKC Virtual Sessions",
                     },
                     "To": [{"Email": email, "Name": teacher_name}],
@@ -557,11 +557,11 @@ PrepKC - Preparing Kansas City Youth for Success
 
         result = mailjet.send.create(data=data)
         if result.status_code == 200:
-            current_app.logger.info(f"Magic link email sent to {email}")
+            current_app.logger.info("Magic link email sent to %s", email)
         else:
             current_app.logger.error(
                 f"Mailjet error: {result.status_code} - {result.json()}"
             )
 
     except Exception as e:
-        current_app.logger.error(f"Error sending magic link email: {e}", exc_info=True)
+        current_app.logger.error("Error sending magic link email: %s", e, exc_info=True)

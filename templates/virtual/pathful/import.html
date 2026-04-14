@@ -33,6 +33,39 @@
                             </div>
                         </div>
 
+                        <div class="mb-3">
+                            <label class="form-label">Import Mode</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="import_mode" id="modeSemester" value="semester" checked>
+                                <label class="form-check-label" for="modeSemester">
+                                    <strong>Current Semester</strong> (Fastest — skips past sessions, default)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="import_mode" id="modeSixMonth" value="six_month">
+                                <label class="form-check-label" for="modeSixMonth">
+                                    <strong>Last 6 Months</strong> (Catches semester edge cases)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="import_mode" id="modeFull" value="full">
+                                <label class="form-check-label" for="modeFull">
+                                    <strong>Full Import</strong> (No skipping — run every ~2 weeks for integrity)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="import_mode" id="modeCustom" value="custom">
+                                <label class="form-check-label" for="modeCustom">
+                                    <strong>Custom Date</strong>
+                                </label>
+                            </div>
+
+                            <div class="mt-2 d-none" id="customDateContainer">
+                                <label for="custom_date" class="form-label text-muted small mb-1">Process sessions on or after:</label>
+                                <input type="date" class="form-control form-control-sm w-auto" id="custom_date" name="custom_date">
+                            </div>
+                        </div>
+
                         <div class="alert alert-info">
                             <h6 class="alert-heading">
                                 <i class="fas fa-info-circle me-1"></i>Required Columns
@@ -209,6 +242,23 @@
         var btn = document.getElementById('submit-btn');
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Importing...';
+    });
+
+    // Show/hide custom date input based on selected mode
+    document.querySelectorAll('input[name="import_mode"]').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            var dateContainer = document.getElementById('customDateContainer');
+            var dateInput = document.getElementById('custom_date');
+
+            if (this.value === 'custom') {
+                dateContainer.classList.remove('d-none');
+                dateInput.setAttribute('required', 'required');
+            } else {
+                dateContainer.classList.add('d-none');
+                dateInput.removeAttribute('required');
+                dateInput.value = '';
+            }
+        });
     });
 </script>
 {% endblock %}

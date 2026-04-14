@@ -84,6 +84,7 @@ const PAGE_MANIFEST = {
     'developer-guide': 'developer/index',
     'cli-reference': 'developer/cli_reference',
     'api-reference': 'developer/api_reference',
+    'intern-virtual-events-api': 'developer/intern_virtual_events_api',
     'dev-notes': 'developer/dev_notes',
     'tech-debt': 'developer/tech_debt',
     'refactor-checklist': 'developer/refactor_checklist',

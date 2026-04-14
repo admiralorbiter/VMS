@@ -9,12 +9,182 @@ Implements merge/upsert strategy instead of destructive replacement.
 from datetime import datetime, timezone
 
 import pandas as pd
+from flask import current_app
 from sqlalchemy import func
 
 from models import db
 from models.roster_import_log import RosterImportLog
+from models.school_model import School
 from models.teacher import Teacher
 from models.teacher_progress import TeacherProgress
+
+
+def _find_school_by_building_name(building_name, district_id=None):
+    """
+    Fuzzy-match a building short name (e.g. 'TA Edison') to a School record.
+
+    When district_id is provided, searches within that district first to avoid
+    cross-district false matches.  Falls back to global search only if no
+    district-scoped match is found.
+
+    Matching strategy (applied district-scoped first, then global):
+     1. Exact case-insensitive match
+     2. Substring match (building name contained in school name)
+     3. Word-by-word match (each word with len>2 searched individually)
+
+    Returns:
+        School object or None
+    """
+    if not building_name or not building_name.strip():
+        return None
+
+    b = building_name.strip()
+
+    def _search(base_query):
+        """Run the 3-tier match against a base query."""
+        # 1. Exact match
+        school = base_query.filter(func.upper(School.name) == b.upper()).first()
+        if school:
+            return school
+
+        # 2. Substring match (building name IN school name)
+        school = base_query.filter(School.name.ilike(f"%{b}%")).first()
+        if school:
+            return school
+
+        # 3. Word-by-word fallback — search the longest word (skip abbreviations)
+        words = [w for w in b.split() if len(w) > 2]
+        if words:
+            words.sort(key=len, reverse=True)
+            for word in words:
+                school = base_query.filter(School.name.ilike(f"%{word}%")).first()
+                if school:
+                    return school
+
+        return None
+
+    # District-scoped search first (prevents cross-district false matches)
+    if district_id:
+        result = _search(School.query.filter(School.district_id == district_id))
+        if result:
+            return result
+
+    # Global fallback
+    return _search(School.query)
+
+
+def _link_progress_to_teachers(tenant_id, academic_year):
+    """
+    Link TeacherProgress records to existing Teacher records.
+
+    Match priority (Sprint 1 — consolidated matching):
+      1. Email match: TeacherProgress.email → Teacher.cached_email (exact, case-insensitive)
+      2. Email match: TeacherProgress.email → Email model (fallback)
+      3. Name match: normalized first+last name comparison
+
+    For each match found:
+      - Set TeacherProgress.teacher_id
+      - Set Teacher.school_id from building name (if currently None)
+      - Cache the email on Teacher.cached_email (if not already set)
+    """
+    from models.tenant import Tenant
+    from services.teacher_matching_service import normalize_name
+
+    # Resolve district_id for district-scoped school matching
+    district_id = None
+    if tenant_id:
+        tenant = Tenant.query.get(tenant_id)
+        if tenant and tenant.district_id:
+            district_id = tenant.district_id
+
+    if tenant_id:
+        progress_records = TeacherProgress.query.filter_by(
+            academic_year=academic_year, tenant_id=tenant_id
+        ).all()
+    else:
+        progress_records = TeacherProgress.query.filter_by(
+            academic_year=academic_year
+        ).all()
+
+    linked_count = 0
+    school_set_count = 0
+
+    for tp in progress_records:
+        # Skip if already linked
+        if tp.teacher_id:
+            continue
+
+        teacher = None
+
+        # Priority 1: Match by email (highest confidence)
+        if tp.email:
+            email_lower = tp.email.strip().lower()
+
+            # 1a: Check Teacher.cached_email (fast, indexed)
+            teacher = Teacher.query.filter(
+                func.lower(Teacher.cached_email) == email_lower
+            ).first()
+
+            # 1b: Check Email model (slower fallback)
+            if not teacher:
+                from models.contact import Email
+
+                email_record = (
+                    Email.query.filter(func.lower(Email.email) == email_lower)
+                    .join(Teacher, Email.contact_id == Teacher.id)
+                    .first()
+                )
+                if email_record:
+                    teacher = Teacher.query.get(email_record.contact_id)
+
+        # Priority 2: Match by normalized name (lower confidence)
+        if not teacher and tp.name:
+            name_parts = tp.name.strip().split(" ", 1)
+            if len(name_parts) >= 2:
+                normalized_first = normalize_name(name_parts[0])
+                normalized_last = normalize_name(name_parts[1])
+
+                # Query candidates and compare normalized names
+                candidates = Teacher.query.filter(Teacher.active == True).all()
+                for candidate in candidates:
+                    if (
+                        normalize_name(candidate.first_name or "") == normalized_first
+                        and normalize_name(candidate.last_name or "") == normalized_last
+                    ):
+                        teacher = candidate
+                        break
+
+        if not teacher:
+            continue
+
+        # Link TeacherProgress → Teacher
+        tp.teacher_id = teacher.id
+        linked_count += 1
+
+        # Cache email on teacher for faster future matching
+        if tp.email and not teacher.cached_email:
+            teacher.cached_email = tp.email.strip().lower()
+
+        # Set school_id on Teacher if not already set
+        if not teacher.school_id and tp.building:
+            school = _find_school_by_building_name(tp.building, district_id=district_id)
+            if school:
+                teacher.school_id = school.id
+                school_set_count += 1
+
+    if linked_count > 0 or school_set_count > 0:
+        db.session.commit()
+
+    try:
+        current_app.logger.info(
+            f"Teacher linking: {linked_count} TeacherProgress records linked, "
+            f"{school_set_count} Teacher school_ids set"
+        )
+    except RuntimeError:
+        # Outside app context (e.g. testing)
+        pass
+
+    return linked_count, school_set_count
 
 
 def validate_import_data(df):
@@ -99,27 +269,29 @@ def import_roster(
     Returns:
         RosterImportLog: The log entry for this import
     """
-    # Temporary workaround: Skipping DB logging due to SQLite RETURNING issue
-    # import_log = RosterImportLog(...)
-    # db.session.add(import_log)
-    # db.session.commit()
-
-    # Mock log object for return compatibility
-    class MockLog:
-        def __init__(self):
-            self.id = 0
-            self.records_added = 0
-            self.records_updated = 0
-            self.records_deactivated = 0
-            self.status = "success"
-
-    import_log = MockLog()
+    # 1. Create audit log entry (ORM add + flush — no RETURNING clause needed)
+    import_log = RosterImportLog(
+        district_name=district_name,
+        academic_year=academic_year,
+        imported_by=user_id,
+        source_sheet_id=sheet_id,
+        status="pending",
+    )
+    db.session.add(import_log)
+    db.session.flush()  # Assigns import_log.id via SQLite-compatible SELECT
 
     try:
         # 2. Get existing records for this district/year
-        existing_records = TeacherProgress.query.filter_by(
-            academic_year=academic_year, district_name=district_name
-        ).all()
+        # Use tenant_id when available (preferred); fall back to district_name
+        # for legacy non-tenant imports.
+        if tenant_id:
+            existing_records = TeacherProgress.query.filter_by(
+                academic_year=academic_year, tenant_id=tenant_id
+            ).all()
+        else:
+            existing_records = TeacherProgress.query.filter_by(
+                academic_year=academic_year, district_name=district_name
+            ).all()
 
         # Map email -> record for quick lookup
         existing_map = {r.email.lower(): r for r in existing_records}
@@ -180,8 +352,6 @@ def import_roster(
 
                 records_added += 1
 
-        # 4. Handle Removals (Soft Delete)
-
         # 4. Handle Removals (Soft Delete) - Using Core Update
         for email, record in existing_map.items():
             if email not in processed_emails and record.is_active:
@@ -198,7 +368,10 @@ def import_roster(
 
                 records_deactivated += 1
 
-        # 5. Commit & Update Log
+        # 5. Link TeacherProgress records to Teacher entities
+        _link_progress_to_teachers(tenant_id, academic_year)
+
+        # 6. Update audit log with results
         import_log.records_added = records_added
         import_log.records_updated = records_updated
         import_log.records_deactivated = records_deactivated
@@ -209,7 +382,18 @@ def import_roster(
 
     except Exception as e:
         db.session.rollback()
-        # import_log.status = "failed"
-        # import_log.error_message = str(e)
-        # db.session.commit()
+        # Log the failure in a new transaction
+        try:
+            import_log_fail = RosterImportLog(
+                district_name=district_name,
+                academic_year=academic_year,
+                imported_by=user_id,
+                source_sheet_id=sheet_id,
+                status="failed",
+                error_message=str(e),
+            )
+            db.session.add(import_log_fail)
+            db.session.commit()
+        except Exception:
+            pass  # Don't mask the original error
         raise e

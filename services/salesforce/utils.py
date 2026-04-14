@@ -23,9 +23,43 @@ Usage:
     lookup = chunked_in_query(Model, Model.salesforce_id, id_set)
 """
 
+import re
 from typing import Any, Callable, Dict, Optional, Set
 
 from models import db
+
+# =============================================================================
+# HTML / LINK UTILITIES
+# =============================================================================
+
+
+def extract_href_from_html(html_or_url: str | None) -> str | None:
+    """Extract a clean URL from a Salesforce HTML anchor tag.
+
+    Salesforce stores several link fields (e.g. ``Registration_Link__c``) as
+    HTML anchor tags::
+
+        <a href="https://..." target="_blank">Sign up</a>
+
+    This utility returns just the URL.  If the input is already a plain URL
+    it is returned as-is.  Returns ``None`` for blank / ``None`` input.
+
+    Example::
+
+        >>> extract_href_from_html('<a href="https://example.com">Click</a>')
+        'https://example.com'
+        >>> extract_href_from_html('https://example.com')
+        'https://example.com'
+        >>> extract_href_from_html(None)
+    """
+    if not html_or_url:
+        return None
+    match = re.search(r'href=["\']([^"\']+)["\']', html_or_url)
+    if match:
+        return match.group(1)
+    stripped = html_or_url.strip()
+    return stripped if stripped else None
+
 
 # =============================================================================
 # CONSTANTS

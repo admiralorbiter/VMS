@@ -9,7 +9,7 @@ from sqlalchemy.orm import aliased
 
 from models import db
 from models.district_model import District
-from models.event import Event, EventStatus, EventTeacher, EventType
+from models.event import Event, EventStatus, EventTeacher, EventType, event_volunteers
 from models.organization import Organization, VolunteerOrganization
 from models.reports import OrganizationSummaryCache
 from models.school_model import School
@@ -147,16 +147,77 @@ def load_routes(bp):
 
         org_stats = org_stats.group_by(Organization.id).all()
 
+        # Also pull virtual session participation via event_volunteers M2M so that
+        # organisations whose volunteers ONLY presented virtually are not invisible.
+        virtual_org_stats = (
+            db.session.query(
+                Organization,
+                db.func.count(db.distinct(Event.id)).label("unique_sessions"),
+                db.func.count(db.distinct(Volunteer.id)).label("unique_volunteers"),
+            )
+            .join(
+                VolunteerOrganization,
+                Organization.id == VolunteerOrganization.organization_id,
+            )
+            .join(Volunteer, VolunteerOrganization.volunteer_id == Volunteer.id)
+            .join(event_volunteers, Volunteer.id == event_volunteers.c.volunteer_id)
+            .join(Event, event_volunteers.c.event_id == Event.id)
+            .filter(
+                Event.start_date >= start_date,
+                Event.start_date <= end_date,
+                Event.type == EventType.VIRTUAL_SESSION,
+                Event.status.in_(
+                    [
+                        EventStatus.COMPLETED,
+                        EventStatus.CONFIRMED,
+                        EventStatus.SIMULCAST,
+                    ]
+                ),
+            )
+        )
+        if host_filter == "prepkc":
+            virtual_org_stats = virtual_org_stats.filter(
+                db.or_(
+                    Event.session_host.ilike("%PREPKC%"),
+                    Event.session_host.ilike("%prepkc%"),
+                    Event.session_host.ilike("%PrepKC%"),
+                )
+            )
+        virtual_org_stats = virtual_org_stats.group_by(Organization.id).all()
+
+        # Merge: in-person is the base dict keyed by org ID; virtual adds or supplements.
+        org_by_id = {
+            org.id: {
+                "org": org,
+                "sessions": s,
+                "hours": round(h or 0, 2),
+                "volunteers": v,
+            }
+            for org, s, h, v in org_stats
+        }
+        for org, sessions, volunteers in virtual_org_stats:
+            if org.id in org_by_id:
+                org_by_id[org.id]["sessions"] += sessions
+                org_by_id[org.id]["volunteers"] += volunteers
+            else:
+                org_by_id[org.id] = {
+                    "org": org,
+                    "sessions": sessions,
+                    "hours": 0,
+                    "volunteers": volunteers,
+                }
+
         # Format organization data
         org_data = []
-        for org, sessions, hours, volunteers in org_stats:
+        for d in org_by_id.values():
+            org = d["org"]
             org_data.append(
                 {
                     "name": org.name,
                     "id": org.id,
-                    "unique_sessions": sessions,
-                    "total_hours": round(hours or 0, 2),
-                    "unique_volunteers": volunteers,
+                    "unique_sessions": d["sessions"],
+                    "total_hours": d["hours"],
+                    "unique_volunteers": d["volunteers"],
                 }
             )
 
@@ -343,7 +404,11 @@ def load_routes(bp):
         order = request.args.get("order", "desc")
 
         # Get date range for the school year
-        start_date, end_date = get_school_year_date_range(school_year)
+        if school_year == "all_time":
+            start_date = None
+            end_date = None
+        else:
+            start_date, end_date = get_school_year_date_range(school_year)
 
         # Query organization participation through EventParticipation
         org_stats = (
@@ -361,13 +426,16 @@ def load_routes(bp):
             .join(EventParticipation, Volunteer.id == EventParticipation.volunteer_id)
             .join(Event, EventParticipation.event_id == Event.id)
             .filter(
-                Event.start_date >= start_date,
-                Event.start_date <= end_date,
                 EventParticipation.status.in_(
                     ["Attended", "Completed", "Successfully Completed"]
                 ),
             )
         )
+        if start_date and end_date:
+            org_stats = org_stats.filter(
+                Event.start_date >= start_date,
+                Event.start_date <= end_date,
+            )
 
         # Apply host filter if specified
         if host_filter == "prepkc":
@@ -455,7 +523,13 @@ def load_routes(bp):
         worksheet.write(summary_row + 4, 1, total_volunteers)
         worksheet.write(summary_row + 5, 0, "School Year")
         worksheet.write(
-            summary_row + 5, 1, f"{school_year[:2]}-{school_year[2:]} School Year"
+            summary_row + 5,
+            1,
+            (
+                "All Time"
+                if school_year == "all_time"
+                else f"{school_year[:2]}-{school_year[2:]} School Year"
+            ),
         )
         worksheet.write(summary_row + 6, 0, "Filter")
         worksheet.write(
@@ -469,7 +543,12 @@ def load_routes(bp):
 
         # Create filename
         filter_suffix = "_PREPKC" if host_filter == "prepkc" else ""
-        filename = f"Organization_Report_{school_year[:2]}-{school_year[2:]}{filter_suffix}.xlsx"
+        year_label = (
+            "All_Time"
+            if school_year == "all_time"
+            else f"{school_year[:2]}-{school_year[2:]}"
+        )
+        filename = f"Organization_Report_{year_label}{filter_suffix}.xlsx"
 
         return send_file(
             output,
@@ -490,7 +569,11 @@ def load_routes(bp):
         order_evt = request.args.get("order_evt", "asc")
 
         # Get date range for the school year
-        start_date, end_date = get_school_year_date_range(school_year)
+        if school_year == "all_time":
+            start_date = None
+            end_date = None
+        else:
+            start_date, end_date = get_school_year_date_range(school_year)
 
         # Get organization details
         organization = Organization.query.get_or_404(org_id)
@@ -510,16 +593,18 @@ def load_routes(bp):
             .join(Event, EventParticipation.event_id == Event.id)
             .filter(
                 VolunteerOrganization.organization_id == org_id,
-                Event.start_date >= start_date,
-                Event.start_date <= end_date,
                 EventParticipation.status.in_(
                     ["Attended", "Completed", "Successfully Completed"]
                 ),
                 Volunteer.exclude_from_reports == False,
             )
-            .group_by(Volunteer.id)
-            .all()
         )
+        if start_date and end_date:
+            volunteer_stats = volunteer_stats.filter(
+                Event.start_date >= start_date,
+                Event.start_date <= end_date,
+            )
+        volunteer_stats = volunteer_stats.group_by(Volunteer.id).all()
 
         # Format volunteer data
         volunteers_data = [
@@ -561,17 +646,19 @@ def load_routes(bp):
             )
             .filter(
                 VolunteerOrganization.organization_id == org_id,
-                Event.start_date >= start_date,
-                Event.start_date <= end_date,
                 Event.type != EventType.VIRTUAL_SESSION,
                 EventParticipation.status.in_(
                     ["Attended", "Completed", "Successfully Completed"]
                 ),
                 Volunteer.exclude_from_reports == False,
             )
-            .group_by(Event.id)
-            .all()
         )
+        if start_date and end_date:
+            in_person_events = in_person_events.filter(
+                Event.start_date >= start_date,
+                Event.start_date <= end_date,
+            )
+        in_person_events = in_person_events.group_by(Event.id).all()
 
         # Get detailed in-person events with volunteer names
         detailed_inperson_events = (
@@ -589,19 +676,21 @@ def load_routes(bp):
             )
             .filter(
                 VolunteerOrganization.organization_id == org_id,
-                Event.start_date >= start_date,
-                Event.start_date <= end_date,
                 Event.type != EventType.VIRTUAL_SESSION,
                 EventParticipation.status.in_(
                     ["Attended", "Completed", "Successfully Completed"]
                 ),
                 Volunteer.exclude_from_reports == False,
             )
-            .order_by(
-                Event.start_date, Event.title, Volunteer.last_name, Volunteer.first_name
-            )
-            .all()
         )
+        if start_date and end_date:
+            detailed_inperson_events = detailed_inperson_events.filter(
+                Event.start_date >= start_date,
+                Event.start_date <= end_date,
+            )
+        detailed_inperson_events = detailed_inperson_events.order_by(
+            Event.start_date, Event.title, Volunteer.last_name, Volunteer.first_name
+        ).all()
 
         # Group in-person events by event with volunteer names
         inperson_events_by_event = {}
@@ -718,17 +807,19 @@ def load_routes(bp):
             .outerjoin(EventTeacher, Event.id == EventTeacher.event_id)
             .filter(
                 VolunteerOrganization.organization_id == org_id,
-                Event.start_date >= start_date,
-                Event.start_date <= end_date,
                 Event.type == EventType.VIRTUAL_SESSION,
                 EventParticipation.status.in_(
                     ["Attended", "Completed", "Successfully Completed", "Simulcast"]
                 ),
                 Volunteer.exclude_from_reports == False,
             )
-            .group_by(Event.id)
-            .all()
         )
+        if start_date and end_date:
+            virtual_events = virtual_events.filter(
+                Event.start_date >= start_date,
+                Event.start_date <= end_date,
+            )
+        virtual_events = virtual_events.group_by(Event.id).all()
 
         # Get detailed virtual events with volunteer names and teacher details
         TeacherAlias = aliased(Teacher, flat=True)
@@ -757,8 +848,6 @@ def load_routes(bp):
             .outerjoin(DistrictAlias, SchoolAlias.district_id == DistrictAlias.id)
             .filter(
                 VolunteerOrganization.organization_id == org_id,
-                Event.start_date >= start_date,
-                Event.start_date <= end_date,
                 Event.type == EventType.VIRTUAL_SESSION,
                 EventParticipation.status.in_(
                     ["Attended", "Completed", "Successfully Completed", "Simulcast"]
@@ -770,11 +859,15 @@ def load_routes(bp):
                     == False,  # Teacher is not excluded
                 ),
             )
-            .order_by(
-                Event.start_date, Event.title, Volunteer.last_name, Volunteer.first_name
-            )
-            .all()
         )
+        if start_date and end_date:
+            detailed_virtual_events = detailed_virtual_events.filter(
+                Event.start_date >= start_date,
+                Event.start_date <= end_date,
+            )
+        detailed_virtual_events = detailed_virtual_events.order_by(
+            Event.start_date, Event.title, Volunteer.last_name, Volunteer.first_name
+        ).all()
 
         # Group virtual events by event with volunteer names and teacher details
         virtual_events_by_event = {}
@@ -882,8 +975,6 @@ def load_routes(bp):
             )
             .filter(
                 VolunteerOrganization.organization_id == org_id,
-                Event.start_date >= start_date,
-                Event.start_date <= end_date,
                 db.or_(
                     # Event-level cancellation
                     Event.status == EventStatus.CANCELLED,
@@ -903,9 +994,13 @@ def load_routes(bp):
                 ),
                 Volunteer.exclude_from_reports == False,
             )
-            .group_by(Event.id)
-            .all()
         )
+        if start_date and end_date:
+            cancelled_events = cancelled_events.filter(
+                Event.start_date >= start_date,
+                Event.start_date <= end_date,
+            )
+        cancelled_events = cancelled_events.group_by(Event.id).all()
 
         cancelled_events_data = [
             {
@@ -965,7 +1060,11 @@ def load_routes(bp):
             ],
             "Value": [
                 organization.name,
-                f"{school_year[:2]}-{school_year[2:]} School Year",
+                (
+                    "All Time"
+                    if school_year == "all_time"
+                    else f"{school_year[:2]}-{school_year[2:]} School Year"
+                ),
                 total_sessions,
                 total_hours,
                 total_volunteers,
@@ -1092,7 +1191,12 @@ def load_routes(bp):
         output.seek(0)
 
         # Create filename
-        filename = f"Organization_Detail_{organization.name.replace(' ', '_')}_{school_year[:2]}-{school_year[2:]}.xlsx"
+        year_label = (
+            "All_Time"
+            if school_year == "all_time"
+            else f"{school_year[:2]}-{school_year[2:]}"
+        )
+        filename = f"Organization_Detail_{organization.name.replace(' ', '_')}_{year_label}.xlsx"
 
         return send_file(
             output,

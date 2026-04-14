@@ -124,7 +124,7 @@ class SalesforceClient:
         except Exception as e:
             self._connection_attempts += 1
             self._last_connection_attempt = datetime.now()
-            logger.error(
+            logger.exception(
                 f"Salesforce connection attempt {self._connection_attempts} failed: {e}"
             )
             return False
@@ -173,7 +173,7 @@ class SalesforceClient:
         cached_count = self._get_from_cache(cache_key)
 
         if cached_count is not None:
-            logger.debug(f"Returning cached volunteer count: {cached_count}")
+            logger.debug("Returning cached volunteer count: %s", cached_count)
             return cached_count
 
         try:
@@ -183,18 +183,18 @@ class SalesforceClient:
             # Query for volunteer count - using Contact_Type__c field, NOT RecordType.Name
             # RecordType.Name is not a valid relationship in Salesforce Contact object
             query = "SELECT COUNT() FROM Contact WHERE Contact_Type__c = 'Volunteer' OR Contact_Type__c = ''"
-            logger.debug(f"Executing volunteer count query: {query}")
+            logger.debug("Executing volunteer count query: %s", query)
 
             result = self.sf.query(query)
             count = result["totalSize"]
 
-            logger.info(f"Volunteer count query successful: {count} volunteers found")
+            logger.info("Volunteer count query successful: %s volunteers found", count)
             self._set_cache(cache_key, count)
             return count
 
         except Exception as e:
-            logger.error(f"Failed to get volunteer count: {e}")
-            logger.error(
+            logger.exception("Failed to get volunteer count: %s", e)
+            logger.exception(
                 f"Query that failed: SELECT COUNT() FROM Contact WHERE Contact_Type__c = 'Volunteer' OR Contact_Type__c = ''"
             )
             raise SalesforceClientError(f"Failed to get volunteer count: {e}")
@@ -221,7 +221,7 @@ class SalesforceClient:
             return count
 
         except Exception as e:
-            logger.error(f"Failed to get organization count: {e}")
+            logger.exception("Failed to get organization count: %s", e)
             raise SalesforceClientError(f"Failed to get organization count: {e}")
 
     def get_event_count(self) -> int:
@@ -244,7 +244,7 @@ class SalesforceClient:
             return count
 
         except Exception as e:
-            logger.error(f"Failed to get event count: {e}")
+            logger.exception("Failed to get event count: %s", e)
             raise SalesforceClientError(f"Failed to get event count: {e}")
 
     def get_student_count(self) -> int:
@@ -269,7 +269,7 @@ class SalesforceClient:
             return count
 
         except Exception as e:
-            logger.error(f"Failed to get student count: {e}")
+            logger.exception("Failed to get student count: %s", e)
             raise SalesforceClientError(f"Failed to get student count: {e}")
 
     def get_teacher_count(self) -> int:
@@ -294,7 +294,7 @@ class SalesforceClient:
             return count
 
         except Exception as e:
-            logger.error(f"Failed to get teacher count: {e}")
+            logger.exception("Failed to get teacher count: %s", e)
             raise SalesforceClientError(f"Failed to get teacher count: {e}")
 
     def get_school_count(self) -> int:
@@ -308,10 +308,10 @@ class SalesforceClient:
             from models.school_model import School
 
             count = School.query.count()
-            logger.info(f"Found {count} schools in local database")
+            logger.info("Found %s schools in local database", count)
             return count
         except Exception as e:
-            logger.error(f"Failed to get school count: {e}")
+            logger.exception("Failed to get school count: %s", e)
             raise SalesforceClientError(f"Failed to get school count: {e}")
 
     def get_district_count(self) -> int:
@@ -325,10 +325,10 @@ class SalesforceClient:
             from models.district_model import District
 
             count = District.query.count()
-            logger.info(f"Found {count} districts in local database")
+            logger.info("Found %s districts in local database", count)
             return count
         except Exception as e:
-            logger.error(f"Failed to get district count: {e}")
+            logger.exception("Failed to get district count: %s", e)
             raise SalesforceClientError(f"Failed to get district count: {e}")
 
     def get_school_sample(self, limit: int = 10) -> List[Dict[str, Any]]:
@@ -360,10 +360,10 @@ class SalesforceClient:
                 }
                 records.append(record)
 
-            logger.info(f"Retrieved {len(records)} school records from local database")
+            logger.info("Retrieved %s school records from local database", len(records))
             return records
         except Exception as e:
-            logger.error(f"Failed to get school sample: {e}")
+            logger.exception("Failed to get school sample: %s", e)
             raise SalesforceClientError(f"Failed to get school sample: {e}")
 
     def get_district_sample(self, limit: int = 10) -> List[Dict[str, Any]]:
@@ -397,7 +397,7 @@ class SalesforceClient:
             )
             return records
         except Exception as e:
-            logger.error(f"Failed to get district sample: {e}")
+            logger.exception("Failed to get district sample: %s", e)
             raise SalesforceClientError(f"Failed to get district sample: {e}")
 
     def get_volunteer_sample(self, limit: int = 10) -> List[Dict[str, Any]]:
@@ -435,7 +435,7 @@ class SalesforceClient:
             return clean_records
 
         except Exception as e:
-            logger.error(f"Failed to get volunteer sample: {e}")
+            logger.exception("Failed to get volunteer sample: %s", e)
             raise SalesforceClientError(f"Failed to get volunteer sample: {e}")
 
     def get_organization_sample(self, limit: int = 10) -> List[Dict[str, Any]]:
@@ -467,7 +467,7 @@ class SalesforceClient:
             return clean_records
 
         except Exception as e:
-            logger.error(f"Failed to get organization sample: {e}")
+            logger.exception("Failed to get organization sample: %s", e)
             raise SalesforceClientError(f"Failed to get organization sample: {e}")
 
     def get_event_sample(self, limit: int = 10) -> List[Dict[str, Any]]:
@@ -499,7 +499,7 @@ class SalesforceClient:
             return clean_records
 
         except Exception as e:
-            logger.error(f"Failed to get event sample: {e}")
+            logger.exception("Failed to get event sample: %s", e)
             raise SalesforceClientError(f"Failed to get event sample: {e}")
 
     def get_student_sample(self, limit: int = 10) -> List[Dict[str, Any]]:
@@ -531,7 +531,7 @@ class SalesforceClient:
             return clean_records
 
         except Exception as e:
-            logger.error(f"Failed to get student sample: {e}")
+            logger.exception("Failed to get student sample: %s", e)
             raise SalesforceClientError(f"Failed to get student sample: {e}")
 
     def get_teacher_sample(self, limit: int = 10) -> List[Dict[str, Any]]:
@@ -563,7 +563,7 @@ class SalesforceClient:
             return clean_records
 
         except Exception as e:
-            logger.error(f"Failed to get teacher sample: {e}")
+            logger.exception("Failed to get teacher sample: %s", e)
             raise SalesforceClientError(f"Failed to get teacher sample: {e}")
 
     def get_health_status(self) -> Dict[str, Any]:
@@ -611,7 +611,7 @@ class SalesforceClient:
                 self.sf = None
                 logger.info("Salesforce connection reference released")
             except Exception as e:
-                logger.warning(f"Error releasing Salesforce connection: {e}")
+                logger.warning("Error releasing Salesforce connection: %s", e)
 
         # Redis connection cleanup not needed - using Flask-Caching
 

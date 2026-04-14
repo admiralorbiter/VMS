@@ -1,0 +1,874 @@
+{% extends "base.html" %}
+{% block title %}Newsletter Formatter{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/newsletter_formatter.css">
+{% endblock %}
+
+{% block content %}
+<div class="nf-wrap">
+    <div class="nf-header">
+        <div>
+            <h1><i class="fas fa-newspaper" style="color: #667eea;"></i> Newsletter Formatter</h1>
+            <p>Select upcoming sessions and copy formatted text for the newsletter.</p>
+        </div>
+    </div>
+
+    <!-- Mode toggle tabs -->
+    <div class="nf-mode-tabs">
+        <button class="nf-mode-tab active" id="tabVirtual" onclick="switchMode('virtual')">
+            <i class="fas fa-laptop"></i> Virtual Connector
+        </button>
+        <button class="nf-mode-tab" id="tabInPerson" onclick="switchMode('in-person')">
+            <i class="fas fa-school"></i> Career Exploration Events
+        </button>
+    </div>
+
+    <div class="nf-body">
+        <!-- Sessions panel -->
+        <div class="nf-sessions" id="sessionsPanel">
+            <div class="nf-toolbar">
+                <button onclick="selectAll()" title="Select all sessions"><i class="fas fa-check-double"></i> All</button>
+                <button onclick="deselectAll()" title="Deselect all sessions"><i class="fas fa-times"></i> None</button>
+                <div class="nf-sep"></div>
+                <button onclick="expandAll()" title="Expand all groups"><i class="fas fa-expand-alt"></i> Expand</button>
+                <button onclick="collapseAll()" title="Collapse all groups"><i class="fas fa-compress-alt"></i> Collapse</button>
+                <div class="nf-search-wrap">
+                    <i class="fas fa-search"></i>
+                    <input type="text" class="nf-search" id="searchInput" placeholder="Filter sessions…" oninput="filterSessions()">
+                    <button class="nf-search-clear" id="searchClear" onclick="clearSearch()"><i class="fas fa-times-circle"></i></button>
+                </div>
+                <span style="margin-left: auto; color: #999; font-size: 0.82em; white-space: nowrap;" id="sessionCount"></span>
+                <div class="nf-sep"></div>
+                <button onclick="openSettings()" title="Newsletter settings" style="color: #667eea;" id="settingsBtn"><i class="fas fa-cog"></i></button>
+            </div>
+            <div id="sessionsBody">
+                <div class="nf-loading"><i class="fas fa-spinner fa-spin"></i> Loading sessions…</div>
+            </div>
+        </div>
+
+        <!-- Preview panel -->
+        <div class="nf-preview">
+            <div class="nf-preview-header">
+                <h3><i class="fas fa-eye" style="color: #667eea;"></i> Preview</h3>
+                <button class="nf-copy-btn" id="copyBtn" onclick="copyToClipboard()">
+                    <i class="fas fa-copy"></i> Copy to Clipboard
+                </button>
+            </div>
+            <div class="nf-preview-body">
+                <div class="nf-preview-text" id="previewText">Loading…</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast notification -->
+<div class="nf-toast" id="toast"></div>
+
+<!-- Settings modal -->
+<div class="nf-modal-overlay" id="settingsOverlay" onclick="if(event.target===this)closeSettings()">
+    <div class="nf-modal">
+        <h3><i class="fas fa-cog" style="color: #667eea; margin-right: 8px;"></i>Newsletter Settings</h3>
+        <label for="formUrlInput">Sign-up Form URL</label>
+        <input type="url" id="formUrlInput" placeholder="https://docs.google.com/forms/...">
+        <p style="margin: 8px 0 0; font-size: 0.78em; color: #999;">Each session title links to this URL in the preview and copied output.</p>
+        <div class="nf-modal-actions">
+            <button class="nf-btn-reset" onclick="resetFormUrl()"><i class="fas fa-undo" style="margin-right: 4px;"></i>Reset Default</button>
+            <button onclick="closeSettings()">Cancel</button>
+            <button class="nf-btn-save" onclick="saveSettings()"><i class="fas fa-check" style="margin-right: 4px;"></i>Save</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    "use strict";
+
+    // ── Current mode: 'virtual' or 'in-person' ──
+    let currentMode = "virtual";
+
+    const GRADE_ORDER = [
+        "Kindergarten", "First Grade", "Second Grade",
+        "Third Grade", "Fourth Grade", "Fifth Grade",
+        "General / KC Series"
+    ];
+
+    const IN_PERSON_SECTION_ORDER = [
+        "Career Jumping", "Career Speakers", "Career Fair", "Other Events"
+    ];
+
+    // Default-off sections (same pattern as General / KC Series for virtual)
+    const DEFAULT_OFF_SECTIONS = new Set(["General / KC Series", "Other Events"]);
+
+    // ── Virtual session cart (search-and-add for in-person mode) ──
+    let virtualCart = [];        // [{id, title, formatted_datetime, link}]
+    let virtualCartSelected = new Set();  // IDs of checked virtual sessions
+
+    // All sessions from the API, keyed by id
+    let sessionsById = {};
+    // Set of selected session ids (strings)
+    let selected = new Set();
+    // Group → [session ids] mapping for per-group operations
+    let groupSessionIds = {};
+    // Current group order (GRADE_ORDER or IN_PERSON_SECTION_ORDER)
+    let activeGroupOrder = GRADE_ORDER;
+
+    // ── Toast ──
+    function showToast(msg) {
+        const t = document.getElementById("toast");
+        t.textContent = msg;
+        t.classList.add("show");
+        setTimeout(() => t.classList.remove("show"), 2000);
+    }
+
+    // ── Mode switching ──
+    window.switchMode = function(mode) {
+        if (mode === currentMode) return;
+        currentMode = mode;
+
+        // Update tab styling
+        document.getElementById("tabVirtual").classList.toggle("active", mode === "virtual");
+        document.getElementById("tabInPerson").classList.toggle("active", mode === "in-person");
+
+        // Show/hide settings gear (only relevant for virtual mode)
+        document.getElementById("settingsBtn").style.display = mode === "virtual" ? "" : "none";
+
+        // Reset state
+        sessionsById = {};
+        selected = new Set();
+        groupSessionIds = {};
+
+        // Clear search
+        document.getElementById("searchInput").value = "";
+        document.getElementById("searchClear").classList.remove("visible");
+
+        // Show loading
+        document.getElementById("sessionsBody").innerHTML =
+            '<div class="nf-loading"><i class="fas fa-spinner fa-spin"></i> Loading sessions…</div>';
+        document.getElementById("previewText").innerHTML = "Loading…";
+
+        // Fetch data for the new mode
+        const url = mode === "virtual"
+            ? "{{ url_for('tools.newsletter_formatter_sessions') }}"
+            : "{{ url_for('tools.newsletter_formatter_in_person_sessions') }}";
+
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success || !data.sessions.length) {
+                    document.getElementById("sessionsBody").innerHTML =
+                        '<div class="nf-empty"><i class="fas fa-calendar-times" style="font-size:2em; margin-bottom:10px;"></i><br>No upcoming sessions found.</div>';
+                    renderPreview();
+                    return;
+                }
+                if (mode === "virtual") {
+                    activeGroupOrder = GRADE_ORDER;
+                    buildVirtualUI(data.sessions);
+                } else {
+                    activeGroupOrder = data.section_order || IN_PERSON_SECTION_ORDER;
+                    buildInPersonUI(data.sessions);
+                    appendVirtualSearchSection();
+                }
+            })
+            .catch(err => {
+                document.getElementById("sessionsBody").innerHTML =
+                    '<div class="nf-empty" style="color:#c0392b;">Error loading sessions.</div>';
+            });
+    };
+
+    // ── Initial load for virtual mode ──
+    fetch("{{ url_for('tools.newsletter_formatter_sessions') }}")
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success || !data.sessions.length) {
+                document.getElementById("sessionsBody").innerHTML =
+                    '<div class="nf-empty"><i class="fas fa-calendar-times" style="font-size:2em; margin-bottom:10px;"></i><br>No upcoming sessions found.</div>';
+                renderPreview();
+                return;
+            }
+            buildVirtualUI(data.sessions);
+        })
+        .catch(err => {
+            document.getElementById("sessionsBody").innerHTML =
+                '<div class="nf-empty" style="color:#c0392b;">Error loading sessions.</div>';
+        });
+
+    // ── Build UI: Virtual mode (grade-grouped) ──
+    function buildVirtualUI(sessions) {
+        activeGroupOrder = GRADE_ORDER;
+        const groupKey = "grade_levels";
+        _buildGroupedUI(sessions, GRADE_ORDER, function(s) { return s.grade_levels; }, function(s) {
+            return '<span class="nf-session-dt">' + escapeHtml(s.formatted_datetime) + '</span>'
+                 + '<span class="nf-session-title">' + escapeHtml(s.title) + '</span>';
+        });
+    }
+
+    // ── Build UI: In-Person mode (section-grouped) ──
+    function buildInPersonUI(sessions) {
+        activeGroupOrder = IN_PERSON_SECTION_ORDER;
+        // Clear virtual cart when rebuilding
+        virtualCart = [];
+        virtualCartSelected = new Set();
+        _buildGroupedUI(sessions, IN_PERSON_SECTION_ORDER, function(s) { return [s.section]; }, function(s) {
+            return '<span class="nf-session-dt">' + escapeHtml(s.formatted_datetime) + '</span>'
+                 + '<span class="nf-session-title">' + escapeHtml(s.title) + '</span>';
+        });
+    }
+
+    // ── Virtual search section (in-person mode only) ──
+    function appendVirtualSearchSection() {
+        const body = document.getElementById("sessionsBody");
+        let html = '<div class="nf-vs-section" id="virtualSearchSection">';
+        html += '<div class="nf-vs-header">';
+        html += '<i class="fas fa-laptop"></i> ';
+        html += '<span>Virtual Sessions</span>';
+        html += '<span class="nf-vs-count" id="vsCount">0 added</span>';
+        html += '<button class="nf-vs-clear" onclick="clearVirtualCart()" title="Remove all virtual sessions">Clear</button>';
+        html += '</div>';
+        html += '<div class="nf-vs-body">';
+        html += '<div class="nf-vs-search-row">';
+        html += '<input type="text" class="nf-vs-search-input" id="vsSearchInput" placeholder="Search virtual sessions by title…" onkeydown="if(event.key===\'Enter\')searchVirtual()">';
+        html += '<button class="nf-vs-search-btn" onclick="searchVirtual()"><i class="fas fa-search"></i> Search</button>';
+        html += '</div>';
+        html += '<div class="nf-vs-results" id="vsResults"></div>';
+        html += '<div class="nf-vs-cart" id="vsCart"></div>';
+        html += '</div></div>';
+        body.insertAdjacentHTML('beforeend', html);
+    }
+
+    // ── Search virtual sessions ──
+    let vsSearchTimeout;
+    window.searchVirtual = function() {
+        const q = document.getElementById("vsSearchInput").value.trim();
+        if (!q) return;
+        const resultsEl = document.getElementById("vsResults");
+        resultsEl.innerHTML = '<div class="nf-vs-empty"><i class="fas fa-spinner fa-spin"></i> Searching…</div>';
+        resultsEl.classList.add("show");
+
+        fetch("{{ url_for('tools.newsletter_formatter_search_virtual_sessions') }}?q=" + encodeURIComponent(q))
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success || !data.sessions.length) {
+                    resultsEl.innerHTML = '<div class="nf-vs-empty">No sessions found for "' + escapeHtml(q) + '"</div>';
+                    return;
+                }
+                // Filter out already-added sessions
+                const addedIds = new Set(virtualCart.map(s => s.id));
+                const available = data.sessions.filter(s => !addedIds.has(s.id));
+                if (!available.length) {
+                    resultsEl.innerHTML = '<div class="nf-vs-empty">All matching sessions already added</div>';
+                    return;
+                }
+                let rhtml = '';
+                available.forEach(s => {
+                    rhtml += '<div class="nf-vs-result-row" data-vsid="' + s.id + '">';
+                    rhtml += '<button class="nf-vs-add-btn" onclick="addVirtualSession(' + s.id + ', this)" title="Add to newsletter">+</button>';
+                    rhtml += '<span class="nf-vs-result-title">' + escapeHtml(s.title) + '</span>';
+                    rhtml += '<span class="nf-vs-result-dt">' + escapeHtml(s.formatted_datetime.split(',').slice(0,2).join(',')) + '</span>';
+                    rhtml += '</div>';
+                    // Stash data for the add handler
+                    resultsEl['_sess_' + s.id] = s;
+                });
+                resultsEl.innerHTML = rhtml;
+            })
+            .catch(() => {
+                resultsEl.innerHTML = '<div class="nf-vs-empty" style="color:#c0392b;">Search failed</div>';
+            });
+    };
+
+    // ── Add a virtual session to the cart ──
+    window.addVirtualSession = function(id, btnEl) {
+        const resultsEl = document.getElementById("vsResults");
+        const session = resultsEl['_sess_' + id];
+        if (!session || virtualCart.find(s => s.id === id)) return;
+
+        virtualCart.push(session);
+        virtualCartSelected.add(String(id));
+
+        // Remove from results
+        const row = btnEl.closest('.nf-vs-result-row');
+        if (row) row.remove();
+        // If no more results, hide
+        if (!resultsEl.querySelector('.nf-vs-result-row')) {
+            resultsEl.classList.remove('show');
+        }
+
+        renderVirtualCart();
+        updateVsCount();
+        renderPreview();
+        showToast('Added: ' + session.title.substring(0, 40));
+    };
+
+    // ── Remove a virtual session from the cart ──
+    window.removeVirtualSession = function(id) {
+        virtualCart = virtualCart.filter(s => s.id !== id);
+        virtualCartSelected.delete(String(id));
+        renderVirtualCart();
+        updateVsCount();
+        renderPreview();
+    };
+
+    // ── Toggle virtual session checkbox ──
+    window.toggleVirtualSession = function(cb) {
+        const sid = cb.dataset.vsid;
+        if (cb.checked) {
+            virtualCartSelected.add(sid);
+        } else {
+            virtualCartSelected.delete(sid);
+        }
+        renderPreview();
+    };
+
+    // ── Clear all virtual sessions ──
+    window.clearVirtualCart = function() {
+        virtualCart = [];
+        virtualCartSelected = new Set();
+        renderVirtualCart();
+        updateVsCount();
+        renderPreview();
+        showToast('Cleared all virtual sessions');
+    };
+
+    // ── Render virtual cart ──
+    function renderVirtualCart() {
+        const cartEl = document.getElementById('vsCart');
+        if (!cartEl) return;
+        if (!virtualCart.length) {
+            cartEl.innerHTML = '<div class="nf-vs-empty">No virtual sessions added yet. Use the search above to find and add sessions.</div>';
+            return;
+        }
+        let html = '';
+        virtualCart.forEach(s => {
+            const chk = virtualCartSelected.has(String(s.id)) ? 'checked' : '';
+            html += '<div class="nf-vs-cart-row">';
+            html += '<input type="checkbox" ' + chk + ' data-vsid="' + s.id + '" onchange="toggleVirtualSession(this)">';
+            html += '<span class="nf-vs-cart-dt">' + escapeHtml(s.formatted_datetime) + '</span>';
+            html += '<span class="nf-vs-cart-title">' + escapeHtml(s.title) + '</span>';
+            html += '<button class="nf-vs-remove" onclick="removeVirtualSession(' + s.id + ')" title="Remove">✕</button>';
+            html += '</div>';
+        });
+        cartEl.innerHTML = html;
+    }
+
+    function updateVsCount() {
+        const el = document.getElementById('vsCount');
+        if (el) el.textContent = virtualCart.length + ' added';
+        updateGlobalCount();
+    }
+
+    // ── Shared grouped UI builder ──
+    function _buildGroupedUI(sessions, order, getGroups, renderRow) {
+        // Reset state
+        sessionsById = {};
+        selected = new Set();
+        groupSessionIds = {};
+
+        // Index sessions
+        sessions.forEach(s => {
+            sessionsById[s.id] = s;
+            const groups = getGroups(s);
+            const isDefaultOff = groups.length === 1 && DEFAULT_OFF_SECTIONS.has(groups[0]);
+            if (!isDefaultOff) {
+                selected.add(String(s.id));
+            }
+        });
+
+        // Group
+        const groups = {};
+        order.forEach(g => { groups[g] = []; groupSessionIds[g] = []; });
+        sessions.forEach(s => {
+            getGroups(s).forEach(g => {
+                if (!groups[g]) { groups[g] = []; groupSessionIds[g] = []; }
+                groups[g].push(s);
+                groupSessionIds[g].push(String(s.id));
+            });
+        });
+
+        let html = "";
+        order.forEach(grade => {
+            const items = groups[grade];
+            if (!items || !items.length) return;
+            const gid = grade.replace(/\W/g, "_");
+
+            html += '<div class="nf-grade-group" data-grade="' + gid + '">';
+
+            // Group header with checkbox + inline actions
+            const isDefaultOff = DEFAULT_OFF_SECTIONS.has(grade);
+            const gradeChecked = isDefaultOff ? '' : 'checked';
+            html += '<div class="nf-grade-header" id="header_' + gid + '">';
+            html += '<input type="checkbox" class="nf-grade-cb" ' + gradeChecked + ' data-gid="' + gid + '" onclick="event.stopPropagation(); toggleGradeCheckbox(\'' + gid + '\', this)" title="Select/deselect all in this group">';
+            html += '<i class="fas fa-chevron-down nf-chevron" onclick="toggleGrade(\'' + gid + '\', this.parentElement)"></i> ';
+            html += '<span class="nf-grade-name" onclick="toggleGrade(\'' + gid + '\', this.parentElement)">' + grade + '</span>';
+            html += '<span class="nf-grade-count" id="count_' + gid + '">' + items.length + ' of ' + items.length + '</span>';
+            html += '<div class="nf-grade-actions">';
+            html += '<button onclick="event.stopPropagation(); selectGrade(\'' + gid + '\')" title="Select all in ' + grade + '">✓ All</button>';
+            html += '<button onclick="event.stopPropagation(); deselectGrade(\'' + gid + '\')" title="Deselect all in ' + grade + '">✕ None</button>';
+            html += '</div>';
+            html += '</div>';
+
+            html += '<div class="nf-grade-body" id="grade_' + gid + '">';
+            items.forEach(s => {
+                const chk = selected.has(String(s.id)) ? 'checked' : '';
+                const cls = selected.has(String(s.id)) ? '' : ' nf-deselected';
+                html += '<label class="nf-session-row' + cls + '" data-sid="' + s.id + '" data-title="' + escapeAttr(s.title) + '">';
+                html += '<input type="checkbox" ' + chk + ' data-sid="' + s.id + '" data-gid="' + gid + '" onchange="onToggle(this)">';
+                html += renderRow(s);
+                html += '</label>';
+            });
+            html += '</div></div>';
+        });
+
+        document.getElementById("sessionsBody").innerHTML = html;
+        updateAllGroupCounts();
+        updateGlobalCount();
+        renderPreview();
+    }
+
+    // ── Count helpers ──
+    function updateGlobalCount() {
+        const total = Object.keys(sessionsById).length;
+        const vsSelected = currentMode === 'in-person' ? virtualCartSelected.size : 0;
+        const totalSel = selected.size + vsSelected;
+        const totalAll = total + (currentMode === 'in-person' ? virtualCart.length : 0);
+        document.getElementById("sessionCount").textContent = totalSel + " of " + totalAll + " selected";
+    }
+
+    function updateGroupCount(gid) {
+        const ids = groupSessionIds[gidToGroup(gid)] || [];
+        const sel = ids.filter(id => selected.has(id)).length;
+        const countEl = document.getElementById("count_" + gid);
+        if (countEl) countEl.textContent = sel + " of " + ids.length;
+
+        // Update header checkbox state (checked, indeterminate, unchecked)
+        const headerCb = document.querySelector('.nf-grade-cb[data-gid="' + gid + '"]');
+        if (headerCb) {
+            if (sel === ids.length) {
+                headerCb.checked = true; headerCb.indeterminate = false;
+            } else if (sel === 0) {
+                headerCb.checked = false; headerCb.indeterminate = false;
+            } else {
+                headerCb.checked = false; headerCb.indeterminate = true;
+            }
+        }
+    }
+
+    function updateAllGroupCounts() {
+        activeGroupOrder.forEach(group => {
+            const gid = group.replace(/\W/g, "_");
+            updateGroupCount(gid);
+        });
+    }
+
+    function gidToGroup(gid) {
+        return activeGroupOrder.find(g => g.replace(/\W/g, "_") === gid) || gid;
+    }
+
+    // ── Toggle grade collapse ──
+    window.toggleGrade = function(gid, headerEl) {
+        const body = document.getElementById("grade_" + gid);
+        body.classList.toggle("hidden");
+        headerEl.classList.toggle("collapsed");
+    };
+
+    // ── Toggle a single session ──
+    window.onToggle = function(cb) {
+        const sid = cb.dataset.sid;
+        const row = cb.closest(".nf-session-row");
+        if (cb.checked) {
+            selected.add(sid);
+            row.classList.remove("nf-deselected");
+        } else {
+            selected.delete(sid);
+            row.classList.add("nf-deselected");
+        }
+        // Update counts for ALL groups this session belongs to
+        const groupsToUpdate = new Set();
+        document.querySelectorAll('input[data-sid="' + sid + '"]').forEach(el => {
+            el.checked = cb.checked;
+            el.closest(".nf-session-row").classList.toggle("nf-deselected", !cb.checked);
+            groupsToUpdate.add(el.dataset.gid);
+        });
+        groupsToUpdate.forEach(g => updateGroupCount(g));
+        updateGlobalCount();
+        renderPreview();
+    };
+
+    // ── Per-group toggle via header checkbox ──
+    window.toggleGradeCheckbox = function(gid, headerCb) {
+        const shouldCheck = headerCb.checked;
+        const body = document.getElementById("grade_" + gid);
+        body.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.checked = shouldCheck;
+            const row = cb.closest(".nf-session-row");
+            row.classList.toggle("nf-deselected", !shouldCheck);
+            if (shouldCheck) selected.add(cb.dataset.sid);
+            else selected.delete(cb.dataset.sid);
+        });
+        headerCb.indeterminate = false;
+        updateGroupCount(gid);
+        updateAllGroupCounts();   // multi-group sessions may affect others
+        updateGlobalCount();
+        renderPreview();
+        showToast(shouldCheck
+            ? "Selected all in " + gidToGroup(gid)
+            : "Deselected all in " + gidToGroup(gid));
+    };
+
+    // ── Per-group select/deselect buttons ──
+    window.selectGrade = function(gid) {
+        const body = document.getElementById("grade_" + gid);
+        body.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.checked = true;
+            selected.add(cb.dataset.sid);
+            cb.closest(".nf-session-row").classList.remove("nf-deselected");
+        });
+        updateAllGroupCounts();
+        updateGlobalCount();
+        renderPreview();
+        showToast("Selected all in " + gidToGroup(gid));
+    };
+
+    window.deselectGrade = function(gid) {
+        const body = document.getElementById("grade_" + gid);
+        body.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.checked = false;
+            selected.delete(cb.dataset.sid);
+            cb.closest(".nf-session-row").classList.add("nf-deselected");
+        });
+        updateAllGroupCounts();
+        updateGlobalCount();
+        renderPreview();
+        showToast("Deselected all in " + gidToGroup(gid));
+    };
+
+    // ── Global select / deselect ──
+    window.selectAll = function() {
+        document.querySelectorAll('#sessionsBody input[type="checkbox"][data-sid]').forEach(cb => {
+            cb.checked = true; selected.add(cb.dataset.sid);
+            cb.closest(".nf-session-row").classList.remove("nf-deselected");
+        });
+        updateAllGroupCounts();
+        updateGlobalCount();
+        renderPreview();
+        showToast("Selected all sessions");
+    };
+
+    window.deselectAll = function() {
+        document.querySelectorAll('#sessionsBody input[type="checkbox"][data-sid]').forEach(cb => {
+            cb.checked = false;
+            cb.closest(".nf-session-row").classList.add("nf-deselected");
+        });
+        selected.clear();
+        updateAllGroupCounts();
+        updateGlobalCount();
+        renderPreview();
+        showToast("Deselected all sessions");
+    };
+
+    // ── Expand / Collapse all ──
+    window.expandAll = function() {
+        document.querySelectorAll(".nf-grade-body").forEach(b => b.classList.remove("hidden"));
+        document.querySelectorAll(".nf-grade-header").forEach(h => h.classList.remove("collapsed"));
+    };
+
+    window.collapseAll = function() {
+        document.querySelectorAll(".nf-grade-body").forEach(b => b.classList.add("hidden"));
+        document.querySelectorAll(".nf-grade-header").forEach(h => h.classList.add("collapsed"));
+    };
+
+    // ── Search / filter ──
+    window.filterSessions = function() {
+        const q = document.getElementById("searchInput").value.trim().toLowerCase();
+        const clearBtn = document.getElementById("searchClear");
+        clearBtn.classList.toggle("visible", q.length > 0);
+
+        document.querySelectorAll(".nf-session-row").forEach(row => {
+            const title = (row.dataset.title || "").toLowerCase();
+            const dt = row.querySelector(".nf-session-dt");
+            const dateStr = dt ? dt.textContent.toLowerCase() : "";
+            const match = !q || title.includes(q) || dateStr.includes(q);
+            row.classList.toggle("nf-hidden-by-search", !match);
+        });
+
+        // Hide groups where all rows are hidden
+        document.querySelectorAll(".nf-grade-group").forEach(group => {
+            const visibleRows = group.querySelectorAll(".nf-session-row:not(.nf-hidden-by-search)");
+            group.classList.toggle("nf-hidden-by-search", visibleRows.length === 0);
+        });
+    };
+
+    window.clearSearch = function() {
+        document.getElementById("searchInput").value = "";
+        filterSessions();
+        document.getElementById("searchInput").focus();
+    };
+
+
+
+    // ── Shared: collect selected sessions into groups ──
+    function collectGroups() {
+        const groups = {};
+        activeGroupOrder.forEach(g => { groups[g] = []; });
+        Object.values(sessionsById).forEach(s => {
+            if (!selected.has(String(s.id))) return;
+            const sGroups = currentMode === "virtual" ? s.grade_levels : [s.section];
+            sGroups.forEach(g => {
+                if (!groups[g]) groups[g] = [];
+                if (!groups[g].some(x => x.id === s.id)) groups[g].push(s);
+            });
+        });
+        return groups;
+    }
+
+    const DEFAULT_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSe_2_abnJzfrUuirq4oCr5L-vzeVYAKWS-1IfQtT8ROEr9DHw/viewform";
+    let FORM_URL = localStorage.getItem("nf_form_url") || DEFAULT_FORM_URL;
+
+    // ── Settings modal ──
+    window.openSettings = function() {
+        document.getElementById("formUrlInput").value = FORM_URL;
+        document.getElementById("settingsOverlay").classList.add("show");
+    };
+    window.closeSettings = function() {
+        document.getElementById("settingsOverlay").classList.remove("show");
+    };
+    window.saveSettings = function() {
+        const url = document.getElementById("formUrlInput").value.trim();
+        if (url) {
+            FORM_URL = url;
+            localStorage.setItem("nf_form_url", url);
+        }
+        closeSettings();
+        renderPreview();
+        showToast("Settings saved");
+    };
+    window.resetFormUrl = function() {
+        document.getElementById("formUrlInput").value = DEFAULT_FORM_URL;
+    };
+
+    // ── Render preview ──
+    window.renderPreview = function() {
+        const previewEl = document.getElementById("previewText");
+        const hasInPerson = selected.size > 0;
+        const hasVirtual = currentMode === 'in-person' && virtualCartSelected.size > 0;
+        if (!hasInPerson && !hasVirtual) {
+            previewEl.innerHTML =
+                '<div class="nf-preview-empty"><i class="fas fa-inbox"></i>No sessions selected.<br>Check some sessions on the left to build the newsletter.</div>';
+            return;
+        }
+
+        if (currentMode === "virtual") {
+            renderVirtualPreview(previewEl);
+        } else {
+            renderInPersonPreview(previewEl);
+        }
+    };
+
+    // ── Virtual preview (existing logic) ──
+    function renderVirtualPreview(previewEl) {
+        const groups = collectGroups();
+        let html = '';
+
+        GRADE_ORDER.forEach(grade => {
+            const items = groups[grade];
+            if (!items || !items.length) return;
+
+            html += '<div class="nf-pv-grade">' + escapeHtml(grade) + '</div>';
+            items.forEach(s => {
+                html += '<div class="nf-pv-session">';
+                html += '<span class="nf-pv-dt">' + escapeHtml(s.formatted_datetime) + '</span> ';
+                html += '<a class="nf-pv-link" href="' + FORM_URL + '" target="_blank">' + escapeHtml(s.title) + '</a>';
+                html += '</div>';
+            });
+        });
+
+        previewEl.innerHTML = html;
+    }
+
+    // ── In-Person preview ──
+    function renderInPersonPreview(previewEl) {
+        const groups = collectGroups();
+        let html = '';
+
+        IN_PERSON_SECTION_ORDER.forEach(section => {
+            const items = groups[section];
+            if (!items || !items.length) return;
+
+            html += '<div class="nf-pv-grade">' + escapeHtml(section) + '</div>';
+            items.forEach(s => {
+                html += '<div class="nf-pv-session">';
+                let line = escapeHtml(s.formatted_datetime) + ', ';
+                if (s.link) {
+                    line += '<a class="nf-pv-link" href="' + escapeAttr(s.link) + '" target="_blank">' + escapeHtml(s.title) + '</a>';
+                } else {
+                    line += escapeHtml(s.title);
+                }
+                if (s.district) {
+                    line += ' - ' + escapeHtml(s.district);
+                }
+                html += line;
+                html += '</div>';
+            });
+        });
+
+        // Append selected virtual sessions
+        const vsItems = virtualCart.filter(s => virtualCartSelected.has(String(s.id)));
+        if (vsItems.length) {
+            html += '<div class="nf-pv-grade">Virtual Sessions</div>';
+            vsItems.forEach(s => {
+                html += '<div class="nf-pv-session">';
+                let line = escapeHtml(s.formatted_datetime) + ', ';
+                if (s.link) {
+                    line += '<a class="nf-pv-link" href="' + escapeAttr(s.link) + '" target="_blank">' + escapeHtml(s.title) + '</a>';
+                } else {
+                    line += escapeHtml(s.title);
+                }
+                html += line;
+                html += '</div>';
+            });
+        }
+
+        previewEl.innerHTML = html;
+    }
+
+    // ── Build plain-text fallback ──
+    function buildPlainText() {
+        const groups = collectGroups();
+        let text = '';
+
+        if (currentMode === "virtual") {
+            GRADE_ORDER.forEach(grade => {
+                const items = groups[grade];
+                if (!items || !items.length) return;
+                text += "\n" + grade + "\n";
+                items.forEach(s => {
+                    text += s.formatted_datetime.padEnd(22, " ") + "  " + s.title + "\n";
+                });
+            });
+        } else {
+            IN_PERSON_SECTION_ORDER.forEach(section => {
+                const items = groups[section];
+                if (!items || !items.length) return;
+                text += "\n" + section + "\n";
+                items.forEach(s => {
+                    let line = s.formatted_datetime + ", " + s.title;
+                    if (s.district) line += " - " + s.district;
+                    text += line + "\n";
+                });
+            });
+            // Virtual sessions
+            const vsItems = virtualCart.filter(s => virtualCartSelected.has(String(s.id)));
+            if (vsItems.length) {
+                text += "\nVirtual Sessions\n";
+                vsItems.forEach(s => {
+                    text += s.formatted_datetime + ", " + s.title + "\n";
+                });
+            }
+        }
+        return text;
+    }
+
+    // ── Build rich HTML for clipboard (email-friendly inline styles) ──
+    function buildClipboardHtml() {
+        const groups = collectGroups();
+
+        let html = '<div style="font-family:Segoe UI,Arial,sans-serif; font-size:14px; color:#333;">';
+
+        if (currentMode === "virtual") {
+            GRADE_ORDER.forEach(grade => {
+                const items = groups[grade];
+                if (!items || !items.length) return;
+                html += '<p style="margin:14px 0 4px; font-weight:bold; font-size:15px;">' + escapeHtml(grade) + '</p>';
+                items.forEach(s => {
+                    html += '<p style="margin:2px 0;">';
+                    html += '<span style="color:#555; display:inline-block; min-width:160px;">' + escapeHtml(s.formatted_datetime) + '</span> ';
+                    html += '<a href="' + FORM_URL + '" style="color:#2980b9; text-decoration:none;">' + escapeHtml(s.title) + '</a>';
+                    html += '</p>';
+                });
+            });
+        } else {
+            IN_PERSON_SECTION_ORDER.forEach(section => {
+                const items = groups[section];
+                if (!items || !items.length) return;
+                html += '<p style="margin:14px 0 4px; font-weight:bold; font-size:15px;">' + escapeHtml(section) + '</p>';
+                items.forEach(s => {
+                    html += '<p style="margin:2px 0;">';
+                    let line = escapeHtml(s.formatted_datetime) + ', ';
+                    if (s.link) {
+                        line += '<a href="' + escapeAttr(s.link) + '" style="color:#2980b9; text-decoration:none;">' + escapeHtml(s.title) + '</a>';
+                    } else {
+                        line += escapeHtml(s.title);
+                    }
+                    if (s.district) {
+                        line += ' - ' + escapeHtml(s.district);
+                    }
+                    html += line;
+                    html += '</p>';
+                });
+            });
+            // Virtual sessions
+            const vsItems = virtualCart.filter(s => virtualCartSelected.has(String(s.id)));
+            if (vsItems.length) {
+                html += '<p style="margin:14px 0 4px; font-weight:bold; font-size:15px;">Virtual Sessions</p>';
+                vsItems.forEach(s => {
+                    html += '<p style="margin:2px 0;">';
+                    let line = escapeHtml(s.formatted_datetime) + ', ';
+                    if (s.link) {
+                        line += '<a href="' + escapeAttr(s.link) + '" style="color:#2980b9; text-decoration:none;">' + escapeHtml(s.title) + '</a>';
+                    } else {
+                        line += escapeHtml(s.title);
+                    }
+                    html += line;
+                    html += '</p>';
+                });
+            }
+        }
+        html += '</div>';
+        return html;
+    }
+
+    // ── Copy to clipboard (rich text + plain text fallback) ──
+    window.copyToClipboard = function() {
+        const vsSelected = currentMode === 'in-person' ? virtualCartSelected.size : 0;
+        if (selected.size === 0 && vsSelected === 0) {
+            showToast("Nothing to copy — select some sessions first");
+            return;
+        }
+        const totalCopied = selected.size + vsSelected;
+
+        const richHtml = buildClipboardHtml();
+        const plainText = buildPlainText();
+
+        // Use Clipboard API with text/html so links paste into email clients
+        const htmlBlob = new Blob([richHtml], { type: 'text/html' });
+        const textBlob = new Blob([plainText], { type: 'text/plain' });
+        const clipItem = new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob });
+
+        navigator.clipboard.write([clipItem]).then(() => {
+            const btn = document.getElementById("copyBtn");
+            btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+            btn.classList.add("copied");
+            showToast("Copied " + totalCopied + " sessions with links to clipboard");
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fas fa-copy"></i> Copy to Clipboard';
+                btn.classList.remove("copied");
+            }, 2000);
+        }).catch(() => {
+            // Fallback: copy plain text if ClipboardItem not supported
+            navigator.clipboard.writeText(plainText).then(() => {
+                showToast("Copied as plain text (links not supported in this browser)");
+            });
+        });
+    };
+
+    function escapeHtml(str) {
+        const d = document.createElement("div");
+        d.textContent = str;
+        return d.innerHTML;
+    }
+
+    function escapeAttr(str) {
+        return str.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+})();
+</script>
+{% endblock %}

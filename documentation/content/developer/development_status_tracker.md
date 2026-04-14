@@ -1,7 +1,7 @@
 # VMS Development Status Tracker
 
-**Last Updated:** February 2026  
-**Total Functional Requirements:** ~188
+**Last Updated:** March 2026
+**Total Functional Requirements:** ~203
 
 ---
 
@@ -30,6 +30,7 @@
 | [Email System](#email-system) | 22 | 0 | 0 | 22 | 0 |
 | [Data & Operations](#data--operations) | 35 | 35 | 0 | 0 | 0 |
 | [District Suite](#district-suite) | 40 | 34 | 0 | 3 | 3 |
+| [Tools](#tools) | 15 | 15 | 0 | 0 | 0 |
 
 ---
 
@@ -84,7 +85,7 @@
 | FR-VIRTUAL-202 | Tag teachers from synced records | ✅ | TC-202, TC-204 |
 | FR-VIRTUAL-203 | Tag presenters from synced records | ✅ | TC-203, TC-204 |
 | FR-VIRTUAL-204 | Historical import from Google Sheets | ✅ | TC-270–TC-275 |
-| FR-VIRTUAL-206 | Pathful import with quality checks | ✅ | TC-250–TC-260 |
+| FR-VIRTUAL-206 | Pathful import with quality checks | ✅ | TC-250–TC-260; TD-052: alias-based org resolution via `resolve_organization()` + Unmatched Queue |
 | FR-VIRTUAL-207 | Automation to pull Pathful exports | 🔮 | Near-term |
 | FR-VIRTUAL-208 | Track local vs non-local volunteers | ✅ | TC-230–TC-232 |
 | FR-VIRTUAL-209 | Automated comms for local volunteers | 🔮 | Near-term |
@@ -112,7 +113,7 @@
 
 | ID | Requirement | Status | Notes |
 |----|-------------|--------|-------|
-| FR-VIRTUAL-224 | Flag draft events with past date | ✅ | TC-285 |
+| FR-VIRTUAL-224 | Flag draft events with past date | ✅ | TC-285; Draft Review Queue (`/virtual/pathful/draft-review`) provides bulk promote/dismiss with confidence scoring |
 | FR-VIRTUAL-225 | Flag events with no teacher | ✅ | TC-286 |
 | FR-VIRTUAL-226 | Flag completed events with no presenter | ✅ | TC-287 |
 | FR-VIRTUAL-227 | Cancellation reason codes | ✅ | TC-288, TC-289 |
@@ -257,8 +258,8 @@
 | ID | Requirement | Status | Notes |
 |----|-------------|--------|-------|
 | FR-DISTRICT-524 | Import district-provided teacher roster | ✅ | TC-030, TC-031 |
-| FR-DISTRICT-531 | Auto/manual teacher matching | 📋 | TBD |
-| FR-DISTRICT-532 | Google Sheets per district | 📋 | TBD |
+| FR-DISTRICT-531 | Auto/manual teacher matching | ✅ | Email-first + name fallback |
+| FR-DISTRICT-532 | Google Sheets per district | ✅ | Implemented |
 
 ### Semester Reset & Archiving
 
@@ -365,7 +366,7 @@
 
 | ID | Requirement | Status | Notes |
 |----|-------------|--------|-------|
-| FR-DATA-901 | Duplicate management | ✅ | TC-901 |
+| FR-DATA-901 | Duplicate management | ✅ | TC-901; Admin merge UI at `/teachers/merge` |
 | FR-DATA-902 | Dynamic profile creation | ✅ | TC-902 |
 | FR-DATA-903 | Sync dependencies | ✅ | TC-903, TC-904 |
 
@@ -454,10 +455,10 @@
 
 | ID | Requirement | Status | Notes |
 |----|-------------|--------|-------|
-| FR-TENANT-113 | Import teacher rosters (CSV/Sheets) | 📋 | TBD |
-| FR-TENANT-114 | Upsert by email | 📋 | TBD |
-| FR-TENANT-115 | Teacher usage dashboard | 📋 | TBD |
-| FR-TENANT-116 | Filter by semester | 📋 | TBD |
+| FR-TENANT-113 | Import teacher rosters (CSV/Sheets) | ✅ | Via Google Sheets |
+| FR-TENANT-114 | Upsert by email | ✅ | Email-first matching |
+| FR-TENANT-115 | Teacher usage dashboard | ✅ | EventTeacher-primary counting |
+| FR-TENANT-116 | Filter by semester | ✅ | Virtual year filter |
 | FR-TENANT-117 | Excel export | 📋 | TBD |
 
 ### District Event Management
@@ -514,6 +515,32 @@
 
 ---
 
+## Tools
+
+> File: [requirements-tools.md](../requirements/requirements-tools.md)
+
+### Newsletter Formatter
+
+| ID | Requirement | Status | Notes |
+|----|-------------|--------|-------|
+| FR-TOOLS-101 | Authenticated access | ✅ | `@login_required` |
+| FR-TOOLS-102 | Virtual Connector Mode (default) | ✅ | Tab-based mode toggle |
+| FR-TOOLS-103 | Grade-level grouping | ✅ | Parsed from title prefix |
+| FR-TOOLS-104 | Date/time formatting | ✅ | E.g. "Tues., March 25th, 8:15 AM" |
+| FR-TOOLS-105 | Configurable registration URL | ✅ | Editable form URL field |
+| FR-TOOLS-106 | Select/deselect sessions | ✅ | Per-session + group All/None |
+| FR-TOOLS-107 | Live preview panel | ✅ | Real-time HTML preview |
+| FR-TOOLS-108 | Copy to clipboard (rich HTML) | ✅ | `text/html` + `text/plain` fallback |
+| FR-TOOLS-109 | Default-off groups | ✅ | "General / KC Series" unchecked |
+| FR-TOOLS-110 | Career Exploration Events mode | ✅ | Tab toggle, loads in-person data |
+| FR-TOOLS-111 | In-person sessions API | ✅ | `/newsletter-formatter/in-person-sessions` |
+| FR-TOOLS-112 | In-person section grouping | ✅ | Career Jumping/Speakers/Fair/Other |
+| FR-TOOLS-113 | In-person date/time formatting | ✅ | E.g. "Thursday, April 2nd, from 8:30-10:30 AM" |
+| FR-TOOLS-114 | Registration link import | ✅ | `Registration_Link__c` → hyperlinked titles |
+| FR-TOOLS-115 | Virtual sessions search-and-add | ✅ | Search endpoint + cart UI + per-session Nepris links |
+
+---
+
 ## Priority Action Items
 
 ### 🚨 High Priority (User-Facing, TBD)
@@ -525,8 +552,8 @@
 
 ### ⚡ Medium Priority
 
-5. **District Teacher Management** — FR-531–532 (2 FRs)
-6. **Tenant Teacher Management** — FR-TENANT-113–117 (5 FRs)
+5. **District Teacher Management** — FR-531–532 *(Implemented)*
+6. **Tenant Teacher Management** — FR-TENANT-117 (1 FR remaining: Excel export)
 7. **Manual Archive Semester** — FR-DISTRICT-544
 
 ### 🔮 Future (Phase 5 / Near-term)

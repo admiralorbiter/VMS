@@ -36,9 +36,11 @@
                                     <th>Completed</th>
                                     <th>Filename</th>
                                     <th>Type</th>
+                                    <th>Mode</th>
                                     <th>Total Rows</th>
                                     <th>Processed</th>
-                                    <th>Skipped</th>
+                                    <th>Skipped (Historic)</th>
+                                    <th>Skipped (Other)</th>
                                     <th>Events Created</th>
                                     <th>Events Updated</th>
                                     <th>Teachers Matched</th>
@@ -65,9 +67,22 @@
                                     <td>
                                         <span class="badge bg-info">{{ imp.import_type }}</span>
                                     </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ imp.import_mode|default('full', true) }}</span>
+                                    </td>
                                     <td>{{ imp.total_rows or 0 }}</td>
                                     <td>{{ imp.processed_rows or 0 }}</td>
-                                    <td>{{ imp.skipped_rows or 0 }}</td>
+                                    <td>
+                                        {% if imp.skipped_historic_rows and imp.skipped_historic_rows > 0 %}
+                                            <span class="text-muted">{{ imp.skipped_historic_rows }}</span>
+                                        {% else %}
+                                            <span class="text-muted">0</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% set other_skipped = (imp.skipped_rows or 0) - (imp.skipped_historic_rows or 0) %}
+                                        {{ other_skipped if other_skipped > 0 else 0 }}
+                                    </td>
                                     <td>
                                         {% if imp.created_events > 0 %}
                                         <span class="text-success fw-bold">+{{ imp.created_events }}</span>

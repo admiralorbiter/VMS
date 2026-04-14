@@ -188,7 +188,10 @@ def score_volunteer_for_event(volunteer, event, tenant_id):
     )
 
     if last_attendance and last_attendance.attended_at:
-        days_since = (datetime.now(timezone.utc) - last_attendance.attended_at).days
+        attended_at = last_attendance.attended_at
+        if attended_at.tzinfo is None:
+            attended_at = attended_at.replace(tzinfo=timezone.utc)
+        days_since = (datetime.now(timezone.utc) - attended_at).days
         if days_since < 30:
             recency_score = 20
             reasons.append("Active in last 30 days")
@@ -477,7 +480,7 @@ def log_outreach():
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Error logging outreach: {e}")
+        current_app.logger.error("Error logging outreach: %s", e)
         flash("An error occurred while logging outreach.", "error")
 
     return redirect(url_for("district.recruitment_event", event_id=event_id))

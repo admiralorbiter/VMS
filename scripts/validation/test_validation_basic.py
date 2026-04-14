@@ -36,19 +36,19 @@ def test_config_loading():
 
         # Test config loading
         config = get_config()
-        logger.info(f"Configuration loaded successfully with {len(config)} sections")
+        logger.info("Configuration loaded successfully with %s sections", len(config))
 
         # Test config validation
         errors = validate_config()
         if errors:
-            logger.warning(f"Configuration validation warnings: {errors}")
+            logger.warning("Configuration validation warnings: %s", errors)
         else:
             logger.info("Configuration validation passed")
 
         assert True, "Configuration validation passed"
 
     except Exception as e:
-        logger.error(f"Configuration loading failed: {e}")
+        logger.error("Configuration loading failed: %s", e)
         assert False, f"Configuration loading failed: {e}"
 
 
@@ -87,14 +87,14 @@ def test_validation_models():
             )
 
             logger.info("Validation models created successfully")
-            logger.info(f"Run: {run}")
-            logger.info(f"Result: {result}")
-            logger.info(f"Metric: {metric}")
+            logger.info("Run: %s", run)
+            logger.info("Result: %s", result)
+            logger.info("Metric: %s", metric)
 
             assert True, "Validation model testing passed"
 
     except Exception as e:
-        logger.error(f"Validation model testing failed: {e}")
+        logger.error("Validation model testing failed: %s", e)
         assert False, f"Validation model testing failed: {e}"
 
 
@@ -107,17 +107,17 @@ def test_validation_base():
 
         # Test context creation
         context = ValidationContext(run_id=1, user_id=1)
-        logger.info(f"Validation context created: {context}")
+        logger.info("Validation context created: %s", context)
 
         # Test config access
         config_section = context.get_config_section("thresholds")
-        logger.info(f"Config section accessed: {config_section}")
+        logger.info("Config section accessed: %s", config_section)
 
         logger.info("Validation base classes tested successfully")
         assert True, "Validation base testing passed"
 
     except Exception as e:
-        logger.error(f"Validation base testing failed: {e}")
+        logger.error("Validation base testing failed: %s", e)
         assert False, f"Validation base testing failed: {e}"
 
 
@@ -130,21 +130,21 @@ def test_count_validator():
 
         # Test validator creation
         validator = CountValidator(run_id=1, entity_type="volunteer")
-        logger.info(f"Count validator created: {validator}")
+        logger.info("Count validator created: %s", validator)
 
         # Test configuration access
         tolerance = validator.tolerance_percentage
-        logger.info(f"Tolerance percentage: {tolerance}")
+        logger.info("Tolerance percentage: %s", tolerance)
 
         # Test entity type
         entity_type = validator.get_entity_type()
-        logger.info(f"Entity type: {entity_type}")
+        logger.info("Entity type: %s", entity_type)
 
         logger.info("Count validator tested successfully")
         assert True, "Count validator testing passed"
 
     except Exception as e:
-        logger.error(f"Count validator testing failed: {e}")
+        logger.error("Count validator testing failed: %s", e)
         assert False, f"Count validator testing failed: {e}"
 
 
@@ -157,17 +157,17 @@ def test_validation_engine():
 
         # Test engine creation
         engine = ValidationEngine()
-        logger.info(f"Validation engine created: {engine}")
+        logger.info("Validation engine created: %s", engine)
 
         # Test configuration access
         config = engine.config
-        logger.info(f"Engine configuration loaded: {len(config)} rules")
+        logger.info("Engine configuration loaded: %s rules", len(config))
 
         logger.info("Validation engine tested successfully")
         assert True, "Validation engine testing passed"
 
     except Exception as e:
-        logger.error(f"Validation engine testing failed: {e}")
+        logger.error("Validation engine testing failed: %s", e)
         assert False, f"Validation engine testing failed: {e}"
 
 
@@ -194,7 +194,7 @@ def test_salesforce_client_import():
         assert True, "Salesforce client import testing passed"
 
     except Exception as e:
-        logger.error(f"Salesforce client import testing failed: {e}")
+        logger.error("Salesforce client import testing failed: %s", e)
         assert False, f"Salesforce client import testing failed: {e}"
 
 
@@ -215,16 +215,16 @@ def run_all_tests():
 
     results = []
     for test_name, test_func in tests:
-        logger.info(f"\n--- Testing: {test_name} ---")
+        logger.info("\n--- Testing: %s ---", test_name)
         try:
             success = test_func()
             results.append((test_name, success))
             if success:
-                logger.info(f"✓ {test_name} PASSED")
+                logger.info("✓ %s PASSED", test_name)
             else:
-                logger.error(f"✗ {test_name} FAILED")
+                logger.error("✗ %s FAILED", test_name)
         except Exception as e:
-            logger.error(f"✗ {test_name} FAILED with exception: {e}")
+            logger.error("✗ %s FAILED with exception: %s", test_name, e)
             results.append((test_name, False))
 
     # Summary
@@ -237,9 +237,9 @@ def run_all_tests():
 
     for test_name, success in results:
         status = "PASSED" if success else "FAILED"
-        logger.info(f"{test_name}: {status}")
+        logger.info("%s: %s", test_name, status)
 
-    logger.info(f"\nOverall: {passed}/{total} tests passed")
+    logger.info("\nOverall: %s/%s tests passed", passed, total)
 
     if passed == total:
         logger.info("🎉 All tests passed! The validation system is ready for use.")
@@ -259,5 +259,5 @@ if __name__ == "__main__":
         logger.info("\nTests interrupted by user")
         sys.exit(1)
     except Exception as e:
-        logger.error(f"Unexpected error during testing: {e}")
+        logger.error("Unexpected error during testing: %s", e)
         sys.exit(1)

@@ -1,0 +1,348 @@
+.dq-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .dq-header {
+        background: linear-gradient(135deg, #467599 0%, #1d3354 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .dq-header h1 {
+        margin: 0 0 8px 0;
+        font-size: 2em;
+        font-weight: 700;
+    }
+
+    .dq-header p {
+        margin: 0;
+        opacity: 0.9;
+    }
+
+    .back-link {
+        color: white;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 15px;
+        font-weight: 500;
+    }
+
+    .back-link:hover {
+        color: #f0f0f0;
+        text-decoration: underline;
+    }
+
+    /* Stats Row */
+    .stats-row {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+    }
+
+    .stat-pill {
+        background: white;
+        border-radius: 10px;
+        padding: 18px 24px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+        flex: 1;
+        min-width: 130px;
+        border-top: 3px solid #dee2e6;
+    }
+
+    .stat-pill .stat-num {
+        display: block;
+        font-size: 2em;
+        font-weight: 700;
+    }
+
+    .stat-pill .stat-label {
+        color: #666;
+        font-size: 0.78em;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+    }
+
+    .stat-pill.open { border-top-color: #dc3545; }
+    .stat-pill.open .stat-num { color: #dc3545; }
+    .stat-pill.caps { border-top-color: #fd7e14; }
+    .stat-pill.caps .stat-num { color: #fd7e14; }
+    .stat-pill.org { border-top-color: #6f42c1; }
+    .stat-pill.org .stat-num { color: #6f42c1; }
+    .stat-pill.addr { border-top-color: #17a2b8; }
+    .stat-pill.addr .stat-num { color: #17a2b8; }
+    .stat-pill.skill { border-top-color: #ffc107; }
+    .stat-pill.skill .stat-num { color: #856404; }
+
+    /* Filters */
+    .filters-bar {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        align-items: end;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .filter-group label {
+        font-weight: 600;
+        font-size: 0.85em;
+        color: #555;
+    }
+
+    .filter-group select {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+
+    .filter-btn {
+        padding: 8px 18px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        background: #467599;
+        color: white;
+        align-self: flex-end;
+    }
+
+    .filter-btn:hover { background: #1d3354; }
+
+    .reset-btn {
+        padding: 8px 18px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        background: #6c757d;
+        color: white;
+        text-decoration: none;
+        align-self: flex-end;
+    }
+
+    .reset-btn:hover { background: #5a6268; color: white; }
+
+    .bulk-btn {
+        padding: 8px 18px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        background: #28a745;
+        color: white;
+        align-self: flex-end;
+        margin-left: auto;
+    }
+
+    .bulk-btn:hover { background: #218838; }
+
+    /* Flag Cards */
+    .flag-card {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        margin-bottom: 12px;
+        overflow: hidden;
+        border-left: 4px solid #467599;
+        transition: box-shadow 0.2s, opacity 0.3s;
+    }
+
+    .flag-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+
+    .flag-card.type-all_caps_name { border-left-color: #fd7e14; }
+    .flag-card.type-null_org_type { border-left-color: #6f42c1; }
+    .flag-card.type-missing_address { border-left-color: #17a2b8; }
+    .flag-card.type-truncated_skill { border-left-color: #ffc107; }
+    .flag-card.type-other { border-left-color: #6c757d; }
+
+    .flag-card.dismissed {
+        opacity: 0.5;
+    }
+
+    .flag-card-body {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 22px;
+        gap: 16px;
+    }
+
+    .flag-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .flag-title {
+        font-weight: 700;
+        font-size: 1em;
+        color: #333;
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .flag-meta {
+        font-size: 0.82em;
+        color: #888;
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+    }
+
+    .flag-meta span {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .flag-type-badge {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-size: 0.75em;
+        font-weight: 600;
+    }
+
+    .flag-type-badge.all_caps_name { background: #fff3cd; color: #856404; }
+    .flag-type-badge.null_org_type { background: #e8daef; color: #6f42c1; }
+    .flag-type-badge.missing_address { background: #d1ecf1; color: #0c5460; }
+    .flag-type-badge.truncated_skill { background: #ffeeba; color: #856404; }
+    .flag-type-badge.other { background: #e9ecef; color: #495057; }
+
+    .flag-details {
+        font-size: 0.88em;
+        color: #555;
+        margin-top: 4px;
+    }
+
+    .flag-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+    .dismiss-btn {
+        background: #28a745;
+        color: white;
+        border: none;
+        padding: 7px 16px;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 0.82em;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .dismiss-btn:hover { background: #218838; }
+
+    .sf-btn {
+        background: #467599;
+        color: white;
+        border: none;
+        padding: 7px 16px;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 0.82em;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        text-decoration: none;
+    }
+
+    .sf-btn:hover { background: #1d3354; color: white; }
+
+    .no-flags {
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        color: #666;
+    }
+
+    .no-flags i {
+        font-size: 3em;
+        color: #28a745;
+        display: block;
+        margin-bottom: 16px;
+    }
+
+    /* Pagination */
+    .dq-pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        margin-top: 30px;
+        flex-wrap: wrap;
+    }
+
+    .dq-pagination a,
+    .dq-pagination span {
+        padding: 8px 14px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.9em;
+        text-decoration: none;
+    }
+
+    .dq-pagination a {
+        background: white;
+        color: #467599;
+        border: 1px solid #dee2e6;
+    }
+
+    .dq-pagination a:hover {
+        background: #467599;
+        color: white;
+    }
+
+    .dq-pagination .current {
+        background: #467599;
+        color: white;
+        border: 1px solid #467599;
+    }
+
+    .dq-pagination .disabled {
+        color: #adb5bd;
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        pointer-events: none;
+    }
+
+    .results-count {
+        font-size: 0.9em;
+        color: #666;
+        text-align: center;
+        margin-bottom: 16px;
+    }
+
+    @media (max-width: 768px) {
+        .stats-row { flex-direction: column; }
+        .flag-card-body { flex-direction: column; align-items: flex-start; }
+        .flag-actions { align-self: flex-end; }
+    }

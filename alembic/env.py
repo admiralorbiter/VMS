@@ -49,12 +49,15 @@ def run_migrations_offline() -> None:
 
     """
     # Get database URL from environment or use default SQLite
+    # Get database URL from environment or from app config
     db_url = os.environ.get("DATABASE_URL")
     if db_url and db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
     if not db_url:
-        # Fallback to default SQLite database
-        db_url = "sqlite:///instance/your_database.db"
+        # Use the same default as the app config
+        from config import Config
+
+        db_url = Config.SQLALCHEMY_DATABASE_URI
 
     context.configure(
         url=db_url,
@@ -75,12 +78,15 @@ def run_migrations_online() -> None:
 
     """
     # Get database URL from environment or use default SQLite
+    # Get database URL from environment or from app config
     db_url = os.environ.get("DATABASE_URL")
     if db_url and db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
     if not db_url:
-        # Fallback to default SQLite database
-        db_url = "sqlite:///instance/your_database.db"
+        # Use the same default as the app config
+        from config import Config
+
+        db_url = Config.SQLALCHEMY_DATABASE_URI
 
     # Override the config with our database URL
     config.set_main_option("sqlalchemy.url", db_url)

@@ -270,9 +270,9 @@ Last Updated: 2024
                             </a>
                             {% endif %}
 
-                            {# Connector profile link if available #}
-                            {% if volunteer.volunteer.connector and volunteer.volunteer.connector.connector_profile_url %}
-                            <a href="{{ volunteer.volunteer.connector.connector_profile_url }}" class="btn btn-sm action-btn connector-btn" target="_blank" title="Connector Profile">
+                            {# Pathful profile link if available #}
+                            {% if volunteer.volunteer.pathful_profile and volunteer.volunteer.pathful_profile.pathful_user_id %}
+                            <a href="https://prepkc.nepris.com/app/user/{{ volunteer.volunteer.pathful_profile.pathful_user_id }}" class="btn btn-sm action-btn connector-btn" target="_blank" title="Pathful Profile">
                                 <i class="fa-solid fa-plug"></i>
                             </a>
                             {% endif %}

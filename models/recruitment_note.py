@@ -142,11 +142,12 @@ class RecruitmentNote(db.Model):
         """
         Get all recruitment notes for a volunteer within a tenant.
 
-        Returns notes in reverse chronological order.
+        Returns notes in reverse chronological order (newest first).
+        Uses id as tiebreaker when timestamps are identical.
         """
         return (
             cls.query.filter_by(volunteer_id=volunteer_id, tenant_id=tenant_id)
-            .order_by(cls.created_at.desc())
+            .order_by(cls.created_at.desc(), cls.id.desc())
             .all()
         )
 

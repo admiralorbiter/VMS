@@ -19,8 +19,6 @@ from models.contact import (
 )
 from models.organization import VolunteerOrganization
 from models.volunteer import (
-    ConnectorData,
-    ConnectorSubscriptionEnum,
     Engagement,
     EventParticipation,
     Skill,
@@ -190,14 +188,6 @@ def test_volunteer_cascade_delete(app, test_volunteer):
         # Ensure test_volunteer is attached to current session
         test_volunteer = db.session.merge(test_volunteer)
 
-        # Create related records
-        connector = ConnectorData(
-            volunteer_id=test_volunteer.id,
-            active_subscription=ConnectorSubscriptionEnum.ACTIVE,
-            role="Test Role",
-        )
-        db.session.add(connector)
-
         skill = Skill(name="Test Skill")
         db.session.add(skill)
         db.session.flush()
@@ -211,7 +201,6 @@ def test_volunteer_cascade_delete(app, test_volunteer):
         db.session.commit()
 
         # Store IDs for verification
-        connector_id = connector.id
         vol_skill_id = vol_skill.volunteer_id
 
         # Delete volunteer
@@ -219,7 +208,6 @@ def test_volunteer_cascade_delete(app, test_volunteer):
         db.session.commit()
 
         # Verify cascade deletes
-        assert db.session.get(ConnectorData, connector_id) is None
         assert (
             db.session.query(VolunteerSkill)
             .filter_by(volunteer_id=vol_skill_id)
@@ -341,35 +329,6 @@ def test_volunteer_organization_details(app, test_volunteer, test_organization):
         assert org_rel.status == "Current"
 
 
-def test_connector_data_lifecycle(app, test_volunteer):
-    """Test connector data creation and updates"""
-    with app.app_context():
-        test_volunteer = db.session.merge(test_volunteer)
-
-        connector = ConnectorData(
-            volunteer_id=test_volunteer.id,
-            active_subscription=ConnectorSubscriptionEnum.ACTIVE,
-            role="Member",
-            signup_role="Volunteer",
-            profile_link="https://example.com/profile",
-            industry="Technology",
-        )
-        db.session.add(connector)
-        db.session.commit()
-
-        # Refresh the session to ensure we get updated data
-        db.session.refresh(test_volunteer)
-
-        # Test update
-        connector.active_subscription = ConnectorSubscriptionEnum.INACTIVE
-        db.session.commit()
-        db.session.refresh(test_volunteer)
-        assert (
-            test_volunteer.connector.active_subscription
-            == ConnectorSubscriptionEnum.INACTIVE
-        )
-
-
 def test_volunteer_engagement_tracking(app, test_volunteer, test_event):
     """Test volunteer engagement tracking and history"""
     with app.app_context():
@@ -489,7 +448,7 @@ def test_local_status_edge_cases(app, test_volunteer):
     with app.app_context():
         # Ensure test_volunteer is attached to current session
         test_volunteer = db.session.merge(test_volunteer)
-        
+
         # Clear the existing local_status to test the calculation logic
         test_volunteer.local_status = LocalStatusEnum.unknown
         db.session.commit()
@@ -539,38 +498,3 @@ def test_local_status_edge_cases(app, test_volunteer):
             "All addresses:",
             [(a.zip_code, a.primary, a.type) for a in test_volunteer.addresses],
         )
-
-
-def test_connector_data_constraints(app, test_volunteer):
-    """Test connector data constraints and unique fields"""
-    with app.app_context():
-        # Create first connector
-        connector1 = ConnectorData(
-            volunteer_id=test_volunteer.id,
-            active_subscription=ConnectorSubscriptionEnum.ACTIVE,
-            user_auth_id="ABC1234",
-        )
-        db.session.add(connector1)
-        db.session.commit()
-
-        # Test unique user_auth_id constraint
-        with pytest.raises(IntegrityError):  # Changed from generic Exception
-            connector2 = ConnectorData(
-                volunteer_id=test_volunteer.id,
-                active_subscription=ConnectorSubscriptionEnum.ACTIVE,
-                user_auth_id="ABC1234",  # Duplicate user_auth_id
-            )
-            db.session.add(connector2)
-            db.session.commit()
-
-        db.session.rollback()
-
-        # For one-to-one relationship test, we need to flush to see the error
-        with pytest.raises(IntegrityError):  # Changed from generic Exception
-            connector3 = ConnectorData(
-                volunteer_id=test_volunteer.id,
-                active_subscription=ConnectorSubscriptionEnum.ACTIVE,
-                user_auth_id="XYZ9876",
-            )
-            db.session.add(connector3)
-            db.session.flush()  # Changed from commit() to flush()

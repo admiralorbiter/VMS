@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}Data Quality Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/mgmt_data_quality.css">
+{% endblock %}
+
+{% block content %}
+<div class="dq-container">
+    <div class="dq-header">
+        <a href="{{ url_for('management.admin') }}" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Admin Dashboard
+        </a>
+        <h1><i class="fas fa-database"></i> Data Quality Dashboard</h1>
+        <p>Review and manage Salesforce data quality flags from automated imports (TD-034)</p>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+        <div class="stat-pill open">
+            <span class="stat-num" id="stat-open">{{ total_open }}</span>
+            <span class="stat-label">Open Flags</span>
+        </div>
+        <div class="stat-pill caps">
+            <span class="stat-num">{{ count_by_type.get('all_caps_name', 0) }}</span>
+            <span class="stat-label">ALL CAPS Names</span>
+        </div>
+        <div class="stat-pill org">
+            <span class="stat-num">{{ count_by_type.get('null_org_type', 0) }}</span>
+            <span class="stat-label">Missing Org Type</span>
+        </div>
+        <div class="stat-pill addr">
+            <span class="stat-num">{{ count_by_type.get('missing_address', 0) }}</span>
+            <span class="stat-label">Empty Address</span>
+        </div>
+        <div class="stat-pill skill">
+            <span class="stat-num">{{ count_by_type.get('truncated_skill', 0) }}</span>
+            <span class="stat-label">Truncated Skill</span>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <form class="filters-bar" method="GET" id="filterForm">
+        <div class="filter-group">
+            <label for="issue_type_filter">Issue Type</label>
+            <select id="issue_type_filter" name="issue_type">
+                <option value="">All Types</option>
+                {% for it in issue_types %}
+                <option value="{{ it }}" {% if request.args.get('issue_type') == it %}selected{% endif %}>
+                    {{ issue_type_display(it) }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="entity_type_filter">Entity Type</label>
+            <select id="entity_type_filter" name="entity_type">
+                <option value="">All</option>
+                {% for et in entity_types %}
+                <option value="{{ et }}" {% if request.args.get('entity_type') == et %}selected{% endif %}>
+                    {{ et | capitalize }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="status_filter">Status</label>
+            <select id="status_filter" name="status">
+                <option value="open" {% if request.args.get('status', 'open') == 'open' %}selected{% endif %}>Open</option>
+                <option value="dismissed" {% if request.args.get('status') == 'dismissed' %}selected{% endif %}>Dismissed</option>
+                <option value="fixed_in_sf" {% if request.args.get('status') == 'fixed_in_sf' %}selected{% endif %}>Fixed in SF</option>
+                <option value="auto_fixed" {% if request.args.get('status') == 'auto_fixed' %}selected{% endif %}>Auto-Fixed</option>
+                <option value="all" {% if request.args.get('status') == 'all' %}selected{% endif %}>All</option>
+            </select>
+        </div>
+        <button type="submit" class="filter-btn">Apply</button>
+        <a href="{{ url_for('management.data_quality_dashboard') }}" class="reset-btn">Reset</a>
+
+        {% if request.args.get('issue_type') and request.args.get('status', 'open') == 'open' %}
+        <button type="button" class="bulk-btn" onclick="bulkDismiss('{{ request.args.get('issue_type') }}')">
+            <i class="fas fa-check-double"></i> Dismiss All {{ issue_type_display(request.args.get('issue_type')) }}
+        </button>
+        {% endif %}
+    </form>
+
+    <!-- Results Count -->
+    <div class="results-count">
+        Showing {{ flags|length }} of {{ pagination.total }} flags
+        (page {{ pagination.page }} of {{ pagination.pages or 1 }})
+    </div>
+
+    <!-- Flag List -->
+    {% if flags %}
+    {% for flag in flags %}
+    <div class="flag-card type-{{ flag.issue_type }} {% if flag.status != 'open' %}dismissed{% endif %}" id="flag-card-{{ flag.id }}">
+        <div class="flag-card-body">
+            <div class="flag-info">
+                <div class="flag-title">
+                    <span class="flag-type-badge {{ flag.issue_type }}">{{ flag.issue_type_display }}</span>
+                    {{ flag.entity_type | capitalize }} #{{ flag.entity_id }}
+                </div>
+                <div class="flag-meta">
+                    <span><i class="fas fa-tag"></i> {{ flag.entity_type }}</span>
+                    {% if flag.salesforce_id %}
+                    <span><i class="fab fa-salesforce"></i> {{ flag.salesforce_id }}</span>
+                    {% endif %}
+                    <span><i class="fas fa-clock"></i> {{ flag.created_at.strftime('%b %d, %Y') if flag.created_at else '' }}</span>
+                    <span class="badge bg-{{ 'success' if flag.status == 'auto_fixed' else 'secondary' if flag.status == 'dismissed' else 'info' if flag.status == 'fixed_in_sf' else 'danger' }}">
+                        {{ flag.status }}
+                    </span>
+                </div>
+                {% if flag.details %}
+                <div class="flag-details">
+                    <i class="fas fa-info-circle"></i> {{ flag.details }}
+                </div>
+                {% endif %}
+                {% if flag.resolution_notes %}
+                <div class="flag-details" style="color: #28a745;">
+                    <i class="fas fa-check-circle"></i> {{ flag.resolution_notes }}
+                    {% if flag.resolved_at %} — {{ flag.resolved_at.strftime('%b %d') }}{% endif %}
+                </div>
+                {% endif %}
+            </div>
+            <div class="flag-actions">
+                {% if flag.salesforce_id %}
+                <a href="https://prepkc.lightning.force.com/lightning/r/{{ flag.salesforce_id }}/view"
+                   target="_blank" class="sf-btn" title="View in Salesforce">
+                    <i class="fab fa-salesforce"></i>
+                </a>
+                {% endif %}
+                {% if flag.status == 'open' %}
+                <button class="dismiss-btn" onclick="dismissFlag({{ flag.id }})">
+                    <i class="fas fa-check"></i> Dismiss
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Pagination -->
+    {% if pagination.pages > 1 %}
+    <div class="dq-pagination">
+        {% if pagination.has_prev %}
+        <a href="{{ url_for('management.data_quality_dashboard', page=pagination.prev_num, issue_type=request.args.get('issue_type', ''), entity_type=request.args.get('entity_type', ''), status=request.args.get('status', 'open')) }}">
+            &laquo; Prev
+        </a>
+        {% else %}
+        <span class="disabled">&laquo; Prev</span>
+        {% endif %}
+
+        {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if p %}
+                {% if p == pagination.page %}
+                <span class="current">{{ p }}</span>
+                {% else %}
+                <a href="{{ url_for('management.data_quality_dashboard', page=p, issue_type=request.args.get('issue_type', ''), entity_type=request.args.get('entity_type', ''), status=request.args.get('status', 'open')) }}">{{ p }}</a>
+                {% endif %}
+            {% else %}
+                <span class="disabled">&hellip;</span>
+            {% endif %}
+        {% endfor %}
+
+        {% if pagination.has_next %}
+        <a href="{{ url_for('management.data_quality_dashboard', page=pagination.next_num, issue_type=request.args.get('issue_type', ''), entity_type=request.args.get('entity_type', ''), status=request.args.get('status', 'open')) }}">
+            Next &raquo;
+        </a>
+        {% else %}
+        <span class="disabled">Next &raquo;</span>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="no-flags">
+        <i class="fas fa-check-circle"></i>
+        <h3>No flags to review</h3>
+        <p>All clear! There are no {{ request.args.get('status', 'open') }} data quality issues{% if request.args.get('issue_type') %} of type "{{ issue_type_display(request.args.get('issue_type')) }}"{% endif %}.</p>
+    </div>
+    {% endif %}
+</div>
+<script src="/static/js/mgmt_data_quality.js"></script>
+{% endblock %}

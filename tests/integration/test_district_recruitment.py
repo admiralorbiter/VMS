@@ -26,15 +26,6 @@ from routes.district.recruitment import calculate_urgency, score_volunteer_for_e
 class TestUrgencyCalculation:
     """Tests for FR-SELFSERV-401: Urgency indicators."""
 
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        app.config["WTF_CSRF_ENABLED"] = False
-        return app
-
     def test_urgency_calculation_exists(self, app):
         """TC-1101: Urgency calculation function exists."""
         with app.app_context():
@@ -94,15 +85,6 @@ class TestUrgencyCalculation:
 class TestVolunteerScoring:
     """Tests for FR-SELFSERV-402: Volunteer scoring."""
 
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        app.config["WTF_CSRF_ENABLED"] = False
-        return app
-
     def test_scoring_function_exists(self, app):
         """TC-1110: Volunteer scoring function exists."""
         with app.app_context():
@@ -134,15 +116,6 @@ class TestVolunteerScoring:
 class TestOutreachModel:
     """Tests for FR-SELFSERV-403: Outreach tracking."""
 
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        app.config["WTF_CSRF_ENABLED"] = False
-        return app
-
     def test_outreach_model_exists(self, app):
         """TC-1120: OutreachAttempt model exists."""
         with app.app_context():
@@ -169,15 +142,6 @@ class TestOutreachModel:
 
 class TestRecruitmentRoutes:
     """Tests for recruitment route registration."""
-
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        app.config["WTF_CSRF_ENABLED"] = False
-        return app
 
     def test_recruitment_dashboard_route_exists(self, app):
         """TC-1101: Recruitment dashboard route exists."""

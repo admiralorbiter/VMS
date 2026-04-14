@@ -1,0 +1,259 @@
+.teacher-breakdown-container {
+    max-width: 98vw;
+    margin: 0 auto;
+    padding: 8px 8px 20px 8px;
+}
+
+.district-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.back-link {
+    color: white;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 15px;
+    font-weight: 500;
+}
+
+.back-link:hover {
+    color: #f0f0f0;
+    text-decoration: underline;
+}
+
+.district-title {
+    margin: 0 0 10px 0;
+    font-size: 2.5em;
+    font-weight: 700;
+}
+
+.district-subtitle {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 1.1em;
+}
+
+.filters-section {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+
+.filters-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    align-items: end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filter-group label {
+    font-weight: 600;
+    color: #333;
+    font-size: 0.9em;
+}
+
+.filter-group select,
+.filter-group input {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    grid-column: 1 / -1;
+    margin-top: 15px;
+}
+
+.filter-btn, .reset-btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+    white-space: nowrap;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.filter-btn {
+    background: #007bff;
+    color: white;
+}
+
+.filter-btn:hover {
+    background: #0056b3;
+    color: white;
+    text-decoration: none;
+}
+
+.reset-btn {
+    background: #dc3545;
+    color: white;
+}
+
+.reset-btn:hover {
+    background: #c82333;
+    color: white;
+    text-decoration: none;
+}
+
+.teacher-breakdown-table {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    margin-bottom: 30px;
+    width: 100%;
+}
+
+.teacher-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.teacher-table th {
+    background: #f8f9fa;
+    padding: 15px 10px;
+    text-align: left;
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+    border-right: 1px solid #dee2e6;
+    vertical-align: top;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.teacher-table th:last-child {
+    border-right: none;
+}
+
+.school-header {
+    text-align: center;
+    font-size: 1em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 20px 10px;
+    background: #007bff;
+    color: white;
+}
+
+.school-stats {
+    font-size: 0.8em;
+    font-weight: normal;
+    opacity: 0.9;
+    margin-top: 5px;
+}
+
+.teacher-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #dee2e6;
+    border-right: 1px solid #dee2e6;
+    vertical-align: top;
+}
+
+.teacher-table td:last-child {
+    border-right: none;
+}
+
+.teacher-cell {
+    min-height: 40px;
+    background: #fafafa;
+}
+
+.teacher-name {
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.teacher-link {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.teacher-link:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+.session-count {
+    font-size: 0.9em;
+    color: #28a745;
+    font-weight: 600;
+}
+
+.session-count.high {}
+.session-count.medium {}
+.session-count.low {}
+
+.no-show-count {
+    font-size: 0.85em;
+    color: #dc3545;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+.upcoming-session-count {
+    font-size: 0.85em;
+    color: #6f42c1;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+.no-data {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+    font-size: 1.1em;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 768px) {
+    .teacher-table {
+        font-size: 12px;
+    }
+
+    .teacher-table th,
+    .teacher-table td {
+        padding: 6px 8px;
+    }
+
+    .school-header {
+        font-size: 0.9em;
+        padding: 15px 8px;
+    }
+
+    .filters-form {
+        grid-template-columns: 1fr;
+    }
+}

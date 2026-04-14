@@ -428,34 +428,12 @@ Security: All links properly escaped and validated
             {% endif %}
             {% endif %}
 
-            {# Add text-based educators for virtual events #}
-            {% if event.educators and (event.format.value == 'virtual' or event.type.value == 'virtual_session') %}
-            <div class="participation-group">
-                <h4 class="group-title">
-                    <span class="status-badge">Educators</span>
-                    ({{ event.educators.split(';')|length }})
-                </h4>
-                <div class="participants-grid">
-                    {% for educator in event.educators.split(';') %}
-                    {% if educator.strip() %}
-                    <div class="participant-card volunteer-card" data-name="{{ educator.strip() }}">
-                        <div class="participant-info">
-                            <span class="participant-name">{{ educator.strip() }}</span>
-                            <span class="org-name">(Educator)</span>
-                        </div>
-                    </div>
-                    {% endif %}
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-
-            {% if not participation_stats and not event.volunteers and not event.educators %}
+            {% if not participation_stats and not event.volunteers %}
             <div class="no-participation">No volunteer participation data available.</div>
             {% endif %}
         </div>
 
-        {# Teacher Tab - Combined data from event_teachers and educators #}
+        {# Teacher Tab - Unified display from EventTeacher records #}
         <div class="tab-content" id="teacher-tab" style="display:none;">
             {% if event_teachers %}
             <div class="participation-group">
@@ -478,6 +456,9 @@ Security: All links properly escaped and validated
                                 {{ event_teacher.status|title }}
                                 {% endif %}
                             </span>
+                            {% if event_teacher.teacher.import_source == 'pathful' %}
+                            <span class="org-name">(Imported)</span>
+                            {% endif %}
                             {% if event_teacher.teacher.exclude_from_reports %}
                             <span class="exclude-badge">Excluded from Reports</span>
                             {% endif %}

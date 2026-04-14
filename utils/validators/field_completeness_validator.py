@@ -94,7 +94,7 @@ class FieldCompletenessValidator(DataValidator):
             return self.results
 
         except Exception as e:
-            logger.error(f"Field completeness validation failed: {e}")
+            logger.exception("Field completeness validation failed: %s", e)
             raise
         finally:
             if self.salesforce_client:
@@ -103,13 +103,13 @@ class FieldCompletenessValidator(DataValidator):
     def _validate_entity_completeness(self, entity_type: str):
         """Validate field completeness for a specific entity type."""
         try:
-            logger.info(f"Validating field completeness for {entity_type}")
+            logger.info("Validating field completeness for %s", entity_type)
 
             # Get sample records from Salesforce
             sample_records = self._get_salesforce_sample(entity_type, limit=100)
 
             if not sample_records:
-                logger.warning(f"No sample records found for {entity_type}")
+                logger.warning("No sample records found for %s", entity_type)
                 return
 
             # Validate each record
@@ -170,7 +170,7 @@ class FieldCompletenessValidator(DataValidator):
             )
 
         except Exception as e:
-            logger.error(
+            logger.exception(
                 f"Failed to validate field completeness for {entity_type}: {e}"
             )
             self.add_result(
@@ -203,11 +203,13 @@ class FieldCompletenessValidator(DataValidator):
             elif entity_type == "district":
                 return self.salesforce_client.get_district_sample(limit=limit)
             else:
-                logger.warning(f"Unknown entity type for sampling: {entity_type}")
+                logger.warning("Unknown entity type for sampling: %s", entity_type)
                 return []
 
         except Exception as e:
-            logger.error(f"Failed to get Salesforce sample for {entity_type}: {e}")
+            logger.exception(
+                "Failed to get Salesforce sample for %s: %s", entity_type, e
+            )
             return []
 
     def _validate_record_fields(
@@ -474,7 +476,7 @@ class FieldCompletenessValidator(DataValidator):
             )
 
         except Exception as e:
-            logger.error(f"Failed to add field completeness summary metrics: {e}")
+            logger.exception("Failed to add field completeness summary metrics: %s", e)
 
     def get_validation_summary(self) -> Dict[str, Any]:
         """Get a summary of the field completeness validation results."""

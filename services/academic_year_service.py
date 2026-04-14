@@ -112,3 +112,45 @@ def generate_academic_year_options(
         years.append(f"{year}-{year + 1}")
 
     return years
+
+
+def get_school_year_dates(school_year: str) -> tuple:
+    """
+    Convert a school year string to start and end dates.
+
+    Handles both 2-digit format (e.g., '24-25') and 4-digit format
+    (e.g., '2024-2025'). Returns dates for the school year running
+    from June 1 of the start year to May 31 of the end year.
+
+    This function was consolidated from 3 route files (TD-044):
+      - routes/reports/attendance.py
+      - routes/virtual/usage/computation.py (alias)
+      - routes/reports/virtual_session/computation.py (alias)
+
+    Args:
+        school_year: The school year string (e.g., '24-25' or '2024-2025')
+
+    Returns:
+        tuple: (start_date, end_date)
+    """
+    try:
+        parts = school_year.split("-")
+        start_year = int(parts[0])
+        end_year = int(parts[1])
+    except (ValueError, IndexError):
+        # Fallback to current school year
+        now = datetime.now()
+        start_year = now.year if now.month >= 6 else now.year - 1
+        end_year = start_year + 1
+
+    # Convert 2-digit years to 4-digit
+    if start_year < 100:
+        start_year = 2000 + start_year
+    if end_year < 100:
+        end_year = 2000 + end_year
+
+    # School year runs June 1 to May 31
+    start_date = datetime(start_year, 6, 1)
+    end_date = datetime(end_year, 5, 31)
+
+    return start_date, end_date

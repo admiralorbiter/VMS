@@ -12,12 +12,12 @@ from models.contact import LocalStatusEnum
 from models.event import Event, EventType
 from models.organization import Organization, VolunteerOrganization
 from models.reports import RecruitmentCandidatesCache
-from models.volunteer import (
-    ConnectorData,
-    EventParticipation,
-    Skill,
-    Volunteer,
-    VolunteerSkill,
+from models.volunteer import EventParticipation, Skill, Volunteer, VolunteerSkill
+from services.recruitment_scoring_service import (
+    derive_keywords,
+    derive_type_keywords,
+    local_boost,
+    recency_boost,
 )
 
 # Create blueprint
@@ -163,11 +163,10 @@ def load_routes(bp):
         for event in upcoming_events:
             # Extract the URL from the HTML anchor tag if it exists
             registration_link = None
-            if event.registration_link and "href=" in event.registration_link:
-                start = event.registration_link.find('href="') + 6
-                end = event.registration_link.find('"', start)
-                if start > 5 and end > start:  # ensure we found both quotes
-                    registration_link = event.registration_link[start:end]
+            if event.registration_link:
+                from services.salesforce.utils import extract_href_from_html
+
+                registration_link = extract_href_from_html(event.registration_link)
 
             events_data.append(
                 {
@@ -274,8 +273,12 @@ def load_routes(bp):
 
         # Apply connector filter if requested
         if connector_only:
+            from models.pathful_import import PathfulUserProfile
+
             query = query.filter(
-                Volunteer.connector.has(ConnectorData.user_auth_id.isnot(None))
+                Volunteer.pathful_profile.has(
+                    PathfulUserProfile.pathful_user_id.isnot(None)
+                )
             )
 
         # Apply sorting
@@ -340,6 +343,169 @@ def load_routes(bp):
             connector_only=connector_only,  # Pass the connector filter state
         )
 
+    @bp.route("/reports/recruitment/search.csv")
+    @login_required
+    def recruitment_search_csv():
+        """CSV export of advanced search results (FR-RECRUIT-307).
+
+        Accepts the same query params as recruitment_search() but returns
+        all matching volunteers as a downloadable CSV file with additional
+        columns (email, activity dates) for outreach purposes.
+        """
+        search_query = request.args.get("search", "").strip()
+        sort_by = request.args.get("sort", "name")
+        order = request.args.get("order", "asc")
+        search_mode = request.args.get("search_mode", "wide")
+        connector_only = request.args.get("connector_only", type=bool)
+
+        # Build the same query as the HTML search route
+        query = (
+            eagerload_volunteer_bundle(Volunteer.query)
+            .outerjoin(VolunteerOrganization)
+            .outerjoin(Organization)
+            .outerjoin(VolunteerSkill)
+            .outerjoin(Skill)
+            .outerjoin(EventParticipation)
+            .outerjoin(Event)
+        )
+
+        if search_query:
+            search_terms = [
+                term.strip() for term in search_query.split() if term.strip()
+            ]
+
+            if search_mode == "wide":
+                search_conditions = []
+                for term in search_terms:
+                    search_conditions.append(
+                        db.or_(
+                            Volunteer.first_name.ilike(f"%{term}%"),
+                            Volunteer.last_name.ilike(f"%{term}%"),
+                            Organization.name.ilike(f"%{term}%"),
+                            Skill.name.ilike(f"%{term}%"),
+                            Event.title.ilike(f"%{term}%"),
+                            Volunteer.title.ilike(f"%{term}%"),
+                            Volunteer.industry.ilike(f"%{term}%"),
+                            db.cast(Volunteer.local_status, db.String).ilike(
+                                f"%{term}%"
+                            ),
+                            db.cast(Event.type, db.String).ilike(f"%{term}%"),
+                        )
+                    )
+                query = query.filter(db.or_(*search_conditions))
+            else:
+                for term in search_terms:
+                    query = query.filter(
+                        db.or_(
+                            Volunteer.first_name.ilike(f"%{term}%"),
+                            Volunteer.last_name.ilike(f"%{term}%"),
+                            Organization.name.ilike(f"%{term}%"),
+                            Skill.name.ilike(f"%{term}%"),
+                            Event.title.ilike(f"%{term}%"),
+                            Volunteer.title.ilike(f"%{term}%"),
+                            Volunteer.industry.ilike(f"%{term}%"),
+                            db.cast(Volunteer.local_status, db.String).ilike(
+                                f"%{term}%"
+                            ),
+                            db.cast(Event.type, db.String).ilike(f"%{term}%"),
+                        )
+                    )
+
+        if connector_only:
+            from models.pathful_import import PathfulUserProfile
+
+            query = query.filter(
+                Volunteer.pathful_profile.has(
+                    PathfulUserProfile.pathful_user_id.isnot(None)
+                )
+            )
+
+        # Apply sorting (same as HTML route)
+        if sort_by == "name":
+            if order == "asc":
+                query = query.order_by(Volunteer.first_name, Volunteer.last_name)
+            else:
+                query = query.order_by(
+                    db.desc(Volunteer.first_name), db.desc(Volunteer.last_name)
+                )
+        elif sort_by == "organization":
+            if order == "asc":
+                query = query.order_by(Organization.name)
+            else:
+                query = query.order_by(db.desc(Organization.name))
+        elif sort_by == "last_email":
+            if order == "asc":
+                query = query.order_by(Volunteer.last_non_internal_email_date)
+            else:
+                query = query.order_by(db.desc(Volunteer.last_non_internal_email_date))
+        elif sort_by == "last_volunteer":
+            if order == "asc":
+                query = query.order_by(Volunteer.last_volunteer_date)
+            else:
+                query = query.order_by(db.desc(Volunteer.last_volunteer_date))
+
+        # Fetch all results (no pagination for CSV export)
+        volunteers = query.distinct().all()
+
+        # Build CSV output
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(
+            [
+                "Name",
+                "Email",
+                "Title",
+                "Organization",
+                "Skills",
+                "Last Non-Internal Email Date",
+                "Last Volunteer Date",
+                "Times Volunteered",
+            ]
+        )
+
+        for v in volunteers:
+            writer.writerow(
+                [
+                    v.full_name,
+                    v.primary_email or "",
+                    v.title or "",
+                    (
+                        ", ".join(org.name for org in v.organizations)
+                        if v.organizations
+                        else ""
+                    ),
+                    "; ".join(skill.name for skill in v.skills) if v.skills else "",
+                    (
+                        v.last_non_internal_email_date.strftime("%Y-%m-%d")
+                        if v.last_non_internal_email_date
+                        else ""
+                    ),
+                    (
+                        v.last_volunteer_date.strftime("%Y-%m-%d")
+                        if v.last_volunteer_date
+                        else ""
+                    ),
+                    v.total_times_volunteered,
+                ]
+            )
+
+        csv_data = output.getvalue()
+
+        # Build descriptive filename
+        if search_query:
+            clean_query = "".join(c for c in search_query if c.isalnum() or c in " -_")[
+                :30
+            ].strip()
+            filename = f"volunteer_search_{clean_query}.csv"
+        else:
+            filename = "volunteer_search_export.csv"
+
+        headers = {
+            "Content-Type": "text/csv; charset=utf-8",
+            "Content-Disposition": f"attachment; filename={filename}",
+        }
+        return Response(csv_data, headers=headers)
+
     @bp.route("/reports/recruitment/candidates")
     @login_required
     def recruitment_candidates():
@@ -400,939 +566,7 @@ def load_routes(bp):
                 404,
             )
 
-        # Define helper functions for keyword derivation
-        def derive_type_keywords(event_type: EventType) -> list[str]:
-            """Derive keywords based on event type with comprehensive mappings."""
-            type_mappings = {
-                EventType.DATA_VIZ: [
-                    "data",
-                    "analytics",
-                    "bi",
-                    "visualization",
-                    "tableau",
-                    "power bi",
-                    "excel",
-                    "sql",
-                    "python",
-                    "r",
-                    "statistics",
-                    "reporting",
-                ],
-                EventType.CAREER_FAIR: [
-                    "career",
-                    "job search",
-                    "networking",
-                    "professional",
-                    "resume",
-                    "interview",
-                    "employment",
-                    "workforce",
-                ],
-                EventType.CAREER_SPEAKER: [
-                    "career",
-                    "professional development",
-                    "leadership",
-                    "industry",
-                    "expertise",
-                    "experience",
-                    "mentoring",
-                ],
-                EventType.CAREER_JUMPING: [
-                    "career transition",
-                    "skill development",
-                    "professional growth",
-                    "industry change",
-                    "adaptability",
-                ],
-                EventType.EMPLOYABILITY_SKILLS: [
-                    "soft skills",
-                    "communication",
-                    "teamwork",
-                    "problem solving",
-                    "leadership",
-                    "professional",
-                    "workplace",
-                ],
-                EventType.FINANCIAL_LITERACY: [
-                    "finance",
-                    "financial",
-                    "accounting",
-                    "budgeting",
-                    "investing",
-                    "banking",
-                    "economics",
-                    "money management",
-                ],
-                EventType.MATH_RELAYS: [
-                    "mathematics",
-                    "math",
-                    "stem",
-                    "education",
-                    "teaching",
-                    "problem solving",
-                    "analytical",
-                ],
-                EventType.CLASSROOM_SPEAKER: [
-                    "education",
-                    "teaching",
-                    "presentation",
-                    "communication",
-                    "public speaking",
-                    "knowledge sharing",
-                ],
-                EventType.MENTORING: [
-                    "mentoring",
-                    "guidance",
-                    "coaching",
-                    "leadership",
-                    "experience",
-                    "development",
-                    "support",
-                ],
-                EventType.INTERNSHIP: [
-                    "internship",
-                    "entry level",
-                    "learning",
-                    "experience",
-                    "professional development",
-                    "career start",
-                ],
-                EventType.VIRTUAL_SESSION: [
-                    # No type keywords for virtual sessions - focus on content analysis instead
-                    # Keywords will come from title/description analysis
-                ],
-                EventType.CONNECTOR_SESSION: [
-                    "networking",
-                    "connections",
-                    "relationship building",
-                    "professional network",
-                    "collaboration",
-                ],
-                EventType.WORKPLACE_VISIT: [
-                    "workplace",
-                    "office",
-                    "corporate",
-                    "business",
-                    "professional environment",
-                    "industry exposure",
-                    "real world",
-                ],
-                EventType.CAMPUS_VISIT: [
-                    "campus",
-                    "college",
-                    "university",
-                    "higher education",
-                    "academic",
-                    "student life",
-                    "college preparation",
-                ],
-                EventType.COLLEGE_OPTIONS: [
-                    "college",
-                    "university",
-                    "higher education",
-                    "academic planning",
-                    "college preparation",
-                    "admissions",
-                ],
-                EventType.FAFSA: [
-                    "fafsa",
-                    "financial aid",
-                    "college funding",
-                    "scholarships",
-                    "student loans",
-                    "college costs",
-                ],
-                EventType.IGNITE: [
-                    "ignite",
-                    "leadership",
-                    "youth development",
-                    "empowerment",
-                    "community service",
-                    "social impact",
-                ],
-                EventType.DIA: [
-                    "dia",
-                    "diversity",
-                    "inclusion",
-                    "access",
-                    "equity",
-                    "representation",
-                    "social justice",
-                ],
-            }
-
-            return type_mappings.get(event_type, [])
-
-        def derive_text_keywords(title: str, description: str = "") -> list[str]:
-            """Extract keywords from event title and description using NLP-like techniques."""
-            text = f"{title or ''} {description or ''}".lower()
-            keywords = set()
-
-            # Common professional domains
-            domain_patterns = {
-                "technology": [
-                    "tech",
-                    "software",
-                    "programming",
-                    "coding",
-                    "developer",
-                    "engineer",
-                    "it",
-                    "computer",
-                ],
-                "business": [
-                    "business",
-                    "management",
-                    "strategy",
-                    "operations",
-                    "consulting",
-                    "entrepreneur",
-                ],
-                "healthcare": [
-                    "health",
-                    "medical",
-                    "clinical",
-                    "patient",
-                    "healthcare",
-                    "nursing",
-                    "pharmacy",
-                ],
-                "education": [
-                    "education",
-                    "teaching",
-                    "learning",
-                    "academic",
-                    "curriculum",
-                    "instruction",
-                    "classroom",
-                    "student",
-                    "elementary",
-                    "primary",
-                    "k-1",
-                    "k-2",
-                    "k-3",
-                    "k-4",
-                    "k-5",
-                    "early childhood",
-                ],
-                "finance": [
-                    "finance",
-                    "financial",
-                    "accounting",
-                    "banking",
-                    "investment",
-                    "audit",
-                ],
-                "marketing": [
-                    "marketing",
-                    "advertising",
-                    "branding",
-                    "social media",
-                    "digital marketing",
-                ],
-                "sales": [
-                    "sales",
-                    "business development",
-                    "account management",
-                    "client relations",
-                ],
-                "engineering": [
-                    "engineering",
-                    "mechanical",
-                    "electrical",
-                    "civil",
-                    "chemical",
-                    "design",
-                ],
-                "science": [
-                    "science",
-                    "research",
-                    "laboratory",
-                    "experiment",
-                    "analysis",
-                    "scientific",
-                ],
-                "arts": [
-                    "arts",
-                    "creative",
-                    "design",
-                    "visual",
-                    "media",
-                    "production",
-                    "paint",
-                    "painting",
-                    "artistic",
-                    "creativity",
-                    "craft",
-                    "drawing",
-                    "sculpture",
-                    "photography",
-                    "music",
-                    "dance",
-                    "theater",
-                    "performance",
-                    "expression",
-                    "imagination",
-                ],
-                "civics": [
-                    "civics",
-                    "citizenship",
-                    "government",
-                    "democracy",
-                    "community",
-                    "social studies",
-                    "responsible",
-                    "citizen",
-                    "civic",
-                    "patriotism",
-                    "rights",
-                    "responsibilities",
-                ],
-            }
-
-            # Check for domain matches - use word boundaries to avoid false positives
-            for domain, terms in domain_patterns.items():
-                domain_matches = []
-                for term in terms:
-                    # Use word boundaries to avoid partial matches
-                    if (
-                        f" {term} " in f" {text} "
-                        or text.startswith(term)
-                        or text.endswith(term)
-                    ):
-                        domain_matches.append(term)
-
-                if domain_matches:
-                    keywords.update(
-                        domain_matches[:3]
-                    )  # Limit to top 3 terms per domain
-
-            # Specific tool/technology detection - only if explicitly mentioned
-            tools = [
-                "excel",
-                "tableau",
-                "power bi",
-                "sql",
-                "python",
-                "r",
-                "spss",
-                "sas",
-                "quickbooks",
-                "salesforce",
-            ]
-            for tool in tools:
-                # Only add if the tool is explicitly mentioned as a standalone word
-                if (
-                    f" {tool} " in f" {text} "
-                    or text.startswith(tool)
-                    or text.endswith(tool)
-                ):
-                    keywords.add(tool)
-
-            # Professional level indicators
-            levels = [
-                "entry level",
-                "mid level",
-                "senior",
-                "executive",
-                "director",
-                "manager",
-                "lead",
-                "principal",
-            ]
-            for level in levels:
-                if level in text:
-                    keywords.add(level)
-
-            return list(keywords)
-
-        def derive_format_keywords(event_format) -> list[str]:
-            """Derive keywords based on event format."""
-            if hasattr(event_format, "value"):
-                if "virtual" in event_format.value.lower():
-                    return ["virtual", "remote", "online", "digital"]
-                elif "in_person" in event_format.value.lower():
-                    return ["in-person", "onsite", "face-to-face"]
-            return []
-
-        def derive_location_keywords(location: str, school: str) -> list[str]:
-            """Derive keywords based on location context."""
-            keywords = []
-            if location:
-                location_lower = location.lower()
-                # Add location-specific keywords
-                if any(
-                    word in location_lower for word in ["downtown", "urban", "city"]
-                ):
-                    keywords.extend(["urban", "city", "downtown"])
-                if any(word in location_lower for word in ["suburban", "suburb"]):
-                    keywords.extend(["suburban", "suburb"])
-                if any(word in location_lower for word in ["rural", "country"]):
-                    keywords.extend(["rural", "country"])
-
-            return keywords
-
-        # Hybrid Fallback System Functions
-        def extract_meaningful_words(text: str) -> list[str]:
-            """Extract meaningful words from event titles for fallback keyword generation."""
-            # Remove common stop words
-            stop_words = {
-                "the",
-                "a",
-                "an",
-                "and",
-                "or",
-                "but",
-                "in",
-                "on",
-                "at",
-                "to",
-                "for",
-                "of",
-                "with",
-                "by",
-                "from",
-                "up",
-                "about",
-                "into",
-                "through",
-                "during",
-                "before",
-                "after",
-                "above",
-                "below",
-                "between",
-                "among",
-                "inside",
-                "outside",
-            }
-
-            # Extract words and filter
-            words = [word.lower().strip('.,!?()[]{}":;') for word in text.split()]
-            meaningful_words = [
-                word for word in words if word not in stop_words and len(word) > 2
-            ]
-
-            # Limit to top 5 most meaningful words
-            return meaningful_words[:5]
-
-        def derive_contextual_keywords(event_type: EventType, title: str) -> list[str]:
-            """Generate subject-relevant keywords based on event type and title patterns."""
-            contextual_keywords = []
-
-            # Title-based subject patterns - focus on actual content, not delivery method
-            title_lower = title.lower()
-
-            # Arts & Creativity
-            if any(
-                word in title_lower
-                for word in [
-                    "paint",
-                    "art",
-                    "creative",
-                    "design",
-                    "drawing",
-                    "sculpture",
-                ]
-            ):
-                contextual_keywords.extend(
-                    ["artistic", "creativity", "visual arts", "design", "painting"]
-                )
-
-            # STEM & Technical
-            elif any(
-                word in title_lower
-                for word in [
-                    "math",
-                    "science",
-                    "stem",
-                    "technology",
-                    "engineering",
-                    "coding",
-                ]
-            ):
-                contextual_keywords.extend(
-                    [
-                        "stem",
-                        "technical",
-                        "analytical",
-                        "problem-solving",
-                        "engineering",
-                    ]
-                )
-
-            # Business & Professional
-            elif any(
-                word in title_lower
-                for word in ["career", "job", "work", "business", "professional"]
-            ):
-                contextual_keywords.extend(
-                    ["business", "professional", "workplace", "career development"]
-                )
-
-            # Civic & Community
-            elif any(
-                word in title_lower
-                for word in ["civics", "citizen", "government", "community", "social"]
-            ):
-                contextual_keywords.extend(
-                    ["civic", "community", "government", "social responsibility"]
-                )
-
-            # Financial & Economic
-            elif any(
-                word in title_lower
-                for word in ["finance", "money", "budget", "investment", "economic"]
-            ):
-                contextual_keywords.extend(
-                    ["financial", "economics", "money management", "investment"]
-                )
-
-            # Health & Wellness
-            elif any(
-                word in title_lower
-                for word in ["health", "medical", "wellness", "fitness", "nutrition"]
-            ):
-                contextual_keywords.extend(
-                    ["health", "medical", "wellness", "healthcare"]
-                )
-
-            # Education & Learning
-            elif any(
-                word in title_lower
-                for word in ["education", "learning", "teaching", "academic", "student"]
-            ):
-                contextual_keywords.extend(
-                    ["education", "learning", "academic", "teaching"]
-                )
-
-            return contextual_keywords
-
-        def derive_fallback_keywords(
-            e: Event,
-        ) -> tuple[dict[str, list], dict[str, dict]]:
-            """Generate fallback keywords when primary methods fail."""
-            keywords = {}
-            explanations = {}
-
-            # Extract meaningful words from title
-            meaningful_words = extract_meaningful_words(e.title)
-            if meaningful_words:
-                keywords["fallback_text"] = meaningful_words
-                explanations["fallback_text"] = {
-                    "explanation": f"Meaningful words from title: '{e.title}'",
-                    "keywords": meaningful_words,
-                }
-
-            # Add contextual keywords
-            contextual_keywords = derive_contextual_keywords(e.type, e.title)
-            if contextual_keywords:
-                keywords["contextual"] = contextual_keywords
-                explanations["contextual"] = {
-                    "explanation": f"Contextual keywords for {e.type.value.replace('_', ' ').title()} event",
-                    "keywords": contextual_keywords,
-                }
-
-            # Universal fallback - ensure we always have something
-            if not keywords:
-                universal_keywords = ["volunteer", "event", "participation"]
-                keywords["universal"] = universal_keywords
-                explanations["universal"] = {
-                    "explanation": "General volunteer matching criteria",
-                    "keywords": universal_keywords,
-                }
-
-            return keywords, explanations
-
-        # Phase 2: Smart Enhancement Functions
-        def detect_event_patterns(title: str) -> dict[str, list]:
-            """Detect common event title patterns and extract relevant keywords."""
-            patterns = {}
-            title_lower = title.lower()
-
-            # Pattern 1: "How to..." or "Learning to..." (Skill Development)
-            if any(
-                phrase in title_lower
-                for phrase in ["how to", "learning to", "guide to", "introduction to"]
-            ):
-                patterns["skill_development"] = [
-                    "tutorial",
-                    "learning",
-                    "skill building",
-                    "instruction",
-                ]
-
-            # Pattern 2: "Career in..." or "Working in..." (Industry Focus)
-            if any(
-                phrase in title_lower
-                for phrase in ["career in", "working in", "jobs in", "opportunities in"]
-            ):
-                patterns["industry_focus"] = [
-                    "career guidance",
-                    "industry knowledge",
-                    "professional development",
-                    "workplace insights",
-                ]
-
-            # Pattern 3: "Building..." or "Creating..." (Project-Based)
-            if any(
-                phrase in title_lower
-                for phrase in ["building", "creating", "developing", "designing"]
-            ):
-                patterns["project_based"] = [
-                    "hands-on",
-                    "project work",
-                    "creation",
-                    "development",
-                ]
-
-            # Pattern 4: "Understanding..." or "Exploring..." (Knowledge Discovery)
-            if any(
-                phrase in title_lower
-                for phrase in [
-                    "understanding",
-                    "exploring",
-                    "discovering",
-                    "investigating",
-                ]
-            ):
-                patterns["knowledge_discovery"] = [
-                    "research",
-                    "exploration",
-                    "investigation",
-                    "discovery",
-                ]
-
-            # Pattern 5: "Connecting..." or "Networking..." (Relationship Building)
-            if any(
-                phrase in title_lower
-                for phrase in [
-                    "connecting",
-                    "networking",
-                    "building relationships",
-                    "collaborating",
-                ]
-            ):
-                patterns["relationship_building"] = [
-                    "networking",
-                    "collaboration",
-                    "relationship building",
-                    "partnerships",
-                ]
-
-            # Pattern 6: "Preparing for..." or "Getting Ready for..." (Preparation)
-            if any(
-                phrase in title_lower
-                for phrase in [
-                    "preparing for",
-                    "getting ready for",
-                    "planning for",
-                    "preparing to",
-                ]
-            ):
-                patterns["preparation"] = [
-                    "planning",
-                    "preparation",
-                    "readiness",
-                    "organization",
-                ]
-
-            return patterns
-
-        def analyze_semantic_context(
-            title: str, description: str = ""
-        ) -> dict[str, list]:
-            """Analyze semantic context of event title and description."""
-            semantic_keywords = {}
-            text = f"{title} {description}".lower()
-
-            # Emotional/Engagement Context
-            engagement_words = [
-                "inspiring",
-                "motivating",
-                "empowering",
-                "encouraging",
-                "supportive",
-            ]
-            if any(word in text for word in engagement_words):
-                semantic_keywords["emotional_context"] = [
-                    "motivation",
-                    "inspiration",
-                    "empowerment",
-                    "support",
-                ]
-
-            # Problem-Solving Context
-            problem_words = [
-                "solving",
-                "addressing",
-                "tackling",
-                "overcoming",
-                "resolving",
-                "challenges",
-                "issues",
-            ]
-            if any(word in text for word in problem_words):
-                semantic_keywords["semantic_context"] = [
-                    "problem solving",
-                    "critical thinking",
-                    "analytical skills",
-                    "troubleshooting",
-                ]
-
-            # Innovation/Creativity Context
-            innovation_words = [
-                "innovative",
-                "creative",
-                "new",
-                "novel",
-                "groundbreaking",
-                "cutting-edge",
-                "revolutionary",
-            ]
-            if any(word in text for word in innovation_words):
-                semantic_keywords["innovation"] = [
-                    "innovation",
-                    "creativity",
-                    "novel thinking",
-                    "breakthrough",
-                ]
-
-            # Leadership/Management Context
-            leadership_words = [
-                "leading",
-                "managing",
-                "directing",
-                "overseeing",
-                "supervising",
-                "coordinating",
-            ]
-            if any(word in text for word in leadership_words):
-                semantic_keywords["leadership"] = [
-                    "leadership",
-                    "management",
-                    "supervision",
-                    "coordination",
-                ]
-
-            # Community/Service Context
-            community_words = [
-                "community",
-                "service",
-                "volunteering",
-                "helping",
-                "supporting",
-                "giving back",
-            ]
-            if any(word in text for word in community_words):
-                semantic_keywords["community_service"] = [
-                    "community service",
-                    "volunteering",
-                    "helping others",
-                    "social impact",
-                ]
-
-            return semantic_keywords
-
-        def generate_dynamic_keywords(e: Event) -> dict[str, list]:
-            """Generate dynamic keywords based on event characteristics and patterns."""
-            dynamic_keywords = {}
-
-            # Pattern detection
-            patterns = detect_event_patterns(e.title)
-            if patterns:
-                dynamic_keywords["patterns"] = []
-                for pattern_keywords in patterns.values():
-                    dynamic_keywords["patterns"].extend(pattern_keywords)
-
-            # Semantic analysis
-            semantic_context = analyze_semantic_context(
-                e.title, getattr(e, "description", "")
-            )
-            if semantic_context:
-                dynamic_keywords["semantic"] = []
-                for semantic_keywords in semantic_context.values():
-                    dynamic_keywords["semantic"].extend(semantic_keywords)
-
-            # Event complexity analysis
-            title_words = len(e.title.split())
-            if title_words > 8:
-                dynamic_keywords["complexity"] = [
-                    "detailed",
-                    "comprehensive",
-                    "in-depth",
-                    "thorough",
-                ]
-            elif title_words < 4:
-                dynamic_keywords["complexity"] = [
-                    "focused",
-                    "targeted",
-                    "specific",
-                    "concentrated",
-                ]
-
-            # Audience level detection
-            audience_indicators = {
-                "beginner": [
-                    "intro",
-                    "basics",
-                    "101",
-                    "fundamentals",
-                    "getting started",
-                ],
-                "intermediate": [
-                    "intermediate",
-                    "advanced",
-                    "expert",
-                    "professional",
-                    "experienced",
-                ],
-                "all_levels": [
-                    "all levels",
-                    "everyone",
-                    "beginners welcome",
-                    "open to all",
-                ],
-            }
-
-            title_lower = e.title.lower()
-            for level, indicators in audience_indicators.items():
-                if any(indicator in title_lower for indicator in indicators):
-                    dynamic_keywords["audience_level"] = [
-                        level,
-                        "appropriate for",
-                        "suitable for",
-                    ]
-                    break
-
-            return dynamic_keywords
-
-        def derive_keywords(e: Event, custom_keywords: str = "") -> dict[str, dict]:
-            """
-            Enhanced keyword derivation that provides comprehensive matching criteria
-            and clear explanations of how each keyword category was derived.
-
-            Args:
-                e: Event object
-                custom_keywords: Optional comma-separated custom keywords from user
-
-            Returns a dict with keyword categories and their sources for transparency.
-            """
-            keywords = {}
-            explanations = {}
-
-            # 0. Custom Keywords (HIGHEST PRIORITY - user-specified)
-            if custom_keywords:
-                # Parse and clean custom keywords
-                custom_kw_list = [
-                    kw.strip().lower()
-                    for kw in custom_keywords.split(",")
-                    if kw.strip()
-                ]
-                if custom_kw_list:
-                    keywords["custom"] = custom_kw_list
-                    explanations["custom"] = {
-                        "explanation": f"User-specified custom keywords: '{custom_keywords}'",
-                        "keywords": custom_kw_list,
-                    }
-
-            # 1. Title/Description Text Analysis (HIGHEST PRIORITY - content matters most)
-            text_keywords = derive_text_keywords(e.title, getattr(e, "description", ""))
-            if text_keywords:
-                keywords["text"] = text_keywords
-                explanations["text"] = {
-                    "explanation": f"Text analysis of: '{e.title}'",
-                    "keywords": text_keywords,
-                }
-                if getattr(e, "description", ""):
-                    explanations["text"]["explanation"] += f" + description"
-
-            # 2. Event Skills (most specific and relevant)
-            if hasattr(e, "skills") and e.skills:
-                skill_names = [skill.name.lower() for skill in e.skills if skill.name]
-                if skill_names:
-                    keywords["skills"] = skill_names
-                    explanations["skills"] = {
-                        "explanation": f"Event skills: {', '.join(skill_names)}",
-                        "keywords": skill_names,
-                    }
-
-            # 3. Event Type-based Keywords (contextual, not format-focused)
-            type_keywords = derive_type_keywords(e.type)
-            if type_keywords:
-                # For VIRTUAL_SESSION, skip type keywords entirely - focus on content
-                if e.type == EventType.VIRTUAL_SESSION:
-                    # No type keywords for virtual sessions - let content analysis drive matching
-                    pass
-                else:
-                    keywords["type"] = type_keywords
-                    explanations["type"] = {
-                        "explanation": f"Event type: {e.type.value.replace('_', ' ').title()}",
-                        "keywords": type_keywords,
-                    }
-
-            # 4. Event Format Considerations (minimal weight for virtual sessions)
-            format_keywords = derive_format_keywords(e.format)
-            if format_keywords:
-                # For virtual sessions, skip format keywords entirely
-                if e.type == EventType.VIRTUAL_SESSION:
-                    # No format keywords for virtual sessions - focus on content
-                    pass
-                else:
-                    keywords["format"] = format_keywords
-                    explanations["format"] = {
-                        "explanation": f"Event format: {e.format.value.replace('_', ' ').title()}",
-                        "keywords": format_keywords,
-                    }
-
-            # 5. Location/School Context
-            location_keywords = derive_location_keywords(e.location, e.school)
-            if location_keywords:
-                keywords["location"] = location_keywords
-                explanations["location"] = {
-                    "explanation": f"Location context: {e.location or 'N/A'}",
-                    "keywords": location_keywords,
-                }
-
-            # 6. Phase 2: Smart Enhancement - Pattern Recognition & Semantic Analysis
-            dynamic_keywords = generate_dynamic_keywords(e)
-            if dynamic_keywords:
-                for category, words in dynamic_keywords.items():
-                    if words:  # Only add non-empty categories
-                        keywords[f"smart_{category}"] = words
-                        explanations[f"smart_{category}"] = {
-                            "explanation": f"Smart analysis: {category.replace('_', ' ').title()}",
-                            "keywords": words,
-                        }
-
-            # 7. Hybrid Fallback System - Ensure Universal Coverage
-            if not keywords:
-                # No primary keywords found - use fallback system
-                fallback_keywords, fallback_explanations = derive_fallback_keywords(e)
-                keywords.update(fallback_keywords)
-                explanations.update(fallback_explanations)
-            else:
-                # Primary keywords found, but add contextual enhancement if useful
-                contextual_keywords = derive_contextual_keywords(e.type, e.title)
-                if contextual_keywords:
-                    # Only add contextual keywords if they're not already covered
-                    existing_words = set()
-                    for category_words in keywords.values():
-                        existing_words.update([w.lower() for w in category_words])
-
-                    new_contextual = [
-                        k
-                        for k in contextual_keywords
-                        if k.lower() not in existing_words
-                    ]
-                    if new_contextual:
-                        keywords["contextual"] = new_contextual
-                        explanations["contextual"] = {
-                            "explanation": f"Subject-relevant keywords based on event content analysis",
-                            "keywords": new_contextual,
-                        }
-
-            return keywords, explanations
+        # Keyword derivation functions imported from services.recruitment_scoring_service
 
         # Try cache first unless refresh requested
         refresh_requested = request.args.get("refresh", "0") == "1"
@@ -1483,29 +717,6 @@ def load_routes(bp):
                 .all()
             )
         }
-
-        def recency_boost(last_date) -> float:
-            if not last_date:
-                return 0.0
-            try:
-                days = (datetime.now(timezone.utc).date() - last_date).days
-            except Exception:
-                return 0.0
-            if days <= 90:
-                return 0.35
-            if days <= 180:
-                return 0.15
-            return 0.0
-
-        def local_boost(local_status) -> float:
-            try:
-                if local_status == LocalStatusEnum.local:
-                    return 0.2
-                if local_status == LocalStatusEnum.partial:
-                    return 0.1
-            except Exception:
-                pass
-            return 0.0
 
         def score_and_reasons(v: Volunteer) -> tuple[float, list[str], str]:
             score = 0.0

@@ -45,10 +45,18 @@
                 style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; box-shadow: 0 2px 8px rgba(231,76,60,0.3);">
                 🚩 Flags
             </a>
+            <a href="{{ url_for('virtual.draft_review') }}"
+                style="background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; box-shadow: 0 2px 8px rgba(243,156,18,0.3);">
+                <i class="fas fa-clipboard-check"></i> Draft Review
+            </a>
             <a href="{{ url_for('virtual.pathful_import') }}"
                 style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; box-shadow: 0 2px 8px rgba(155,89,182,0.3);">
                 <i class="fas fa-upload"></i> Import Pathful Data
             </a>
+            <button onclick="document.getElementById('createSessionModal').style.display='flex'"
+                style="background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); color: white; padding: 10px 20px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(46,204,113,0.3); font-size: 0.9em;">
+                <i class="fas fa-plus"></i> Create Session
+            </button>
         </div>
         {% endif %}
     </div>
@@ -67,7 +75,7 @@
         </div>
 
         <!-- Filters -->
-        <form method="GET"
+        <form id="sessionsFilterForm" method="GET"
             style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; flex: 1; justify-content: flex-end;">
             <input type="date" name="date_from" value="{{ filters.date_from }}"
                 style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: white;">
@@ -78,6 +86,13 @@
                 <option value="">All Districts</option>
                 {% for dist in districts %}
                 <option value="{{ dist }}" {% if filters.district==dist %}selected{% endif %}>{{ dist }}</option>
+                {% endfor %}
+            </select>
+            <select name="school"
+                style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: white; max-width: 200px;">
+                <option value="">All Schools</option>
+                {% for s in schools %}
+                <option value="{{ s.id }}" {% if filters.school==s.id %}selected{% endif %}>{{ s.name }}</option>
                 {% endfor %}
             </select>
             <select name="career_cluster"
@@ -95,9 +110,9 @@
                 <option value="Confirmed" {% if filters.status=='Confirmed' %}selected{% endif %}>Confirmed</option>
                 <option value="Cancelled" {% if filters.status=='Cancelled' %}selected{% endif %}>Cancelled</option>
             </select>
-            <input type="text" name="search" value="{{ filters.search }}" placeholder="Search all..."
-                title="Search title, cluster, district, school, educators, presenters"
-                style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; width: 130px; background: white;">
+            <input type="text" id="sessionsSearchInput" name="search" value="{{ filters.search }}" placeholder="Search title, educators, presenters..."
+                title="Search by Title, Educator(s), and Presenter(s)"
+                style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; width: 200px; background: white;">
             <button type="submit"
                 style="background: #3498db; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">
                 <i class="fas fa-filter"></i>
@@ -108,6 +123,23 @@
             </a>
         </form>
     </div>
+
+    <script>
+    (function () {
+        var form = document.getElementById('sessionsFilterForm');
+        var searchInput = document.getElementById('sessionsSearchInput');
+        if (!form || !searchInput) return;
+        var debounceMs = 450;
+        var debounceTimer = null;
+        searchInput.addEventListener('input', function () {
+            if (debounceTimer) clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function () {
+                debounceTimer = null;
+                form.submit();
+            }, debounceMs);
+        });
+    })();
+    </script>
 
     <!-- District Strip (Admin only) -->
     {% if current_user.is_admin and district_stats is defined and district_stats|length > 0 %}
@@ -152,15 +184,28 @@
         <table style="width: 100%; border-collapse: collapse; min-width: 1200px;">
             <thead>
                 <tr style="background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white;">
-                    <th style="padding: 12px 10px; text-align: left; font-weight: 600; white-space: nowrap;">Date</th>
-                    <th style="padding: 12px 10px; text-align: left; font-weight: 600;">Title</th>
-                    <th style="padding: 12px 10px; text-align: left; font-weight: 600;">District</th>
-                    <th style="padding: 12px 10px; text-align: left; font-weight: 600;">School</th>
-                    <th style="padding: 12px 10px; text-align: left; font-weight: 600;">Educator(s)</th>
-                    <th style="padding: 12px 10px; text-align: left; font-weight: 600;">Presenter(s)</th>
-                    <th style="padding: 12px 10px; text-align: left; font-weight: 600;">Cluster</th>
-                    <th style="padding: 12px 10px; text-align: center; font-weight: 600; width: 70px;">Students</th>
-                    <th style="padding: 12px 10px; text-align: center; font-weight: 600; width: 80px;">Status</th>
+                    {% set base_params = {'date_from': filters.date_from, 'date_to': filters.date_to, 'district': filters.district, 'school': filters.school, 'career_cluster': filters.career_cluster, 'status': filters.status, 'search': filters.search} %}
+                    {% macro sort_header(col_key, label, default_dir) %}
+                    {% set next_dir = ('asc' if filters.dir == 'desc' else 'desc') if filters.sort == col_key else default_dir %}
+                    <th style="padding: 12px 10px; text-align: left; font-weight: 600; {% if col_key == 'students' or col_key == 'status' %}text-align: center;{% endif %} {% if col_key == 'date' %}white-space: nowrap;{% endif %}">
+                        <a href="{{ url_for('virtual.virtual_sessions', sort=col_key, dir=next_dir, **base_params) }}"
+                            style="color: white; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; {% if col_key == 'students' or col_key == 'status' %}justify-content: center;{% endif %}">
+                            {{ label }}
+                            {% if filters.sort == col_key %}
+                                {% if filters.dir == 'desc' %}&darr;{% else %}&uarr;{% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+                    {% endmacro %}
+                    {{ sort_header('date', 'Date', 'desc') }}
+                    {{ sort_header('title', 'Title', 'asc') }}
+                    {{ sort_header('district', 'District', 'asc') }}
+                    {{ sort_header('school', 'School', 'asc') }}
+                    {{ sort_header('educators', 'Educator(s)', 'asc') }}
+                    {{ sort_header('presenters', 'Presenter(s)', 'asc') }}
+                    {{ sort_header('cluster', 'Cluster', 'asc') }}
+                    {{ sort_header('students', 'Students', 'asc') }}
+                    {{ sort_header('status', 'Status', 'asc') }}
                     <th style="padding: 12px 10px; text-align: center; font-weight: 600; width: 70px;">Actions</th>
                 </tr>
             </thead>
@@ -244,7 +289,7 @@
                             title="View session details">
                             <i class="fas fa-eye"></i>
                         </a>
-                        <a href="{{ url_for('events.edit_event', id=session.id) }}"
+                        <a href="{{ url_for('virtual.edit_virtual_session', session_id=session.id) }}"
                             style="color: #f39c12; text-decoration: none;" title="Edit session">
                             <i class="fas fa-edit"></i>
                         </a>
@@ -298,4 +343,181 @@
     </div>
     {% endif %}
 </div>
+
+{% if current_user.is_admin %}
+<!-- Create Session Modal -->
+<div id="createSessionModal"
+    style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;"
+    onclick="if(event.target===this) this.style.display='none'">
+    <div
+        style="background:white; border-radius:14px; width:560px; max-width:95vw; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+        <div
+            style="padding:20px 25px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+            <h2 style="margin:0; font-size:1.3em; color:#2c3e50;"><i class="fas fa-plus-circle"
+                    style="color:#27ae60;"></i> Create Virtual Session</h2>
+            <button onclick="document.getElementById('createSessionModal').style.display='none'"
+                style="background:none; border:none; font-size:1.4em; cursor:pointer; color:#999;">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('virtual.create_virtual_session') }}" style="padding:25px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                <div style="grid-column:1/-1;">
+                    <label style="display:block; font-weight:600; margin-bottom:5px; color:#555; font-size:0.9em;">Title
+                        <span style="color:#e74c3c;">*</span></label>
+                    <input type="text" name="title" required
+                        placeholder="e.g. 2nd Grade: Economics - The History of Money"
+                        style="width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:0.95em; box-sizing:border-box;">
+                </div>
+                <div>
+                    <label style="display:block; font-weight:600; margin-bottom:5px; color:#555; font-size:0.9em;">Date
+                        <span style="color:#e74c3c;">*</span></label>
+                    <input type="date" name="start_date" required
+                        style="width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:0.95em; box-sizing:border-box;">
+                </div>
+                <div>
+                    <label
+                        style="display:block; font-weight:600; margin-bottom:5px; color:#555; font-size:0.9em;">Status</label>
+                    <select name="status"
+                        style="width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:0.95em; box-sizing:border-box; background:white;">
+                        <option value="Confirmed" selected>Confirmed</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Requested">Requested</option>
+                        <option value="Draft">Draft</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                </div>
+                <div>
+                    <label
+                        style="display:block; font-weight:600; margin-bottom:5px; color:#555; font-size:0.9em;">District</label>
+                    <input type="text" name="district_partner" list="districtList"
+                        placeholder="e.g. Kansas City, KS (KCKPS) Public Schools"
+                        style="width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:0.95em; box-sizing:border-box;">
+                    <datalist id="districtList">
+                        {% for dist in districts %}
+                        <option value="{{ dist }}">
+                            {% endfor %}
+                    </datalist>
+                </div>
+                <div>
+                    <label
+                        style="display:block; font-weight:600; margin-bottom:5px; color:#555; font-size:0.9em;">Career
+                        Cluster</label>
+                    <input type="text" name="career_cluster" list="clusterList"
+                        placeholder="e.g. Science, Technology, Engineering"
+                        style="width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:0.95em; box-sizing:border-box;">
+                    <datalist id="clusterList">
+                        {% for cluster in career_clusters %}
+                        <option value="{{ cluster }}">
+                            {% endfor %}
+                    </datalist>
+                </div>
+                <div>
+                    <label
+                        style="display:block; font-weight:600; margin-bottom:5px; color:#555; font-size:0.9em;">Students</label>
+                    <input type="number" name="registered_student_count" value="0" min="0"
+                        style="width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:0.95em; box-sizing:border-box;">
+                </div>
+            </div>
+
+            <!-- Teacher Search -->
+            <div style="margin-top:18px; border-top:1px solid #eee; padding-top:18px;">
+                <label style="display:block; font-weight:600; margin-bottom:5px; color:#555; font-size:0.9em;"><i
+                        class="fas fa-chalkboard-teacher" style="color:#3498db;"></i> Add Teachers</label>
+                <div style="position:relative;">
+                    <input type="text" id="teacherSearchInput" placeholder="Search by teacher name..."
+                        autocomplete="off"
+                        style="width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:0.95em; box-sizing:border-box;">
+                    <div id="teacherSearchResults"
+                        style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #ddd; border-top:none; border-radius:0 0 8px 8px; max-height:200px; overflow-y:auto; z-index:10; box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+                    </div>
+                </div>
+                <div id="selectedTeachers" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;"></div>
+                <input type="hidden" name="teacher_ids" id="teacherIdsInput">
+            </div>
+
+            <div style="margin-top:22px; display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" onclick="document.getElementById('createSessionModal').style.display='none'"
+                    style="padding:10px 22px; border:1px solid #ddd; border-radius:8px; background:#f8f9fa; cursor:pointer; font-weight:500;">Cancel</button>
+                <button type="submit"
+                    style="padding:10px 22px; background:linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600; box-shadow:0 2px 8px rgba(46,204,113,0.3);"><i
+                        class="fas fa-check"></i> Create Session</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const searchInput = document.getElementById('teacherSearchInput');
+        const resultsDiv = document.getElementById('teacherSearchResults');
+        const selectedDiv = document.getElementById('selectedTeachers');
+        const hiddenInput = document.getElementById('teacherIdsInput');
+        const selectedIds = new Set();
+        let debounceTimer;
+
+        function updateHiddenInput() {
+            hiddenInput.value = Array.from(selectedIds).join(',');
+        }
+
+        function addTeacher(id, name, schoolName) {
+            if (selectedIds.has(String(id))) return;
+            selectedIds.add(String(id));
+            updateHiddenInput();
+
+            const tag = document.createElement('span');
+            tag.setAttribute('data-id', id);
+            tag.style.cssText = 'display:inline-flex; align-items:center; gap:6px; background:#e3f2fd; color:#1565c0; padding:5px 10px; border-radius:20px; font-size:0.85em; font-weight:500;';
+            tag.innerHTML = '<i class="fas fa-user" style="font-size:0.8em;"></i> ' + name +
+                (schoolName ? ' <span style="color:#999; font-size:0.85em;">(' + schoolName + ')</span>' : '') +
+                ' <button type="button" style="background:none; border:none; color:#c62828; cursor:pointer; font-size:1.1em; padding:0 2px;" onclick="removeTeacher(this)">&times;</button>';
+            selectedDiv.appendChild(tag);
+        }
+
+        window.removeTeacher = function (btn) {
+            const tag = btn.parentElement;
+            selectedIds.delete(tag.getAttribute('data-id'));
+            updateHiddenInput();
+            tag.remove();
+        };
+
+        searchInput.addEventListener('input', function () {
+            clearTimeout(debounceTimer);
+            const q = this.value.trim();
+            if (q.length < 2) { resultsDiv.style.display = 'none'; return; }
+
+            debounceTimer = setTimeout(function () {
+                fetch('{{ url_for("virtual.api_search_teachers") }}?q=' + encodeURIComponent(q))
+                    .then(r => r.json())
+                    .then(data => {
+                        if (!data.length) {
+                            resultsDiv.innerHTML = '<div style="padding:10px 14px; color:#999; font-size:0.9em;">No teachers found</div>';
+                        } else {
+                            resultsDiv.innerHTML = data.map(t =>
+                                '<div style="padding:8px 14px; cursor:pointer; border-bottom:1px solid #f0f0f0; font-size:0.9em; transition:background 0.15s;" ' +
+                                'onmouseover="this.style.background=\'#f0f7ff\'" onmouseout="this.style.background=\'white\'" ' +
+                                'onclick="selectTeacher(' + t.id + ', \'' + t.name.replace(/'/g, "\\'") + '\', \'' + (t.school_name || '').replace(/'/g, "\\'") + '\')">' +
+                                '<strong>' + t.name + '</strong>' +
+                                (t.school_name ? ' <span style="color:#999;">— ' + t.school_name + '</span>' : '') +
+                                '</div>'
+                            ).join('');
+                        }
+                        resultsDiv.style.display = 'block';
+                    });
+            }, 300);
+        });
+
+        window.selectTeacher = function (id, name, schoolName) {
+            addTeacher(id, name, schoolName);
+            searchInput.value = '';
+            resultsDiv.style.display = 'none';
+        };
+
+        document.addEventListener('click', function (e) {
+            if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
+                resultsDiv.style.display = 'none';
+            }
+        });
+    })();
+</script>
+{% endif %}
+
 {% endblock %}

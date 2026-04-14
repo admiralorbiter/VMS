@@ -17,7 +17,7 @@ from flask_login import login_required
 
 from models import db
 from models.sync_log import SyncLog
-from routes.utils import admin_required
+from routes.decorators import admin_required
 
 sf_dashboard_bp = Blueprint("sf_dashboard", __name__, url_prefix="/admin/salesforce")
 
@@ -109,7 +109,7 @@ def health_metrics():
     from datetime import timedelta
 
     # Get date range for 7 days (use utcnow for consistency with naive DB timestamps)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     seven_days_ago = now - timedelta(days=7)
 
     sync_types = [
@@ -186,9 +186,12 @@ def health_metrics():
         if last_sync and last_sync.completed_at:
             # Handle both timezone-aware and naive datetimes
             completed_at = last_sync.completed_at
-            if completed_at.tzinfo is not None:
+            now_comparable = now
+            if completed_at.tzinfo is None:
+                now_comparable = now.replace(tzinfo=None)
+            elif now_comparable.tzinfo is None:
                 completed_at = completed_at.replace(tzinfo=None)
-            hours_since = (now - completed_at).total_seconds() / 3600
+            hours_since = (now_comparable - completed_at).total_seconds() / 3600
             if hours_since > 24:
                 stale_syncs.append(
                     {

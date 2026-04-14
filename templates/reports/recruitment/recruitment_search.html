@@ -77,6 +77,18 @@
                         title="Show/hide search field explanations">
                         <i class="fas fa-info-circle"></i> Search Help
                     </button>
+                    {% if search_query and volunteers %}
+                    <a href="{{ url_for('report.recruitment_search_csv',
+                                        search=search_query,
+                                        search_mode=search_mode,
+                                        sort=sort_by,
+                                        order=order,
+                                        connector_only=connector_only) }}"
+                       class="btn btn-outline-success ml-2"
+                       title="Export all matching volunteers to CSV">
+                        <i class="fa-solid fa-file-csv"></i> Export CSV
+                    </a>
+                    {% endif %}
                 </div>
             </div>
         </form>
@@ -230,9 +242,9 @@
                             <i class="fa-solid fa-cloud"></i>
                         </a>
                         {% endif %}
-                        {% if volunteer.connector and volunteer.connector.connector_profile_url %}
-                        <a href="{{ volunteer.connector.connector_profile_url }}"
-                            class="btn btn-sm action-btn connector-btn" target="_blank" title="Connector Profile">
+                        {% if volunteer.pathful_profile and volunteer.pathful_profile.pathful_user_id %}
+                        <a href="https://prepkc.nepris.com/app/user/{{ volunteer.pathful_profile.pathful_user_id }}"
+                            class="btn btn-sm action-btn connector-btn" target="_blank" title="Pathful Profile">
                             <i class="fa-solid fa-plug"></i>
                         </a>
                         {% endif %}

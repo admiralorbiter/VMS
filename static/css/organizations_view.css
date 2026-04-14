@@ -1,0 +1,294 @@
+/* Engagement Summary Card Styling */
+.engagement-summary {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-left: 4px solid #007bff;
+}
+
+.summary-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 1rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stat-number {
+    display: block;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #007bff;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.85rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.view-details-action {
+    text-align: center;
+    padding: 1rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.view-details-action .btn {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.action-description {
+    color: #6c757d;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    margin: 0;
+}
+
+/* Volunteer Last Activity Styling */
+.volunteer-last-activity {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+.volunteer-last-activity .date-label {
+    font-weight: 600;
+    color: var(--ucla-blue);
+}
+
+/* Volunteer List Show More Functionality */
+.volunteer-hidden {
+    display: none;
+}
+
+.show-more-volunteers-container {
+    text-align: center;
+    margin-top: 1.5rem;
+    padding: 1rem;
+}
+
+.show-more-volunteers-btn {
+    background: linear-gradient(135deg, var(--ucla-blue), var(--delft-blue));
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 25px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 2px 8px rgba(29, 51, 84, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.show-more-volunteers-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.show-more-volunteers-btn:hover::before {
+    left: 100%;
+}
+
+.show-more-volunteers-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(29, 51, 84, 0.3);
+}
+
+.show-more-volunteers-btn i {
+    transition: transform 0.3s ease;
+}
+
+.show-more-volunteers-btn.expanded i {
+    transform: rotate(180deg);
+}
+
+/* Organization Communication History Enhancements */
+.history-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.history-volunteer {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--ucla-blue);
+    font-weight: 500;
+}
+
+.history-volunteer i {
+    color: var(--delft-blue);
+    font-size: 1rem;
+}
+
+.volunteer-link {
+    color: var(--ucla-blue);
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.volunteer-link:hover {
+    color: var(--delft-blue);
+    text-decoration: underline;
+    transform: translateY(-1px);
+}
+
+.volunteer-name {
+    color: #6b7280;
+    font-style: italic;
+}
+
+/* Enhanced timeline styling for organization view */
+.communication-history-full-width .history-item {
+    border-left: 4px solid var(--non-photo-blue);
+    transition: all 0.3s ease;
+}
+
+.communication-history-full-width .history-item:hover {
+    border-left-color: var(--ucla-blue);
+    transform: translateX(4px);
+}
+
+/* Activity type specific styling for organization view */
+.communication-history-full-width .history-item[data-type="Email"] {
+    border-left-color: var(--ucla-blue);
+    background: linear-gradient(145deg, #f8fbff, #ffffff);
+}
+
+.communication-history-full-width .history-item[data-type="Call"] {
+    border-left-color: var(--poppy);
+    background: linear-gradient(145deg, #fff8f8, #ffffff);
+}
+
+.communication-history-full-width .history-item[data-type="Meeting"] {
+    border-left-color: var(--delft-blue);
+    background: linear-gradient(145deg, #f0f8ff, #ffffff);
+}
+
+.communication-history-full-width .history-item[data-type="Note"] {
+    border-left-color: #10b981;
+    background: linear-gradient(145deg, #f0fdf4, #ffffff);
+}
+
+.communication-history-full-width .history-item[data-type="Other"] {
+    border-left-color: var(--non-photo-blue);
+    background: linear-gradient(145deg, #f8fafc, #ffffff);
+}
+
+/* Organization-specific header styling */
+.communication-history-full-width .history-section-header {
+    background: linear-gradient(135deg, #1e40af, #3b82f6);
+    position: relative;
+    overflow: hidden;
+}
+
+.communication-history-full-width .history-section-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+    transition: left 0.6s;
+}
+
+.communication-history-full-width .history-section-header:hover::before {
+    left: 100%;
+}
+
+.communication-history-full-width .header-content i {
+    color: #60a5fa;
+    font-size: 1.6rem;
+}
+
+.communication-history-full-width .header-content h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+}
+
+/* Enhanced filter styling for organization view */
+.communication-history-full-width .history-filter {
+    background: linear-gradient(135deg, #60a5fa, #3b82f6);
+    color: white;
+    border: 2px solid #1e40af;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.communication-history-full-width .history-filter:hover {
+    background: linear-gradient(135deg, #3b82f6, #1e40af);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
+}
+
+.communication-history-full-width .history-filter.active {
+    background: linear-gradient(135deg, #1e40af, #1e3a8a);
+    color: #dbeafe;
+    border-color: #1e3a8a;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(30, 64, 175, 0.4);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .summary-stats {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .stat-item {
+        padding: 0.75rem;
+    }
+
+    .stat-number {
+        font-size: 1.5rem;
+    }
+
+    .history-header-left {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .history-volunteer {
+        font-size: 0.9rem;
+    }
+
+    .communication-history-full-width .header-content h2 {
+        font-size: 1.3rem;
+    }
+
+    .show-more-volunteers-btn {
+        padding: 0.6rem 1.2rem;
+        font-size: 0.85rem;
+    }
+}

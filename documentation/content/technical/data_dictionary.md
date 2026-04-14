@@ -122,6 +122,9 @@ This is the authoritative reference for all entity definitions. Other documents 
 | `participant_count` | Integer | SF/POL | Internal | Total participants |
 | `registered_count` | Integer | SF/POL | Internal | Registered participants (indexed) |
 | `attended_count` | Integer | SF/POL | Internal | Attended participants |
+| `registered_student_count` | Integer | PATH | Internal | From Pathful `Registered Student Count`; max() across rows |
+| `attended_student_count` | Integer | PATH | Internal | From Pathful `Attended Student Count`; max() across rows |
+| `attended_educator_count` | Integer | PATH | Internal | From Pathful `Attended Educator Count`; max() across rows; used for auditing teacher attendance |
 | `scheduled_participants_count` | Integer | POL | Internal | Scheduled participants |
 | `total_requested_volunteer_jobs` | Integer | POL | Internal | Total requested volunteer positions |
 | `additional_information` | Text | SF/POL | Public | Additional event details |
@@ -182,6 +185,8 @@ This is the authoritative reference for all entity definitions. Other documents 
 | `last_mailchimp_date` | Date | SF/POL | Internal | Last Mailchimp email date |
 | `salesforce_contact_id` | String(18) | SF | Sensitive | Unique when present; indexed |
 | `salesforce_school_id` | String(18) | SF | Internal | School reference in Salesforce |
+| `cached_email` | String(255) | POL | Sensitive | Indexed; denormalized email for identity resolution matching |
+| `import_source` | String(50) | POL | Internal | Origin: `salesforce`, `pathful`, `csv_import`, `manual`, `session_edit` |
 | `created_at` | DateTime(timezone=True) | POL | Internal | Auto-set on creation |
 | `updated_at` | DateTime(timezone=True) | POL | Internal | Auto-updated on modification |
 
@@ -274,16 +279,56 @@ Route: `/virtual/usage/recruitment` (implemented in `routes/virtual/usage.py`)
 |-------|------|--------|-------------|-------|
 | `event_id` | Integer (FK to event.id) | POL | Internal | Primary key (composite) |
 | `teacher_id` | Integer (FK to teacher.id) | POL | Sensitive | Primary key (composite) |
-| `status` | String(50) | POL | Internal | registered, attended, no_show, cancelled |
+| `status` | String(50) | POL/PATH | Internal | `registered`, `attended`, `no_show`, `cancelled` — see derivation rules below |
 | `is_simulcast` | Boolean | POL | Internal | Simulcast participation flag |
 | `attendance_confirmed_at` | DateTime(timezone=True) | POL | Internal | When attendance was confirmed |
-| `notes` | Text | POL | Internal | Additional notes |
+| `notes` | Text | POL | Internal | Admin notes; **when set, protects record from re-import overwrite** |
 | `created_at` | DateTime(timezone=True) | POL | Internal | Auto-set on creation |
 | `updated_at` | DateTime(timezone=True) | POL | Internal | Auto-updated on modification |
+
+**Status Derivation** (during Pathful import):
+- `attended` — Event Status = Completed AND `Attended Educator Count` ≥ 1
+- `no_show` — Event Status = Completed AND `Attended Educator Count` = n/a/missing, OR Event Status = Cancelled/No Show
+- `registered` — Event Status = Draft, Requested, Published, or any non-completed status
+
+> [!NOTE]
+> **Admin Override**: If `EventTeacher.notes` is populated, re-imports will NOT overwrite the status. This allows admins to manually correct attendance records (e.g., verifying attendance via sign-in sheets).
 
 **Relationships**:
 - Many-to-one with `Event` (via `event_id`)
 - Many-to-one with `Teacher` (via `teacher_id`)
+
+## Entity: AttendanceOverride
+
+**Admin corrections to virtual session attendance tracking**
+
+**Table**: `attendance_override`
+
+| Field | Type | Source | Sensitivity | Notes |
+|-------|------|--------|----------------|-------|
+| `id` | Integer | POL | Internal | Primary key |
+| `teacher_progress_id` | Integer (FK to teacher_progress.id) | POL | Internal | Required; cascading delete |
+| `event_id` | Integer (FK to event.id) | POL | Internal | Required; cascading delete |
+| `action` | String(10) | POL | Internal | `add` or `remove` |
+| `reason` | Text | POL | Internal | Required; admin-provided justification |
+| `is_active` | Boolean | POL | Internal | Default: True; False when reversed |
+| `created_at` | DateTime(timezone=True) | POL | Internal | Auto-set on creation |
+| `created_by` | Integer (FK to users.id) | POL | Internal | Admin who created override |
+| `reversed_at` | DateTime(timezone=True) | POL | Internal | Set when override is reversed |
+| `reversed_by` | Integer (FK to users.id) | POL | Internal | Admin who reversed override |
+| `reversal_reason` | Text | POL | Internal | Reason for reversal |
+
+**Event-Aware Override Logic:**
+- **ADD**: Only increments count if event not already counted via EventTeacher
+- **REMOVE**: Only decrements count if event was counted as attended
+- **Auto-resolution**: Stale ADD overrides (where EventTeacher already records attendance) are auto-resolved with logged reason
+
+**Relationships**:
+- Many-to-one with `TeacherProgress` (via `teacher_progress_id`)
+- Many-to-one with `Event` (via `event_id`)
+- Many-to-one with `User` (via `created_by`, `reversed_by`)
+
+**Reference:** [FR-VIRTUAL-234](requirements-virtual#fr-virtual-234) through [FR-VIRTUAL-243](requirements-virtual#fr-virtual-243), [FR-DISTRICT-550](requirements-district#fr-district-550) through [FR-DISTRICT-553](requirements-district#fr-district-553)
 
 ## Entity: EventStudentParticipation
 
@@ -612,5 +657,5 @@ Managed in one place and validated everywhere. All enums are defined in `models/
 
 ---
 
-*Last updated: February 2026*
-*Version: 1.1*
+*Last updated: March 2026*
+*Version: 1.2*

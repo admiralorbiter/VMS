@@ -188,6 +188,13 @@ def load_routes(bp):
                 "url": "/reports/kctaa",
                 "category": "Volunteer Reports",
             },
+            {
+                "title": "Pathway Student Attendance",
+                "description": "See students who attended pathway and BFI events, with student numbers, schools, and event details.",
+                "icon": "fa-solid fa-road",
+                "url": "/reports/pathway-students",
+                "category": "Program Reports",
+            },
         ]
 
         # Filter reports based on user scope

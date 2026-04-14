@@ -55,6 +55,7 @@ from .bug_report import BugReport
 from .class_model import Class
 from .client_project_model import ClientProject
 from .contact import Contact
+from .data_quality_flag import DataQualityFlag, DataQualityIssueType
 from .district_model import District
 from .district_participation import DistrictParticipation
 from .district_volunteer import DistrictVolunteer
@@ -67,7 +68,7 @@ from .magic_link import MagicLink
 from .organization import Organization
 from .outreach import OutreachAttempt
 from .pathful_import import PathfulImportLog, PathfulUnmatchedRecord
-from .recruitment_note import RecruitmentNote
+from .recruitment_note import RecruitmentNote, RecruitmentOutcome
 from .reports import (
     DistrictEngagementReport,
     DistrictManualInput,
@@ -116,7 +117,6 @@ __all__ = [
     "Teacher",
     "TeacherProgress",
     "TeacherProgressArchive",
-    "TeacherProgressArchive",
     "RosterImportLog",
     "Student",
     "SyncLog",
@@ -149,6 +149,8 @@ __all__ = [
     "FlagType",
     "TeacherDataFlag",
     "TeacherDataFlagType",
+    "DataQualityFlag",
+    "DataQualityIssueType",
 ]
 
 # Eager-loading helper options
@@ -185,5 +187,5 @@ def eagerload_volunteer_bundle(query):
         selectinload(Volunteer.organizations),
         selectinload(Volunteer.skills),
         selectinload(Volunteer.volunteer_organizations),
-        selectinload(Volunteer.connector),
+        selectinload(Volunteer.pathful_profile),
     )

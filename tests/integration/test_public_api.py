@@ -93,14 +93,6 @@ class TestRateLimiting:
 class TestResponseFormat:
     """Tests for FR-API-107 and FR-API-108: Response Format."""
 
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        return app
-
     def test_build_event_response_exists(self, app):
         """TC-981: Event response builder exists."""
         from routes.api.public_events import build_event_response
@@ -113,14 +105,10 @@ class TestResponseFormat:
         from datetime import datetime, timezone
         from unittest.mock import patch
 
-        from models import db
         from models.event import Event, EventStatus, EventType
         from routes.api.public_events import build_event_response
 
         with app.app_context():
-            # Create tables for the test
-            db.create_all()
-
             event = Event(
                 id=1,
                 title="Test Event",
@@ -177,14 +165,6 @@ class TestResponseFormat:
 class TestAPIKeyManagement:
     """Tests for FR-API-106: API Key Rotation."""
 
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        return app
-
     def test_tenant_has_api_key_methods(self, app):
         """TC-990: Tenant model has API key methods."""
         with app.app_context():
@@ -206,14 +186,6 @@ class TestAPIKeyManagement:
 
 class TestCORSSupport:
     """Tests for FR-API-105: CORS Support."""
-
-    @pytest.fixture
-    def app(self):
-        """Create test Flask app."""
-        from app import app
-
-        app.config["TESTING"] = True
-        return app
 
     def test_tenant_has_cors_methods(self, app):
         """Tenant has CORS origin management methods."""

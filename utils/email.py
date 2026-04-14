@@ -469,7 +469,7 @@ def send_email_via_mailjet(
         return False, error_msg, None
 
     # Prepare Mailjet payload
-    mail_from = os.environ.get("MAIL_FROM", "noreply@example.com")
+    mail_from = os.environ.get("MAIL_FROM", "no-reply@ineedhelp.pro")
     mail_from_name = os.environ.get("MAIL_FROM_NAME", "VMS System")
 
     data = {

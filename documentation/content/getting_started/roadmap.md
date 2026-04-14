@@ -21,9 +21,12 @@ These features are prioritized for upcoming development:
 
 | Feature | Status | Related Req |
 |---------|--------|-------------|
+| **District Suite Phase 4: Recruitment** | 🔧 Verification | FR-SELFSERV-401–405 |
 | **Automated Teacher Reminders** | 📋 Planned | FR-DISTRICT-504 |
 | **Automated Pathful Export Pulling** | 📋 Planned | FR-VIRTUAL-207 |
 | **Local Volunteer Auto-Communications** | 📋 Planned | FR-VIRTUAL-209 |
+| **Teacher Roster Self-Service Workflow** | 📋 Planned | [Feature Proposal](../district_suite/teacher_roster_management) |
+| **Volunteer Data Enrichment Import** | 📋 Planned | [Feature Proposal](../district_suite/volunteer_data_enrichment) |
 | **Documentation Restructure** | ✅ Complete | — |
 | **Cache Management UI** | ✅ Complete | — |
 
@@ -69,6 +72,7 @@ These features are prioritized for upcoming development:
 
 | Feature | Description |
 |---------|-------------|
+| **Volunteer Preference System** | Prefer/Avoid ratings per volunteer, tenant-scoped, expandable to 5-level scale ([Feature Proposal](../district_suite/volunteer_data_enrichment)) |
 | **Volunteer Self-Service Portal** | Let volunteers view their own participation history and upcoming events |
 | **Preference Management** | Volunteers set availability, interests, and communication preferences |
 | **Achievement Badges** | Recognize volunteer milestones (10 events, 50 hours, etc.) |
@@ -77,6 +81,7 @@ These features are prioritized for upcoming development:
 
 | Feature | Description |
 |---------|-------------|
+| **Direct Teacher Add** | In-app teacher management — add, edit, deactivate without spreadsheet dependency ([Feature Proposal](../district_suite/teacher_roster_management)) |
 | **Profile Self-Editing** | Teachers update their own contact info and school |
 | **Session History Exports** | Download participation records for professional development |
 | **Achievement Recognition** | Visual indicators for teachers meeting goals |
@@ -138,4 +143,4 @@ These features are prioritized for upcoming development:
 
 ---
 
-*Last updated: February 2026 · Version 1.2*
+*Last updated: March 2026 · Version 1.3*

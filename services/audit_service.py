@@ -160,13 +160,10 @@ def _get_user_role(user) -> str:
     if getattr(user, "is_admin", False):
         return "admin"
 
-    # Check for tenant role (may be string or enum)
+    # Check for tenant role
     tenant_role = getattr(user, "tenant_role", None)
     if tenant_role:
-        role_value = (
-            tenant_role.value if hasattr(tenant_role, "value") else str(tenant_role)
-        )
-        return f"tenant_{role_value}"
+        return f"tenant_{tenant_role.value if isinstance(tenant_role, Enum) else tenant_role}"
 
     # Default
     return "user"

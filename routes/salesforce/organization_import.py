@@ -23,7 +23,7 @@ from models.contact import Contact
 from models.district_model import District
 from models.organization import Organization, VolunteerOrganization
 from models.school_model import School
-from routes.decorators import global_users_only
+from routes.decorators import global_users_only, handle_route_errors
 from routes.utils import parse_date
 from services.salesforce import get_salesforce_client, safe_query_all
 from services.salesforce.errors import classify_exception, create_import_error
@@ -160,7 +160,19 @@ def import_organizations_from_salesforce():
                     # Update organization fields with Salesforce data
                     org.salesforce_id = row["Id"]
                     org.name = row.get("Name", "")
-                    org.type = row.get("Type")
+                    sf_type = row.get("Type")
+                    org.type = sf_type if sf_type else "Other"
+                    if not sf_type and org.id:
+                        # Flag for review — org has no type in Salesforce
+                        from models.data_quality_flag import flag_data_quality_issue
+
+                        flag_data_quality_issue(
+                            entity_type="organization",
+                            entity_id=org.id,
+                            issue_type="null_org_type",
+                            details=f"Org '{org.name}' has no type in Salesforce",
+                            salesforce_id=row["Id"],
+                        )
                     org.description = row.get("Description")
                     org.billing_street = row.get("BillingStreet")
                     org.billing_city = row.get("BillingCity")
@@ -276,6 +288,7 @@ def import_organizations_from_salesforce():
     "/organizations/import-affiliations-from-salesforce", methods=["POST"]
 )
 @login_required
+@global_users_only
 def import_affiliations_from_salesforce():
     """
     Import volunteer-organization affiliations from Salesforce.

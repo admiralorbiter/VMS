@@ -97,7 +97,7 @@ MJ_APIKEY_PRIVATE=your_private_key
 EMAIL_DELIVERY_ENABLED=true  # Only set true in production
 
 # Sender information
-MAIL_FROM=noreply@example.com
+MAIL_FROM=no-reply@ineedhelp.pro
 MAIL_FROM_NAME="VMS System"
 
 # Non-production allowlist (comma-separated)
@@ -113,6 +113,57 @@ When `FLASK_ENV != 'production'`:
 - Delivery blocked unless `EMAIL_DELIVERY_ENABLED=true`
 - Only allowlist addresses/domains can receive emails
 - Other recipients excluded with reason tracking
+
+---
+
+## Session Reminder Emails
+
+The email system includes a **Teacher Session Reminder** feature for sending personalized emails to teachers about upcoming virtual career sessions.
+
+### Template Seeding
+
+The `teacher_session_reminder` template is seeded via a script:
+
+```bash
+python scripts/daily_imports/test_email_templates.py
+```
+
+This creates (or updates) the template with KCKPS branding (navy/gold gradient, progress card, session table).
+
+### Sending Reminders (Single)
+
+For one-off sends, use the **Compose** page:
+
+1. Navigate to **Compose** (`/management/email/compose`)
+2. Select the **Teacher Session Reminder** template
+3. Enter the recipient + fill placeholders manually
+
+### Sending Reminders (Batch — 5-Gate Safety)
+
+For sending to all teachers, use the **Batch Send** system (`/management/email/batch/new`):
+
+| Gate | Action | Safety |
+|------|--------|--------|
+| **1. Create** | Configure batch job | No emails sent — preview only |
+| **2. Review** | Click "Send Canary" | Explicit action required |
+| **3. Canary** | ONE email to `DAILY_IMPORT_RECIPIENT` | Visual verification |
+| **4. Cooldown** | 10 min countdown starts | Auto-cancels if you walk away |
+| **5. Confirm** | Type 6-digit code | Prevents accidental clicks |
+
+> **Dead Man's Switch**: If you don't confirm within the cooldown period, the batch job **auto-cancels**. Inaction = zero emails sent.
+
+### Available Placeholders
+
+| Placeholder | Description |
+|-------------|-------------|
+| `teacher_name` | Teacher's full name |
+| `building_name` | School/building name |
+| `district_name` | District name (e.g., Kansas City Kansas Public Schools) |
+| `session_list` | Pre-rendered HTML table of upcoming sessions |
+| `session_list_text` | Plain text version of session list |
+| `completed_count` | Number of sessions the teacher has completed |
+| `target_sessions` | Target number of sessions for the school year |
+
 
 ---
 
