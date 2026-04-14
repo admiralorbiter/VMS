@@ -93,7 +93,13 @@ def parse_date(date_str):
         # First try parsing ISO 8601 format (from Salesforce API)
         # Example: 2025-03-05T14:15:00.000+0000
         if "T" in date_str:
-            return datetime.strptime(date_str.split(".")[0], "%Y-%m-%dT%H:%M:%S")
+            base_date = date_str.split(".")[0]
+            dt = datetime.strptime(base_date, "%Y-%m-%dT%H:%M:%S")
+            # If the original string indicates UTC, preserve that knowledge
+            if date_str.endswith("+0000") or date_str.endswith("Z"):
+                from datetime import timezone
+                return dt.replace(tzinfo=timezone.utc)
+            return dt
 
         # Try CSV format with time (YYYY-MM-DD HH:MM:SS)
         try:

@@ -68,6 +68,7 @@ Events display in the newsletter format: **Thursday, April 2nd, from 8:30-10:30 
 
 - Day name, month, ordinal day
 - Time range with collapsed AM/PM when both times share the same period
+- If the event is imported without a specific time, it defaults to a placeholder: `, from X:00-X:00 AM` (In-Person) or `at X:00 am` (Virtual).
 
 ### 3. Links from Salesforce
 
@@ -93,6 +94,9 @@ A: These sections are deselected by default since they're typically not included
 
 **Q: An in-person event has no hyperlink.**
 A: The link comes from Salesforce's `Registration_Link__c` field. Run a full event import to populate it, or check that the field has a value in Salesforce.
+
+**Q: Why does a session show `X:00 AM` for its time?**
+A: If a session was imported from Pathful or Salesforce without a specific time attached to it (i.e. just a date), the tool automatically displays an `X:00 AM` placeholder. This preserves the correct day without guessing the schedule, making it easy for you to type over it before sending the newsletter.
 
 ---
 

@@ -167,7 +167,9 @@ def newsletter_formatter():
 def newsletter_formatter_sessions():
     """Return upcoming virtual sessions as JSON, annotated with grade levels."""
     try:
-        now = datetime.now(timezone.utc)
+        # SQLite stores naive datetimes that represent UTC.
+        # To compare correctly without timezone mismatch errors, we use a naive UTC datetime.
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
 
         sessions = (
             Event.query.filter(
@@ -181,11 +183,18 @@ def newsletter_formatter_sessions():
 
         results = []
         for s in sessions:
-            local_dt = s.local_start_date or s.start_date
-            # Manual formatting for cross-platform compatibility (Windows %-m unsupported)
-            date_str = f"{local_dt.month}/{local_dt.day}/{local_dt.strftime('%y')}"
-            time_str = local_dt.strftime("%I:%M %p").lstrip("0").lower()
-            formatted_datetime = f"{date_str} at {time_str}"
+            if s.start_date.hour == 0 and s.start_date.minute == 0:
+                # Event has explicitly no time component (midnight UTC import).
+                # Do NOT convert to local timezone, as that will shift the date backwards!
+                date_str = f"{s.start_date.month}/{s.start_date.day}/{s.start_date.strftime('%y')}"
+                time_str = "X:00 am"
+                formatted_datetime = f"{date_str} at X:00 am"
+            else:
+                local_dt = s.local_start_date or s.start_date
+                # Manual formatting for cross-platform compatibility (Windows %-m unsupported)
+                date_str = f"{local_dt.month}/{local_dt.day}/{local_dt.strftime('%y')}"
+                time_str = local_dt.strftime("%I:%M %p").lstrip("0").lower()
+                formatted_datetime = f"{date_str} at {time_str}"
 
             grade_levels = parse_grade_levels(s.title)
 
@@ -211,7 +220,9 @@ def newsletter_formatter_sessions():
 def newsletter_formatter_in_person_sessions():
     """Return upcoming in-person career events as JSON, grouped by section."""
     try:
-        now = datetime.now(timezone.utc)
+        # SQLite stores naive datetimes that represent UTC.
+        # To compare correctly without timezone mismatch errors, we use a naive UTC datetime.
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
 
         events = (
             Event.query.filter(
@@ -225,19 +236,25 @@ def newsletter_formatter_in_person_sessions():
 
         results = []
         for e in events:
-            local_start = e.local_start_date or e.start_date
+            if e.start_date.hour == 0 and e.start_date.minute == 0:
+                day_name = e.start_date.strftime("%A")
+                month_name = e.start_date.strftime("%B")
+                day_ord = _ordinal(e.start_date.day)
+                formatted_dt = f"{day_name}, {month_name} {day_ord}, from X:00-X:00 AM"
+            else:
+                local_start = e.local_start_date or e.start_date
 
-            # Compute local end date (same timezone conversion as start)
-            local_end = None
-            if e.end_date:
-                end = e.end_date
-                if not end.tzinfo:
-                    end = end.replace(tzinfo=timezone.utc)
-                tz_name = current_app.config.get("TIMEZONE", "America/Chicago")
-                tz = pytz.timezone(tz_name)
-                local_end = end.astimezone(tz)
+                # Compute local end date (same timezone conversion as start)
+                local_end = None
+                if e.end_date and not (e.end_date.hour == 0 and e.end_date.minute == 0):
+                    end = e.end_date
+                    if not end.tzinfo:
+                        end = end.replace(tzinfo=timezone.utc)
+                    tz_name = current_app.config.get("TIMEZONE", "America/Chicago")
+                    tz = pytz.timezone(tz_name)
+                    local_end = end.astimezone(tz)
 
-            formatted_dt = _format_in_person_datetime(local_start, local_end)
+                formatted_dt = _format_in_person_datetime(local_start, local_end)
             section = _section_for_event_type(e.type)
 
             # Derive school name from relationship or title
@@ -290,7 +307,9 @@ def newsletter_formatter_search_virtual_sessions():
         limit = 20
 
     try:
-        now = datetime.now(timezone.utc)
+        # SQLite stores naive datetimes that represent UTC.
+        # To compare correctly without timezone mismatch errors, we use a naive UTC datetime.
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
 
         events = (
             Event.query.filter(
@@ -306,21 +325,27 @@ def newsletter_formatter_search_virtual_sessions():
 
         results = []
         for e in events:
-            local_start = e.local_start_date or e.start_date
+            if e.start_date.hour == 0 and e.start_date.minute == 0:
+                day_name = e.start_date.strftime("%A")
+                month_name = e.start_date.strftime("%B")
+                day_ord = _ordinal(e.start_date.day)
+                formatted_dt = f"{day_name}, {month_name} {day_ord}, from X:00-X:00 AM"
+            else:
+                local_start = e.local_start_date or e.start_date
 
-            # Compute local end date
-            local_end = None
-            if e.end_date:
-                import pytz
+                # Compute local end date
+                local_end = None
+                if e.end_date and not (e.end_date.hour == 0 and e.end_date.minute == 0):
+                    import pytz
 
-                end = e.end_date
-                if not end.tzinfo:
-                    end = end.replace(tzinfo=timezone.utc)
-                tz_name = current_app.config.get("TIMEZONE", "America/Chicago")
-                tz = pytz.timezone(tz_name)
-                local_end = end.astimezone(tz)
+                    end = e.end_date
+                    if not end.tzinfo:
+                        end = end.replace(tzinfo=timezone.utc)
+                    tz_name = current_app.config.get("TIMEZONE", "America/Chicago")
+                    tz = pytz.timezone(tz_name)
+                    local_end = end.astimezone(tz)
 
-            formatted_dt = _format_in_person_datetime(local_start, local_end)
+                formatted_dt = _format_in_person_datetime(local_start, local_end)
 
             # Build Nepris link from pathful_session_id
             link = ""

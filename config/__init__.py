@@ -61,6 +61,9 @@ def _normalize_sqlite_uri(uri):
 class Config:
     """Base configuration class."""
 
+    # Configuration Settings
+    TIMEZONE = os.environ.get("TIMEZONE", "America/Chicago")
+
     # Get the absolute path to the instance directory
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     INSTANCE_DIR = os.path.join(BASE_DIR, "instance")
