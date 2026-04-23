@@ -3,7 +3,6 @@
 {% block title %}District Year-End Report{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="/static/css/district_year_end.css">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/district_year_end.css') }}">
 {% endblock %}
 
@@ -169,21 +168,21 @@
             </div>
         </div>
         {% endfor %}
-            </div>
+    </div><!-- /.districts-grid -->
 
-            <!-- Pagination Controls -->
-            <div class="pagination-controls" id="paginationControls">
-                <button class="pagination-btn" id="prevBtn" onclick="changePage(-1)" disabled>
-                    <i class="fas fa-chevron-left"></i> Previous
-                </button>
-                <div class="pagination-info">
-                    Page <span id="currentPage">1</span> of <span id="totalPages">1</span>
-                </div>
-                <button class="pagination-btn" id="nextBtn" onclick="changePage(1)">
-                    Next <i class="fas fa-chevron-right"></i>
-                </button>
-            </div>
-</div>
+    <!-- Pagination Controls -->
+    <div class="pagination-controls" id="paginationControls">
+        <button class="pagination-btn" id="prevBtn" onclick="changePage(-1)" disabled>
+            <i class="fas fa-chevron-left"></i> Previous
+        </button>
+        <div class="pagination-info">
+            Page <span id="currentPage">1</span> of <span id="totalPages">1</span>
+        </div>
+        <button class="pagination-btn" id="nextBtn" onclick="changePage(1)">
+            Next <i class="fas fa-chevron-right"></i>
+        </button>
+    </div>
+</div><!-- /.year-end-container -->
 
 <script>
 function updateReport(select) {
@@ -193,16 +192,7 @@ function updateReport(select) {
     loadingIndicator.style.display = 'block';
     districtsContainer.style.opacity = '0.5';
 
-    // Also update the host filter form to include the new school year
-    const hostFilterForm = document.getElementById('hostFilterForm');
-    if (hostFilterForm) {
-        const hiddenYearInput = hostFilterForm.querySelector('input[name="school_year"]');
-        if (hiddenYearInput) {
-            hiddenYearInput.value = select.value;
-        }
-    }
-
-    // Submit the form
+    // Submit the year-select form
     select.form.submit();
 }
 

@@ -3,6 +3,10 @@
     padding: 20px;
 }
 .districts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
     transition: opacity 0.3s ease;
 }
 .header-controls {
@@ -129,4 +133,169 @@
     .header-sidebar .google-sheets-sidebar {
         position: static;
     }
+}
+
+/* --- District Cards & Schools Grid Styles --- */
+
+.district-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(29, 51, 84, 0.1);
+    border: 1px solid var(--non-photo-blue);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.district-header {
+    background: var(--mint-green);
+    padding: 1rem 1.5rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.district-header:hover {
+    background: rgba(158, 216, 219, 0.5); /* slightly darker mint green */
+}
+
+.district-title-section {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.district-title-section h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--delft-blue);
+}
+
+.district-toggle-icon {
+    color: var(--ucla-blue);
+    transition: transform 0.3s ease;
+}
+
+.district-toggle-icon.rotated {
+    transform: rotate(90deg);
+}
+
+.district-actions {
+    padding: 0.75rem 1.5rem;
+    background: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+}
+
+.view-detail-link {
+    color: var(--ucla-blue);
+    text-decoration: none;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.view-detail-link:hover {
+    color: var(--delft-blue);
+    text-decoration: underline;
+}
+
+.district-code {
+    font-size: 0.85rem;
+    color: #666;
+    background: #f5f5f5;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+
+.schools-section {
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.schools-section.collapsed {
+    display: none;
+}
+
+.stats-section {
+    margin-bottom: 1.5rem;
+}
+
+.stats-header h3, .schools-header h3 {
+    font-size: 1.1rem;
+    color: var(--ucla-blue);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.stat-box {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    text-align: center;
+    border: 1px solid #eee;
+}
+
+.stat-box.primary {
+    background: rgba(70, 117, 153, 0.1); /* light ucla blue */
+    border-color: rgba(70, 117, 153, 0.2);
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--delft-blue);
+    line-height: 1.2;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 0.25rem;
+}
+
+.stat-sublabel {
+    font-size: 0.75rem;
+    color: var(--ucla-blue);
+    margin-top: 0.25rem;
+    font-style: italic;
+}
+
+.schools-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+}
+
+.school-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.school-item i {
+    color: var(--ucla-blue);
+    width: 16px;
+    text-align: center;
+}
+
+.no-schools {
+    color: #888;
+    font-style: italic;
+    text-align: center;
+    padding: 1rem;
 }

@@ -517,3 +517,152 @@
         font-size: 0.75rem;
         font-style: italic;
     }
+
+    /* --- Activity Breakdown Styles --- */
+
+    .activity-breakdown {
+        background: white;
+        border-radius: 8px;
+        padding: 2rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-top: 2rem;
+    }
+
+    .activity-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .activity-header h2 {
+        color: var(--delft-blue);
+        margin: 0;
+    }
+
+    .view-toggle {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .view-toggle-button {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        color: #495057;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .view-toggle-button:hover {
+        background: #e9ecef;
+    }
+
+    .view-toggle-button.active {
+        background: var(--ucla-blue);
+        color: white;
+        border-color: var(--ucla-blue);
+    }
+
+    .month-card, .school-card {
+        background: white;
+        border: 1px solid var(--non-photo-blue);
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        overflow: hidden;
+    }
+
+    .month-header, .school-header {
+        background: #f8f9fa;
+        padding: 1rem 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+        border-bottom: 1px solid transparent;
+    }
+
+    .month-header:hover, .school-header:hover {
+        background: rgba(158, 216, 219, 0.2);
+    }
+
+    .month-stats, .school-stats {
+        display: flex;
+        gap: 1.5rem;
+        font-size: 0.9rem;
+        color: #495057;
+        flex-wrap: wrap;
+    }
+
+    .month-stats span, .school-stat {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        border: 1px solid #eee;
+    }
+
+    .school-group {
+        margin-bottom: 2rem;
+    }
+
+    .school-group-header {
+        font-size: 1.2rem;
+        color: var(--ucla-blue);
+        font-weight: 600;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--non-photo-blue);
+    }
+
+    .school-name {
+        font-weight: 600;
+        color: var(--delft-blue);
+    }
+
+    .events-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+
+    .events-table th, .events-table td {
+        padding: 0.75rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .events-table th {
+        background: #f8f9fa;
+        color: var(--delft-blue);
+        font-weight: 600;
+    }
+
+    .events-table tr:hover {
+        background: rgba(70, 117, 153, 0.02);
+    }
+
+    .event-type-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        background: #e9ecef;
+        color: #495057;
+        white-space: nowrap;
+    }
