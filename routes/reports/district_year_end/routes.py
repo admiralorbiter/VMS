@@ -261,67 +261,18 @@ def load_routes(bp):
                     "unique_student_count", 0
                 )  # Get from cache
 
-                # Calculate unique_organization_count from cached events_by_month
-                volunteer_ids = set()
-                for month_data in events_by_month.values():
-                    for event in month_data.get("events", []):
-                        event_id = event["id"]
-                        participations = EventParticipation.query.filter_by(
-                            event_id=event_id
-                        ).all()
-                        for p in participations:
-                            if p.status in [
-                                "Attended",
-                                "Completed",
-                                "Successfully Completed",
-                            ]:
-                                volunteer_ids.add(p.volunteer_id)
-                org_ids = (
-                    db.session.query(VolunteerOrganization.organization_id)
-                    .filter(VolunteerOrganization.volunteer_id.in_(volunteer_ids))
-                    .distinct()
-                    .all()
-                )
-                unique_organization_count = len(org_ids)
+                # Use pre-calculated organization count from stats
+                unique_organization_count = stats.get("enhanced", {}).get("organizations", {}).get("unique_total", 0)
 
                 # Use cached data if we have both stats and events data
                 if stats and "enhanced" in stats:
-                    # Generate schools_by_level data from cached events
-                    cached_events = []
-                    for month_data in events_by_month.values():
-                        for event_data in month_data.get("events", []):
-                            # Create a minimal event object for the function
-                            event_obj = type(
-                                "Event",
-                                (),
-                                {
-                                    "id": event_data["id"],
-                                    "title": event_data["title"],
-                                    "start_date": datetime.strptime(
-                                        event_data["date"], "%m/%d/%Y"
-                                    ),
-                                    "type": (
-                                        type(
-                                            "EventType",
-                                            (),
-                                            {"value": event_data["type"]},
-                                        )()
-                                        if event_data["type"]
-                                        else None
-                                    ),
-                                    "location": event_data["location"],
-                                    "students": event_data["students"],
-                                    "volunteers": event_data["volunteers"],
-                                    "volunteer_hours": event_data.get(
-                                        "volunteer_hours", 0
-                                    ),
-                                },
-                            )()
-                            cached_events.append(event_obj)
-
-                    schools_by_level = generate_schools_by_level_data(
-                        district, cached_events
-                    )
+                    # Get schools_by_level directly from cache
+                    schools_by_level = cached_report.events_data.get("schools_by_level", {
+                        "High": [],
+                        "Middle": [],
+                        "Elementary": [],
+                        "Other": []
+                    })
 
                     return render_template(
                         "reports/districts/district_year_end_detail.html",

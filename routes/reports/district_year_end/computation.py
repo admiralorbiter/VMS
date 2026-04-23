@@ -427,6 +427,96 @@ def refresh_district_cache(school_year, host_filter="all"):
                 "program_breakdown": program_breakdown,
                 "enhanced": enhanced_stats,
             }
+
+            # Generate events_by_month without N+1 queries
+            events_by_month = {}
+            for event in d_events:
+                month = event.start_date.strftime("%B %Y")
+                if month not in events_by_month:
+                    events_by_month[month] = {
+                        "events": [],
+                        "total_students": 0,
+                        "total_volunteers": 0,
+                        "total_volunteer_hours": 0,
+                    }
+                
+                s_count = len(preloaded_students[district.id].get(event.id, []))
+                v_entries = preloaded_volunteers[district.id].get(event.id, [])
+                v_count = len(v_entries)
+                v_hours = sum(h for _, h in v_entries)
+                
+                events_by_month[month]["events"].append({
+                    "id": event.id,
+                    "title": getattr(event, "title", ""),
+                    "date": event.start_date.strftime("%m/%d/%Y") if getattr(event, "start_date", None) else "",
+                    "time": event.start_date.strftime("%I:%M %p") if getattr(event, "start_date", None) else "",
+                    "type": getattr(event.type, "value", "Unknown") if getattr(event, "type", None) else "Unknown",
+                    "location": event.location or "",
+                    "students": s_count,
+                    "volunteers": v_count,
+                    "volunteer_hours": v_hours,
+                })
+                events_by_month[month]["total_students"] += s_count
+                events_by_month[month]["total_volunteers"] += v_count
+                events_by_month[month]["total_volunteer_hours"] += v_hours
+
+            # Generate schools_by_level directly
+            schools_by_level = {
+                "High": [],
+                "Middle": [],
+                "Elementary": [],
+                "Other": []
+            }
+            
+            # Group schools with stats
+            for school in district.schools:
+                # Find events that occurred at this school
+                s_events = [e for e in d_events if getattr(e, "school_id", None) == school.id or getattr(e, "school", None) == school.name]
+                s_total_students = sum(len(preloaded_students[district.id].get(e.id, [])) for e in s_events)
+                s_unique_volunteers = set()
+                s_total_v_hours = 0
+                s_events_list = []
+                
+                for e in s_events:
+                    v_entries = preloaded_volunteers[district.id].get(e.id, [])
+                    e_v_hours = sum(h for _, h in v_entries)
+                    for v_id, h in v_entries:
+                        s_unique_volunteers.add(v_id)
+                        s_total_v_hours += h
+                    
+                    s_events_list.append({
+                        "id": e.id,
+                        "title": getattr(e, "title", ""),
+                        "date": e.start_date.strftime("%m/%d/%Y") if getattr(e, "start_date", None) else "",
+                        "time": e.start_date.strftime("%I:%M %p") if getattr(e, "start_date", None) else "",
+                        "type": getattr(e.type, "value", "Unknown") if getattr(e, "type", None) else "Unknown",
+                        "students": len(preloaded_students[district.id].get(e.id, [])),
+                        "volunteers": len(v_entries),
+                        "volunteer_hours": e_v_hours
+                    })
+                        
+                school_info = {
+                    "name": school.name,
+                    "total_students": s_total_students,
+                    "total_volunteers": sum(len(preloaded_volunteers[district.id].get(e.id, [])) for e in s_events),
+                    "total_volunteer_hours": s_total_v_hours,
+                    "unique_volunteer_count": len(s_unique_volunteers),
+                    "events": s_events_list
+                }
+                
+                level = school.level if school.level in ["High", "Middle", "Elementary"] else "Other"
+                schools_by_level[level].append(school_info)
+                
+            for level in schools_by_level:
+                schools_by_level[level].sort(key=lambda x: x["name"])
+
+            events_data = {
+                "events_by_month": events_by_month,
+                "total_events": enhanced_stats["events"]["total"],
+                "unique_volunteer_count": enhanced_stats["volunteers"]["unique_total"],
+                "unique_student_count": enhanced_stats["students"]["unique_total"],
+                "schools_by_level": schools_by_level
+            }
             
             # Upsert cache report
             report = DistrictYearEndReport.query.filter_by(
@@ -444,6 +534,7 @@ def refresh_district_cache(school_year, host_filter="all"):
                 db.session.add(report)
                 
             report.report_data = report_data
+            report.events_data = events_data
             report.last_updated = datetime.now()
             
             computed.append(district.name)
