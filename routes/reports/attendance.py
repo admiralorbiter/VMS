@@ -8,6 +8,9 @@ from models.district_model import District
 from models.event import Event, EventStatus, EventStudentParticipation
 from models.volunteer import EventParticipation
 from services.academic_year_service import get_school_year_dates
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Create blueprint
 attendance_bp = Blueprint("reports_attendance", __name__)
@@ -39,13 +42,10 @@ def load_routes(bp):
     @bp.route("/reports/attendance/data")
     @login_required
     def get_attendance_data():
-        print("Starting attendance data generation...")  # Debug
         district_id = request.args.get("district_id")
         school_year = request.args.get("school_year", "24-25")
-        print(f"Params: district_id={district_id}, school_year={school_year}")
 
         start_date, end_date = get_school_year_dates(school_year)
-        print(f"Date range: {start_date} to {end_date}")
 
         query = Event.query.filter(
             Event.status == EventStatus.COMPLETED,
@@ -55,12 +55,10 @@ def load_routes(bp):
 
         if district_id:
             district = District.query.get(district_id)
-            print(f"Filtering for district: {district.name if district else 'N/A'}")
             if district:
                 query = query.filter(Event.districts.contains(district))
 
         events = query.all()
-        print(f"Found {len(events)} events.")
 
         # Prepare the response data
         event_data = []

@@ -1,4 +1,4 @@
-﻿"""
+"""
 District Year-End route handlers.
 
 Extracted from district_year_end.py as part of TD-020.
@@ -6,7 +6,10 @@ Contains the blueprint creation and load_routes() with 14 nested route handlers.
 """
 
 import io
+import logging
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 import pandas as pd
 import pytz
@@ -191,26 +194,26 @@ def load_routes(bp):
             school_year=school_year, host_filter=host_filter
         ).delete()
         db.session.commit()
-        print(f"Deleted {deleted_count} cached reports")
+        logger.info("Deleted %d cached reports for %s/%s", deleted_count, school_year, host_filter)
 
         # Generate new stats (this already does a lot of work)
-        print(f"Starting district stats generation for {school_year}...")
+        logger.info("Starting district stats generation for %s", school_year)
         gen_start = time.time()
         district_stats = generate_district_stats(school_year, host_filter=host_filter)
         gen_time = time.time() - gen_start
-        print(f"Generated stats for {len(district_stats)} districts in {gen_time:.2f}s")
+        logger.info("Generated stats for %d districts in %.2fs", len(district_stats), gen_time)
 
         # Cache the stats and events data (this does additional processing)
-        print(f"Starting cache with events for {len(district_stats)} districts...")
+        logger.info("Starting cache with events for %d districts...", len(district_stats))
         cache_start = time.time()
         cache_district_stats_with_events(
             school_year, district_stats, host_filter=host_filter
         )
         cache_time = time.time() - cache_start
-        print(f"Cached stats with events in {cache_time:.2f}s")
+        logger.info("Cached stats with events in %.2fs", cache_time)
 
         total_time = time.time() - start_time
-        print(f"Total refresh time: {total_time:.2f}s")
+        logger.info("Total refresh time: %.2fs", total_time)
 
         return jsonify(
             {

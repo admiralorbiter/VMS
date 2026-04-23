@@ -54,17 +54,19 @@ def test_volunteer_thankyou_detail_report(client, auth_headers):
 
 
 def test_district_year_end_report(client, auth_headers):
-    """Test district year end report"""
+    """District year-end main list page — should return 200 or cache miss."""
     response = safe_route_test(
-        client, "/reports/district-year-end", headers=auth_headers
+        client, "/reports/district/year-end", headers=auth_headers
     )
     assert_route_response(response, expected_statuses=[200, 404, 500])
 
 
 def test_district_year_end_detail_report(client, auth_headers):
-    """Test district year end detail report"""
+    """Detail page requires a valid district — 404 is acceptable for no cached data."""
     response = safe_route_test(
-        client, "/reports/district-year-end-detail", headers=auth_headers
+        client,
+        "/reports/district/year-end/detail/Grandview School District",
+        headers=auth_headers,
     )
     assert_route_response(response, expected_statuses=[200, 404, 500])
 

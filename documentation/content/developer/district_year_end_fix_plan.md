@@ -122,7 +122,7 @@ if (hostFilterForm) {
 
 ---
 
-### ☐ Piece 4 — Replace `print()` with `logger.debug()` (Terminal Noise)
+### ✅ Piece 4 — Remove Useless Prints and Clean Up Logging (Terminal Noise)
 **Risk:** Low &nbsp;|&nbsp; **Time:** 20 min &nbsp;|&nbsp; **Restart needed:** Yes
 
 **What:** ~20 `print()` calls across 4 files fire on every cache build or manual refresh. In production this exposes event IDs, student counts, and SQL in plain-text server logs.
@@ -135,8 +135,10 @@ Add at module level (after existing imports):
 import logging
 logger = logging.getLogger(__name__)
 ```
-Then replace each `print(...)` with the appropriate level:
-- Most debug lines → `logger.debug(...)`
+Then remove the useless debug prints and replace the valuable ones with the appropriate level:
+- Loop-level debugs (e.g. `Found {len(schools)}`, `Applying PREPKC filter`) → **Delete entirely**
+- Event-level debugs (e.g. `Virtual event {event.id}...`) → **Delete entirely**
+- SQL dump prints → **Delete entirely**
 - `"Warning: Primary district ... not found"` line → `logger.warning(...)`
 - `"Error caching district ..."` line (line 538) → `logger.error(...)`
 
@@ -144,16 +146,16 @@ Then replace each `print(...)` with the appropriate level:
 These are timing/progress prints in `refresh_district_year_end()`. Add logger and replace with `logger.info(...)`.
 
 #### `routes/reports/district_year_end/computation.py` (lines 491–502, ~2 print calls)
-Replace with `logger.info(...)` / `logger.error(...)`.
+Replace the progress print with `logger.debug(...)` and the error print with `logger.error(...)`.
 
 #### `routes/reports/attendance.py` (lines 42–63, ~5 print calls)
-Replace with `logger.debug(...)`.
+**Delete entirely.** These were just parameter checks on route load and clutter the code.
 
 **Verify:** Click "Refresh Data" on the year-end page. Terminal stays quiet — no flood of debug lines. Run the test suite to confirm nothing broke.
 
 ---
 
-### ☐ Piece 5 — Update Old URL Tests
+### ✅ Piece 5 — Update Old URL Tests
 **Risk:** Low &nbsp;|&nbsp; **Time:** 15 min &nbsp;|&nbsp; **Restart needed:** No
 
 **What:** Two tests in `test_report_routes.py` hit URLs that no longer exist (`/reports/district-year-end` and `/reports/district-year-end-detail`). They only "pass" because `safe_route_test` accepts 404 — giving false confidence that these pages work.
@@ -191,7 +193,7 @@ def test_district_year_end_detail_report(client, auth_headers):
 
 ---
 
-### ☐ Piece 6 — Deprecate Superseded `cache_district_stats()` in `common.py`
+### ✅ Piece 6 — Deprecate Superseded `cache_district_stats()` in `common.py`
 **Risk:** Low &nbsp;|&nbsp; **Time:** 10 min &nbsp;|&nbsp; **Restart needed:** Yes
 
 **What:** `cache_district_stats()` in `common.py` (lines 506–539) only writes `report_data` to the cache — it doesn't write `events_data`. It's been superseded by `cache_district_stats_with_events()` in `computation.py`. Nothing currently calls it, but if it gets called accidentally in a future refactor, it silently writes incomplete cache records that break the event timeline view on the detail page.

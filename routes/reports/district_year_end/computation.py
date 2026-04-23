@@ -1,4 +1,4 @@
-﻿"""
+"""
 District Year-End computation functions.
 
 Extracted from district_year_end.py as part of TD-020.
@@ -10,6 +10,9 @@ Contains:
 """
 
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 from models import db
 from models.district_model import District
@@ -488,8 +491,9 @@ def cache_district_stats_with_events(school_year, district_stats, host_filter="a
                 elapsed = time.time() - start_time
                 avg_time = elapsed / processed if processed > 0 else 0
                 remaining = avg_time * (total_districts - processed)
-                print(
-                    f"[{processed}/{total_districts}] Cached {district_name} in {district_time:.2f}s (avg: {avg_time:.2f}s, est. remaining: {remaining:.1f}s)"
+                logger.debug(
+                    "[%d/%d] Cached %s in %.2fs (avg: %.2fs, est. remaining: %.1fs)",
+                    processed, total_districts, district_name, district_time, avg_time, remaining
                 )
                 break
             except Exception as e:
@@ -499,7 +503,7 @@ def cache_district_stats_with_events(school_year, district_stats, host_filter="a
                     continue
                 else:
                     db.session.rollback()
-                    print(f"Error caching district {district_name}: {str(e)}")
+                    logger.error("Error caching district %s: %s", district_name, str(e))
                     raise
 
 

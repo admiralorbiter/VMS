@@ -1,5 +1,8 @@
 import json
+import logging
 from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
 
 from flask_login import current_user
 
@@ -248,11 +251,9 @@ def generate_district_stats(school_year, host_filter="all"):
     """Generate district statistics for a school year"""
     district_stats = {}
     start_date, end_date = get_school_year_date_range(school_year)
-    print(f"Date range: {start_date} to {end_date}")  # Debug log
 
     # Only exclude connector sessions
     excluded_event_types = ["connector_session"]
-    print(f"Excluded event types: {excluded_event_types}")  # Debug log
 
     # Get all districts from the database
     all_districts = District.query.order_by(District.name).all()
@@ -262,19 +263,16 @@ def generate_district_stats(school_year, host_filter="all"):
         if not mapping["show"]:
             continue
 
-        print(f"\nProcessing district: {mapping['name']}")  # Debug log
-
         # Find the primary district record
         primary_district = next(
             (d for d in all_districts if d.salesforce_id == salesforce_id), None
         )
         if not primary_district:
-            print(f"Warning: Primary district {mapping['name']} not found in database")
+            logger.warning("Primary district %s not found in database", mapping['name'])
             continue
 
         # Get all schools for this district
         schools = School.query.filter_by(district_id=primary_district.id).all()
-        print(f"Found {len(schools)} schools for district")  # Debug log
 
         # Build the query conditions for this district
         district_partner_conditions = [
@@ -309,7 +307,6 @@ def generate_district_stats(school_year, host_filter="all"):
             ),
         ).distinct()
         if host_filter == "prepkc":
-            print("Applying PREPKC filter to events_query...")
             events_query = events_query.filter(
                 db.or_(
                     Event.session_host.ilike("%PREPKC%"),
@@ -317,24 +314,15 @@ def generate_district_stats(school_year, host_filter="all"):
                     Event.session_host.ilike("%PrepKC%"),
                 )
             )
-            print("PREPKC filter applied. SQL:", str(events_query))
 
         events = events_query.all()
-        if host_filter == "prepkc":
-            print("PREPKC filter active. session_host values:")
-            for event in events:
-                print(
-                    f"  Event ID {event.id}: session_host='{event.session_host}' title='{event.title}'"
-                )
         event_ids = [event.id for event in events]
-        print(f"Found {len(events)} total events")  # Debug log
 
         # Debug log event types
         event_types_found = {}
         for event in events:
             event_type = event.type.value if event.type else "unknown"
             event_types_found[event_type] = event_types_found.get(event_type, 0) + 1
-        print(f"Event types found: {event_types_found}")  # Debug log
 
         # Query student participations for these events
         student_participations = EventStudentParticipation.query.filter(
@@ -374,9 +362,6 @@ def generate_district_stats(school_year, host_filter="all"):
 
             if is_virtual:
                 stats["total_virtual_students"] += student_count
-                print(
-                    f"  [DEBUG] Common - Virtual event {event.id} in District {primary_district.name}: {student_count} students"
-                )
             else:
                 stats["total_in_person_students"] += student_count
 
@@ -398,12 +383,6 @@ def generate_district_stats(school_year, host_filter="all"):
             # Track unique volunteers
             for p in volunteer_participations:
                 stats["unique_volunteers"].add(p.volunteer_id)
-
-            # Add debug info for virtual events
-            if event.type == EventType.VIRTUAL_SESSION:
-                print(
-                    f"Virtual event: '{event.title}', Volunteers: {volunteer_count}, Hours: {volunteer_hours}"
-                )
 
             stats["total_volunteers"] += volunteer_count
             stats["total_volunteer_hours"] += volunteer_hours
@@ -501,42 +480,6 @@ def generate_district_stats(school_year, host_filter="all"):
         district_stats[mapping["name"]] = stats
 
     return district_stats
-
-
-def cache_district_stats(school_year, district_stats):
-    """Save district statistics to the cache table"""
-    import time
-
-    max_retries = 3
-    retry_delay = 0.5  # seconds
-
-    for district_name, stats in district_stats.items():
-        district = District.query.filter_by(name=district_name).first()
-        if district:
-            # Update or create cache entry
-            report = DistrictYearEndReport.query.filter_by(
-                district_id=district.id, school_year=school_year
-            ).first() or DistrictYearEndReport(
-                district_id=district.id, school_year=school_year
-            )
-            report.report_data = stats
-            report.last_updated = datetime.now(timezone.utc)
-            db.session.add(report)
-
-            # Commit after each district to avoid long-running transactions
-            for attempt in range(max_retries):
-                try:
-                    db.session.commit()
-                    break
-                except Exception as e:
-                    if "locked" in str(e).lower() and attempt < max_retries - 1:
-                        db.session.rollback()
-                        time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
-                        continue
-                    else:
-                        db.session.rollback()
-                        print(f"Error caching district {district_name}: {str(e)}")
-                        raise
 
 
 def update_event_districts(event, district_names):
