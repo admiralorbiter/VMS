@@ -229,6 +229,244 @@ def generate_schools_by_level_data(district, events):
     return schools_by_level
 
 
+def refresh_district_cache(school_year, host_filter="all"):
+    """
+    Single-pass district cache refresh.
+    Replaces the old generate + cache two-step pattern.
+    Fetches all events for the year once and partitions them in-memory.
+    """
+    import time
+    from routes.reports.common import get_school_year_date_range, DISTRICT_MAPPING
+    
+    t0 = time.time()
+    start_date, end_date = get_school_year_date_range(school_year)
+    
+    # 1. Fetch all events for the year
+    events_query = Event.query.filter(
+        Event.start_date >= start_date,
+        Event.start_date <= end_date,
+        Event.status.in_(["Completed", "Successfully Completed"])
+    )
+    if host_filter == "prepkc":
+        events_query = events_query.filter(Event.host_type == "PrepKC")
+    
+    events = events_query.all()
+    logger.info("[refresh_district_cache] Fetched %d total events in %.2fs", len(events), time.time() - t0)
+    
+    # 2. Pre-fetch active district IDs and schools
+    from collections import defaultdict
+    all_districts = District.query.order_by(District.name).all()
+    active_districts = []
+    for sf_id, mapping in DISTRICT_MAPPING.items():
+        if not mapping["show"]:
+            continue
+        d = next((x for x in all_districts if x.salesforce_id == sf_id), None)
+        if d:
+            active_districts.append((d, mapping))
+            
+    # 3. Partition events by district
+    t1 = time.time()
+    district_events = {d.id: [] for d, _ in active_districts}
+    
+    # Pre-load schools
+    active_district_ids = [d.id for d, _ in active_districts]
+    all_schools = School.query.filter(School.district_id.in_(active_district_ids)).all()
+    schools_by_district = defaultdict(list)
+    for school in all_schools:
+        schools_by_district[school.district_id].append(school)
+        
+    # Pre-load event districts to avoid lazy load queries in loop
+    event_districts_map = {e.id: [d.name.lower() for d in e.districts] for e in events}
+    
+    for event in events:
+        matched_districts = set()
+        event_partner_lower = (event.district_partner or "").lower()
+        event_districts_lower = event_districts_map[event.id]
+        
+        for d, mapping in active_districts:
+            d_name_lower = d.name.lower()
+            
+            # Check primary name
+            if d_name_lower in event_partner_lower or any(d_name_lower in edn for edn in event_districts_lower):
+                matched_districts.add(d.id)
+                continue
+                
+            # Check aliases
+            matched = False
+            for alias in mapping.get("aliases", []):
+                alias_lower = alias.lower()
+                if alias_lower in event_partner_lower or any(alias_lower in edn for edn in event_districts_lower):
+                    matched_districts.add(d.id)
+                    matched = True
+                    break
+            if matched:
+                continue
+                
+            # Check schools
+            for school in schools_by_district[d.id]:
+                if school.name.lower() in event_partner_lower:
+                    matched_districts.add(d.id)
+                    break
+                    
+        # Add event to matched districts
+        for d_id in matched_districts:
+            district_events[d_id].append(event)
+                
+    logger.info("[refresh_district_cache] Partitioned events to districts in %.2fs", time.time() - t1)
+    
+    # 4. Pre-load participation data
+    t2 = time.time()
+    event_ids = [e.id for e in events]
+    
+    preloaded_students = defaultdict(lambda: defaultdict(set))
+    preloaded_hs_students = defaultdict(lambda: defaultdict(set))
+    preloaded_volunteers = defaultdict(lambda: defaultdict(list))
+    preloaded_teachers = defaultdict(lambda: defaultdict(list))
+    
+    if event_ids:
+        # Pre-load students
+        student_rows = (
+            db.session.query(
+                EventStudentParticipation.event_id,
+                School.district_id,
+                EventStudentParticipation.student_id,
+                School.level,
+            )
+            .join(Student, EventStudentParticipation.student_id == Student.id)
+            .join(School, Student.school_id == School.id)
+            .filter(
+                EventStudentParticipation.event_id.in_(event_ids),
+                EventStudentParticipation.status == "Attended"
+            )
+            .all()
+        )
+        for e_id, d_id, s_id, s_level in student_rows:
+            preloaded_students[d_id][e_id].add(s_id)
+            if s_level == "High":
+                preloaded_hs_students[d_id][e_id].add(s_id)
+                
+        # Pre-load volunteers
+        volunteer_rows = (
+            db.session.query(
+                EventParticipation.event_id,
+                EventParticipation.volunteer_id,
+                EventParticipation.delivery_hours,
+            )
+            .filter(
+                EventParticipation.event_id.in_(event_ids),
+                EventParticipation.status.in_(["Attended", "Completed", "Successfully Completed"])
+            )
+            .all()
+        )
+        for e_id, v_id, hours in volunteer_rows:
+            # All districts share the same volunteers for an event
+            for d, _ in active_districts:
+                preloaded_volunteers[d.id][e_id].append((v_id, hours or 0))
+                
+        # Pre-load teachers
+        from models.teacher import Teacher
+        from models.event import EventTeacher
+        teacher_rows = (
+            db.session.query(
+                EventTeacher.event_id,
+                School.district_id,
+                EventTeacher.teacher_id,
+                EventTeacher.attendance_confirmed_at,
+            )
+            .join(Teacher, EventTeacher.teacher_id == Teacher.id)
+            .join(School, Teacher.school_id == School.id)
+            .filter(
+                EventTeacher.event_id.in_(event_ids)
+            )
+            .all()
+        )
+        for e_id, d_id, t_id, confirmed_at in teacher_rows:
+            preloaded_teachers[d_id][e_id].append((t_id, confirmed_at))
+                
+    logger.info("[refresh_district_cache] Participation data loaded in %.2fs", time.time() - t2)
+    
+    # 5. Compute stats and commit
+    computed = []
+    from routes.reports.common import calculate_program_breakdown
+    
+    with db.session.no_autoflush:
+        for district, mapping in active_districts:
+            d_start = time.time()
+            d_events = district_events[district.id]
+            
+            # Compute enhanced stats
+            enhanced_stats = calculate_enhanced_district_stats(d_events, district.id)
+            
+            # Compute program breakdown
+            program_breakdown = calculate_program_breakdown(
+                district.id, 
+                school_year, 
+                host_filter=host_filter, 
+                preloaded_events=d_events,
+                preloaded_students=preloaded_students[district.id],
+                preloaded_hs_students=preloaded_hs_students[district.id],
+                preloaded_volunteers=preloaded_volunteers[district.id],
+                preloaded_teachers=preloaded_teachers[district.id]
+            )
+            
+            # Create the final flat structure expected by the templates
+            report_data = {
+                "name": district.name,
+                "district_code": getattr(district, "district_code", getattr(district, "nces_id", "")),
+                "total_events": enhanced_stats["events"]["total"],
+                "in_person_events": enhanced_stats["events"]["in_person"],
+                "virtual_events": enhanced_stats["events"]["virtual"],
+                "total_students": enhanced_stats["students"]["total"],
+                "unique_student_count": enhanced_stats["students"]["unique_total"],
+                "total_in_person_students": enhanced_stats["students"]["in_person"],
+                "total_virtual_students": enhanced_stats["students"]["virtual"],
+                "total_volunteers": enhanced_stats["volunteers"]["total"],
+                "unique_volunteer_count": enhanced_stats["volunteers"]["unique_total"],
+                "total_volunteer_hours": enhanced_stats["volunteers"]["hours_total"],
+                "event_types": enhanced_stats["event_types"],
+                "program_breakdown": program_breakdown,
+                "enhanced": enhanced_stats,
+            }
+            
+            # Upsert cache report
+            report = DistrictYearEndReport.query.filter_by(
+                district_id=district.id,
+                school_year=school_year,
+                host_filter=host_filter
+            ).first()
+            
+            if not report:
+                report = DistrictYearEndReport(
+                    district_id=district.id,
+                    school_year=school_year,
+                    host_filter=host_filter
+                )
+                db.session.add(report)
+                
+            report.report_data = report_data
+            report.last_updated = datetime.now()
+            
+            computed.append(district.name)
+            logger.info("[refresh_district_cache] %s computed in %.2fs (%d events)", district.name, time.time() - d_start, len(d_events))
+            
+        # 6. Commit all
+        max_retries = 3
+        retry_delay = 0.5
+        for attempt in range(max_retries):
+            try:
+                db.session.commit()
+                logger.info("[refresh_district_cache] Committed %d districts successfully", len(computed))
+                break
+            except Exception as e:
+                db.session.rollback()
+                if "locked" in str(e).lower() and attempt < max_retries - 1:
+                    time.sleep(retry_delay * (attempt + 1))
+                else:
+                    logger.error("[refresh_district_cache] Commit failed: %s", str(e))
+                    raise
+
+    logger.info("[refresh_district_cache] COMPLETE in %.2fs", time.time() - t0)
+
 def cache_district_stats_with_events(school_year, district_stats, host_filter="all"):
     """Cache district stats and events data for all districts"""
     import time

@@ -743,6 +743,14 @@ class DailyImporter:
             except Exception as e:
                 self.logger.warning("Failed to record aggregate sync log: %s", e)
 
+        if overall_success:
+            try:
+                from utils.cache_refresh_scheduler import invalidate_report_caches
+                invalidate_report_caches(reason="salesforce_daily_import")
+                self.logger.info("Report caches invalidated after Salesforce import")
+            except Exception as e:
+                self.logger.warning("Cache invalidation failed (non-fatal): %s", e)
+
         return overall_success
 
 

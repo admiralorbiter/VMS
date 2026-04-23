@@ -228,7 +228,7 @@ Expected: only one hit (the definition itself in `common.py`). If confirmed, del
 
 ---
 
-### ☐ Piece 7 — Fix Scheduler Delete-Only Pattern
+### ✅ Piece 7 — Fix Scheduler Delete-Only Pattern
 **Risk:** Medium &nbsp;|&nbsp; **Time:** 30 min &nbsp;|&nbsp; **Restart needed:** Yes
 
 **What:** In `utils/cache_refresh_scheduler.py`, four methods follow the same broken pattern: unconditionally delete all caches, then leave a comment saying "will regenerate on next access." After every nightly run, the first user to hit org, virtual, volunteer, or recruitment report pages triggers a cold computation that can take 30–60 seconds.
@@ -273,7 +273,7 @@ Apply the same pattern to `_refresh_virtual_session_caches`, `_refresh_volunteer
 
 ---
 
-### ☐ Piece 8 — Clean Up `DistrictEngagementReport` from Scheduler
+### ✅ Piece 8 — Clean Up `DistrictEngagementReport` from Scheduler
 **Risk:** Low &nbsp;|&nbsp; **Time:** 15 min &nbsp;|&nbsp; **Restart needed:** Yes
 
 **What:** `DistrictEngagementReport` is imported in the scheduler and deleted nightly, but no route ever reads from or writes to it. It's a legacy model from before `DistrictYearEndReport` was created. The scheduler is running a nightly delete against an empty table.

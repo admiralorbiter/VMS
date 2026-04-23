@@ -47,7 +47,6 @@ from models.district_model import District
 from models.event import Event
 from models.organization import Organization
 from models.reports import (
-    DistrictEngagementReport,
     DistrictYearEndReport,
     FirstTimeVolunteerReportCache,
     OrganizationDetailCache,
@@ -62,8 +61,7 @@ from models.volunteer import Volunteer
 
 # Import report generation functions
 from routes.reports.district_year_end import (
-    cache_district_stats_with_events,
-    generate_district_stats,
+    refresh_district_cache,
 )
 from routes.reports.recent_volunteers import (
     _query_active_volunteers_all,
@@ -185,15 +183,9 @@ class CacheRefreshScheduler:
             try:
                 # Refresh district year-end reports
                 DistrictYearEndReport.query.filter_by(school_year=school_year).delete()
-                DistrictEngagementReport.query.filter_by(
-                    school_year=school_year
-                ).delete()
 
                 # Generate fresh data
-                district_stats = generate_district_stats(school_year, host_filter="all")
-                cache_district_stats_with_events(
-                    school_year, district_stats, host_filter="all"
-                )
+                refresh_district_cache(school_year, host_filter="all")
 
                 logger.info("Refreshed district caches for school year %s", school_year)
 
@@ -203,91 +195,27 @@ class CacheRefreshScheduler:
                 )
 
     def _refresh_organization_caches(self):
-        """Refresh organization-related caches."""
-        logger.info("Refreshing organization caches...")
-
-        # Get current school year
-        current_year = int(datetime.now().year)
-        school_year = f"{str(current_year)[-2:]}{str(current_year + 1)[-2:]}"
-
-        try:
-            # Clear existing caches
-            OrganizationSummaryCache.query.filter_by(school_year=school_year).delete()
-            OrganizationReport.query.filter_by(school_year=school_year).delete()
-            OrganizationDetailCache.query.filter_by(school_year=school_year).delete()
-
-            # Note: Organization data generation is complex and requires specific route context
-            # For now, we'll just clear the caches and let them regenerate on next access
-            db.session.commit()
-
-            logger.info(
-                "Cleared organization caches for school year %s - will regenerate on next access",
-                school_year,
-            )
-
-        except Exception as e:
-            logger.exception("Failed to refresh organization caches: %s", str(e))
-            db.session.rollback()
+        """
+        Organization caches are managed via write-through in organization_report.py.
+        The route caches results on first access for each school year and host filter.
+        No nightly deletion needed — stale data is naturally replaced when the year
+        selector changes at the start of each school year.
+        """
+        logger.info("Organization caches are route-managed (write-through). No action needed in scheduler.")
 
     def _refresh_virtual_session_caches(self):
-        """Refresh virtual session caches."""
-        logger.info("Refreshing virtual session caches...")
-
-        # Get current virtual year
-        current_year = datetime.now().year
-        virtual_year = f"{current_year}-{current_year + 1}"
-
-        try:
-            # Clear existing caches
-            VirtualSessionReportCache.query.filter_by(
-                virtual_year=virtual_year
-            ).delete()
-            VirtualSessionDistrictCache.query.filter_by(
-                virtual_year=virtual_year
-            ).delete()
-
-            # Note: Virtual session data generation is complex and requires specific route context
-            # For now, we'll just clear the caches and let them regenerate on next access
-            db.session.commit()
-
-            logger.info(
-                "Cleared virtual session caches for virtual year %s - will regenerate on next access",
-                virtual_year,
-            )
-
-        except Exception as e:
-            logger.exception("Failed to refresh virtual session caches: %s", str(e))
-            db.session.rollback()
+        """
+        Virtual session caches are managed via write-through in the virtual session routes.
+        No nightly deletion needed.
+        """
+        logger.info("Virtual session caches are route-managed (write-through). No action needed in scheduler.")
 
     def _refresh_volunteer_caches(self):
-        """Refresh volunteer-related caches."""
-        logger.info("Refreshing volunteer caches...")
-
-        # Get current school year
-        current_year = int(datetime.now().year)
-        school_year = f"{str(current_year)[-2:]}{str(current_year + 1)[-2:]}"
-
-        try:
-            # Clear existing caches
-            RecentVolunteersReportCache.query.filter_by(
-                school_year=school_year
-            ).delete()
-            FirstTimeVolunteerReportCache.query.filter_by(
-                school_year=school_year
-            ).delete()
-
-            # Note: Volunteer data generation is complex and requires specific route context
-            # For now, we'll just clear the caches and let them regenerate on next access
-            db.session.commit()
-
-            logger.info(
-                "Cleared volunteer caches for school year %s - will regenerate on next access",
-                school_year,
-            )
-
-        except Exception as e:
-            logger.exception("Failed to refresh volunteer caches: %s", str(e))
-            db.session.rollback()
+        """
+        Volunteer caches are managed via write-through in the volunteer report routes.
+        No nightly deletion needed.
+        """
+        logger.info("Volunteer caches are route-managed (write-through). No action needed in scheduler.")
 
     def _refresh_recruitment_caches(self):
         """Refresh recruitment caches."""
@@ -383,3 +311,83 @@ def get_cache_status() -> Dict:
     """Get cache refresh scheduler status."""
     scheduler = get_scheduler()
     return scheduler.get_status()
+
+
+def invalidate_report_caches(school_year: str = None, reason: str = "import") -> dict:
+    """
+    Invalidate all report caches for a school year.
+
+    Called post-import by both the Salesforce daily import script and the
+    Pathful import route. The district year-end cache is also regenerated
+    proactively since users cannot trigger it without a manual Refresh.
+
+    Args:
+        school_year: 4-char year string (e.g. "2526"). Defaults to current year.
+        reason: Human-readable trigger source for logging.
+
+    Returns:
+        dict with counts of deleted records per cache type.
+    """
+    from routes.reports.common import get_current_school_year
+
+    if school_year is None:
+        school_year = get_current_school_year()
+
+    logger.info("Cache invalidation triggered by: %s (school_year=%s)", reason, school_year)
+    results = {}
+
+    try:
+        # --- Caches that self-heal via write-through on next route access ---
+        results["org_summary"] = OrganizationSummaryCache.query.filter_by(
+            school_year=school_year
+        ).delete()
+        results["org_report"] = OrganizationReport.query.filter_by(
+            school_year=school_year
+        ).delete()
+        results["org_detail"] = OrganizationDetailCache.query.filter_by(
+            school_year=school_year
+        ).delete()
+        results["recent_volunteers"] = RecentVolunteersReportCache.query.filter_by(
+            school_year=school_year
+        ).delete()
+        results["first_time_volunteers"] = FirstTimeVolunteerReportCache.query.filter_by(
+            school_year=school_year
+        ).delete()
+        results["recruitment"] = RecruitmentCandidatesCache.query.delete()
+
+        # Virtual caches use a different key format (e.g. "2025-2026")
+        year_start = f"20{school_year[:2]}"
+        year_end = f"20{school_year[2:]}"
+        virtual_year = f"{year_start}-{year_end}"
+        results["virtual_report"] = VirtualSessionReportCache.query.filter_by(
+            virtual_year=virtual_year
+        ).delete()
+        results["virtual_district"] = VirtualSessionDistrictCache.query.filter_by(
+            virtual_year=virtual_year
+        ).delete()
+
+        db.session.commit()
+        logger.info("Invalidated caches: %s", results)
+
+        # --- District year-end: proactively regenerate (cannot self-heal) ---
+        try:
+            from routes.reports.district_year_end import (
+                refresh_district_cache,
+            )
+
+            DistrictYearEndReport.query.filter_by(school_year=school_year).delete()
+            db.session.commit()
+
+            refresh_district_cache(school_year, host_filter="all")
+            results["district_year_end"] = "regenerated"
+            logger.info("District year-end cache regenerated for %s", school_year)
+        except Exception as e:
+            logger.exception("District cache regeneration failed: %s", str(e))
+            results["district_year_end"] = f"failed: {str(e)}"
+
+    except Exception as e:
+        db.session.rollback()
+        logger.exception("Cache invalidation failed: %s", str(e))
+        raise
+
+    return results

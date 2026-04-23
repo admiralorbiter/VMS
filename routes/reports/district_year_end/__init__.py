@@ -19,6 +19,7 @@ from routes.reports.district_year_end.computation import (
     convert_academic_year_format,
     convert_school_year_format,
     generate_schools_by_level_data,
+    refresh_district_cache,
 )
 
 # --- Routes & Blueprint ---
@@ -33,4 +34,5 @@ __all__ = [
     "convert_school_year_format",
     "generate_schools_by_level_data",
     "generate_district_stats",
+    "refresh_district_cache",
 ]

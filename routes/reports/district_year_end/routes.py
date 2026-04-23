@@ -56,6 +56,7 @@ from .computation import (
     convert_academic_year_format,
     convert_school_year_format,
     generate_schools_by_level_data,
+    refresh_district_cache,
 )
 
 # Create blueprint
@@ -196,21 +197,11 @@ def load_routes(bp):
         db.session.commit()
         logger.info("Deleted %d cached reports for %s/%s", deleted_count, school_year, host_filter)
 
-        # Generate new stats (this already does a lot of work)
-        logger.info("Starting district stats generation for %s", school_year)
-        gen_start = time.time()
-        district_stats = generate_district_stats(school_year, host_filter=host_filter)
-        gen_time = time.time() - gen_start
-        logger.info("Generated stats for %d districts in %.2fs", len(district_stats), gen_time)
-
-        # Cache the stats and events data (this does additional processing)
-        logger.info("Starting cache with events for %d districts...", len(district_stats))
-        cache_start = time.time()
-        cache_district_stats_with_events(
-            school_year, district_stats, host_filter=host_filter
-        )
-        cache_time = time.time() - cache_start
-        logger.info("Cached stats with events in %.2fs", cache_time)
+        # Single-pass refresh (replaces generate + cache two-step)
+        logger.info("Starting district cache refresh for %s", school_year)
+        refresh_start = time.time()
+        refresh_district_cache(school_year, host_filter=host_filter)
+        logger.info("District cache refresh complete in %.2fs", time.time() - refresh_start)
 
         total_time = time.time() - start_time
         logger.info("Total refresh time: %.2fs", total_time)
@@ -219,8 +210,8 @@ def load_routes(bp):
             {
                 "success": True,
                 "message": f"Successfully refreshed data for {school_year[:2]}-{school_year[2:]} school year",
-                "stats_generation_time": f"{gen_time:.2f}s",
-                "cache_time": f"{cache_time:.2f}s",
+                "stats_generation_time": f"{time.time() - refresh_start:.2f}s",
+                "cache_time": "0.00s",
                 "total_time": f"{total_time:.2f}s",
             }
         )

@@ -193,6 +193,13 @@ def load_pathful_routes():
             import_log.mark_complete()
             db.session.commit()
 
+            try:
+                from utils.cache_refresh_scheduler import invalidate_report_caches
+                invalidate_report_caches(reason="pathful_import")
+                current_app.logger.info("Report caches invalidated after Pathful import")
+            except Exception as e:
+                current_app.logger.warning("Cache invalidation failed (non-fatal): %s", e)
+
             # Phase D-4: Log import completion
             from routes.utils import log_audit_action
 

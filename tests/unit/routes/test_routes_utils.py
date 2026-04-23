@@ -2,7 +2,7 @@
 Unit tests for routes/utils.py utility functions.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 
@@ -28,7 +28,7 @@ class TestParseDate:
     def test_parse_date_iso_8601_with_timezone(self):
         """Test ISO 8601 format with timezone offset."""
         result = parse_date("2025-03-05T14:15:00.000+0000")
-        assert result == datetime(2025, 3, 5, 14, 15, 0)
+        assert result == datetime(2025, 3, 5, 14, 15, 0, tzinfo=timezone.utc)
 
     def test_parse_date_csv_with_seconds(self):
         """Test CSV format with time including seconds."""
