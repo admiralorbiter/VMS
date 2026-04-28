@@ -764,10 +764,8 @@ def email_settings():
     mail_from = os.environ.get("MAIL_FROM", "Not configured")
     mail_from_name = os.environ.get("MAIL_FROM_NAME", "Not configured")
 
-    # Check if Mailjet is configured
-    from utils.email import get_mailjet_client
-
-    mailjet_configured = get_mailjet_client() is not None
+    # Check if provider is configured
+    provider_configured = False  # TODO: implement provider check
 
     # Get templates for test send dropdown
     templates = (
@@ -788,7 +786,7 @@ def email_settings():
         is_production=is_prod,
         mail_from=mail_from,
         mail_from_name=mail_from_name,
-        mailjet_configured=mailjet_configured,
+        provider_configured=provider_configured,
         templates=templates,
         test_email_recipient=test_email_recipient,
     )
@@ -936,12 +934,7 @@ def test_send():
         error_msg = str(e)
         flash(f"Error sending test email: {error_msg}", "error")
         # Also log to help user understand what went wrong
-        if "Mailjet" in error_msg or "mailjet" in error_msg.lower():
-            flash(
-                "Check that Mailjet API keys are configured (MJ_APIKEY_PUBLIC and MJ_APIKEY_PRIVATE)",
-                "warning",
-            )
-        elif "allowlist" in error_msg.lower() or "blocked" in error_msg.lower():
+        if "allowlist" in error_msg.lower() or "blocked" in error_msg.lower():
             flash(
                 "Email was blocked by allowlist. Check EMAIL_ALLOWLIST environment variable.",
                 "warning",

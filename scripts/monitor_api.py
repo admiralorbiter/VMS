@@ -2,18 +2,16 @@
 Robust API Monitor with Email Alerting
 ======================================
 
-This script monitors the health of the Volunteer Signup API and sends
-email alerts via Mailjet if the API is down or malfunctioning.
+This script monitors the health of the Volunteer Signup API and logs
+an alert if the API is down or malfunctioning.
 
 Features:
 - Checks API reachability and status code (Expects 200 OK).
 - Verifies JSON response format.
-- Sends email alerts to administrators upon failure.
+- Logs alerts upon failure.
 - Uses environment variables for configuration/credentials.
 
-Configuration (.env):
-    MJ_APIKEY_PUBLIC: Mailjet Public Key
-    MJ_APIKEY_PRIVATE: Mailjet Private Key
+
     MAIL_FROM: Sender email address
     DAILY_IMPORT_RECIPIENT: Alert recipient email address
 
@@ -23,7 +21,6 @@ Usage:
 Dependencies:
     - requests
     - python-dotenv
-    - mailjet_rest
 """
 
 import logging
@@ -33,7 +30,6 @@ from datetime import datetime
 
 import requests
 from dotenv import load_dotenv
-from mailjet_rest import Client
 
 # Configure logging to output to standard output (console)
 logging.basicConfig(
@@ -47,27 +43,9 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 
-def get_mailjet_client():
-    """
-    Initialize and return the Mailjet client using environment variables.
-
-    Returns:
-        Client: Authenticated Mailjet client instance.
-        None: If credentials are missing in environment variables.
-    """
-    api_key_public = os.environ.get("MJ_APIKEY_PUBLIC")
-    api_key_private = os.environ.get("MJ_APIKEY_PRIVATE")
-
-    if not api_key_public or not api_key_private:
-        logger.warning("Mailjet credentials not found in environment.")
-        return None
-
-    return Client(auth=(api_key_public, api_key_private), version="v3.1")
-
-
 def send_alert_email(error_message, url):
     """
-    Send an HTML alert email to the configured administrator.
+    Placeholder for sending an alert email.
 
     Args:
         error_message (str): Description of the error encountered.
@@ -76,54 +54,8 @@ def send_alert_email(error_message, url):
     Returns:
         bool: True if email sent successfully, False otherwise.
     """
-    client = get_mailjet_client()
-    if not client:
-        return False
-
-    sender_email = os.environ.get("MAIL_FROM")
-    recipient_email = os.environ.get("DAILY_IMPORT_RECIPIENT")
-
-    if not sender_email or not recipient_email:
-        logger.warning("Missing MAIL_FROM or DAILY_IMPORT_RECIPIENT.")
-        return False
-
-    logger.info("Sending alert email to %s...", recipient_email)
-
-    # Construct the email payload for Mailjet API
-    data = {
-        "Messages": [
-            {
-                "From": {"Email": sender_email, "Name": "VMS Monitor"},
-                "To": [{"Email": recipient_email, "Name": "Admin"}],
-                "Subject": f"🚨 API ALERT: Volunteer Signup API Failed",
-                "TextPart": f"The Volunteer Signup API check failed at {datetime.now()}.\n\nURL: {url}\nError: {error_message}\n\nPlease check the server status immediately.",
-                "HTMLPart": f"""
-                    <h3>🚨 API Health Check Failed</h3>
-                    <p>The Volunteer Signup API check failed at <strong>{datetime.now()}</strong>.</p>
-                    <ul>
-                        <li><strong>URL:</strong> {url}</li>
-                        <li><strong>Error:</strong> {error_message}</li>
-                    </ul>
-                    <p>Please check the server status immediately.</p>
-                """,
-            }
-        ]
-    }
-
-    try:
-        # Send the email
-        result = client.send.create(data=data)
-        if result.status_code == 200:
-            logger.info("Alert email sent successfully.")
-            return True
-        else:
-            logger.error(
-                f"Failed to send email. Status: {result.status_code}, Response: {result.json()}"
-            )
-            return False
-    except Exception as e:
-        logger.error("Exception sending email: %s", e)
-        return False
+    logger.info("Email alerting not currently configured (provider stubbed).")
+    return False
 
 
 def check_api_health(url, send_email=True):

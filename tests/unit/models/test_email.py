@@ -332,12 +332,12 @@ class TestEmailDeliveryAttempt:
 
             # PENDING -> SUCCESS
             attempt.status = DeliveryAttemptStatus.SUCCESS
-            attempt.mailjet_message_id = "12345"
+            attempt.provider_message_id = "12345"
             attempt.completed_at = datetime.now(timezone.utc)
             db.session.commit()
 
             assert attempt.status == DeliveryAttemptStatus.SUCCESS
-            assert attempt.mailjet_message_id == "12345"
+            assert attempt.provider_message_id == "12345"
             assert attempt.completed_at is not None
 
     def test_delivery_attempt_with_error(

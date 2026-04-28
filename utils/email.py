@@ -5,7 +5,7 @@ Email Utility Functions
 This module provides utility functions for email management including:
 - Safety gates (allowlist, environment checks)
 - Quality checks (recipient validation, template validation)
-- Mailjet integration
+- Email provider integration
 - Template rendering
 - Error handling and alerting
 
@@ -23,7 +23,6 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
 from flask import current_app
-from mailjet_rest import Client
 
 from models import db
 from models.bug_report import BugReport, BugReportType
@@ -46,22 +45,6 @@ class EmailQualityError(Exception):
     """Raised when email fails quality checks."""
 
     pass
-
-
-def get_mailjet_client() -> Optional[Client]:
-    """
-    Get Mailjet client instance if credentials are configured.
-
-    Returns:
-        Client instance or None if not configured
-    """
-    api_key_public = os.environ.get("MJ_APIKEY_PUBLIC")
-    api_key_private = os.environ.get("MJ_APIKEY_PRIVATE")
-
-    if not api_key_public or not api_key_private:
-        return None
-
-    return Client(auth=(api_key_public, api_key_private), version="v3.1")
 
 
 def is_email_delivery_enabled() -> bool:
@@ -437,18 +420,19 @@ def create_email_message(
     return message
 
 
-def send_email_via_mailjet(
+def send_email(
     message: EmailMessage, is_dry_run: bool = False
 ) -> Tuple[bool, Optional[str], Optional[Dict]]:
     """
-    Send email via Mailjet API.
+    Send email via configured provider.
+    Currently a stub awaiting a new email provider integration.
 
     Args:
         message: EmailMessage instance
         is_dry_run: Whether this is a dry-run (no actual delivery)
 
     Returns:
-        Tuple of (success, error_message, mailjet_response)
+        Tuple of (success, error_message, provider_response)
     """
     if is_dry_run:
         return (
@@ -457,10 +441,6 @@ def send_email_via_mailjet(
             {"dry_run": True, "message": "Dry-run mode, no actual delivery"},
         )
 
-    client = get_mailjet_client()
-    if not client:
-        return False, "Mailjet credentials not configured", None
-
     # Check safety gates
     is_allowed, error_msg, excluded = check_safety_gates(
         message.recipients, is_dry_run=is_dry_run
@@ -468,61 +448,8 @@ def send_email_via_mailjet(
     if not is_allowed:
         return False, error_msg, None
 
-    # Prepare Mailjet payload
-    mail_from = os.environ.get("MAIL_FROM", "no-reply@ineedhelp.pro")
-    mail_from_name = os.environ.get("MAIL_FROM_NAME", "VMS System")
-
-    data = {
-        "Messages": [
-            {
-                "From": {"Email": mail_from, "Name": mail_from_name},
-                "To": [{"Email": email} for email in message.recipients],
-                "Subject": message.subject,
-                "TextPart": message.text_body,
-                "HTMLPart": message.html_body,
-            }
-        ]
-    }
-
-    # Add SandboxMode if in non-production
-    if not is_production_environment():
-        data["Messages"][0]["SandboxMode"] = True
-
-    try:
-        result = client.send.create(data=data)
-        response_json = result.json() if hasattr(result, "json") else {}
-
-        if result.status_code == 200:
-            # Extract Mailjet message ID
-            mailjet_message_id = None
-            if "Messages" in response_json and len(response_json["Messages"]) > 0:
-                mailjet_message_id = (
-                    response_json["Messages"][0].get("To", [{}])[0].get("MessageID")
-                )
-
-            return (
-                True,
-                None,
-                {
-                    "status_code": result.status_code,
-                    "response": response_json,
-                    "message_id": mailjet_message_id,
-                },
-            )
-        else:
-            error_msg = f"Mailjet API error: {result.status_code}"
-            if "Messages" in response_json:
-                error_details = response_json["Messages"][0].get("Errors", [])
-                if error_details:
-                    error_msg = f"{error_msg} - {error_details[0].get('ErrorMessage', 'Unknown error')}"
-            return (
-                False,
-                error_msg,
-                {"status_code": result.status_code, "response": response_json},
-            )
-
-    except Exception as e:
-        return False, f"Mailjet API exception: {str(e)}", None
+    # TODO: Implement new email provider logic here
+    return False, "No email provider configured", {"status": "not_implemented"}
 
 
 def create_delivery_attempt(
@@ -547,8 +474,8 @@ def create_delivery_attempt(
     db.session.add(attempt)
     db.session.flush()
 
-    # Send via Mailjet
-    success, error_message, mailjet_response = send_email_via_mailjet(
+    # Send via provider
+    success, error_message, provider_response = send_email(
         message, is_dry_run=is_dry_run
     )
 
@@ -559,13 +486,13 @@ def create_delivery_attempt(
             if is_dry_run
             else DeliveryAttemptStatus.SUCCESS
         )
-        if mailjet_response and "message_id" in mailjet_response:
-            attempt.mailjet_message_id = mailjet_response["message_id"]
+        if provider_response and "message_id" in provider_response:
+            attempt.provider_message_id = provider_response["message_id"]
     else:
         attempt.status = DeliveryAttemptStatus.FAILED
         attempt.error_message = error_message
-        if mailjet_response:
-            attempt.error_details = mailjet_response
+        if provider_response:
+            attempt.error_details = provider_response
 
     # Store provider payload summary (no secrets)
     attempt.provider_payload_summary = {
@@ -576,7 +503,7 @@ def create_delivery_attempt(
     }
 
     attempt.completed_at = datetime.now(timezone.utc)
-    attempt.mailjet_response = mailjet_response
+    attempt.provider_response = provider_response
 
     # Update message status
     if success and not is_dry_run:

@@ -151,14 +151,14 @@
         </div>
 
         <div class="info-item">
-            <div class="info-label">Mailjet Configured:</div>
+            <div class="info-label">Provider Configured:</div>
             <div>
-                {% if mailjet_configured %}
+                {% if provider_configured %}
                 <span class="status-badge enabled">Yes</span>
                 {% else %}
                 <span class="status-badge disabled">No</span>
                 <p style="margin: 0.5rem 0 0 0; color: #6b7280; font-size: 0.9rem;">
-                    Set MJ_APIKEY_PUBLIC and MJ_APIKEY_PRIVATE in environment
+                    Configure an email provider in the environment
                 </p>
                 {% endif %}
             </div>

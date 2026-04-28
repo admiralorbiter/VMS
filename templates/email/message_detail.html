@@ -225,7 +225,7 @@
                     <th>ID</th>
                     <th>Status</th>
                     <th>Attempted At</th>
-                    <th>Mailjet ID</th>
+                    <th>Provider ID</th>
                     <th>Error</th>
                 </tr>
             </thead>
@@ -240,7 +240,7 @@
                         {% if attempt.is_dry_run %}<small>(Dry-run)</small>{% endif %}
                     </td>
                     <td>{{ attempt.attempted_at.strftime('%Y-%m-%d %H:%M:%S') if attempt.attempted_at else 'N/A' }}</td>
-                    <td>{{ attempt.mailjet_message_id or 'N/A' }}</td>
+                    <td>{{ attempt.provider_message_id or 'N/A' }}</td>
                     <td>{{ attempt.error_message or '-' }}</td>
                 </tr>
                 {% endfor %}

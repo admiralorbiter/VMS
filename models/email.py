@@ -9,7 +9,7 @@ comprehensive tracking and audit capabilities.
 Key Features:
 - Email template versioning and management
 - Two-phase email sending (draft → queued → sent)
-- Delivery attempt tracking with Mailjet integration
+- Delivery attempt tracking with provider integration
 - Quality checks and safety gates
 - Recipient allowlist enforcement
 - Comprehensive audit trails
@@ -17,7 +17,7 @@ Key Features:
 Database Tables:
 - email_templates: Versioned email templates (HTML + text)
 - email_messages: Outbox records for email intents
-- email_delivery_attempts: Individual delivery attempts to Mailjet
+- email_delivery_attempts: Individual delivery attempts to the provider
 
 Email Lifecycle:
 - DRAFT: Message created but not queued
@@ -229,9 +229,9 @@ class EmailMessage(db.Model):
 
 class EmailDeliveryAttempt(db.Model):
     """
-    Email delivery attempt model for tracking individual Mailjet API calls.
+    Email delivery attempt model for tracking individual provider API calls.
 
-    Each attempt to send an email through Mailjet is recorded here, providing
+    Each attempt to send an email through the provider is recorded here, providing
     full traceability of delivery attempts, failures, and provider responses.
 
     Database Table:
@@ -239,7 +239,7 @@ class EmailDeliveryAttempt(db.Model):
 
     Key Features:
         - Individual attempt tracking
-        - Mailjet response ID storage
+        - Provider response ID storage
         - Error message and details
         - Status tracking
         - Provider payload summary (no secrets)
@@ -257,13 +257,11 @@ class EmailDeliveryAttempt(db.Model):
         Integer, default=DeliveryAttemptStatus.PENDING, nullable=False, index=True
     )
 
-    # Mailjet response
-    mailjet_message_id = db.Column(
+    # Provider response
+    provider_message_id = db.Column(
         String(100), nullable=True, index=True
-    )  # Mailjet's message ID
-    mailjet_response = db.Column(
-        JSON, nullable=True
-    )  # Full Mailjet API response (sanitized)
+    )  # Provider's message ID
+    provider_response = db.Column(JSON, nullable=True)  # Full API response (sanitized)
 
     # Error tracking
     error_message = db.Column(Text, nullable=True)
@@ -292,7 +290,7 @@ class EmailDeliveryAttempt(db.Model):
             "id": self.id,
             "message_id": self.message_id,
             "status": DeliveryAttemptStatus(self.status).name,
-            "mailjet_message_id": self.mailjet_message_id,
+            "provider_message_id": self.provider_message_id,
             "error_message": self.error_message,
             "attempted_at": (
                 self.attempted_at.isoformat() if self.attempted_at else None

@@ -383,7 +383,7 @@ class TestEmailOutbox:
 class TestEmailSending:
     """Tests for email sending routes (with mocks)"""
 
-    @patch("utils.email.send_email_via_mailjet")
+    @patch("utils.email.send_email")
     def test_send_message_dry_run(
         self, mock_send, client, test_admin_headers, test_email_message
     ):
@@ -405,7 +405,7 @@ class TestEmailSending:
         )
         assert_route_response(response, expected_statuses=[200, 302, 404, 500])
 
-    @patch("utils.email.send_email_via_mailjet")
+    @patch("utils.email.send_email")
     @patch.dict(os.environ, {"EMAIL_DELIVERY_ENABLED": "true"})
     def test_send_message_real(
         self, mock_send, client, test_admin_headers, test_email_message
@@ -574,7 +574,7 @@ class TestEmailQualityAssurance:
             db.session.delete(message)
             db.session.commit()
 
-    @patch("utils.email.send_email_via_mailjet")
+    @patch("utils.email.send_email")
     def test_bug_report_created_on_delivery_failure(
         self, mock_send, app, test_email_template, test_admin
     ):
@@ -596,7 +596,7 @@ class TestEmailQualityAssurance:
             )
             db.session.commit()
 
-            # Mock Mailjet to fail
+            # Mock provider to fail
             mock_send.return_value = (
                 False,
                 "Connection refused",
@@ -625,7 +625,7 @@ class TestEmailQualityAssurance:
             db.session.delete(message)
             db.session.commit()
 
-    @patch("utils.email.send_email_via_mailjet")
+    @patch("utils.email.send_email")
     def test_dry_run_skips_actual_delivery(
         self, mock_send, app, test_email_template, test_admin
     ):
@@ -642,7 +642,7 @@ class TestEmailQualityAssurance:
             )
             db.session.commit()
 
-            # Mock Mailjet to return success for dry-run
+            # Mock provider to return success for dry-run
             mock_send.return_value = (True, None, {"status": "dry_run"})
 
             attempt = create_delivery_attempt(message, is_dry_run=True)
@@ -703,7 +703,7 @@ class TestComposeEmail:
                 assert message.status == EmailMessageStatus.DRAFT
                 assert message.recipient_count >= 1
 
-    @patch("utils.email.send_email_via_mailjet")
+    @patch("utils.email.send_email")
     def test_compose_send_dry_run(
         self, mock_send, client, test_admin_headers, test_email_template, app
     ):

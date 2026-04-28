@@ -3,7 +3,7 @@ Unit Tests for Email Utilities
 ==============================
 
 Tests for email utility functions including safety gates, quality checks,
-and Mailjet integration (mocked).
+and provider integration (mocked).
 """
 
 import os

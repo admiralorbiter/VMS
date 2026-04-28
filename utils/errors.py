@@ -64,7 +64,7 @@ class AuthorizationError(AppError):
 
 
 class ExternalServiceError(AppError):
-    """External service failure — Salesforce, Mailjet, etc. (502)."""
+    """External service failure — Salesforce, email provider, etc. (502)."""
 
     status_code = 502
     default_message = "An external service is temporarily unavailable"
