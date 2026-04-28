@@ -62,15 +62,46 @@
             </div>
             {% endif %}
 
-            <!-- Membership Dates Notice -->
-            <div class="alert alert-secondary mb-4">
-                <i class="fas fa-history me-2"></i>
-                <strong>Membership Dates:</strong>
-                {% if mode == 'full' %}
-                    Showing all members ever linked to this organization. Counts may be overstated for members whose affiliation dates are unknown.
-                {% else %}
-                    Showing members whose affiliation dates are known or confirmed. Use "Include Unverified Members" on the main report to see all historical associations.
-                {% endif %}
+
+            <!-- Membership Dates Toggle -->
+            <div class="card mb-4 border-0 bg-light">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div>
+                            <span class="fw-semibold me-2">
+                                <i class="fas fa-history me-1 text-muted"></i> Membership Dates:
+                            </span>
+                            {% if mode == 'full' %}
+                                <span class="text-warning">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    Showing <strong>all members ever linked</strong> &mdash; counts may include volunteers with unknown affiliation dates.
+                                </span>
+                            {% else %}
+                                <span class="text-success">
+                                    <i class="fas fa-check-circle me-1"></i>
+                                    Showing <strong>verified members only</strong> &mdash; volunteers with confirmed affiliation dates for this window.
+                                </span>
+                            {% endif %}
+                        </div>
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Membership scope">
+                            <a href="{{ url_for('report.organization_report_detail', org_id=organization.id, school_year=school_year, host_filter=request.args.get('host_filter', 'all'), sort_vol=sort_vol, order_vol=order_vol, sort_evt=sort_evt, order_evt=order_evt, mode='verified') }}"
+                               class="btn {% if mode != 'full' %}btn-success{% else %}btn-outline-success{% endif %}">
+                                <i class="fas fa-check-circle me-1"></i> Verified Only
+                            </a>
+                            <a href="{{ url_for('report.organization_report_detail', org_id=organization.id, school_year=school_year, host_filter=request.args.get('host_filter', 'all'), sort_vol=sort_vol, order_vol=order_vol, sort_evt=sort_evt, order_evt=order_evt, mode='full') }}"
+                               class="btn {% if mode == 'full' %}btn-warning{% else %}btn-outline-warning{% endif %}">
+                                <i class="fas fa-history me-1"></i> Include Unverified
+                            </a>
+                        </div>
+                    </div>
+                    {% if mode != 'full' %}
+                    <div class="mt-2 small text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Volunteers without recorded affiliation dates are only visible in &ldquo;Include Unverified&rdquo; mode.
+                        Dates are set automatically for new affiliations and can be manually adjusted on the volunteer profile.
+                    </div>
+                    {% endif %}
+                </div>
             </div>
 
             <!-- Summary Statistics -->

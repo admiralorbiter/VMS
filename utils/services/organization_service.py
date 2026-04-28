@@ -218,11 +218,18 @@ class OrganizationService:
         if end_date:
             inperson_query = inperson_query.filter(Event.start_date <= end_date)
 
-        from utils.services.org_membership_filter import membership_date_filter
+        from utils.services.org_membership_filter import (
+            event_tenure_filter,
+            membership_date_filter,
+        )
 
         date_filter = membership_date_filter(start_date, end_date, mode=mode)
         if date_filter is not None:
             inperson_query = inperson_query.filter(date_filter)
+
+        tenure_filter = event_tenure_filter(mode=mode)
+        if tenure_filter is not None:
+            inperson_query = inperson_query.filter(tenure_filter)
 
         inperson_stats = inperson_query.group_by(Volunteer.id).all()
 
@@ -259,6 +266,10 @@ class OrganizationService:
         date_filter = membership_date_filter(start_date, end_date, mode=mode)
         if date_filter is not None:
             virtual_query = virtual_query.filter(date_filter)
+
+        tenure_filter = event_tenure_filter(mode=mode)
+        if tenure_filter is not None:
+            virtual_query = virtual_query.filter(tenure_filter)
 
         virtual_stats = virtual_query.group_by(Volunteer.id).all()
 
@@ -332,11 +343,18 @@ class OrganizationService:
         if end_date:
             query = query.filter(Event.start_date <= end_date)
 
-        from utils.services.org_membership_filter import membership_date_filter
+        from utils.services.org_membership_filter import (
+            event_tenure_filter,
+            membership_date_filter,
+        )
 
         date_filter = membership_date_filter(start_date, end_date, mode=mode)
         if date_filter is not None:
             query = query.filter(date_filter)
+
+        tenure_filter = event_tenure_filter(mode=mode)
+        if tenure_filter is not None:
+            query = query.filter(tenure_filter)
 
         detailed_events = query.order_by(
             Event.start_date, Event.title, Volunteer.last_name, Volunteer.first_name
@@ -453,11 +471,18 @@ class OrganizationService:
         if end_date:
             query = query.filter(Event.start_date <= end_date)
 
-        from utils.services.org_membership_filter import membership_date_filter
+        from utils.services.org_membership_filter import (
+            event_tenure_filter,
+            membership_date_filter,
+        )
 
         date_filter = membership_date_filter(start_date, end_date, mode=mode)
         if date_filter is not None:
             query = query.filter(date_filter)
+
+        tenure_filter = event_tenure_filter(mode=mode)
+        if tenure_filter is not None:
+            query = query.filter(tenure_filter)
 
         detailed_events = query.order_by(
             Event.start_date, Event.title, Volunteer.last_name, Volunteer.first_name
@@ -589,11 +614,18 @@ class OrganizationService:
         if end_date:
             query = query.filter(Event.start_date <= end_date)
 
-        from utils.services.org_membership_filter import membership_date_filter
+        from utils.services.org_membership_filter import (
+            event_tenure_filter,
+            membership_date_filter,
+        )
 
         date_filter = membership_date_filter(start_date, end_date, mode=mode)
         if date_filter is not None:
             query = query.filter(date_filter)
+
+        tenure_filter = event_tenure_filter(mode=mode)
+        if tenure_filter is not None:
+            query = query.filter(tenure_filter)
 
         cancelled_events = query.group_by(Event.id).all()
 
