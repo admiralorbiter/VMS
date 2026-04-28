@@ -28,7 +28,7 @@
 | [District Progress](#district-progress) | 18 | 9 | 0 | 8 | 1 |
 | [Student Roster](#student-roster) | 5 | 4 | 0 | 0 | 1 |
 | [Email System](#email-system) | 22 | 0 | 0 | 22 | 0 |
-| [Data & Operations](#data--operations) | 35 | 35 | 0 | 0 | 0 |
+| [Data & Operations](#data--operations) | 39 | 35 | 0 | 4 | 0 |
 | [District Suite](#district-suite) | 40 | 34 | 0 | 3 | 3 |
 | [Tools](#tools) | 15 | 15 | 0 | 0 | 0 |
 
@@ -423,6 +423,10 @@
 | FR-DELTA-008 | Students delta sync | ✅ | Feb 2026 |
 | FR-DELTA-009 | Organizations delta sync | ✅ | Feb 2026 |
 | FR-DELTA-010 | Student participants delta sync | ✅ | Feb 2026 |
+| FR-DELTA-011 | Watermark always advances (even on failure) | 📋 | TD-055 — watermark frozen by Mar 2026 failure caused 7-week gap; 161 volunteers affected |
+| FR-DELTA-012 | Wider lookback buffer after failed sync | 📋 | TD-055 — next delta after failure should use 48hr buffer not 1hr |
+| FR-DELTA-013 | Unmatched EP records persisted to data quality flags | 📋 | TD-056 — currently only in JSON response; 537 silent drops in Apr 2026 reimport |
+| FR-DELTA-014 | Retry queue for unresolved participation imports | 📋 | TD-057 — `pending_participation_imports` model; auto-resolves on next import |
 
 ---
 

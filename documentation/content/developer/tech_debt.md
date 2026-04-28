@@ -466,34 +466,150 @@ For each site:
 
 ---
 
+## TD-055: Delta Sync Watermark Freezes on Import Failure
+
+**Created:** 2026-04-28 · **Priority:** P0 · **Category:** Data Integrity / Sync Reliability
+
+When a Salesforce import run ends with `status='failed'`, the `SyncLog.last_sync_watermark` field is left `NULL` (not updated). On subsequent delta sync runs, `DeltaSyncHelper.get_watermark()` looks up the last *successful* watermark — meaning it reuses the watermark from before the failed run. Any Salesforce records modified between the failed run and the next successful run fall in an invisible gap and are never imported.
+
+**Triggered:** The March 8, 2026 `daily_import` failure left the watermark frozen. 161 volunteers with participation data in Salesforce accumulated a gap of ~7 weeks before it was discovered on 2026-04-28.
+
+### Proposed Fix
+
+1. **Always advance the watermark** at the end of every sync run, regardless of status.
+2. Track the previous run's status: if `failed`, use a **48-hour lookback buffer** on the next delta (instead of the standard 1 hour). This catches records that fell in the gap.
+3. Store `last_sync_status` alongside `last_sync_watermark` in `SyncLog` so `DeltaSyncHelper.get_watermark()` can apply the correct buffer.
+
+**Files to change:**
+- `routes/salesforce/event_import.py` — `SyncLog` creation block
+- `services/salesforce/delta_sync.py` — `get_watermark()` buffer logic
+
+**Risk:** Low — additive change. Slightly widens the delta window after a failure, causing minor re-processing of already-imported records (idempotent).
+
+**Effort:** Small (~1 hour).
+
+---
+
+---
+
+## TD-056: Unmatched Participation Records Dropped Silently
+
+**Created:** 2026-04-28 · **Priority:** P1 · **Category:** Observability / Data Integrity
+
+In `services/salesforce/processors/event.py`, `process_participation_row()` silently drops `EventParticipation` records when the volunteer or event lookup fails:
+
+```python
+if not volunteer or not event:
+    errors.append(f"Could not find volunteer or event for participation {row['Id']}")
+    return success_count, error_count + 1  # ← record is lost forever
+```
+
+The error message is appended to an in-memory list that is only surfaced in the HTTP JSON response. If the caller doesn't inspect the response (e.g. a scheduled job), the failure is invisible. There is no persistent record of which SF participation IDs failed to import.
+
+**Triggered:** 537 participation records were silently dropped during the April 2026 full reimport. None were auditable without re-running the import and reading the JSON.
+
+### Proposed Fix
+
+Write failed lookup records to the existing `data_quality_flag` table using the `flag_data_quality_issue()` helper:
+
+```python
+flag_data_quality_issue(
+    entity_type="event_participation",
+    entity_id=0,
+    issue_type="unmatched_sf_participation",
+    details=f"SF ID: {row['Id']}, Contact__c: {row.get('Contact__c')}, Session__c: {row.get('Session__c')}",
+    salesforce_id=row['Id'],
+)
+```
+
+This surfaces them in the Data Quality Dashboard at `/admin/data-quality` without adding new infrastructure.
+
+**Files to change:**
+- `services/salesforce/processors/event.py` — `process_participation_row()` error path
+
+**Risk:** Very low — additive only.
+
+**Effort:** Small (~30 minutes).
+
+---
+
+---
+
+## TD-057: Import Ordering Race — Participations Dropped When Volunteer Not Yet Imported
+
+**Created:** 2026-04-28 · **Priority:** P1 · **Category:** Architecture / Data Integrity
+
+The event participation import (`process_participation_row`) looks up the volunteer by `salesforce_individual_id`. If the volunteer contact hasn't been imported yet (e.g. if the volunteer import and event import run close together or out of order), the lookup fails and the participation is dropped (see TD-056).
+
+The `manage_imports.py` CLI enforces the correct sequence (`volunteers` before `events`), but this is a convention, not a contract. A delta sync run on just `events` after a new volunteer is added to SF will silently miss that volunteer's participations until a full sync.
+
+### Proposed Fix (Phase 2)
+
+Add a `pending_participation_imports` table as a retry queue:
+
+```python
+class PendingParticipationImport(db.Model):
+    __tablename__ = "pending_participation_imports"
+    id = db.Column(db.Integer, primary_key=True)
+    sf_participation_id = db.Column(db.String(18), unique=True, nullable=False)
+    sf_contact_id = db.Column(db.String(18), index=True)
+    sf_session_id = db.Column(db.String(18), index=True)
+    status = db.Column(db.String(50))
+    delivery_hours = db.Column(db.Float)
+    age_group = db.Column(db.String(50))
+    first_seen_at = db.Column(db.DateTime, default=datetime.utcnow)
+    retry_count = db.Column(db.Integer, default=0)
+    last_retry_at = db.Column(db.DateTime)
+    resolved_at = db.Column(db.DateTime)  # NULL = still pending
+    error_reason = db.Column(db.String(200))
+```
+
+On lookup miss: insert to queue. At the **end** of each event import (after all volunteer/event data is current): sweep the queue and resolve any records that now have a matching volunteer.
+
+**Files to change:**
+- New model: `models/pending_participation.py`
+- `services/salesforce/processors/event.py` — queue insert on miss
+- `routes/salesforce/event_import.py` — call `resolve_pending_participations()` at end
+
+**Risk:** Medium — new model + migration + resolver. Self-contained.
+
+**Effort:** Medium (~2-3 days).
+
+**Planned for:** Phase 2 of the [SF Import Remediation Plan](salesforce_import_roadmap.md).
+
+---
+
+
 ## Priority Order
 
 Ordered by **what best unblocks future work**:
 
 | Priority | ID | Item | Effort |
 | --- | --- | --- | --- |
-| 1 | **TD-009** | `db.session.commit()` Scattered in 44 Route Files | M |
-| 2 | **TD-011** | SQLite in Production | M |
-| 3 | **TD-013** | No True Application Factory Pattern | M |
-| ~~4~~ | ~~**TD-052**~~ | ~~Volunteer org matching → alias-based resolution~~ ✅ | ~~M~~ |
-| 5 | **TD-054** | `VolunteerOrganization()` direct constructors — migrate to `link_volunteer_to_org()` | S |
-| 6 | **TD-016** | Cache Model Proliferation in `reports.py` | M |
-| 7 | **TD-022** | No Test Coverage for Extracted Blueprints | M |
-| ~~8~~ | ~~**TD-033**~~ | ~~Student Import `str(None)` Data Cleanup~~ ✅ | ~~M~~ |
+| **P0** | **TD-055** | **Delta sync watermark freezes on import failure** | S |
+| **P1** | **TD-056** | **Unmatched participation records dropped silently** | S |
+| **P1** | **TD-057** | **Import ordering race — retry queue for unresolved EPs** | M |
+| 3 | **TD-009** | `db.session.commit()` Scattered in 44 Route Files | M |
+| 4 | **TD-011** | SQLite in Production | M |
+| 5 | **TD-013** | No True Application Factory Pattern | M |
+| 6 | **TD-054** | `VolunteerOrganization()` direct constructors — migrate to `link_volunteer_to_org()` | S |
+| 7 | **TD-016** | Cache Model Proliferation in `reports.py` | M |
+| 8 | **TD-022** | No Test Coverage for Extracted Blueprints | M |
 | 9 | **TD-034** | Salesforce Data Quality Audit | M |
-| ~~10~~ | ~~**TD-035**~~ | ~~Multi-Part Name Creates Duplicate Teacher Records~~ ✅ | ~~M~~ |
-| 11 | **TD-036** | Exact-Name Duplicate Teacher Records (~2,100 pairs) | M |
-| 12 | **TD-037** | Hard-Delete Pruned Teachers (after 2026-04-13) | M |
-| 13 | **TD-040** | `NEPRIS_SESSION_BASE_URL` in Single File | M |
-| 14 | **TD-041** | Oversized Route Files (33 Files Over 500 Lines) | M |
-| 15 | **TD-046** | Virtual Computation Duplication (2 Files, ~3,400 Lines) | M |
-| 16 | **TD-047** | Oversized Templates (28 Files Over 500 Lines) | M |
-| 17 | **TD-048** | API Tokens Stored in Plaintext | M |
-| 18 | **TD-049** | Backfill `attendance_confirmed_at` for Existing Records | M |
-| 19 | **TD-050** | Consolidate Legacy Virtual Usage Routes into Tenant Dashboard | M |
-| 20 | **TD-051** | Quality Dashboard — Evaluate Usefulness & Integration | M |
+| 10 | **TD-036** | Exact-Name Duplicate Teacher Records (~2,100 pairs) | M |
+| 11 | **TD-037** | Hard-Delete Pruned Teachers (after 2026-04-13) | M |
+| 12 | **TD-040** | `NEPRIS_SESSION_BASE_URL` in Single File | M |
+| 13 | **TD-041** | Oversized Route Files (33 Files Over 500 Lines) | M |
+| 14 | **TD-046** | Virtual Computation Duplication (2 Files, ~3,400 Lines) | M |
+| 15 | **TD-047** | Oversized Templates (28 Files Over 500 Lines) | M |
+| 16 | **TD-048** | API Tokens Stored in Plaintext | M |
+| 17 | **TD-049** | Backfill `attendance_confirmed_at` for Existing Records | M |
+| 18 | **TD-050** | Consolidate Legacy Virtual Usage Routes into Tenant Dashboard | M |
+| 19 | **TD-051** | Quality Dashboard — Evaluate Usefulness & Integration | M |
 
 > TD-004 is intentionally deferred — the M2M relationship is the correct path forward.
+> TD-055/056/057 were identified and triaged during the April 2026 volunteer participation gap incident.
+
 
 
 ---
