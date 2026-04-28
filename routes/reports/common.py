@@ -250,8 +250,13 @@ def is_cache_valid(cache_record, max_age_hours=24):
 def generate_district_stats(school_year, host_filter="all"):
     """Generate district statistics for a school year"""
     import time
+
     fn_start = time.time()
-    logger.info("[generate_district_stats] START school_year=%s host_filter=%s", school_year, host_filter)
+    logger.info(
+        "[generate_district_stats] START school_year=%s host_filter=%s",
+        school_year,
+        host_filter,
+    )
 
     district_stats = {}
     start_date, end_date = get_school_year_date_range(school_year)
@@ -264,16 +269,19 @@ def generate_district_stats(school_year, host_filter="all"):
 
     # Pre-load all schools for active districts
     from collections import defaultdict
-    from models.student import Student
-    from models.volunteer import EventParticipation
+
     from models.event import EventTeacher
+    from models.student import Student
     from models.teacher import Teacher
+    from models.volunteer import EventParticipation
+
     active_district_ids = [
         next((d.id for d in all_districts if d.salesforce_id == sf_id), None)
-        for sf_id, mapping in DISTRICT_MAPPING.items() if mapping["show"]
+        for sf_id, mapping in DISTRICT_MAPPING.items()
+        if mapping["show"]
     ]
     active_district_ids = [d for d in active_district_ids if d]
-    
+
     all_schools = School.query.filter(School.district_id.in_(active_district_ids)).all()
     schools_by_district = defaultdict(list)
     for school in all_schools:
@@ -293,7 +301,7 @@ def generate_district_stats(school_year, host_filter="all"):
             (d for d in all_districts if d.salesforce_id == salesforce_id), None
         )
         if not primary_district:
-            logger.warning("Primary district %s not found in database", mapping['name'])
+            logger.warning("Primary district %s not found in database", mapping["name"])
             continue
 
         # Get all schools for this district (from pre-loaded dict)
@@ -344,7 +352,11 @@ def generate_district_stats(school_year, host_filter="all"):
         event_ids = [event.id for event in events]
         logger.info(
             "[generate_district_stats] [%d/%d] %s — events query: %d events in %.2fs",
-            processed, district_count, mapping['name'], len(events), time.time() - d_start
+            processed,
+            district_count,
+            mapping["name"],
+            len(events),
+            time.time() - d_start,
         )
 
         # Debug log event types
@@ -384,7 +396,9 @@ def generate_district_stats(school_year, host_filter="all"):
                 )
                 .filter(
                     EventParticipation.event_id.in_(event_ids),
-                    EventParticipation.status.in_(["Attended", "Completed", "Successfully Completed"]),
+                    EventParticipation.status.in_(
+                        ["Attended", "Completed", "Successfully Completed"]
+                    ),
                 )
                 .all()
             )
@@ -534,7 +548,10 @@ def generate_district_stats(school_year, host_filter="all"):
         district_stats[mapping["name"]] = stats
         logger.info(
             "[generate_district_stats] [%d/%d] %s — DONE in %.2fs",
-            processed, district_count, mapping['name'], time.time() - d_start
+            processed,
+            district_count,
+            mapping["name"],
+            time.time() - d_start,
         )
 
     logger.info("[generate_district_stats] COMPLETE in %.2fs", time.time() - fn_start)
@@ -587,14 +604,14 @@ def get_district_filtered_query(base_query, district_field):
 
 
 def calculate_program_breakdown(
-    district_id, 
-    school_year, 
+    district_id,
+    school_year,
     host_filter="all",
     preloaded_events=None,
     preloaded_students=None,
     preloaded_hs_students=None,
     preloaded_volunteers=None,
-    preloaded_teachers=None
+    preloaded_teachers=None,
 ):
     """
     Calculate detailed program breakdown metrics for a district.
@@ -668,6 +685,12 @@ def calculate_program_breakdown(
         "career_college_fair_hs_students": {"total": 0, "unique": 0},
         "healthstart_students": {"total": 0, "unique": 0},
         "bfi_students": {"total": 0, "unique": 0},
+        "dia_students": {"total": 0, "unique": 0},
+        "sla_students": {"total": 0, "unique": 0},
+        "client_connected_students": {"total": 0, "unique": 0},
+        "p2t_students": {"total": 0, "unique": 0},
+        "p2gd_students": {"total": 0, "unique": 0},
+        "math_relays_count": 0,
         "connector_sessions": {
             "teachers_engaged": {"total": 0, "unique": 0},
             "students_participated": {
@@ -686,11 +709,20 @@ def calculate_program_breakdown(
     unique_career_fair_hs_students = set()
     unique_healthstart_students = set()
     unique_bfi_students = set()
+    unique_dia_students = set()
+    unique_sla_students = set()
+    unique_client_connected_students = set()
+    unique_p2t_students = set()
+    unique_p2gd_students = set()
     unique_connector_teachers = set()
 
     # 1. In-person events (exclude virtual_session and connector_session)
     if preloaded_events is not None:
-        in_person_events = [e for e in base_events if e.type not in [EventType.VIRTUAL_SESSION, EventType.CONNECTOR_SESSION]]
+        in_person_events = [
+            e
+            for e in base_events
+            if e.type not in [EventType.VIRTUAL_SESSION, EventType.CONNECTOR_SESSION]
+        ]
     else:
         in_person_events_query = base_query.filter(
             ~Event.type.in_([EventType.VIRTUAL_SESSION, EventType.CONNECTOR_SESSION])
@@ -741,7 +773,9 @@ def calculate_program_breakdown(
 
     # 2. Career Jumping events
     if preloaded_events is not None:
-        career_jumping_events = [e for e in base_events if e.type == EventType.CAREER_JUMPING]
+        career_jumping_events = [
+            e for e in base_events if e.type == EventType.CAREER_JUMPING
+        ]
     else:
         career_jumping_events = base_query.filter(
             Event.type == EventType.CAREER_JUMPING
@@ -774,7 +808,9 @@ def calculate_program_breakdown(
 
     # 3. Career Speakers events
     if preloaded_events is not None:
-        career_speakers_events = [e for e in base_events if e.type == EventType.CAREER_SPEAKER]
+        career_speakers_events = [
+            e for e in base_events if e.type == EventType.CAREER_SPEAKER
+        ]
     else:
         career_speakers_events = base_query.filter(
             Event.type == EventType.CAREER_SPEAKER
@@ -809,7 +845,11 @@ def calculate_program_breakdown(
 
     # 4. Career/College Fair events (high school students only)
     if preloaded_events is not None:
-        career_fair_events = [e for e in base_events if e.type in [EventType.CAREER_FAIR, EventType.COLLEGE_APPLICATION_FAIR]]
+        career_fair_events = [
+            e
+            for e in base_events
+            if e.type in [EventType.CAREER_FAIR, EventType.COLLEGE_APPLICATION_FAIR]
+        ]
     else:
         career_fair_events = base_query.filter(
             Event.type.in_([EventType.CAREER_FAIR, EventType.COLLEGE_APPLICATION_FAIR])
@@ -835,7 +875,9 @@ def calculate_program_breakdown(
             )
 
             hs_student_total_count = len(district_hs_student_participations)
-            breakdown["career_college_fair_hs_students"]["total"] += hs_student_total_count
+            breakdown["career_college_fair_hs_students"][
+                "total"
+            ] += hs_student_total_count
 
             event_hs_student_ids = {
                 student_id[0] for student_id in district_hs_student_participations
@@ -938,7 +980,11 @@ def calculate_program_breakdown(
 
     # 7. Connector Sessions (virtual_session + connector_session)
     if preloaded_events is not None:
-        connector_events = [e for e in base_events if e.type in [EventType.VIRTUAL_SESSION, EventType.CONNECTOR_SESSION]]
+        connector_events = [
+            e
+            for e in base_events
+            if e.type in [EventType.VIRTUAL_SESSION, EventType.CONNECTOR_SESSION]
+        ]
     else:
         connector_events = base_query.filter(
             Event.type.in_([EventType.VIRTUAL_SESSION, EventType.CONNECTOR_SESSION])
@@ -949,8 +995,12 @@ def calculate_program_breakdown(
     for event in connector_events:
         if preloaded_teachers is not None:
             teacher_entries = preloaded_teachers.get(event.id, [])
-            confirmed_teachers = [t for t in teacher_entries if t[1] is not None]  # confirmed_at is not None
-            breakdown["connector_sessions"]["teachers_engaged"]["total"] += len(confirmed_teachers)
+            confirmed_teachers = [
+                t for t in teacher_entries if t[1] is not None
+            ]  # confirmed_at is not None
+            breakdown["connector_sessions"]["teachers_engaged"]["total"] += len(
+                confirmed_teachers
+            )
             for t_id, _ in confirmed_teachers:
                 unique_connector_teachers.add(t_id)
             breakdown["connector_sessions"]["students_participated"]["total"] += (
@@ -984,5 +1034,260 @@ def calculate_program_breakdown(
     breakdown["connector_sessions"]["teachers_engaged"]["unique"] = len(
         unique_connector_teachers
     )
+
+    # 8. DIA events
+    if preloaded_events is not None:
+        dia_events = [
+            e
+            for e in base_events
+            if e.type in [EventType.DIA, EventType.DIA_CLASSROOM_SPEAKER]
+        ]
+    else:
+        dia_events_query = Event.query.filter(
+            Event.status == EventStatus.COMPLETED,
+            Event.start_date.between(start_date, end_date),
+            Event.type.in_([EventType.DIA, EventType.DIA_CLASSROOM_SPEAKER]),
+            db.or_(*query_conditions),
+        )
+        if host_filter == "prepkc":
+            dia_events_query = dia_events_query.filter(
+                db.or_(
+                    Event.session_host.ilike("%PREPKC%"),
+                    Event.session_host.ilike("%prepkc%"),
+                    Event.session_host.ilike("%PrepKC%"),
+                )
+            )
+        dia_events = dia_events_query.all()
+
+    for event in dia_events:
+        if preloaded_students is not None:
+            student_ids = preloaded_students.get(event.id, set())
+            breakdown["dia_students"]["total"] += len(student_ids)
+            unique_dia_students.update(student_ids)
+        else:
+            student_count = get_district_student_count_for_event(event, district_id)
+            breakdown["dia_students"]["total"] += student_count
+
+            district_student_ids = (
+                db.session.query(EventStudentParticipation.student_id)
+                .join(Student, EventStudentParticipation.student_id == Student.id)
+                .join(School, Student.school_id == School.id)
+                .filter(
+                    EventStudentParticipation.event_id == event.id,
+                    EventStudentParticipation.status == "Attended",
+                    School.district_id == district_id,
+                )
+                .all()
+            )
+            event_student_ids = {student_id[0] for student_id in district_student_ids}
+            unique_dia_students.update(event_student_ids)
+
+    breakdown["dia_students"]["unique"] = len(unique_dia_students)
+
+    # 9. SLA events
+    if preloaded_events is not None:
+        sla_events = [e for e in base_events if e.type == EventType.SLA]
+    else:
+        sla_events_query = Event.query.filter(
+            Event.status == EventStatus.COMPLETED,
+            Event.start_date.between(start_date, end_date),
+            Event.type == EventType.SLA,
+            db.or_(*query_conditions),
+        )
+        if host_filter == "prepkc":
+            sla_events_query = sla_events_query.filter(
+                db.or_(
+                    Event.session_host.ilike("%PREPKC%"),
+                    Event.session_host.ilike("%prepkc%"),
+                    Event.session_host.ilike("%PrepKC%"),
+                )
+            )
+        sla_events = sla_events_query.all()
+
+    for event in sla_events:
+        if preloaded_students is not None:
+            student_ids = preloaded_students.get(event.id, set())
+            breakdown["sla_students"]["total"] += len(student_ids)
+            unique_sla_students.update(student_ids)
+        else:
+            student_count = get_district_student_count_for_event(event, district_id)
+            breakdown["sla_students"]["total"] += student_count
+
+            district_student_ids = (
+                db.session.query(EventStudentParticipation.student_id)
+                .join(Student, EventStudentParticipation.student_id == Student.id)
+                .join(School, Student.school_id == School.id)
+                .filter(
+                    EventStudentParticipation.event_id == event.id,
+                    EventStudentParticipation.status == "Attended",
+                    School.district_id == district_id,
+                )
+                .all()
+            )
+            event_student_ids = {student_id[0] for student_id in district_student_ids}
+            unique_sla_students.update(event_student_ids)
+
+    breakdown["sla_students"]["unique"] = len(unique_sla_students)
+
+    # 10. Client Connected Project events
+    if preloaded_events is not None:
+        ccp_events = [
+            e for e in base_events if e.type == EventType.CLIENT_CONNECTED_PROJECT
+        ]
+    else:
+        ccp_events_query = Event.query.filter(
+            Event.status == EventStatus.COMPLETED,
+            Event.start_date.between(start_date, end_date),
+            Event.type == EventType.CLIENT_CONNECTED_PROJECT,
+            db.or_(*query_conditions),
+        )
+        if host_filter == "prepkc":
+            ccp_events_query = ccp_events_query.filter(
+                db.or_(
+                    Event.session_host.ilike("%PREPKC%"),
+                    Event.session_host.ilike("%prepkc%"),
+                    Event.session_host.ilike("%PrepKC%"),
+                )
+            )
+        ccp_events = ccp_events_query.all()
+
+    for event in ccp_events:
+        if preloaded_students is not None:
+            student_ids = preloaded_students.get(event.id, set())
+            breakdown["client_connected_students"]["total"] += len(student_ids)
+            unique_client_connected_students.update(student_ids)
+        else:
+            student_count = get_district_student_count_for_event(event, district_id)
+            breakdown["client_connected_students"]["total"] += student_count
+
+            district_student_ids = (
+                db.session.query(EventStudentParticipation.student_id)
+                .join(Student, EventStudentParticipation.student_id == Student.id)
+                .join(School, Student.school_id == School.id)
+                .filter(
+                    EventStudentParticipation.event_id == event.id,
+                    EventStudentParticipation.status == "Attended",
+                    School.district_id == district_id,
+                )
+                .all()
+            )
+            event_student_ids = {student_id[0] for student_id in district_student_ids}
+            unique_client_connected_students.update(event_student_ids)
+
+    breakdown["client_connected_students"]["unique"] = len(
+        unique_client_connected_students
+    )
+
+    # 11. P2T events
+    if preloaded_events is not None:
+        p2t_events = [e for e in base_events if e.type == EventType.P2T]
+    else:
+        p2t_events_query = Event.query.filter(
+            Event.status == EventStatus.COMPLETED,
+            Event.start_date.between(start_date, end_date),
+            Event.type == EventType.P2T,
+            db.or_(*query_conditions),
+        )
+        if host_filter == "prepkc":
+            p2t_events_query = p2t_events_query.filter(
+                db.or_(
+                    Event.session_host.ilike("%PREPKC%"),
+                    Event.session_host.ilike("%prepkc%"),
+                    Event.session_host.ilike("%PrepKC%"),
+                )
+            )
+        p2t_events = p2t_events_query.all()
+
+    for event in p2t_events:
+        if preloaded_students is not None:
+            student_ids = preloaded_students.get(event.id, set())
+            breakdown["p2t_students"]["total"] += len(student_ids)
+            unique_p2t_students.update(student_ids)
+        else:
+            student_count = get_district_student_count_for_event(event, district_id)
+            breakdown["p2t_students"]["total"] += student_count
+
+            district_student_ids = (
+                db.session.query(EventStudentParticipation.student_id)
+                .join(Student, EventStudentParticipation.student_id == Student.id)
+                .join(School, Student.school_id == School.id)
+                .filter(
+                    EventStudentParticipation.event_id == event.id,
+                    EventStudentParticipation.status == "Attended",
+                    School.district_id == district_id,
+                )
+                .all()
+            )
+            event_student_ids = {student_id[0] for student_id in district_student_ids}
+            unique_p2t_students.update(event_student_ids)
+
+    breakdown["p2t_students"]["unique"] = len(unique_p2t_students)
+
+    # 12. P2GD events
+    if preloaded_events is not None:
+        p2gd_events = [e for e in base_events if e.type == EventType.P2GD]
+    else:
+        p2gd_events_query = Event.query.filter(
+            Event.status == EventStatus.COMPLETED,
+            Event.start_date.between(start_date, end_date),
+            Event.type == EventType.P2GD,
+            db.or_(*query_conditions),
+        )
+        if host_filter == "prepkc":
+            p2gd_events_query = p2gd_events_query.filter(
+                db.or_(
+                    Event.session_host.ilike("%PREPKC%"),
+                    Event.session_host.ilike("%prepkc%"),
+                    Event.session_host.ilike("%PrepKC%"),
+                )
+            )
+        p2gd_events = p2gd_events_query.all()
+
+    for event in p2gd_events:
+        if preloaded_students is not None:
+            student_ids = preloaded_students.get(event.id, set())
+            breakdown["p2gd_students"]["total"] += len(student_ids)
+            unique_p2gd_students.update(student_ids)
+        else:
+            student_count = get_district_student_count_for_event(event, district_id)
+            breakdown["p2gd_students"]["total"] += student_count
+
+            district_student_ids = (
+                db.session.query(EventStudentParticipation.student_id)
+                .join(Student, EventStudentParticipation.student_id == Student.id)
+                .join(School, Student.school_id == School.id)
+                .filter(
+                    EventStudentParticipation.event_id == event.id,
+                    EventStudentParticipation.status == "Attended",
+                    School.district_id == district_id,
+                )
+                .all()
+            )
+            event_student_ids = {student_id[0] for student_id in district_student_ids}
+            unique_p2gd_students.update(event_student_ids)
+
+    breakdown["p2gd_students"]["unique"] = len(unique_p2gd_students)
+
+    # 13. Math Relays events (Count only)
+    if preloaded_events is not None:
+        math_relays_events = [e for e in base_events if e.type == EventType.MATH_RELAYS]
+    else:
+        math_relays_events_query = Event.query.filter(
+            Event.status == EventStatus.COMPLETED,
+            Event.start_date.between(start_date, end_date),
+            Event.type == EventType.MATH_RELAYS,
+            db.or_(*query_conditions),
+        )
+        if host_filter == "prepkc":
+            math_relays_events_query = math_relays_events_query.filter(
+                db.or_(
+                    Event.session_host.ilike("%PREPKC%"),
+                    Event.session_host.ilike("%prepkc%"),
+                    Event.session_host.ilike("%PrepKC%"),
+                )
+            )
+        math_relays_events = math_relays_events_query.all()
+
+    breakdown["math_relays_count"] = len(math_relays_events)
 
     return breakdown

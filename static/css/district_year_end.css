@@ -103,36 +103,12 @@
     color: white;
 }
 
-/* Report header wrapper with sidebar on the right */
+/* Report header wrapper */
 .report-header-wrapper {
     display: flex;
-    gap: 1.5rem;
-    align-items: flex-start;
-    margin-bottom: 1.5rem;
-}
-
-.header-sidebar {
-    flex: 0 0 320px;
-    min-width: 320px;
-    flex-shrink: 0;
-}
-
-/* Responsive layout */
-@media (max-width: 1200px) {
-    .report-header-wrapper {
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .header-sidebar {
-        flex: none;
-        width: 100%;
-        max-width: 100%;
-    }
-
-    .header-sidebar .google-sheets-sidebar {
-        position: static;
-    }
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 2rem;
 }
 
 /* --- District Cards & Schools Grid Styles --- */
@@ -145,6 +121,13 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.district-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 20px rgba(29, 51, 84, 0.15);
+    border-color: var(--ucla-blue);
 }
 
 .district-header {
@@ -158,10 +141,38 @@
     background: rgba(158, 216, 219, 0.5); /* slightly darker mint green */
 }
 
+.district-header-content {
+    flex-grow: 1;
+    width: 100%;
+}
+
 .district-title-section {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 0.75rem;
+}
+
+.district-quick-stats {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-left: auto;
+    font-size: 0.85rem;
+    color: #555;
+    background: rgba(255, 255, 255, 0.5);
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+}
+
+.district-quick-stats span {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.district-quick-stats i {
+    color: var(--ucla-blue);
 }
 
 .district-title-section h2 {

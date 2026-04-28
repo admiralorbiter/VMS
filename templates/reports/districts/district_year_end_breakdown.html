@@ -164,7 +164,7 @@
             <h1>Detailed Stats Breakdown {{ school_year }}</h1>
         </div>
         <div class="header-controls">
-            <a href="{{ url_for('report.district_year_end_input_data', school_year=school_year, host_filter=host_filter) }}" 
+            <a href="{{ url_for('report.district_year_end_input_data', school_year=school_year, host_filter=host_filter) }}"
                class="input-data-button">
                 <i class="fas fa-edit"></i> Input Data
             </a>
@@ -328,6 +328,101 @@
                 {% endfor %}
             </tr>
 
+            <!-- DIA Students -->
+            <tr>
+                <td class="metric-name">Students Enrolled in DIA (Middle School)</td>
+                <td class="overall-column">
+                    <div class="metric-value">
+                        <span class="metric-total">Total: {{ overall_totals.dia_students.total }}</span>
+                        <span class="metric-unique">Unique: {{ overall_totals.dia_students.unique }}</span>
+                    </div>
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ breakdown.get('dia_students', {}).get('total', 0) }}</span>
+                        <span class="metric-unique">{{ breakdown.get('dia_students', {}).get('unique', 0) }} unique</span>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- SLA Students -->
+            <tr>
+                <td class="metric-name">Students Participated in SLA</td>
+                <td class="overall-column">
+                    <div class="metric-value">
+                        <span class="metric-total">Total: {{ overall_totals.sla_students.total }}</span>
+                        <span class="metric-unique">Unique: {{ overall_totals.sla_students.unique }}</span>
+                    </div>
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ breakdown.get('sla_students', {}).get('total', 0) }}</span>
+                        <span class="metric-unique">{{ breakdown.get('sla_students', {}).get('unique', 0) }} unique</span>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- Client Connected Projects Students -->
+            <tr>
+                <td class="metric-name">Students in Client Connected Projects</td>
+                <td class="overall-column">
+                    <div class="metric-value">
+                        <span class="metric-total">Total: {{ overall_totals.client_connected_students.total }}</span>
+                        <span class="metric-unique">Unique: {{ overall_totals.client_connected_students.unique }}</span>
+                    </div>
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ breakdown.get('client_connected_students', {}).get('total', 0) }}</span>
+                        <span class="metric-unique">{{ breakdown.get('client_connected_students', {}).get('unique', 0) }} unique</span>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- P2T Students -->
+            <tr>
+                <td class="metric-name">Students Participated in P2T</td>
+                <td class="overall-column">
+                    <div class="metric-value">
+                        <span class="metric-total">Total: {{ overall_totals.p2t_students.total }}</span>
+                        <span class="metric-unique">Unique: {{ overall_totals.p2t_students.unique }}</span>
+                    </div>
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ breakdown.get('p2t_students', {}).get('total', 0) }}</span>
+                        <span class="metric-unique">{{ breakdown.get('p2t_students', {}).get('unique', 0) }} unique</span>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- P2GD Students -->
+            <tr>
+                <td class="metric-name">Students Participated in P2GD</td>
+                <td class="overall-column">
+                    <div class="metric-value">
+                        <span class="metric-total">Total: {{ overall_totals.p2gd_students.total }}</span>
+                        <span class="metric-unique">Unique: {{ overall_totals.p2gd_students.unique }}</span>
+                    </div>
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ breakdown.get('p2gd_students', {}).get('total', 0) }}</span>
+                        <span class="metric-unique">{{ breakdown.get('p2gd_students', {}).get('unique', 0) }} unique</span>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+
             <!-- Connector Sessions: Teachers Engaged -->
             <tr>
                 <td class="metric-name">Teachers Engaged in Connector Sessions</td>
@@ -399,6 +494,23 @@
                 </td>
                 {% endfor %}
             </tr>
+
+            <!-- Math Relays Events Count -->
+            <tr>
+                <td class="metric-name">Number of Math Relays Events</td>
+                <td class="overall-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ overall_totals.math_relays_count }}</span>
+                    </div>
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    <div class="metric-value">
+                        <span class="metric-total">{{ breakdown.get('math_relays_count', 0) }}</span>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
         </tbody>
     </table>
     {% endif %}
@@ -420,43 +532,25 @@
                 </tr>
             </thead>
             <tbody>
-                <!-- Math Relays -->
-                {% if manual_inputs_overall.get('math_relays') is not none or manual_inputs_by_district %}
+                {% for type_key, type_info in manual_data_types.items() %}
+                {% if manual_inputs_overall.get(type_key) is not none or manual_inputs_by_district %}
                 <tr>
-                    <td class="metric-name">Students Participated in Math Relays</td>
+                    <td class="metric-name">{{ type_info.display_name }}</td>
                     <td class="overall-column">
                         <div class="metric-value">
-                            <span class="metric-total">{{ manual_inputs_overall.get('math_relays', 0) }}</span>
+                            <span class="metric-total">{{ manual_inputs_overall.get(type_key, 0) }}</span>
                         </div>
                     </td>
                     {% for district_name, breakdown in breakdown_data.items() %}
                     <td class="district-column">
                         <div class="metric-value">
-                            <span class="metric-total">{{ manual_inputs_by_district.get(district_name, {}).get('math_relays', 0) }}</span>
+                            <span class="metric-total">{{ manual_inputs_by_district.get(district_name, {}).get(type_key, 0) }}</span>
                         </div>
                     </td>
                     {% endfor %}
                 </tr>
                 {% endif %}
-
-                <!-- Data Science -->
-                {% if manual_inputs_overall.get('data_science') is not none or manual_inputs_by_district %}
-                <tr>
-                    <td class="metric-name">Students Participated in Data Science</td>
-                    <td class="overall-column">
-                        <div class="metric-value">
-                            <span class="metric-total">{{ manual_inputs_overall.get('data_science', 0) }}</span>
-                        </div>
-                    </td>
-                    {% for district_name, breakdown in breakdown_data.items() %}
-                    <td class="district-column">
-                        <div class="metric-value">
-                            <span class="metric-total">{{ manual_inputs_by_district.get(district_name, {}).get('data_science', 0) }}</span>
-                        </div>
-                    </td>
-                    {% endfor %}
-                </tr>
-                {% endif %}
+                {% endfor %}
             </tbody>
         </table>
     </div>

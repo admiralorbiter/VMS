@@ -24,7 +24,7 @@
 | [In-Person Events](#in-person-events) | 18 | 16 | 0 | 2 | 0 |
 | [Virtual Events](#virtual-events) | 23 | 17 | 0 | 4 | 2 |
 | [Volunteer Recruitment](#volunteer-recruitment) | 24 | 24 | 0 | 0 | 0 |
-| [Reporting](#reporting) | 21 | 11 | 0 | 10 | 0 |
+| [Reporting](#reporting) | 21 | 13 | 1 | 6 | 1 |
 | [District Progress](#district-progress) | 18 | 9 | 0 | 8 | 1 |
 | [Student Roster](#student-roster) | 5 | 4 | 0 | 0 | 1 |
 | [Email System](#email-system) | 22 | 0 | 0 | 22 | 0 |
@@ -216,11 +216,11 @@
 
 | ID | Requirement | Status | Notes |
 |----|-------------|--------|-------|
-| FR-REPORTING-430 | District Year-End Report | 📋 | TBD |
-| FR-REPORTING-431 | Annual metrics aggregation | 📋 | TBD |
-| FR-REPORTING-432 | Year-over-year comparison | 📋 | TBD |
-| FR-REPORTING-433 | PDF/Excel export | 📋 | TBD |
-| FR-REPORTING-434 | Automated generation scheduling | 📋 | TBD |
+| FR-REPORTING-430 | District Year-End Report | ✅ | Main list + detail routes; cache-backed; district-scoped access |
+| FR-REPORTING-431 | Annual metrics aggregation | ✅ | `calculate_enhanced_district_stats` and `calculate_program_breakdown`; fully supports program type metrics and `DistrictManualInput` override system |
+| FR-REPORTING-432 | Year-over-year comparison | 📋 | Not implemented — Session 5 |
+| FR-REPORTING-433 | PDF/Excel export | 🔧 | Excel ✅ (`/year-end/<district>/excel`); PDF deferred |
+| FR-REPORTING-434 | Automated generation scheduling | ➖ | Deferred — out of sprint scope |
 
 ---
 
@@ -548,7 +548,7 @@
 
 1. **Email System** — All 22 FRs are TBD
 2. **Reporting Cache Management** — FR-422–425 still TBD (420, 421 now implemented)
-3. **Reporting Year-End** — FR-430–434 (5 FRs)
+3. **Reporting Year-End** — FR-432 (YoY comparison, Session 5); FR-433 Excel ✅ done, PDF deferred; FR-434 deferred
 4. **District Data Tracker** — FR-525–530 (6 FRs)
 5. **TD-054** — Migrate `VolunteerOrganization()` constructors to `link_volunteer_to_org()` (next PR)
 

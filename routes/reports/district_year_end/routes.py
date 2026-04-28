@@ -59,6 +59,79 @@ from .computation import (
     refresh_district_cache,
 )
 
+MANUAL_DATA_TYPES = {
+    "data_science": {
+        "display_name": "Data Science",
+        "description": "Enter Data Science participation numbers",
+        "category": "Special Programs",
+    },
+    "math_relays_hs": {
+        "display_name": "Math Relays — HS Participants",
+        "description": "Number of high school students who participated in Math Relays",
+        "category": "Math Relays",
+    },
+    "math_relays_jr": {
+        "display_name": "Math Relays — JR Participants",
+        "description": "Number of junior high students who participated in Math Relays",
+        "category": "Math Relays",
+    },
+    "math_relays_awards_hs": {
+        "display_name": "Math Relays Awards — HS",
+        "description": "Number of high school students receiving awards at Math Relays",
+        "category": "Math Relays",
+    },
+    "math_relays_awards_ms": {
+        "display_name": "Math Relays Awards — MS",
+        "description": "Number of middle school students receiving awards at Math Relays",
+        "category": "Math Relays",
+    },
+    "dia_irc_earned": {
+        "display_name": "DIA — IRC Earned",
+        "description": "Number of DIA students who earned an IRC",
+        "category": "DIA",
+    },
+    "p2gd_dual_credit": {
+        "display_name": "P2GD — Dual Credit Earned",
+        "description": "Number of P2GD students who earned dual credit",
+        "category": "Pathway Programs",
+    },
+    "p2t_completed": {
+        "display_name": "P2T — Completed Credential/Project",
+        "description": "Number of P2T students who completed a credential, project, or dual credit",
+        "category": "Pathway Programs",
+    },
+    "cna_students": {
+        "display_name": "CNA Credential Students",
+        "description": "Number of students engaged in CNA credential program",
+        "category": "Health Credentials",
+    },
+    "cma_students": {
+        "display_name": "CMA Credential Students",
+        "description": "Number of students engaged in CMA credential program",
+        "category": "Health Credentials",
+    },
+    "college_credits_students": {
+        "display_name": "College Credits — Students",
+        "description": "Number of students who earned college credits",
+        "category": "College Credits",
+    },
+    "college_credits_total": {
+        "display_name": "College Credits — Total Credits",
+        "description": "Total number of college credits earned across all students",
+        "category": "College Credits",
+    },
+    "careers_on_wheels": {
+        "display_name": "Careers on Wheels (5th Graders)",
+        "description": "Number of 5th grade students in Careers on Wheels (Center School District)",
+        "category": "Special Programs",
+    },
+    "holland_visits": {
+        "display_name": "Holland 1916 Visits",
+        "description": "Number of students attending Holland 1916 campus visits (KCKPS)",
+        "category": "Special Programs",
+    },
+}
+
 # Create blueprint
 district_year_end_bp = Blueprint("district_year_end", __name__)
 
@@ -195,13 +268,20 @@ def load_routes(bp):
             school_year=school_year, host_filter=host_filter
         ).delete()
         db.session.commit()
-        logger.info("Deleted %d cached reports for %s/%s", deleted_count, school_year, host_filter)
+        logger.info(
+            "Deleted %d cached reports for %s/%s",
+            deleted_count,
+            school_year,
+            host_filter,
+        )
 
         # Single-pass refresh (replaces generate + cache two-step)
         logger.info("Starting district cache refresh for %s", school_year)
         refresh_start = time.time()
         refresh_district_cache(school_year, host_filter=host_filter)
-        logger.info("District cache refresh complete in %.2fs", time.time() - refresh_start)
+        logger.info(
+            "District cache refresh complete in %.2fs", time.time() - refresh_start
+        )
 
         total_time = time.time() - start_time
         logger.info("Total refresh time: %.2fs", total_time)
@@ -262,17 +342,19 @@ def load_routes(bp):
                 )  # Get from cache
 
                 # Use pre-calculated organization count from stats
-                unique_organization_count = stats.get("enhanced", {}).get("organizations", {}).get("unique_total", 0)
+                unique_organization_count = (
+                    stats.get("enhanced", {})
+                    .get("organizations", {})
+                    .get("unique_total", 0)
+                )
 
                 # Use cached data if we have both stats and events data
                 if stats and "enhanced" in stats:
                     # Get schools_by_level directly from cache
-                    schools_by_level = cached_report.events_data.get("schools_by_level", {
-                        "High": [],
-                        "Middle": [],
-                        "Elementary": [],
-                        "Other": []
-                    })
+                    schools_by_level = cached_report.events_data.get(
+                        "schools_by_level",
+                        {"High": [], "Middle": [], "Elementary": [], "Other": []},
+                    )
 
                     return render_template(
                         "reports/districts/district_year_end_detail.html",
@@ -1149,6 +1231,12 @@ def load_routes(bp):
             "career_college_fair_hs_students": {"total": 0, "unique": 0},
             "healthstart_students": {"total": 0, "unique": 0},
             "bfi_students": {"total": 0, "unique": 0},
+            "dia_students": {"total": 0, "unique": 0},
+            "sla_students": {"total": 0, "unique": 0},
+            "client_connected_students": {"total": 0, "unique": 0},
+            "p2t_students": {"total": 0, "unique": 0},
+            "p2gd_students": {"total": 0, "unique": 0},
+            "math_relays_count": 0,
             "connector_sessions": {
                 "teachers_engaged": {"total": 0, "unique": 0},
                 "students_participated": {"total": 0, "unique": None},
@@ -1206,6 +1294,22 @@ def load_routes(bp):
             overall_totals["bfi_students"]["total"] += breakdown.get(
                 "bfi_students", {}
             ).get("total", 0)
+            overall_totals["dia_students"]["total"] += breakdown.get(
+                "dia_students", {}
+            ).get("total", 0)
+            overall_totals["sla_students"]["total"] += breakdown.get(
+                "sla_students", {}
+            ).get("total", 0)
+            overall_totals["client_connected_students"]["total"] += breakdown.get(
+                "client_connected_students", {}
+            ).get("total", 0)
+            overall_totals["p2t_students"]["total"] += breakdown.get(
+                "p2t_students", {}
+            ).get("total", 0)
+            overall_totals["p2gd_students"]["total"] += breakdown.get(
+                "p2gd_students", {}
+            ).get("total", 0)
+            overall_totals["math_relays_count"] += breakdown.get("math_relays_count", 0)
             overall_totals["connector_sessions"]["teachers_engaged"]["total"] += (
                 breakdown.get("connector_sessions", {})
                 .get("teachers_engaged", {})
@@ -1244,6 +1348,21 @@ def load_routes(bp):
             ).get("unique", 0)
             overall_totals["bfi_students"]["unique"] += breakdown.get(
                 "bfi_students", {}
+            ).get("unique", 0)
+            overall_totals["dia_students"]["unique"] += breakdown.get(
+                "dia_students", {}
+            ).get("unique", 0)
+            overall_totals["sla_students"]["unique"] += breakdown.get(
+                "sla_students", {}
+            ).get("unique", 0)
+            overall_totals["client_connected_students"]["unique"] += breakdown.get(
+                "client_connected_students", {}
+            ).get("unique", 0)
+            overall_totals["p2t_students"]["unique"] += breakdown.get(
+                "p2t_students", {}
+            ).get("unique", 0)
+            overall_totals["p2gd_students"]["unique"] += breakdown.get(
+                "p2gd_students", {}
             ).get("unique", 0)
             overall_totals["connector_sessions"]["teachers_engaged"]["unique"] += (
                 breakdown.get("connector_sessions", {})
@@ -1305,24 +1424,13 @@ def load_routes(bp):
             host_filter=host_filter,
             manual_inputs_by_district=manual_inputs_by_district,
             manual_inputs_overall=manual_inputs_overall,
+            manual_data_types=MANUAL_DATA_TYPES,
         )
 
     @bp.route("/reports/district/year-end/input-data", methods=["GET", "POST"])
     @login_required
     def district_year_end_input_data():
         """Handle manual input of district data for Year-End reports"""
-
-        # Data type definitions (extensible for future types)
-        DATA_TYPES = {
-            "math_relays": {
-                "display_name": "Math Relays",
-                "description": "Enter Math Relays participation numbers",
-            },
-            "data_science": {
-                "display_name": "Data Science",
-                "description": "Enter Data Science participation numbers",
-            },
-        }
 
         # Get parameters
         school_year = (
@@ -1431,12 +1539,12 @@ def load_routes(bp):
                 # Show success message with any warnings
                 if errors:
                     flash(
-                        f"Saved {saved_count} district values for {DATA_TYPES.get(data_type, {}).get('display_name', data_type)}. Warnings: {'; '.join(errors)}",
+                        f"Saved {saved_count} district values for {MANUAL_DATA_TYPES.get(data_type, {}).get('display_name', data_type)}. Warnings: {'; '.join(errors)}",
                         "warning",
                     )
                 else:
                     flash(
-                        f"Successfully saved {saved_count} district values for {DATA_TYPES.get(data_type, {}).get('display_name', data_type)}",
+                        f"Successfully saved {saved_count} district values for {MANUAL_DATA_TYPES.get(data_type, {}).get('display_name', data_type)}",
                         "success",
                     )
 
@@ -1489,7 +1597,7 @@ def load_routes(bp):
         data_type_display = None
 
         if data_type:
-            data_type_info = DATA_TYPES.get(data_type, {})
+            data_type_info = MANUAL_DATA_TYPES.get(data_type, {})
             data_type_display = data_type_info.get(
                 "display_name", data_type.replace("_", " ").title()
             )
@@ -1513,7 +1621,7 @@ def load_routes(bp):
             host_filter=host_filter,
             data_type=data_type,
             data_type_display=data_type_display,
-            data_types=DATA_TYPES,
+            data_types=MANUAL_DATA_TYPES,
             saved_values=saved_values,
             school_years=school_years,
         )

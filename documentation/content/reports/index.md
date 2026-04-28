@@ -44,9 +44,19 @@ This section covers the reporting capabilities of the VMS, ranging from standard
       </div>
     </a>
   </div>
+
+  <div class="qn-card">
+    <a href="year_end" class="qn-card-link">
+      <div class="qn-icon">📅</div>
+      <div class="qn-body">
+        <div class="qn-title">District Year-End</div>
+        <div class="qn-desc">Annual district summaries for grant reporting and stakeholder communications.</div>
+      </div>
+    </a>
+  </div>
 </div>
 
 ---
 
-*Last updated: January 2026*
-*Version: 1.0*
+*Last updated: April 2026*
+*Version: 1.1*

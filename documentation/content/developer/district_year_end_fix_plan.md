@@ -1,31 +1,32 @@
 # District Year-End Report — Bite-Sized Fix Plan
 
-> **This document is the master resumable plan.** Each piece is fully independent.  
-> If you stop mid-session, pick up exactly where you left off by checking off boxes.  
+> **This document is the master resumable plan.** Each piece is fully independent.
+> If you stop mid-session, pick up exactly where you left off by checking off boxes.
 > Each piece has a built-in verification step so you know it's done before moving on.
 
-**Last audited:** 2026-04-23  
+**Last audited:** 2026-04-23
 **Tracking location:** `documentation/content/developer/district_year_end_fix_plan.md`
+
+**Sprint scope:** Pieces 1–6 complete. Piece 7 (scheduler) targeted in Session 4. Piece 8 (DistrictEngagementReport) to be verified in Session 2.
+**FR-433 (PDF) and FR-434 (scheduling) deferred** — out of scope for this sprint.
 
 ---
 
-## Current State (Live Code Audit — 2026-04-23)
+## Current State (Live Code Audit — 2026-04-28)
 
-| Item | Status | File & Line |
-|------|--------|-------------|
-| Duplicate CSS link in `district_year_end.html` | 🔴 **Still present** | Lines 6–7 |
-| Duplicate CSS link in `district_year_end_detail.html` | 🔴 **Still present** | Lines 6–7 |
-| Missing `</div>` closing `.districts-grid` | 🔴 **Still present** | After line 171 |
-| Dead `hostFilterForm` JS reference | 🟡 **Has null-guard, dead code remains** | Lines 196–203 |
-| `print()` statements in `common.py` | 🔴 **Still present** | Lines 251–406 (~14 calls) |
-| `print()` statements in `district_year_end/routes.py` | 🔴 **Still present** | Lines 194–213 |
-| `print()` statements in `district_year_end/computation.py` | 🔴 **Still present** | Lines 491–502 |
-| `print()` statements in `attendance.py` | 🔴 **Still present** | Lines 42–63 |
-| Old URL tests (`/reports/district-year-end`) | 🔴 **Still present** | `test_report_routes.py` lines 56–69 |
-| `cache_district_stats()` (superseded function) | 🔴 **Still present** | `common.py` lines 506–539 |
-| Scheduler delete-only pattern | 🔴 **Still present** | `cache_refresh_scheduler.py` lines 205–308 |
-| `DistrictEngagementReport` in scheduler | 🟡 **Low urgency** | `cache_refresh_scheduler.py` lines 188–190 |
+| Item | Status | Notes |
+|------|--------|-------|
+| Duplicate CSS link in `district_year_end.html` | ✅ **Done** | `url_for` only, hardcoded path removed |
+| Duplicate CSS link in `district_year_end_detail.html` | ✅ **Done** | `url_for` only, hardcoded path removed |
+| Missing `</div>` closing `.districts-grid` | ✅ **Done** | Template is structurally correct |
+| Dead `hostFilterForm` JS reference | ✅ **Done** | Block not present in template |
+| `print()` statements across 4 files | ✅ **Done** | `logger` used throughout, no bare prints |
+| Old URL tests (`/reports/district-year-end`) | ✅ **Done** | Tests now hit `/reports/district/year-end` |
+| `cache_district_stats()` (superseded function) | ✅ **Confirmed safe to delete** | Zero callers confirmed by grep — delete in Session 2 |
+| Scheduler delete-only pattern | ⬜ **Pending** | Session 4 |
+| `DistrictEngagementReport` in scheduler | ⬜ **Pending** | Verify in Session 2 |
 | Stats keys (`total_students`, `unique_student_count`) | ✅ **Correctly set** | `common.py` lines 349, 468–476 |
+| UI/UX Table Consolidation & Filter Fix | ✅ **Done** | Session 1: Cleaned CSS grid bug, styled buttons, fixed JS filtering |
 
 ---
 
@@ -99,7 +100,7 @@ Change to:
 
 ---
 
-### ☐ Piece 3 — Remove Dead `hostFilterForm` JS Code
+### ✅ Piece 3 — Remove Dead `hostFilterForm` JS Code
 **Risk:** Zero &nbsp;|&nbsp; **Time:** 5 min &nbsp;|&nbsp; **Restart needed:** No
 
 **What:** The `updateReport()` JS function references `document.getElementById('hostFilterForm')` — a form that's commented out in the template. A null-guard already prevents crashes, but the dead code is confusing and should be removed.
@@ -305,6 +306,21 @@ Apply the same pattern to `_refresh_virtual_session_caches`, `_refresh_volunteer
 
 ---
 
+### ✅ Piece 9 — UI/UX Polish for District Year-End Details
+**Risk:** Low &nbsp;|&nbsp; **Time:** 30 min &nbsp;|&nbsp; **Restart needed:** No
+
+**What:** The detailed breakdown view had excessive vertical spacing, visually broken UI elements (Event Type filters appearing as floating text instead of buttons), and broken JavaScript filtering logic (which relied on fragile text-matching and static column indexes).
+
+**Steps Completed:**
+1. **Layout Consolidation:** Replaced the 5 bulky overview cards with a streamlined `.quick-overview-strip` containing subtle separators.
+2. **Table Unification:** Consolidated the monthly timeline view into a single 'All Events' table, drastically reducing repetitive HTML.
+3. **Filter UI Polish:** Restructured the `.event-type-card.filterable` UI into clickable pill buttons, resolving a CSS grid issue caused by a rogue `::before` pseudo-element. Forced the `.event-types-header h3` to be white.
+4. **JS Filtering Fix:** Substituted the fragile `typeCell.textContent` match with a robust `data-type="{{ event.type }}"` injection directly into the table `<tr>` rows.
+
+**Verify:** Visit the District detail page, check the new "All Events" view, and click an Event Type filter—the table should instantly filter without blanking out.
+
+---
+
 ## Recommended Order
 
 | # | Piece | Why this order |
@@ -320,8 +336,8 @@ Apply the same pattern to `_refresh_virtual_session_caches`, `_refresh_volunteer
 | **8** | Piece 8 — EngagementReport cleanup | Lowest urgency |
 
 > **Pieces 1–3 (including 1.5)** can be done in one sitting in under 20 minutes. Template and CSS only, no restart needed. The UI will finally match the intended design.
-> **Piece 4** is the next quick win — 20 min, restores clean terminal output.  
-> **Pieces 5–6** are the code hygiene fixes — low risk, confirm tests actually pass.  
+> **Piece 4** is the next quick win — 20 min, restores clean terminal output.
+> **Pieces 5–6** are the code hygiene fixes — low risk, confirm tests actually pass.
 > **Pieces 7–8** are the infrastructure improvements — save for a focused session.
 
 ---

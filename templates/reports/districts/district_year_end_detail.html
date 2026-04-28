@@ -3,7 +3,7 @@
 {% block title %}{{ district.name }} Year-End Report{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/district_year_end_detail.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/district_year_end_detail.css') }}?v=6">
 {% endblock %}
 
 {% block content %}
@@ -18,14 +18,7 @@
         <div class="school-year">{{ school_year[:2] }}-{{ school_year[2:] }} School Year</div>
     </div>
 
-    <!-- Host Filter Toggle -->
-    <div class="host-filter-toggle">
-        <form method="get" id="hostFilterForm">
-            <input type="hidden" name="school_year" value="{{ school_year }}">
-            <button type="submit" name="host_filter" value="all" class="host-filter-btn{% if host_filter == 'all' %} selected{% endif %}">All Events</button>
-            <button type="submit" name="host_filter" value="prepkc" class="host-filter-btn{% if host_filter == 'prepkc' %} selected{% endif %}">PREPKC Events Only</button>
-        </form>
-    </div>
+    <!-- Host filter removed for cleaner UI -->
 
     <!-- Enhanced Summary Stats -->
     <div class="enhanced-summary-stats">
@@ -38,271 +31,136 @@
             </div>
         </div>
 
-        <!-- Quick Overview (always visible) -->
-        <div class="quick-overview">
-            <div class="stat-card overview-card">
-                <div class="stat-value">{{ total_events }}</div>
-                <div class="stat-label">Total Events</div>
+        <!-- Quick Overview Strip (always visible) -->
+        <div class="quick-overview-strip">
+            <div class="overview-stat-item">
+                <div class="overview-stat-value">{{ total_events }}</div>
+                <div class="overview-stat-label">Total Events</div>
             </div>
-            <div class="stat-card overview-card">
-                <div class="stat-value">{{ unique_student_count }}</div>
-                <div class="stat-label">Unique Students Reached</div>
+            <div class="overview-stat-item">
+                <div class="overview-stat-value">{{ unique_student_count }}</div>
+                <div class="overview-stat-label">Unique Students Reached</div>
             </div>
-            <div class="stat-card overview-card">
-                <div class="stat-value">{{ stats.total_volunteers }}</div>
-                <div class="stat-label">Volunteer Engagements</div>
-                <div class="stat-sublabel">{{ unique_volunteer_count }} unique</div>
+            <div class="overview-stat-item">
+                <div class="overview-stat-value">{{ stats.total_volunteers }}</div>
+                <div class="overview-stat-label">Volunteer Engagements</div>
+                <div class="overview-stat-sublabel">{{ unique_volunteer_count }} unique</div>
             </div>
-            <div class="stat-card overview-card">
-                <div class="stat-value">{{ stats.total_volunteer_hours }}</div>
-                <div class="stat-label">Volunteer Hours</div>
+            <div class="overview-stat-item">
+                <div class="overview-stat-value">{{ stats.total_volunteer_hours }}</div>
+                <div class="overview-stat-label">Volunteer Hours</div>
             </div>
-            <div class="stat-card overview-card">
-                <div class="stat-value">{{ unique_organization_count }}</div>
-                <div class="stat-label">Volunteer Organizations</div>
+            <div class="overview-stat-item">
+                <div class="overview-stat-value">{{ unique_organization_count }}</div>
+                <div class="overview-stat-label">Volunteer Organizations</div>
             </div>
         </div>
 
         <!-- Detailed Breakdown (collapsible) -->
         <div class="detailed-breakdown" id="detailed-breakdown" style="display: none;">
             {% if stats.enhanced %}
+            <table class="stats-summary-table">
+                <thead>
+                    <tr>
+                        <th class="metric-col">Metric</th>
+                        <th class="num-col">Total</th>
+                        <th class="num-col">In-Person</th>
+                        <th class="num-col">Virtual</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="section-group-header"><td colspan="4"><i class="fas fa-calendar-alt"></i> Events</td></tr>
+                    <tr>
+                        <td>Total Events</td>
+                        <td class="num-col bold-blue">{{ stats.enhanced.events.total }}</td>
+                        <td class="num-col">{{ stats.enhanced.events.in_person }} <span class="pct">({{ stats.enhanced.events.in_person_pct }}%)</span></td>
+                        <td class="num-col">{{ stats.enhanced.events.virtual }} <span class="pct">({{ stats.enhanced.events.virtual_pct }}%)</span></td>
+                    </tr>
 
-            <!-- Events Breakdown -->
-            <div class="breakdown-section">
-                <h3><i class="fas fa-calendar-alt"></i> Events Breakdown</h3>
-                <div class="breakdown-grid">
-                    <div class="breakdown-card">
-                        <div class="breakdown-header">
-                            <div class="breakdown-title">Total Events</div>
-                            <div class="breakdown-total">{{ stats.enhanced.events.total }}</div>
-                        </div>
-                        <div class="breakdown-details">
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">In-Person</span>
-                                <span class="breakdown-value">{{ stats.enhanced.events.in_person }}</span>
-                                <span class="breakdown-percent">({{ stats.enhanced.events.in_person_pct }}%)</span>
-                            </div>
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">Virtual</span>
-                                <span class="breakdown-value">{{ stats.enhanced.events.virtual }}</span>
-                                <span class="breakdown-percent">({{ stats.enhanced.events.virtual_pct }}%)</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                    <tr class="section-group-header"><td colspan="4"><i class="fas fa-user-graduate"></i> Students</td></tr>
+                    <tr>
+                        <td>Student Engagements</td>
+                        <td class="num-col bold-blue">{{ stats.enhanced.students.total }}</td>
+                        <td class="num-col">{{ stats.enhanced.students.in_person }} <span class="pct">({{ stats.enhanced.students.in_person_pct }}%)</span></td>
+                        <td class="num-col">{{ stats.enhanced.students.virtual }} <span class="pct">({{ stats.enhanced.students.virtual_pct }}%)</span></td>
+                    </tr>
+                    <tr>
+                        <td>Unique Students Reached</td>
+                        <td class="num-col bold-blue">{{ stats.enhanced.students.unique_total }}</td>
+                        <td class="num-col">{{ stats.enhanced.students.unique_in_person }}</td>
+                        <td class="num-col text-muted">{{ stats.enhanced.students.unique_virtual }} <span class="pct">*est.</span></td>
+                    </tr>
 
-            <!-- Students Breakdown -->
-            <div class="breakdown-section">
-                <h3><i class="fas fa-user-graduate"></i> Students Breakdown</h3>
-                <div class="breakdown-grid">
-                    <div class="breakdown-card">
-                        <div class="breakdown-header">
-                            <div class="breakdown-title">Total Student Engagements</div>
-                            <div class="breakdown-total">{{ stats.enhanced.students.total }}</div>
-                        </div>
-                        <div class="breakdown-details">
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">In-Person</span>
-                                <span class="breakdown-value">{{ stats.enhanced.students.in_person }}</span>
-                                <span class="breakdown-percent">({{ stats.enhanced.students.in_person_pct }}%)</span>
-                            </div>
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">Virtual</span>
-                                <span class="breakdown-value">{{ stats.enhanced.students.virtual }}</span>
-                                <span class="breakdown-percent">({{ stats.enhanced.students.virtual_pct }}%)</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="breakdown-card">
-                        <div class="breakdown-header">
-                            <div class="breakdown-title">Unique Students Reached</div>
-                            <div class="breakdown-total">{{ stats.enhanced.students.unique_total }}</div>
-                        </div>
-                        <div class="breakdown-details">
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">In-Person</span>
-                                <span class="breakdown-value">{{ stats.enhanced.students.unique_in_person }}</span>
-                            </div>
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">Virtual</span>
-                                <span class="breakdown-value">{{ stats.enhanced.students.unique_virtual }}</span>
-                                <span class="breakdown-note">*Virtual unique tracking limited</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                    <tr class="section-group-header"><td colspan="4"><i class="fas fa-users"></i> Volunteers</td></tr>
+                    <tr>
+                        <td>Volunteer Engagements</td>
+                        <td class="num-col bold-blue">{{ stats.enhanced.volunteers.total }}</td>
+                        <td class="num-col">{{ stats.enhanced.volunteers.in_person }} <span class="pct">({{ stats.enhanced.volunteers.in_person_pct }}%)</span></td>
+                        <td class="num-col">{{ stats.enhanced.volunteers.virtual }} <span class="pct">({{ stats.enhanced.volunteers.virtual_pct }}%)</span></td>
+                    </tr>
+                    <tr>
+                        <td>Unique Volunteers</td>
+                        <td class="num-col bold-blue">{{ stats.enhanced.volunteers.unique_total }}</td>
+                        <td class="num-col">{{ stats.enhanced.volunteers.unique_in_person }}</td>
+                        <td class="num-col">{{ stats.enhanced.volunteers.unique_virtual }}</td>
+                    </tr>
+                    <tr>
+                        <td>Volunteer Hours</td>
+                        <td class="num-col bold-blue">{{ "%.1f"|format(stats.enhanced.volunteers.hours_total) }}</td>
+                        <td class="num-col">{{ "%.1f"|format(stats.enhanced.volunteers.hours_in_person) }} <span class="pct">({{ stats.enhanced.volunteers.hours_in_person_pct }}%)</span></td>
+                        <td class="num-col">{{ "%.1f"|format(stats.enhanced.volunteers.hours_virtual) }} <span class="pct">({{ stats.enhanced.volunteers.hours_virtual_pct }}%)</span></td>
+                    </tr>
 
+                    <tr class="section-group-header"><td colspan="4"><i class="fas fa-building"></i> Organizations</td></tr>
+                    <tr>
+                        <td>Unique Organizations</td>
+                        <td class="num-col bold-blue">{{ stats.enhanced.organizations.unique_total }}</td>
+                        <td class="num-col">{{ stats.enhanced.organizations.unique_in_person }} <span class="pct">({{ stats.enhanced.organizations.unique_in_person_pct }}%)</span></td>
+                        <td class="num-col">{{ stats.enhanced.organizations.unique_virtual }} <span class="pct">({{ stats.enhanced.organizations.unique_virtual_pct }}%)</span></td>
+                    </tr>
+                    <tr>
+                        <td>Org. Volunteer Hours</td>
+                        <td class="num-col bold-blue">{{ "%.1f"|format(stats.enhanced.organizations.volunteer_hours_total) }}</td>
+                        <td class="num-col">{{ "%.1f"|format(stats.enhanced.organizations.volunteer_hours_in_person) }} <span class="pct">({{ stats.enhanced.organizations.volunteer_hours_in_person_pct }}%)</span></td>
+                        <td class="num-col">{{ "%.1f"|format(stats.enhanced.organizations.volunteer_hours_virtual) }} <span class="pct">({{ stats.enhanced.organizations.volunteer_hours_virtual_pct }}%)</span></td>
+                    </tr>
 
-
-            <!-- Enhanced Volunteers Breakdown -->
-            <div class="breakdown-section">
-                <h3><i class="fas fa-users"></i> Enhanced Volunteers Breakdown</h3>
-                <div class="breakdown-grid">
-                    <div class="breakdown-card">
-                        <div class="breakdown-header">
-                            <div class="breakdown-title">Volunteer Engagements</div>
-                            <div class="breakdown-total">{{ stats.enhanced.volunteers.total }}</div>
-                        </div>
-                        <div class="breakdown-details">
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">In-Person</span>
-                                <span class="breakdown-value">{{ stats.enhanced.volunteers.in_person }}</span>
-                                <span class="breakdown-percent">({{ stats.enhanced.volunteers.in_person_pct }}%)</span>
-                            </div>
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">Virtual</span>
-                                <span class="breakdown-value">{{ stats.enhanced.volunteers.virtual }}</span>
-                                <span class="breakdown-percent">({{ stats.enhanced.volunteers.virtual_pct }}%)</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="breakdown-card">
-                        <div class="breakdown-header">
-                            <div class="breakdown-title">Unique Volunteers</div>
-                            <div class="breakdown-total">{{ stats.enhanced.volunteers.unique_total }}</div>
-                        </div>
-                        <div class="breakdown-details">
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">In-Person Events</span>
-                                <span class="breakdown-value">{{ stats.enhanced.volunteers.unique_in_person }}</span>
-                            </div>
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">Virtual Events</span>
-                                <span class="breakdown-value">{{ stats.enhanced.volunteers.unique_virtual }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="breakdown-card">
-                        <div class="breakdown-header">
-                            <div class="breakdown-title">Total Volunteer Hours</div>
-                            <div class="breakdown-total">{{ "%.1f"|format(stats.enhanced.volunteers.hours_total) }}</div>
-                        </div>
-                        <div class="breakdown-details">
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">In-Person</span>
-                                <span class="breakdown-value">{{ "%.1f"|format(stats.enhanced.volunteers.hours_in_person) }}</span>
-                                <span class="breakdown-percent">({{ stats.enhanced.volunteers.hours_in_person_pct }}%)</span>
-                            </div>
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">Virtual</span>
-                                <span class="breakdown-value">{{ "%.1f"|format(stats.enhanced.volunteers.hours_virtual) }}</span>
-                                <span class="breakdown-percent">({{ stats.enhanced.volunteers.hours_virtual_pct }}%)</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Enhanced Organizations Breakdown -->
-            <div class="breakdown-section">
-                <h3><i class="fas fa-building"></i> Enhanced Organizations Breakdown</h3>
-                <div class="breakdown-grid">
-                    <div class="breakdown-card">
-                        <div class="breakdown-header">
-                            <div class="breakdown-title">Unique Organizations</div>
-                            <div class="breakdown-total">{{ stats.enhanced.organizations.unique_total }}</div>
-                        </div>
-                        <div class="breakdown-details">
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">In-Person Events</span>
-                                <span class="breakdown-value">{{ stats.enhanced.organizations.unique_in_person }}</span>
-                                <span class="breakdown-percent">({{ stats.enhanced.organizations.unique_in_person_pct }}%)</span>
-                            </div>
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">Virtual Events</span>
-                                <span class="breakdown-value">{{ stats.enhanced.organizations.unique_virtual }}</span>
-                                <span class="breakdown-percent">({{ stats.enhanced.organizations.unique_virtual_pct }}%)</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="breakdown-card">
-                        <div class="breakdown-header">
-                            <div class="breakdown-title">Organization Volunteer Hours</div>
-                            <div class="breakdown-total">{{ "%.1f"|format(stats.enhanced.organizations.volunteer_hours_total) }}</div>
-                        </div>
-                        <div class="breakdown-details">
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">In-Person</span>
-                                <span class="breakdown-value">{{ "%.1f"|format(stats.enhanced.organizations.volunteer_hours_in_person) }}</span>
-                                <span class="breakdown-percent">({{ stats.enhanced.organizations.volunteer_hours_in_person_pct }}%)</span>
-                            </div>
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">Virtual</span>
-                                <span class="breakdown-value">{{ "%.1f"|format(stats.enhanced.organizations.volunteer_hours_virtual) }}</span>
-                                <span class="breakdown-percent">({{ stats.enhanced.organizations.volunteer_hours_virtual_pct }}%)</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Virtual Sessions Breakdown -->
-            <div class="breakdown-section">
-                <h3><i class="fas fa-video"></i> Virtual Sessions Breakdown</h3>
-                <div class="breakdown-grid">
-                    <div class="breakdown-card">
-                        <div class="breakdown-header">
-                            <div class="breakdown-title">Classrooms Reached</div>
-                            <div class="breakdown-total">{{ stats.enhanced.virtual_sessions.classrooms_reached }}</div>
-                        </div>
-                        <div class="breakdown-details">
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">Registered Teachers</span>
-                                <span class="breakdown-value">{{ stats.enhanced.virtual_sessions.registered_teachers }}</span>
-                            </div>
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">Confirmed Teachers</span>
-                                <span class="breakdown-value">{{ stats.enhanced.virtual_sessions.confirmed_teachers }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="breakdown-card">
-                        <div class="breakdown-header">
-                            <div class="breakdown-title">Unique Teachers</div>
-                            <div class="breakdown-total">{{ stats.enhanced.virtual_sessions.unique_teachers }}</div>
-                        </div>
-                        <div class="breakdown-details">
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">Total Registrations</span>
-                                <span class="breakdown-value">{{ stats.enhanced.virtual_sessions.registered_teachers }}</span>
-                            </div>
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">Confirmed Attendance</span>
-                                <span class="breakdown-value">{{ stats.enhanced.virtual_sessions.confirmed_teachers }}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+                    <tr class="section-group-header"><td colspan="4"><i class="fas fa-video"></i> Virtual Sessions</td></tr>
+                    <tr>
+                        <td>Classrooms Reached</td>
+                        <td class="num-col bold-blue">{{ stats.enhanced.virtual_sessions.classrooms_reached }}</td>
+                        <td class="num-col text-muted">—</td>
+                        <td class="num-col">{{ stats.enhanced.virtual_sessions.classrooms_reached }}</td>
+                    </tr>
+                    <tr>
+                        <td>Unique Teachers</td>
+                        <td class="num-col bold-blue">{{ stats.enhanced.virtual_sessions.unique_teachers }}</td>
+                        <td class="num-col text-muted">—</td>
+                        <td class="num-col">{{ stats.enhanced.virtual_sessions.unique_teachers }}</td>
+                    </tr>
+                    <tr>
+                        <td>Registered Teachers</td>
+                        <td class="num-col bold-blue">{{ stats.enhanced.virtual_sessions.registered_teachers }}</td>
+                        <td class="num-col text-muted">—</td>
+                        <td class="num-col">{{ stats.enhanced.virtual_sessions.registered_teachers }}</td>
+                    </tr>
+                    <tr>
+                        <td>Confirmed Attendance</td>
+                        <td class="num-col bold-blue">{{ stats.enhanced.virtual_sessions.confirmed_teachers }}</td>
+                        <td class="num-col text-muted">—</td>
+                        <td class="num-col">{{ stats.enhanced.virtual_sessions.confirmed_teachers }}</td>
+                    </tr>
+                </tbody>
+            </table>
             {% else %}
-            <!-- Fallback to original stats display -->
-            <div class="breakdown-section">
-                <h3>Basic Stats</h3>
-                <div class="breakdown-grid">
-                    <div class="breakdown-card">
-                        <div class="breakdown-header">
-                            <div class="breakdown-title">Students</div>
-                            <div class="breakdown-total">{{ stats.total_in_person_students + stats.total_virtual_students }}</div>
-                        </div>
-                        <div class="breakdown-details">
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">In-Person</span>
-                                <span class="breakdown-value">{{ stats.total_in_person_students }}</span>
-                            </div>
-                            <div class="breakdown-item">
-                                <span class="breakdown-label">Virtual</span>
-                                <span class="breakdown-value">{{ stats.total_virtual_students }}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <p class="text-muted" style="padding: 1rem;">No enhanced stats available.</p>
             {% endif %}
         </div>
     </div>
+
+
+
+
 
     <!-- Event Type Breakdown and Filtering -->
     <div class="breakdown-section">
@@ -320,8 +178,8 @@
                 <div class="event-types-grid">
                     {% for type, count in stats.event_types.items() %}
                     <div class="event-type-card filterable" data-type="{{ type }}">
-                        <div class="type-count">{{ count }}</div>
                         <div class="type-name">{{ type|replace('_', ' ')|title }}</div>
+                        <div class="type-count">{{ count }}</div>
                     </div>
                     {% endfor %}
                 </div>
@@ -335,14 +193,11 @@
         <div class="activity-header">
             <h2>Activity Breakdown</h2>
             <div class="view-toggle">
-                <button class="view-toggle-button" data-view="monthly">
-                    <i class="fas fa-calendar-alt"></i> Monthly
+                <button class="view-toggle-button active" data-view="monthly">
+                    <i class="fas fa-list"></i> All Events
                 </button>
                 <button class="view-toggle-button" data-view="schools">
                     <i class="fas fa-school"></i> By School
-                </button>
-                <button class="view-toggle-button active" data-view="all-types">
-                    <i class="fas fa-th-large"></i> All Types
                 </button>
                 <a href="{{ url_for('report.district_year_end_excel', district_name=district.name, school_year=school_year, host_filter=host_filter) }}" class="download-button">
                     <i class="fas fa-file-excel"></i> Download Excel
@@ -350,28 +205,10 @@
             </div>
         </div>
 
-        <!-- Monthly view -->
-        <div id="monthly-view" class="view-content">
-            {% for month, data in events_by_month.items() %}
+        <!-- All Events view (formerly Monthly) -->
+        <div id="monthly-view" class="view-content visible">
             <div class="month-card">
-                <div class="month-header collapsible-header" onclick="toggleMonthCard('{{ month|replace(' ', '_') }}')">
-                    <div class="month-title">
-                        <i class="fas fa-chevron-right month-toggle-icon" id="month-toggle-{{ month|replace(' ', '_') }}"></i>
-                        <h3>{{ month }}</h3>
-                    </div>
-                    <div class="month-stats">
-                        <span>{{ data.events|length }} Events</span>
-                        <span>{{ data.total_students }} Students</span>
-                        {% if data.unique_student_count is defined %}
-                        <span>{{ data.unique_student_count }} Unique Students</span>
-                        {% endif %}
-                        <span>{{ data.volunteer_engagements }} Volunteer Engagements</span>
-                        <span>{{ data.unique_volunteer_count }} Unique Volunteers</span>
-                        <span>{{ "%.1f"|format(data.total_volunteer_hours) }} Hours</span>
-                    </div>
-                </div>
-
-                <div class="events-table-wrapper collapsed" id="month-content-{{ month|replace(' ', '_') }}">
+                <div class="events-table-wrapper" id="all-events-content">
                     <table class="events-table">
                         <thead>
                             <tr>
@@ -386,8 +223,9 @@
                             </tr>
                         </thead>
                         <tbody>
+                            {% for month, data in events_by_month.items() %}
                             {% for event in data.events %}
-                            <tr>
+                            <tr class="event-row" data-type="{{ event.type }}">
                                 <td>{{ event.date }}</td>
                                 <td>{{ event.time }}</td>
                                 <td>
@@ -404,11 +242,11 @@
                                 <td>{{ "%.1f"|format(event.volunteer_hours) }}</td>
                             </tr>
                             {% endfor %}
+                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
             </div>
-            {% endfor %}
         </div>
 
         <!-- Schools view -->
@@ -438,14 +276,6 @@
                                 {{ school_data.total_students }} Students
                             </div>
                             <div class="school-stat">
-                                <i class="fas fa-users"></i>
-                                {{ school_data.total_volunteers }} Volunteer Engagements
-                            </div>
-                            <div class="school-stat">
-                                <i class="fas fa-user-friends"></i>
-                                {{ school_data.unique_volunteer_count }} Unique Volunteers
-                            </div>
-                            <div class="school-stat">
                                 <i class="fas fa-clock"></i>
                                 {{ "%.1f"|format(school_data.total_volunteer_hours) }} Hours
                             </div>
@@ -467,7 +297,7 @@
                             </thead>
                             <tbody>
                                 {% for event in school_data.events|sort(attribute='date') %}
-                                <tr>
+                                <tr class="event-row" data-type="{{ event.type }}">
                                     <td>{{ event.date }}</td>
                                     <td>{{ event.time }}</td>
                                     <td>
@@ -780,8 +610,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Filter monthly view
         document.querySelectorAll('#monthly-view .events-table tbody tr').forEach(row => {
-            const typeCell = row.querySelector('td:nth-child(4)');
-            if (typeCell && eventTypes.has(typeCell.textContent.trim())) {
+            const type = row.dataset.type;
+            if (type && eventTypes.has(type)) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';
@@ -796,8 +626,8 @@ document.addEventListener('DOMContentLoaded', function() {
             let visibleEvents = 0;
 
             eventRows.forEach(row => {
-                const typeCell = row.querySelector('td:nth-child(3)'); // Type is in the 3rd column for school view
-                if (typeCell && eventTypes.has(typeCell.textContent.trim())) {
+                const type = row.dataset.type;
+                if (type && eventTypes.has(type)) {
                     row.style.display = '';
                     visibleEvents++;
                 } else {

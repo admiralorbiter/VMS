@@ -3,13 +3,13 @@
 {% block title %}District Year-End Report{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/district_year_end.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/district_year_end.css') }}?v=2">
 {% endblock %}
 
 {% block content %}
 <div class="year-end-container">
     <div class="report-header-wrapper">
-        <div class="report-header">
+        <div class="report-header" style="width: 100%;">
             <div class="report-header-top">
                 <h1>District Year-End Report</h1>
                 <div class="header-controls">
@@ -24,35 +24,22 @@
                             </select>
                         </form>
                     </div>
+                    {% if last_updated %}
+                    <div class="last-updated" style="font-size: 0.85rem; color: #666; margin-right: 0.5rem; padding-right: 1rem; border-right: 1px solid #ccc;">
+                        Updated: {{ last_updated.strftime('%b %d, %I:%M %p') }}
+                    </div>
+                    {% endif %}
                     <button onclick="refreshData()" class="refresh-button">
-                        <i class="fas fa-sync-alt"></i> Refresh Data
+                        <i class="fas fa-sync-alt"></i> Refresh
                     </button>
-                    <a href="{{ url_for('report.district_year_end_breakdown', school_year=school_year, host_filter=host_filter) }}" class="refresh-button" style="text-decoration: none;">
-                        <i class="fas fa-chart-bar"></i> Detailed Stats Breakdown
+                    <a href="{{ url_for('report.district_year_end_breakdown', school_year=school_year) }}" class="refresh-button" style="text-decoration: none;">
+                        <i class="fas fa-chart-bar"></i> Detailed Stats
                     </a>
                 </div>
             </div>
-            {% if last_updated %}
-            <div class="last-updated">
-                Last updated: {{ last_updated.strftime('%B %d, %Y %I:%M %p') }}
-            </div>
-            {% endif %}
         </div>
-        <!-- Google Sheets Sidebar on the right -->
-        <aside class="header-sidebar">
-            {% include 'reports/shared/google_sheets_sidebar.html' %}
-        </aside>
     </div>
 
-    {# Host Filter Toggle - Commented out for now
-    <div class="host-filter-toggle" style="margin-bottom: 2rem;">
-        <form method="get" id="hostFilterForm" style="display: flex; gap: 0.5rem; align-items: center;">
-            <input type="hidden" name="school_year" value="{{ school_year }}">
-            <button type="submit" name="host_filter" value="all" class="host-filter-btn{% if host_filter == 'all' %} selected{% endif %}">All Events</button>
-            <button type="submit" name="host_filter" value="prepkc" class="host-filter-btn{% if host_filter == 'prepkc' %} selected{% endif %}">PREPKC Events Only</button>
-        </form>
-    </div>
-    #}
 
     <div id="loadingIndicator" style="display: none;">
         <div class="spinner-border text-primary" role="status">
@@ -72,6 +59,12 @@
                         <div class="district-title-section">
                             <i class="fas fa-chevron-right district-toggle-icon" id="district-toggle-{{ district_name|replace(' ', '_')|replace('-', '_')|replace('.', '_')|replace("'", '') }}"></i>
                             <h2>{{ stats.name }}</h2>
+                            <div class="district-quick-stats">
+                                <span title="Total Events"><i class="fas fa-calendar-check"></i> {{ stats.total_events }}</span>
+                                <span title="Students Reached"><i class="fas fa-user-graduate"></i> {{ stats.total_students }}</span>
+                                <span title="Volunteers"><i class="fas fa-users"></i> {{ stats.total_volunteers }}</span>
+                                <span title="Volunteer Hours"><i class="fas fa-clock"></i> {{ "%.1f"|format(stats.total_volunteer_hours) }}h</span>
+                            </div>
                         </div>
                     </div>
                 </div>
