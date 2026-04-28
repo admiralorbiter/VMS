@@ -21,30 +21,38 @@
                         <input type="hidden" name="sort" value="{{ sort }}">
                         <input type="hidden" name="order" value="{{ order }}">
                         <input type="hidden" name="host_filter" value="{{ host_filter }}">
+                        <input type="hidden" name="mode" value="{{ mode }}">
                     </form>
-                    <a href="{{ url_for('report.organization_report_excel', school_year=school_year, host_filter=host_filter, sort=sort, order=order) }}" class="btn btn-success btn-sm">
+                    <a href="{{ url_for('report.organization_report_excel', school_year=school_year, host_filter=host_filter, sort=sort, order=order, mode=mode) }}" class="btn btn-success btn-sm">
                         <i class="fas fa-file-excel"></i> Export
                     </a>
                 </div>
             </div>
 
-            {# Compact Event Filter - Commented out for now
             <div class="host-filter-container p-3 mb-3">
                 <div class="d-flex flex-wrap align-items-center justify-content-between">
                     <div>
-                        <strong>Event Filter</strong>
-                        <div class="text-muted small">The Excel export will match your current filter selection.</div>
+                        <strong>Membership Dates</strong>
+                        <div class="text-muted small">
+                            {% if mode == 'full' %}
+                                Showing all members ever linked to this organization.
+                                Counts may be overstated for members whose affiliation dates are unknown.
+                            {% else %}
+                                Showing members whose affiliation dates are known or confirmed.
+                                Use "Include Unverified Members" to see all historical associations.
+                            {% endif %}
+                        </div>
                     </div>
                     <form method="GET" class="d-flex gap-2 mt-2 mt-sm-0">
                         <input type="hidden" name="school_year" value="{{ school_year }}">
                         <input type="hidden" name="sort" value="{{ sort }}">
                         <input type="hidden" name="order" value="{{ order }}">
-                        <button type="submit" name="host_filter" value="all" class="btn btn-sm {{ 'btn-primary' if host_filter == 'all' else 'btn-outline-secondary' }}">All Events</button>
-                        <button type="submit" name="host_filter" value="prepkc" class="btn btn-sm {{ 'btn-primary' if host_filter == 'prepkc' else 'btn-outline-secondary' }}">PREPKC Only</button>
+                        <input type="hidden" name="host_filter" value="{{ host_filter }}">
+                        <button type="submit" name="mode" value="verified" class="btn btn-sm {{ 'btn-primary' if mode == 'verified' else 'btn-outline-secondary' }}">Verified Members Only</button>
+                        <button type="submit" name="mode" value="full" class="btn btn-sm {{ 'btn-primary' if mode == 'full' else 'btn-outline-secondary' }}">Include Unverified Members</button>
                     </form>
                 </div>
             </div>
-            #}
 
             <!-- Summary Statistics -->
             {% if summary_stats %}
@@ -100,7 +108,7 @@
                                     <td class="text-center">{{ org.total_hours }}</td>
                                     <td class="text-center">{{ org.unique_volunteers }}</td>
                                     <td class="text-center">
-                                        <a href="{{ url_for('report.organization_report_detail', org_id=org.id, school_year=school_year, host_filter=host_filter) }}"
+                                        <a href="{{ url_for('report.organization_report_detail', org_id=org.id, school_year=school_year, host_filter=host_filter, mode=mode) }}"
                                            class="btn btn-sm btn-outline-primary">
                                             <i class="fas fa-eye"></i> View Details
                                         </a>
@@ -167,6 +175,7 @@ document.addEventListener('DOMContentLoaded', function() {
             url.searchParams.set('order', newOrder);
             url.searchParams.set('school_year', '{{ school_year }}');
             url.searchParams.set('host_filter', '{{ host_filter }}');
+            url.searchParams.set('mode', '{{ mode }}');
             window.location.href = url.toString();
         });
     });

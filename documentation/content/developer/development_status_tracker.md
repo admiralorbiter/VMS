@@ -1,7 +1,7 @@
 # VMS Development Status Tracker
 
-**Last Updated:** March 2026
-**Total Functional Requirements:** ~203
+**Last Updated:** April 2026
+**Total Functional Requirements:** ~204
 
 ---
 
@@ -24,7 +24,7 @@
 | [In-Person Events](#in-person-events) | 18 | 16 | 0 | 2 | 0 |
 | [Virtual Events](#virtual-events) | 23 | 17 | 0 | 4 | 2 |
 | [Volunteer Recruitment](#volunteer-recruitment) | 24 | 24 | 0 | 0 | 0 |
-| [Reporting](#reporting) | 20 | 9 | 0 | 11 | 0 |
+| [Reporting](#reporting) | 21 | 11 | 0 | 10 | 0 |
 | [District Progress](#district-progress) | 18 | 9 | 0 | 8 | 1 |
 | [Student Roster](#student-roster) | 5 | 4 | 0 | 0 | 1 |
 | [Email System](#email-system) | 22 | 0 | 0 | 22 | 0 |
@@ -181,7 +181,8 @@
 | ID | Requirement | Status | Notes |
 |----|-------------|--------|-------|
 | FR-REPORTING-401 | Volunteer thank-you dashboard | ✅ | TC-700–TC-703 |
-| FR-REPORTING-402 | Organization participation dashboard | ✅ | TC-720–TC-722 |
+| FR-REPORTING-402 | Organization participation dashboard | ✅ | TC-720–TC-722; **Time-scoped membership filter added 2026-04-28** — Verified/Full History toggle, `org_membership_filter.py` |
+| FR-REPORTING-402a | Org report: Verified/Full History mode toggle | ✅ | `mode` param in org report + detail routes; UI toggle in templates |
 | FR-REPORTING-403 | District/school impact dashboards | ✅ | TC-740–TC-744 |
 | FR-REPORTING-404 | Report metrics (students, volunteers, hours) | ✅ | TC-740, TC-741 |
 
@@ -204,11 +205,11 @@
 
 | ID | Requirement | Status | Notes |
 |----|-------------|--------|-------|
-| FR-REPORTING-420 | Tiered cache architecture | 📋 | TBD |
-| FR-REPORTING-421 | Dashboard served from cache | 📋 | TBD |
-| FR-REPORTING-422 | Manual cache invalidation | 📋 | TBD |
+| FR-REPORTING-420 | Tiered cache architecture | ✅ | `OrganizationSummaryCache` + `OrganizationDetailCache`; 24hr TTL via `_is_cache_fresh()` |
+| FR-REPORTING-421 | Dashboard served from cache | ✅ | Org summary + detail cache; bypassed for Full History mode |
+| FR-REPORTING-422 | Manual cache invalidation | 📋 | TBD — currently via `?refresh=1` on org report |
 | FR-REPORTING-423 | Cache status on admin dashboard | 📋 | TBD |
-| FR-REPORTING-424 | Automatic cache warming | 📋 | TBD |
+| FR-REPORTING-424 | Automatic cache warming | ⟭  | Skipped — reports are fast enough without pre-warming |
 | FR-REPORTING-425 | Cache keys with filter params | 📋 | TBD |
 
 ### Year-End Reporting
@@ -546,9 +547,10 @@
 ### 🚨 High Priority (User-Facing, TBD)
 
 1. **Email System** — All 22 FRs are TBD
-2. **Reporting Cache Management** — FR-420–425 (6 FRs)
+2. **Reporting Cache Management** — FR-422–425 still TBD (420, 421 now implemented)
 3. **Reporting Year-End** — FR-430–434 (5 FRs)
 4. **District Data Tracker** — FR-525–530 (6 FRs)
+5. **TD-054** — Migrate `VolunteerOrganization()` constructors to `link_volunteer_to_org()` (next PR)
 
 ### ⚡ Medium Priority
 

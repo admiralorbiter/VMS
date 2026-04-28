@@ -38,15 +38,15 @@
                     </p>
                 </div>
                 <div class="btn-group" role="group">
-                    <a href="{{ url_for('report.organization_report_detail_excel', org_id=organization.id, school_year=school_year, host_filter=request.args.get('host_filter', 'all'), sort_vol=sort_vol, order_vol=order_vol, sort_evt=sort_evt, order_evt=order_evt) }}"
+                    <a href="{{ url_for('report.organization_report_detail_excel', org_id=organization.id, school_year=school_year, host_filter=request.args.get('host_filter', 'all'), sort_vol=sort_vol, order_vol=order_vol, sort_evt=sort_evt, order_evt=order_evt, mode=mode) }}"
                        class="btn btn-success">
                         <i class="fas fa-file-excel"></i> Export Excel
                     </a>
-                    <a href="{{ url_for('report.organization_report_detail', org_id=organization.id, school_year=school_year, host_filter=request.args.get('host_filter', 'all'), sort_vol=sort_vol, order_vol=order_vol, sort_evt=sort_evt, order_evt=order_evt) }}"
+                    <a href="{{ url_for('report.organization_report_detail', org_id=organization.id, school_year=school_year, host_filter=request.args.get('host_filter', 'all'), sort_vol=sort_vol, order_vol=order_vol, sort_evt=sort_evt, order_evt=order_evt, mode=mode) }}"
                        class="btn btn-outline-secondary">
                         <i class="fas fa-sync"></i> Refresh
                     </a>
-                    <a href="{{ url_for('report.organization_report') }}?school_year={{ school_year }}&host_filter={{ request.args.get('host_filter', 'all') }}"
+                    <a href="{{ url_for('report.organization_report') }}?school_year={{ school_year }}&host_filter={{ request.args.get('host_filter', 'all') }}&mode={{ mode }}"
                        class="btn btn-outline-primary">
                         <i class="fas fa-arrow-left"></i> Back to Report
                     </a>
@@ -61,6 +61,17 @@
                 For year-specific analysis, select a specific school year from the filter above.
             </div>
             {% endif %}
+
+            <!-- Membership Dates Notice -->
+            <div class="alert alert-secondary mb-4">
+                <i class="fas fa-history me-2"></i>
+                <strong>Membership Dates:</strong>
+                {% if mode == 'full' %}
+                    Showing all members ever linked to this organization. Counts may be overstated for members whose affiliation dates are unknown.
+                {% else %}
+                    Showing members whose affiliation dates are known or confirmed. Use "Include Unverified Members" on the main report to see all historical associations.
+                {% endif %}
+            </div>
 
             <!-- Summary Statistics -->
             <div class="row mb-4">
@@ -118,6 +129,8 @@
             <div class="card mb-4">
                 <div class="card-body">
                     <form method="GET" class="row g-3">
+                        <input type="hidden" name="mode" value="{{ mode }}">
+                        <input type="hidden" name="host_filter" value="{{ request.args.get('host_filter', 'all') }}">
                         <div class="col-md-2">
                             <label for="school_year" class="form-label">School Year</label>
                             <select class="form-select" id="school_year" name="school_year">

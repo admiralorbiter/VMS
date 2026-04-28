@@ -95,8 +95,19 @@ class OrganizationService:
             "unique_volunteers": event_summary.unique_volunteers or 0,
         }
 
+    def _is_cache_fresh(self, cache, max_age_hours=24) -> bool:
+        """Returns True if the cache row was written within max_age_hours."""
+        from datetime import datetime, timedelta, timezone
+
+        if not cache or not cache.last_updated:
+            return False
+        last = cache.last_updated
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+        return (datetime.now(timezone.utc) - last) < timedelta(hours=max_age_hours)
+
     def get_organization_detail(
-        self, org_id: int, school_year: Optional[str] = None
+        self, org_id: int, school_year: Optional[str] = None, mode: str = "verified"
     ) -> Dict:
         """
         Get comprehensive organization detail data with engagement breakdowns.
@@ -104,6 +115,7 @@ class OrganizationService:
         Args:
             org_id: Organization ID
             school_year: School year filter (e.g., '2425') or None for all-time
+            mode: 'verified' (date-filtered) or 'full' (all history)
 
         Returns:
             Dictionary with comprehensive organization data
@@ -114,12 +126,12 @@ class OrganizationService:
         if school_year is None:
             school_year = self.current_school_year
 
-        # Check cache first (unless all-time requested)
-        if school_year != "all_time":
+        # Check cache first (unless all-time requested or Full History mode)
+        if school_year != "all_time" and mode == "verified":
             cache = OrganizationDetailCache.query.filter_by(
                 organization_id=org_id, school_year=school_year
             ).first()
-            if cache:
+            if cache and self._is_cache_fresh(cache):
                 return self._format_cached_data(organization, cache, school_year)
 
         # Get date range for the school year
@@ -130,18 +142,22 @@ class OrganizationService:
             start_date, end_date = get_school_year_date_range(school_year)
 
         # Get comprehensive data
-        volunteers_data = self._get_volunteers_data(org_id, start_date, end_date)
-        in_person_events = self._get_in_person_events(org_id, start_date, end_date)
-        virtual_events = self._get_virtual_events(org_id, start_date, end_date)
-        cancelled_events = self._get_cancelled_events(org_id, start_date, end_date)
+        volunteers_data = self._get_volunteers_data(org_id, start_date, end_date, mode)
+        in_person_events = self._get_in_person_events(
+            org_id, start_date, end_date, mode
+        )
+        virtual_events = self._get_virtual_events(org_id, start_date, end_date, mode)
+        cancelled_events = self._get_cancelled_events(
+            org_id, start_date, end_date, mode
+        )
 
         # Calculate summary statistics
         summary_stats = self._calculate_summary_stats(
             volunteers_data, in_person_events, virtual_events, cancelled_events
         )
 
-        # Cache the data if it's year-specific
-        if school_year != "all_time":
+        # Cache the data if it's year-specific and mode is verified
+        if school_year != "all_time" and mode == "verified":
             self._cache_organization_detail(
                 org_id,
                 school_year,
@@ -164,7 +180,11 @@ class OrganizationService:
         }
 
     def _get_volunteers_data(
-        self, org_id: int, start_date: Optional[datetime], end_date: Optional[datetime]
+        self,
+        org_id: int,
+        start_date: Optional[datetime],
+        end_date: Optional[datetime],
+        mode: str = "verified",
     ) -> List[Dict]:
         """Get volunteer participation data for the organization.
 
@@ -197,6 +217,13 @@ class OrganizationService:
             inperson_query = inperson_query.filter(Event.start_date >= start_date)
         if end_date:
             inperson_query = inperson_query.filter(Event.start_date <= end_date)
+
+        from utils.services.org_membership_filter import membership_date_filter
+
+        date_filter = membership_date_filter(start_date, end_date, mode=mode)
+        if date_filter is not None:
+            inperson_query = inperson_query.filter(date_filter)
+
         inperson_stats = inperson_query.group_by(Volunteer.id).all()
 
         # --- Query 2: virtual session volunteers via event_volunteers M2M ---
@@ -228,6 +255,11 @@ class OrganizationService:
             virtual_query = virtual_query.filter(Event.start_date >= start_date)
         if end_date:
             virtual_query = virtual_query.filter(Event.start_date <= end_date)
+
+        date_filter = membership_date_filter(start_date, end_date, mode=mode)
+        if date_filter is not None:
+            virtual_query = virtual_query.filter(date_filter)
+
         virtual_stats = virtual_query.group_by(Volunteer.id).all()
 
         # --- Merge: in-person is the base; virtual adds or supplements ---
@@ -262,7 +294,11 @@ class OrganizationService:
         return list(merged.values())
 
     def _get_in_person_events(
-        self, org_id: int, start_date: Optional[datetime], end_date: Optional[datetime]
+        self,
+        org_id: int,
+        start_date: Optional[datetime],
+        end_date: Optional[datetime],
+        mode: str = "verified",
     ) -> List[Dict]:
         """Get in-person event data with volunteer details."""
         query = (
@@ -295,6 +331,12 @@ class OrganizationService:
             query = query.filter(Event.start_date >= start_date)
         if end_date:
             query = query.filter(Event.start_date <= end_date)
+
+        from utils.services.org_membership_filter import membership_date_filter
+
+        date_filter = membership_date_filter(start_date, end_date, mode=mode)
+        if date_filter is not None:
+            query = query.filter(date_filter)
 
         detailed_events = query.order_by(
             Event.start_date, Event.title, Volunteer.last_name, Volunteer.first_name
@@ -354,7 +396,11 @@ class OrganizationService:
         return events_data
 
     def _get_virtual_events(
-        self, org_id: int, start_date: Optional[datetime], end_date: Optional[datetime]
+        self,
+        org_id: int,
+        start_date: Optional[datetime],
+        end_date: Optional[datetime],
+        mode: str = "verified",
     ) -> List[Dict]:
         """Get virtual event data with classroom details.
 
@@ -406,6 +452,12 @@ class OrganizationService:
             query = query.filter(Event.start_date >= start_date)
         if end_date:
             query = query.filter(Event.start_date <= end_date)
+
+        from utils.services.org_membership_filter import membership_date_filter
+
+        date_filter = membership_date_filter(start_date, end_date, mode=mode)
+        if date_filter is not None:
+            query = query.filter(date_filter)
 
         detailed_events = query.order_by(
             Event.start_date, Event.title, Volunteer.last_name, Volunteer.first_name
@@ -491,7 +543,11 @@ class OrganizationService:
         return events_data
 
     def _get_cancelled_events(
-        self, org_id: int, start_date: Optional[datetime], end_date: Optional[datetime]
+        self,
+        org_id: int,
+        start_date: Optional[datetime],
+        end_date: Optional[datetime],
+        mode: str = "verified",
     ) -> List[Dict]:
         """Get cancelled events data."""
         query = (
@@ -532,6 +588,12 @@ class OrganizationService:
             query = query.filter(Event.start_date >= start_date)
         if end_date:
             query = query.filter(Event.start_date <= end_date)
+
+        from utils.services.org_membership_filter import membership_date_filter
+
+        date_filter = membership_date_filter(start_date, end_date, mode=mode)
+        if date_filter is not None:
+            query = query.filter(date_filter)
 
         cancelled_events = query.group_by(Event.id).all()
 

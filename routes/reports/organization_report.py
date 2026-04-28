@@ -21,12 +21,18 @@ from routes.reports.common import get_current_school_year, get_school_year_date_
 organization_report_bp = Blueprint("organization_report", __name__)
 
 
+from utils.services.org_membership_filter import membership_date_filter
+
+
 def load_routes(bp):
     @bp.route("/reports/organization/report")
     @login_required
     def organization_report():
         # Get filter parameters - use school year format (e.g., '2425' for 2024-25)
         school_year = request.args.get("school_year", get_current_school_year())
+        mode = request.args.get("mode", "verified")
+        if mode not in ("verified", "full"):
+            mode = "verified"
         host_filter = request.args.get("host_filter", "all")  # 'all' or 'prepkc'
         refresh_requested = request.args.get("refresh", "0") == "1"
         sort = request.args.get("sort", "total_hours")
@@ -59,7 +65,7 @@ def load_routes(bp):
         unique_volunteers_count = unique_volunteers_query.scalar() or 0
 
         # If host_filter == 'all' and no refresh is requested, try to use cached summary
-        if host_filter == "all" and not refresh_requested:
+        if host_filter == "all" and not refresh_requested and mode == "verified":
             cached_summary = OrganizationSummaryCache.query.filter_by(
                 school_year=school_year
             ).first()
@@ -106,6 +112,7 @@ def load_routes(bp):
                     sort=sort,
                     order=order,
                     host_filter=host_filter,
+                    mode=mode,
                     is_cached=True,
                     last_refreshed=cached_summary.last_updated,
                     summary_stats=summary_stats,
@@ -134,6 +141,10 @@ def load_routes(bp):
                 ),
             )
         )
+
+        date_filter = membership_date_filter(start_date, end_date, mode=mode)
+        if date_filter is not None:
+            org_stats = org_stats.filter(date_filter)
 
         # Apply host filter if specified
         if host_filter == "prepkc":
@@ -175,6 +186,10 @@ def load_routes(bp):
                 ),
             )
         )
+
+        date_filter = membership_date_filter(start_date, end_date, mode=mode)
+        if date_filter is not None:
+            virtual_org_stats = virtual_org_stats.filter(date_filter)
         if host_filter == "prepkc":
             virtual_org_stats = virtual_org_stats.filter(
                 db.or_(
@@ -243,8 +258,8 @@ def load_routes(bp):
             "unique_volunteers": unique_volunteers_count,
         }
 
-        # Save to summary cache only for host_filter == 'all'
-        if host_filter == "all":
+        # Save to summary cache only for host_filter == 'all' and verified mode
+        if host_filter == "all" and mode == "verified":
             try:
                 cache = OrganizationSummaryCache.query.filter_by(
                     school_year=school_year
@@ -274,6 +289,7 @@ def load_routes(bp):
             sort=sort,
             order=order,
             host_filter=host_filter,
+            mode=mode,
             summary_stats=summary_stats,
         )
 
@@ -282,6 +298,9 @@ def load_routes(bp):
     def organization_report_detail(org_id):
         # Get filter parameters
         school_year = request.args.get("school_year", get_current_school_year())
+        mode = request.args.get("mode", "verified")
+        if mode not in ("verified", "full"):
+            mode = "verified"
         refresh_requested = request.args.get("refresh", "0") == "1"
         sort_vol = request.args.get("sort_vol", "hours")
         order_vol = request.args.get("order_vol", "desc")
@@ -294,7 +313,7 @@ def load_routes(bp):
         service = OrganizationService()
 
         # Get comprehensive organization data
-        org_data = service.get_organization_detail(org_id, school_year)
+        org_data = service.get_organization_detail(org_id, school_year, mode=mode)
 
         # Extract data from service response
         organization = org_data["organization"]
@@ -399,6 +418,9 @@ def load_routes(bp):
         """Generate Excel file for organization report"""
         # Get filter parameters
         school_year = request.args.get("school_year", get_current_school_year())
+        mode = request.args.get("mode", "verified")
+        if mode not in ("verified", "full"):
+            mode = "verified"
         host_filter = request.args.get("host_filter", "all")  # 'all' or 'prepkc'
         sort = request.args.get("sort", "total_hours")
         order = request.args.get("order", "desc")
@@ -436,6 +458,10 @@ def load_routes(bp):
                 Event.start_date >= start_date,
                 Event.start_date <= end_date,
             )
+
+        date_filter = membership_date_filter(start_date, end_date, mode=mode)
+        if date_filter is not None:
+            org_stats = org_stats.filter(date_filter)
 
         # Apply host filter if specified
         if host_filter == "prepkc":
@@ -537,6 +563,12 @@ def load_routes(bp):
             1,
             "PREPKC Events Only" if host_filter == "prepkc" else "All Events",
         )
+        worksheet.write(summary_row + 7, 0, "Membership Dates")
+        worksheet.write(
+            summary_row + 7,
+            1,
+            "Include Unverified Members" if mode == "full" else "Verified Members Only",
+        )
 
         writer.close()
         output.seek(0)
@@ -563,6 +595,9 @@ def load_routes(bp):
         """Generate comprehensive Excel file for organization report detail with all granular data"""
         # Get filter parameters
         school_year = request.args.get("school_year", get_current_school_year())
+        mode = request.args.get("mode", "verified")
+        if mode not in ("verified", "full"):
+            mode = "verified"
         sort_vol = request.args.get("sort_vol", "hours")
         order_vol = request.args.get("order_vol", "desc")
         sort_evt = request.args.get("sort_evt", "date")
@@ -604,6 +639,11 @@ def load_routes(bp):
                 Event.start_date >= start_date,
                 Event.start_date <= end_date,
             )
+
+        date_filter = membership_date_filter(start_date, end_date, mode=mode)
+        if date_filter is not None:
+            volunteer_stats = volunteer_stats.filter(date_filter)
+
         volunteer_stats = volunteer_stats.group_by(Volunteer.id).all()
 
         # Format volunteer data

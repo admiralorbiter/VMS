@@ -345,6 +345,8 @@ class VolunteerOrganization(db.Model):
         String(50), default="Current"
     )  # e.g., 'Current', 'Past', 'Pending'
 
+    date_source = db.Column(String(50), nullable=True)
+
     # Automatic timestamps for audit trail (timezone-aware, Python-side defaults)
     created_at = db.Column(
         db.DateTime(timezone=True),
@@ -372,3 +374,119 @@ class VolunteerOrganization(db.Model):
         back_populates="volunteer_organizations",
         overlaps="organizations,volunteers",  # Add both relationship names
     )
+
+    __table_args__ = (
+        db.Index("idx_vo_status_dates", "status", "start_date", "end_date"),
+    )
+
+    @classmethod
+    def link_volunteer_to_org(
+        cls,
+        volunteer,
+        org_name=None,
+        organization=None,
+        role=None,
+        is_primary=False,
+        status="Current",
+        start_date=None,
+        end_date=None,
+        date_source=None,
+    ):
+        """
+        THE canonical way to create or update a VolunteerOrganization link.
+
+        Use this instead of VolunteerOrganization(...) everywhere.
+        Handles: org lookup, upsert, status normalization, auto start_date.
+
+        Returns the VolunteerOrganization row (already added to session).
+        Callers must NOT call db.session.add() — this method handles it.
+        """
+        from datetime import datetime, timezone
+
+        # Normalize status strings so 'Former', 'former', 'past' all become 'Past'
+        STATUS_MAP = {
+            "former": "Past",
+            "past": "Past",
+            "current": "Current",
+            "pending": "Pending",
+        }
+        normalized = STATUS_MAP.get((status or "Current").lower(), "Current")
+
+        # Resolve org by name if object not passed directly
+        if organization is None and org_name:
+            organization = Organization.query.filter_by(name=org_name).first()
+            if not organization:
+                organization = Organization(name=org_name)
+                db.session.add(organization)
+                db.session.flush()
+
+        if organization is None:
+            raise ValueError("Must provide org_name or organization.")
+
+        # Upsert: find existing row or create new
+        vol_org = cls.query.filter_by(
+            volunteer_id=volunteer.id,
+            organization_id=organization.id,
+        ).first()
+
+        if vol_org:
+            vol_org.status = normalized
+            if role is not None:
+                vol_org.role = role
+            if is_primary:
+                vol_org.is_primary = is_primary
+            if start_date is not None:
+                vol_org.start_date = start_date
+                vol_org.date_source = date_source or "manual"
+            if end_date is not None:
+                vol_org.end_date = end_date
+                vol_org.date_source = date_source or "manual"
+        else:
+            # Auto-set start_date=now for brand-new Current rows going forward
+            effective_start = start_date
+            effective_source = date_source
+            if effective_start is None and normalized == "Current":
+                effective_start = datetime.now(timezone.utc)
+                effective_source = effective_source or "auto_detected"
+
+            vol_org = cls(
+                volunteer_id=volunteer.id,
+                organization_id=organization.id,
+                role=role,
+                is_primary=is_primary,
+                status=normalized,
+                start_date=effective_start,
+                end_date=end_date,
+                date_source=effective_source,
+            )
+            db.session.add(vol_org)
+
+        return vol_org
+
+    from sqlalchemy.orm import validates
+
+    @validates("status")
+    def auto_set_transition_dates(self, key, new_status):
+        """
+        Automatically record transition dates when status changes.
+        - Current → Past:  set end_date = now (if not already set)
+        - * → Current:    set start_date = now (if not already set)
+
+        Uses hasattr guard (same as Teacher model) to avoid misfiring
+        during initial DB row load.
+        """
+        from datetime import datetime, timezone
+
+        now = datetime.now(timezone.utc)
+
+        if hasattr(self, "status") and self.status != new_status:
+            if self.status == "Current" and new_status == "Past":
+                if not self.end_date:
+                    self.end_date = now
+                    self.date_source = self.date_source or "auto_detected"
+            elif new_status == "Current" and self.status != "Current":
+                if not self.start_date:
+                    self.start_date = now
+                    self.date_source = self.date_source or "auto_detected"
+
+        return new_status

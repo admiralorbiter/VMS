@@ -431,6 +431,41 @@ The Quality Scoring Dashboard (`/quality_dashboard`, `templates/data_quality/qua
 
 ---
 
+## TD-054: `VolunteerOrganization()` Direct Constructor Sites (10–25 locations)
+
+**Created:** 2026-04-28 · **Priority:** Medium · **Category:** Data Integrity
+
+The new `link_volunteer_to_org()` factory method (added in the Time-Scoped Membership PR, 2026-04-28) is the canonical way to create or update volunteer–organization links. It handles status normalization, auto-sets `start_date` for new Current rows, and records `date_source`.
+
+~10–25 locations across the codebase still call `VolunteerOrganization(...)` directly (primarily in Salesforce import scripts). These rows will:
+- Not auto-populate `start_date` or `date_source`
+- Not trigger the `@validates('status')` date hook on creation (the hook fires only on status *transitions*, not initial construction)
+- Appear in the Verified org report only if they are `status='Current'` with no end date (which is the safe default rule)
+
+**Immediate impact:** Low — the default filter rule (`Current + no dates → include`) ensures these rows still appear in Verified mode. No volunteers are incorrectly hidden.
+
+**Long-term impact:** Medium — as more volunteers transition organizations, undated Past rows accumulate and can only be seen in Full History mode. Admin UI (Part 4) will eventually allow backfilling dates.
+
+### Proposed Fix
+
+Migrate each constructor call to `VolunteerOrganization.link_volunteer_to_org()`. Grep for the pattern:
+```
+grep -rn 'VolunteerOrganization(' routes/ utils/ scripts/ --include="*.py" | grep -v 'filter_by\|query\|link_volunteer_to_org'
+```
+
+For each site:
+1. Replace `VolunteerOrganization(volunteer_id=..., organization_id=..., ...)` with `VolunteerOrganization.link_volunteer_to_org(volunteer, organization=org, ...)`
+2. Remove the subsequent `db.session.add(vo)` — the factory handles it
+3. Pass `date_source='salesforce'` (or the appropriate source string)
+
+**Risk:** Low — the factory is an upsert; existing rows will be updated, not duplicated.
+
+**Effort:** Small–Medium (1–2 hours, mostly mechanical find-and-replace).
+
+**Planned for:** Next PR (Part 1-D of the Time-Scoped Membership plan).
+
+---
+
 ## Priority Order
 
 Ordered by **what best unblocks future work**:
@@ -441,21 +476,22 @@ Ordered by **what best unblocks future work**:
 | 2 | **TD-011** | SQLite in Production | M |
 | 3 | **TD-013** | No True Application Factory Pattern | M |
 | ~~4~~ | ~~**TD-052**~~ | ~~Volunteer org matching → alias-based resolution~~ ✅ | ~~M~~ |
-| 5 | **TD-016** | Cache Model Proliferation in `reports.py` | M |
-| 6 | **TD-022** | No Test Coverage for Extracted Blueprints | M |
-| ~~7~~ | ~~**TD-033**~~ | ~~Student Import `str(None)` Data Cleanup~~ ✅ | ~~M~~ |
-| 8 | **TD-034** | Salesforce Data Quality Audit | M |
-| ~~9~~ | ~~**TD-035**~~ | ~~Multi-Part Name Creates Duplicate Teacher Records~~ ✅ | ~~M~~ |
-| 10 | **TD-036** | Exact-Name Duplicate Teacher Records (~2,100 pairs) | M |
-| 11 | **TD-037** | Hard-Delete Pruned Teachers (after 2026-04-13) | M |
-| 12 | **TD-040** | `NEPRIS_SESSION_BASE_URL` in Single File | M |
-| 13 | **TD-041** | Oversized Route Files (33 Files Over 500 Lines) | M |
-| 14 | **TD-046** | Virtual Computation Duplication (2 Files, ~3,400 Lines) | M |
-| 15 | **TD-047** | Oversized Templates (28 Files Over 500 Lines) | M |
-| 16 | **TD-048** | API Tokens Stored in Plaintext | M |
-| 17 | **TD-049** | Backfill `attendance_confirmed_at` for Existing Records | M |
-| 18 | **TD-050** | Consolidate Legacy Virtual Usage Routes into Tenant Dashboard | M |
-| 19 | **TD-051** | Quality Dashboard — Evaluate Usefulness & Integration | M |
+| 5 | **TD-054** | `VolunteerOrganization()` direct constructors — migrate to `link_volunteer_to_org()` | S |
+| 6 | **TD-016** | Cache Model Proliferation in `reports.py` | M |
+| 7 | **TD-022** | No Test Coverage for Extracted Blueprints | M |
+| ~~8~~ | ~~**TD-033**~~ | ~~Student Import `str(None)` Data Cleanup~~ ✅ | ~~M~~ |
+| 9 | **TD-034** | Salesforce Data Quality Audit | M |
+| ~~10~~ | ~~**TD-035**~~ | ~~Multi-Part Name Creates Duplicate Teacher Records~~ ✅ | ~~M~~ |
+| 11 | **TD-036** | Exact-Name Duplicate Teacher Records (~2,100 pairs) | M |
+| 12 | **TD-037** | Hard-Delete Pruned Teachers (after 2026-04-13) | M |
+| 13 | **TD-040** | `NEPRIS_SESSION_BASE_URL` in Single File | M |
+| 14 | **TD-041** | Oversized Route Files (33 Files Over 500 Lines) | M |
+| 15 | **TD-046** | Virtual Computation Duplication (2 Files, ~3,400 Lines) | M |
+| 16 | **TD-047** | Oversized Templates (28 Files Over 500 Lines) | M |
+| 17 | **TD-048** | API Tokens Stored in Plaintext | M |
+| 18 | **TD-049** | Backfill `attendance_confirmed_at` for Existing Records | M |
+| 19 | **TD-050** | Consolidate Legacy Virtual Usage Routes into Tenant Dashboard | M |
+| 20 | **TD-051** | Quality Dashboard — Evaluate Usefulness & Integration | M |
 
 > TD-004 is intentionally deferred — the M2M relationship is the correct path forward.
 
