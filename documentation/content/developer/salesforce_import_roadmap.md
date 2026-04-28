@@ -54,12 +54,12 @@ On 2026-04-28, two volunteers (181650 Kiera Santulli, 181652 Addison Leitch) wer
 
 ## Remediation Plan (Active)
 
-### Phase 1 — Delta Reliability Hardening *(P0, ~2 hours)*
+### Phase 1 — Delta Reliability Hardening *(✅ Complete, 2026-04-28)*
 
-> Fix the two critical bugs that caused the April incident. Can be done in a single PR.
+> Fixed the two critical bugs that caused the April incident.
 
-- [ ] **Fix watermark freeze (TD-055):** Always advance `last_sync_watermark` on sync completion, even on `failed` status. Use a wider lookback buffer (48 hours) on the next delta if the previous sync failed, to catch any records that fell in the gap.
-- [ ] **Persist EP errors to DB (TD-056):** Write unmatched participation records to the existing `data_quality_flag` table (or `sync_logs.error_details`) instead of only returning them in the JSON response. Makes gaps visible without a manual DB query.
+- [x] **Fix watermark freeze (TD-055):** `last_sync_watermark` now always advances at end of every sync, regardless of status. New `recovery_buffer_hours` column (migration: `migrate_sync_log_recovery_buffer.py`): failed runs write `48`, success/partial write `1`. `SyncLog.get_watermark_with_buffer()` replaces `get_last_successful_watermark()` and applies the correct buffer on next delta. Applied to all 11 sync sites in 7 files. **Bonus:** Fixed `student_participations` sync_type key mismatch that was forcing a full 49k-record scan on every run.
+- [x] **Persist EP errors to DB (TD-056):** `process_participation_row()` now writes a `DataQualityFlag` with `issue_type='unmatched_sf_participation'` on lookup miss. New `entity_sf_id` column on `DataQualityFlag`; `entity_id` made nullable. Dashboard at `/admin/data-quality` updated to render SF IDs for flags without local integer IDs. Auto-resolution on next successful import.
 
 **Files to change:**
 - `routes/salesforce/event_import.py` — `SyncLog` creation block (watermark logic)
@@ -167,7 +167,7 @@ The following were considered but are **not currently feasible**:
 | Sprint 2 | Error handling & savepoints | ✅ Complete |
 | Sprint 3 | Dashboard enhancements | ✅ Complete |
 | Sprint 4 | Integration tests & data quality | ✅ Complete (79 tests, `str(None)` bug fix) |
-| **Phase 1** | **Delta reliability hardening** | 📋 Pending (TD-055, TD-056) |
+| **Phase 1** | **Delta reliability hardening** | ✅ **Complete 2026-04-28** (TD-055, TD-056 + bonus watermark key fix) |
 | **Phase 2** | **Retry queue for unresolved EPs** | 📋 Pending (TD-057) |
 | **Phase 3** | **Import health dashboard** | 📋 Pending |
 
@@ -182,4 +182,4 @@ The following were considered but are **not currently feasible**:
 
 ---
 
-*Last Updated: April 2026*
+*Last Updated: April 28, 2026 — Phase 1 complete.*

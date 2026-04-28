@@ -36,6 +36,7 @@ class DataQualityIssueType:
     MISSING_ADDRESS = "missing_address"
     TRUNCATED_SKILL = "truncated_skill"
     OTHER = "other"
+    UNMATCHED_SF_PARTICIPATION = "unmatched_sf_participation"
 
     @classmethod
     def all_types(cls):
@@ -45,6 +46,7 @@ class DataQualityIssueType:
             cls.MISSING_ADDRESS,
             cls.TRUNCATED_SKILL,
             cls.OTHER,
+            cls.UNMATCHED_SF_PARTICIPATION,
         ]
 
     @classmethod
@@ -55,6 +57,7 @@ class DataQualityIssueType:
             cls.MISSING_ADDRESS: "Empty Address",
             cls.TRUNCATED_SKILL: "Truncated Skill",
             cls.OTHER: "Other",
+            cls.UNMATCHED_SF_PARTICIPATION: "Unmatched SF Participation",
         }
         return names.get(issue_type, issue_type)
 
@@ -75,7 +78,9 @@ class DataQualityFlag(db.Model):
     entity_type = Column(
         String(50), nullable=False, index=True
     )  # 'contact', 'organization', 'volunteer'
-    entity_id = Column(Integer, nullable=False, index=True)
+    entity_id = Column(
+        Integer, nullable=True, index=True
+    )  # NULL for SF-origin flags (entity_sf_id used instead); integer for local entity flags
 
     # Issue details
     issue_type = Column(String(50), nullable=False, index=True)
@@ -83,6 +88,8 @@ class DataQualityFlag(db.Model):
     salesforce_id = Column(
         String(18), nullable=True, index=True
     )  # SF record ID for cross-reference
+    # For Salesforce-origin flags with no local integer entity ID (TD-056)
+    entity_sf_id = Column(String(18), nullable=True, index=True)
 
     # Status tracking
     status = Column(
@@ -133,6 +140,7 @@ class DataQualityFlag(db.Model):
             "issue_type_display": self.issue_type_display,
             "details": self.details,
             "salesforce_id": self.salesforce_id,
+            "entity_sf_id": self.entity_sf_id,
             "status": self.status,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "resolved_at": self.resolved_at.isoformat() if self.resolved_at else None,
@@ -148,7 +156,12 @@ class DataQualityFlag(db.Model):
 
 
 def flag_data_quality_issue(
-    entity_type, entity_id, issue_type, details=None, salesforce_id=None
+    entity_type: str,
+    entity_id: int,
+    issue_type: str,
+    details: str = None,
+    salesforce_id: str = None,
+    entity_sf_id: str = None,
 ):
     """
     Create or update a data quality flag (idempotent).
@@ -156,11 +169,18 @@ def flag_data_quality_issue(
     If a flag already exists for this entity+issue, it's left as-is.
     Returns the flag (existing or new).
     """
-    existing = DataQualityFlag.query.filter_by(
-        entity_type=entity_type,
-        entity_id=entity_id,
-        issue_type=issue_type,
-    ).first()
+    if entity_sf_id:
+        existing = DataQualityFlag.query.filter_by(
+            entity_type=entity_type,
+            entity_sf_id=entity_sf_id,
+            issue_type=issue_type,
+        ).first()
+    else:
+        existing = DataQualityFlag.query.filter_by(
+            entity_type=entity_type,
+            entity_id=entity_id,
+            issue_type=issue_type,
+        ).first()
 
     if existing:
         return existing
@@ -171,6 +191,7 @@ def flag_data_quality_issue(
         issue_type=issue_type,
         details=details,
         salesforce_id=salesforce_id,
+        entity_sf_id=entity_sf_id,
     )
     db.session.add(flag)
     return flag

@@ -98,7 +98,12 @@
             <div class="flag-info">
                 <div class="flag-title">
                     <span class="flag-type-badge {{ flag.issue_type }}">{{ flag.issue_type_display }}</span>
-                    {{ flag.entity_type | capitalize }} #{{ flag.entity_id }}
+                    {{ flag.entity_type | capitalize }}
+                    {% if flag.entity_sf_id %}
+                    #{{ flag.entity_sf_id }}
+                    {% else %}
+                    #{{ flag.entity_id }}
+                    {% endif %}
                 </div>
                 <div class="flag-meta">
                     <span><i class="fas fa-tag"></i> {{ flag.entity_type }}</span>

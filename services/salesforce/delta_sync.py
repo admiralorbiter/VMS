@@ -28,10 +28,13 @@ Usage:
     helper.record_watermark(sync_log, datetime.now(timezone.utc))
 """
 
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from models.sync_log import SyncLog
+from models.sync_log import SyncLog, SyncStatus
+
+logger = logging.getLogger(__name__)
 
 
 class DeltaSyncHelper:
@@ -53,20 +56,28 @@ class DeltaSyncHelper:
             buffer_hours if buffer_hours is not None else self.DEFAULT_BUFFER_HOURS
         )
 
+    # Wider buffer applied after a failed sync to catch records that fell in the gap
+    FAILED_SYNC_BUFFER_HOURS = 48
+
     def get_watermark(self) -> Optional[datetime]:
         """
-        Get the watermark timestamp from the last successful sync.
+        Get the watermark timestamp for delta sync with appropriate lookback buffer.
 
-        Returns:
-            datetime or None: The watermark timestamp with buffer applied,
-                              or None if no successful sync exists
+        Uses recovery_buffer_hours from the most recent SyncLog entry to determine
+        how far back to look. Normal runs: 1 hour. Post-failure: 48 hours. (TD-055)
         """
-        watermark = SyncLog.get_last_successful_watermark(self.sync_type)
-        if watermark and self.buffer_hours > 0:
-            # Subtract buffer to catch any records that might have been
-            # modified during the previous sync
-            watermark = watermark - timedelta(hours=self.buffer_hours)
-        return watermark
+        watermark, buffer_hours = SyncLog.get_watermark_with_buffer(self.sync_type)
+        if not watermark:
+            return None
+
+        if buffer_hours != self.DEFAULT_BUFFER_HOURS:
+            logger.warning(
+                "Recovery mode: applying %d-hour lookback buffer for %s delta sync",
+                buffer_hours,
+                self.sync_type,
+            )
+
+        return watermark - timedelta(hours=buffer_hours)
 
     def format_watermark_for_soql(self, watermark: datetime) -> str:
         """
@@ -234,10 +245,9 @@ def create_sync_log_with_watermark(
         error_message=error_message,
         error_details=error_details,
         is_delta_sync=is_delta,
-        # Set watermark to now for future delta syncs
-        last_sync_watermark=(
-            datetime.now(timezone.utc) if status in ("success", "partial") else None
-        ),
+        # Always advance watermark — failed runs get wide recovery buffer (TD-055)
+        last_sync_watermark=datetime.now(timezone.utc),
+        recovery_buffer_hours=48 if status == SyncStatus.FAILED.value else 1,
     )
 
     return sync_log

@@ -255,11 +255,9 @@ def import_schools():
             records_processed=total_success,
             records_failed=total_errors,
             is_delta_sync=is_delta,
-            last_sync_watermark=(
-                datetime.now(timezone.utc)
-                if sync_status in (SyncStatus.SUCCESS.value, SyncStatus.PARTIAL.value)
-                else None
-            ),
+            # TD-055: Always advance watermark; set wide buffer on failure for next delta
+            last_sync_watermark=datetime.now(timezone.utc),
+            recovery_buffer_hours=48 if sync_status == SyncStatus.FAILED.value else 1,
         )
         db.session.add(sync_log)
         db.session.commit()
@@ -449,11 +447,9 @@ def import_classes():
             records_processed=success_count,
             records_failed=error_count,
             is_delta_sync=is_delta,
-            last_sync_watermark=(
-                datetime.now(timezone.utc)
-                if sync_status in (SyncStatus.SUCCESS.value, SyncStatus.PARTIAL.value)
-                else None
-            ),
+            # TD-055: Always advance watermark; set wide buffer on failure for next delta
+            last_sync_watermark=datetime.now(timezone.utc),
+            recovery_buffer_hours=48 if sync_status == SyncStatus.FAILED.value else 1,
         )
         db.session.add(sync_log)
         db.session.commit()

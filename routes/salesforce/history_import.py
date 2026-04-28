@@ -318,11 +318,10 @@ def import_history_from_salesforce():
                 records_failed=error_count,
                 records_skipped=skipped_count,
                 is_delta_sync=is_delta,
-                last_sync_watermark=(
-                    datetime.now(timezone.utc)
-                    if sync_status
-                    in (SyncStatus.SUCCESS.value, SyncStatus.PARTIAL.value)
-                    else None
+                # TD-055: Always advance watermark; set wide buffer on failure for next delta
+                last_sync_watermark=datetime.now(timezone.utc),
+                recovery_buffer_hours=(
+                    48 if sync_status == SyncStatus.FAILED.value else 1
                 ),
             )
             db.session.add(sync_log)

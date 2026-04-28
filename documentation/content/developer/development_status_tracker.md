@@ -423,9 +423,9 @@
 | FR-DELTA-008 | Students delta sync | ✅ | Feb 2026 |
 | FR-DELTA-009 | Organizations delta sync | ✅ | Feb 2026 |
 | FR-DELTA-010 | Student participants delta sync | ✅ | Feb 2026 |
-| FR-DELTA-011 | Watermark always advances (even on failure) | 📋 | TD-055 — watermark frozen by Mar 2026 failure caused 7-week gap; 161 volunteers affected |
-| FR-DELTA-012 | Wider lookback buffer after failed sync | 📋 | TD-055 — next delta after failure should use 48hr buffer not 1hr |
-| FR-DELTA-013 | Unmatched EP records persisted to data quality flags | 📋 | TD-056 — currently only in JSON response; 537 silent drops in Apr 2026 reimport |
+| FR-DELTA-011 | Watermark always advances (even on failure) | ✅ | TD-055 resolved 2026-04-28 — `recovery_buffer_hours` column; `get_watermark_with_buffer()` applied to all 11 sync sites |
+| FR-DELTA-012 | Wider lookback buffer after failed sync | ✅ | TD-055 resolved 2026-04-28 — failed syncs write `recovery_buffer_hours=48`; next delta uses 48hr buffer then resets to 1hr |
+| FR-DELTA-013 | Unmatched EP records persisted to data quality flags | ✅ | TD-056 resolved 2026-04-28 — `unmatched_sf_participation` flags with `entity_sf_id`; auto-resolved on next successful import; visible at `/admin/data-quality` |
 | FR-DELTA-014 | Retry queue for unresolved participation imports | 📋 | TD-057 — `pending_participation_imports` model; auto-resolves on next import |
 
 ---
@@ -554,7 +554,8 @@
 2. **Reporting Cache Management** — FR-422–425 still TBD (420, 421 now implemented)
 3. **Reporting Year-End** — FR-432 (YoY comparison, Session 5); FR-433 Excel ✅ done, PDF deferred; FR-434 deferred
 4. **District Data Tracker** — FR-525–530 (6 FRs)
-5. **TD-054** — Migrate `VolunteerOrganization()` constructors to `link_volunteer_to_org()` (next PR)
+5. **TD-057** — Retry queue for unresolved participation imports (Phase 2 SF hardening)
+6. **TD-054** — Migrate `VolunteerOrganization()` constructors to `link_volunteer_to_org()` (next PR)
 
 ### ⚡ Medium Priority
 

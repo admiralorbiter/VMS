@@ -60,6 +60,8 @@ class SyncLog(db.Model):
     error_details = db.Column(db.Text)  # JSON string for detailed errors
     # Delta sync watermark - stores the timestamp to use as the baseline for next delta sync
     last_sync_watermark = db.Column(db.DateTime(timezone=True))
+    # Recovery buffer for next delta sync (hours). Set to 48 after failed runs. (TD-055)
+    recovery_buffer_hours = db.Column(db.Integer, default=1, nullable=False)
     # Track if this was a delta (incremental) or full sync
     is_delta_sync = db.Column(db.Boolean, default=False)
 
@@ -87,6 +89,7 @@ class SyncLog(db.Model):
             "records_failed": self.records_failed,
             "records_skipped": self.records_skipped,
             "error_message": self.error_message,
+            "recovery_buffer_hours": self.recovery_buffer_hours,
             "duration_seconds": (
                 (self.completed_at - self.started_at).total_seconds()
                 if self.completed_at and self.started_at
@@ -112,22 +115,49 @@ class SyncLog(db.Model):
     def get_last_successful_watermark(sync_type):
         """
         Get the LastModifiedDate watermark from the last successful sync.
-        
-        This is used for delta sync - the returned timestamp can be used
-        to filter Salesforce queries to only records modified after this time.
-        
+
+        .. deprecated::
+            Use ``get_watermark_with_buffer()`` instead for delta sync.
+            This method does not apply the recovery buffer set by failed runs
+            and will not trigger the 48-hour lookback window after a failure. (TD-055)
+
         Args:
             sync_type: The type of sync (e.g., 'volunteers', 'events_and_participants')
-            
+
         Returns:
             datetime or None: The watermark timestamp, or None if no successful sync exists
         """
         log = (
             SyncLog.query.filter_by(sync_type=sync_type)
-            .filter(SyncLog.status.in_([SyncStatus.SUCCESS.value, SyncStatus.PARTIAL.value]))
+            .filter(
+                SyncLog.status.in_([SyncStatus.SUCCESS.value, SyncStatus.PARTIAL.value])
+            )
             .filter(SyncLog.last_sync_watermark.isnot(None))
             .order_by(SyncLog.started_at.desc())
             .first()
         )
         return log.last_sync_watermark if log else None
 
+    @staticmethod
+    def get_watermark_with_buffer(sync_type):
+        """
+        Get the watermark + recovery buffer from the last sync that set one.
+
+        Unlike get_last_successful_watermark(), this includes failed runs
+        (which now always set a watermark). Returns the buffer hours encoded
+        at write time so the caller knows how far back to look. (TD-055)
+
+        Returns:
+            (watermark, buffer_hours): watermark is None if no sync has run
+        """
+        log = (
+            SyncLog.query.filter_by(sync_type=sync_type)
+            .filter(SyncLog.last_sync_watermark.isnot(None))
+            .order_by(SyncLog.started_at.desc())
+            .first()
+        )
+        # Returns 1 as the default buffer; keep in sync with DeltaSyncHelper.DEFAULT_BUFFER_HOURS.
+        # Cannot import DeltaSyncHelper here (circular import), so the value is hardcoded.
+        if not log:
+            return None, 1
+        return log.last_sync_watermark, log.recovery_buffer_hours

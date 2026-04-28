@@ -233,10 +233,52 @@ def process_participation_row(
         event = Event.query.filter_by(salesforce_id=row["Session__c"]).first()
 
         if not volunteer or not event:
-            error_msg = (
-                f"Could not find volunteer or event for participation {row['Id']}"
-            )
+            sf_participation_id = row["Id"]
+            sf_contact_id = row.get("Contact__c", "")
+            sf_session_id = row.get("Session__c", "")
+
+            # Describe exactly what's missing for actionable details
+            missing_parts = []
+            if not volunteer:
+                missing_parts.append(f"volunteer Contact__c={sf_contact_id!r}")
+            if not event:
+                missing_parts.append(f"event Session__c={sf_session_id!r}")
+
+            error_msg = f"Unmatched SF participation {sf_participation_id}: {', '.join(missing_parts)}"
             errors.append(error_msg)
+            logger.warning(
+                "Skipping SF participation %s — %s",
+                sf_participation_id,
+                ", ".join(missing_parts),
+            )
+
+            # Persist to Data Quality flags. (TD-056)
+            # Uses entity_sf_id (B3) — no hashing needed.
+            try:
+                from models.data_quality_flag import (
+                    DataQualityIssueType,
+                    flag_data_quality_issue,
+                )
+
+                flag_data_quality_issue(
+                    entity_type="sf_participation",
+                    entity_id=None,  # No local entity — SF-origin flag uses entity_sf_id
+                    entity_sf_id=sf_participation_id,
+                    issue_type=DataQualityIssueType.UNMATCHED_SF_PARTICIPATION,
+                    details=(
+                        f"SF participation {sf_participation_id} could not be imported. "
+                        f"Missing: {', '.join(missing_parts)}. "
+                        f"Contact__c={sf_contact_id}, Session__c={sf_session_id}."
+                    ),
+                    salesforce_id=sf_participation_id,
+                )
+            except Exception as flag_err:
+                logger.warning(
+                    "Could not flag unmatched participation %s: %s",
+                    sf_participation_id,
+                    flag_err,
+                )
+
             return success_count, error_count + 1
 
         participation = EventParticipation(
@@ -248,6 +290,8 @@ def process_participation_row(
         )
 
         db.session.add(participation)
+        # Auto-resolve any existing DQ flag for this SF ID
+        _resolve_participation_flag_if_exists(row["Id"])
         return success_count + 1, error_count
 
     except Exception as e:
@@ -256,6 +300,26 @@ def process_participation_row(
         db.session.rollback()
         errors.append(error_msg)
         return success_count, error_count + 1
+
+
+def _resolve_participation_flag_if_exists(sf_participation_id: str) -> None:
+    """Auto-mark the DQ flag resolved if we successfully imported the participation."""
+    try:
+        from models.data_quality_flag import DataQualityFlag, DataQualityIssueType
+
+        flag = DataQualityFlag.query.filter_by(
+            entity_type="sf_participation",
+            entity_sf_id=sf_participation_id,
+            issue_type=DataQualityIssueType.UNMATCHED_SF_PARTICIPATION,
+            status="open",
+        ).first()
+        if flag:
+            flag.resolve(
+                status="auto_fixed",
+                notes=f"Participation {sf_participation_id} successfully imported on re-run.",
+            )
+    except Exception:
+        pass  # Non-critical — never break a successful import
 
 
 def process_student_participation_row(

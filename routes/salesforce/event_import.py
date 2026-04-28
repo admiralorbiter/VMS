@@ -242,11 +242,9 @@ def import_events_from_salesforce():
             records_skipped=skipped_count,
             error_details=(json.dumps(actual_errors[:100]) if actual_errors else None),
             is_delta_sync=is_delta,
-            last_sync_watermark=(
-                datetime.now(timezone.utc)
-                if sync_status in (SyncStatus.SUCCESS.value, SyncStatus.PARTIAL.value)
-                else None
-            ),
+            # TD-055: Always advance watermark; set wide buffer on failure for next delta
+            last_sync_watermark=datetime.now(timezone.utc),
+            recovery_buffer_hours=48 if sync_status == SyncStatus.FAILED.value else 1,
         )
         db.session.add(sync_log)
         db.session.commit()
@@ -290,7 +288,9 @@ def sync_student_participants():
     # Delta sync support
     from services.salesforce import DeltaSyncHelper
 
-    delta_helper = DeltaSyncHelper("student_participants")
+    delta_helper = DeltaSyncHelper(
+        "student_participations"
+    )  # Must match sync_type written to SyncLog below
     delta_info = delta_helper.get_delta_info(request.args)
     is_delta = delta_info["actual_delta"]
     watermark = delta_info["watermark"]
@@ -441,11 +441,9 @@ def sync_student_participants():
             records_failed=error_count,
             error_details=json.dumps(errors[:100]) if errors else None,
             is_delta_sync=is_delta,
-            last_sync_watermark=(
-                datetime.now(timezone.utc)
-                if sync_status in (SyncStatus.SUCCESS.value, SyncStatus.PARTIAL.value)
-                else None
-            ),
+            # TD-055: Always advance watermark; set wide buffer on failure for next delta
+            last_sync_watermark=datetime.now(timezone.utc),
+            recovery_buffer_hours=48 if sync_status == SyncStatus.FAILED.value else 1,
         )
         db.session.add(sync_log)
         db.session.commit()
