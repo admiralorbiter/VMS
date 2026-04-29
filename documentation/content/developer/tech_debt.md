@@ -553,7 +553,7 @@ Ordered by **what best unblocks future work**:
 | 3 | **TD-009** | `db.session.commit()` Scattered in 44 Route Files | M | Pending |
 | 4 | **TD-011** | SQLite in Production | M | Pending |
 | 5 | **TD-013** | No True Application Factory Pattern | M | Pending |
-| 6 | **TD-054** | `VolunteerOrganization()` direct constructors — migrate to `link_volunteer_to_org()` | S | Pending |
+| 6 | **~~TD-054~~** | **~~`VolunteerOrganization()` direct constructors — migrate to `link_volunteer_to_org()`~~** | S | ✅ Resolved 2026-04-28 |
 | 7 | **TD-016** | Cache Model Proliferation in `reports.py` | M | Pending |
 | 8 | **TD-022** | No Test Coverage for Extracted Blueprints | M | Pending |
 | 9 | **TD-034** | Salesforce Data Quality Audit | M | Pending |
@@ -612,6 +612,7 @@ All resolved items, for historical reference:
 | TD-039 | Inline `import pytz` in Newsletter | 2026-03-17 | `import pytz` was inside 2 endpoint functions in `newsletter.py`. Moved to module level. |
 | TD-052 | Volunteer Org Matching — Migrate to Alias-Based Resolution | 2026-03-30 | **Fully implemented.** `OrganizationAlias` model in `models/organization.py`. `resolve_organization()` 4-tier service in `services/organization_service.py` (Cache → Exact → Alias → Suffix-strip + auto-learn). `match_volunteer()` in `matching.py` refactored to call service; on miss, raw string stored in `Volunteer.organization_name`. Unresolved volunteers surface in Unmatched Queue (`/pathful/unmatched`) with fuzzy org dropdown. Selecting an org creates `VolunteerOrganization` + `OrganizationAlias`, marks record resolved, and auto-resolves siblings with the same raw string. 6 unit tests in `tests/unit/services/test_organization_service.py`. **Pending:** Run `scripts/maintenance/backfill_org_aliases.py --commit` after working through the Unmatched Queue to retroactively register aliases from resolved records. **ADR:** The Entity Identity Reconciliation Pattern (Cache → Exact → Alias → Suffix) is now the canonical pattern for all Pathful name resolution (Districts via TD-010, Schools via TD-053, Orgs via TD-052). Auto-creation of entity relationships without admin verification is prohibited. |
 | TD-053 | SchoolAlias Admin UI | 2026-03-30 | Implemented the Entity Identity Reconciliation Pattern for School matching. Created SchoolAlias database model, built the unmatched resolving UI with fuzzy match searches, and added auto-bulk-resolving Polish feature. |
+| TD-054 | `VolunteerOrganization()` Direct Constructor Sites | 2026-04-28 | Hybrid approach: (1) `before_insert` SQLAlchemy hook added to `models/organization.py` as a universal safety net — auto-sets `start_date` and `date_source='auto_detected'` for all new `Current` rows regardless of creation path, preserving N+1-free SF import hot path. (2) 14 Tier-2 single-record UI call sites migrated to `link_volunteer_to_org()` with meaningful `date_source` labels (`'pathful'`, `'manual'`, `'csv_import'`). 10 test fixture sites intentionally left as direct constructors. |
 
 ---
 

@@ -931,17 +931,13 @@ def load_session_routes():
                     volunteer_id=volunteer.id, organization_id=org.id
                 ).first()
                 if not vol_org:
-                    has_primary = VolunteerOrganization.query.filter_by(
-                        volunteer_id=volunteer.id, is_primary=True
-                    ).first()
-                    vol_org = VolunteerOrganization(
-                        volunteer_id=volunteer.id,
-                        organization_id=org.id,
+                    VolunteerOrganization.link_volunteer_to_org(
+                        volunteer,
+                        organization=org,
                         role="Professional",
-                        is_primary=not has_primary,
                         status="Current",
+                        date_source="manual",
                     )
-                    db.session.add(vol_org)
                     db.session.commit()
 
             # Get primary org for display
@@ -1303,17 +1299,13 @@ def load_session_routes():
                     volunteer_id=volunteer.id, organization_id=org.id
                 ).first()
                 if not vol_org:
-                    has_primary = VolunteerOrganization.query.filter_by(
-                        volunteer_id=volunteer.id, is_primary=True
-                    ).first()
-                    vol_org = VolunteerOrganization(
-                        volunteer_id=volunteer.id,
-                        organization_id=org.id,
+                    VolunteerOrganization.link_volunteer_to_org(
+                        volunteer,
+                        organization=org,
                         role="Professional",
-                        is_primary=not has_primary,
                         status="Current",
+                        date_source="manual",
                     )
-                    db.session.add(vol_org)
 
             event.add_volunteer(
                 volunteer, participant_type="Presenter", status="Confirmed"
@@ -1357,17 +1349,13 @@ def load_session_routes():
                     volunteer_id=volunteer.id, organization_id=org.id
                 ).first()
                 if not vol_org:
-                    has_primary = VolunteerOrganization.query.filter_by(
-                        volunteer_id=volunteer.id, is_primary=True
-                    ).first()
-                    vol_org = VolunteerOrganization(
-                        volunteer_id=volunteer.id,
-                        organization_id=org.id,
+                    VolunteerOrganization.link_volunteer_to_org(
+                        volunteer,
+                        organization=org,
                         role="Professional",
-                        is_primary=not has_primary,
                         status="Current",
+                        date_source="manual",
                     )
-                    db.session.add(vol_org)
 
             # Link to event
             event.add_volunteer(
@@ -1712,18 +1700,13 @@ def load_session_routes():
                         volunteer_id=volunteer.id, organization_id=org.id
                     ).first()
                     if not vol_org:
-                        # Check if volunteer has any primary org, if not make this one primary
-                        has_primary = VolunteerOrganization.query.filter_by(
-                            volunteer_id=volunteer.id, is_primary=True
-                        ).first()
-                        vol_org = VolunteerOrganization(
-                            volunteer_id=volunteer.id,
-                            organization_id=org.id,
+                        VolunteerOrganization.link_volunteer_to_org(
+                            volunteer,
+                            organization=org,
                             role="Professional",
-                            is_primary=not has_primary,  # Primary if no other primary exists
                             status="Current",
+                            date_source="manual",
                         )
-                        db.session.add(vol_org)
 
                 # Link as presenter participation
                 event.add_volunteer(
@@ -1768,17 +1751,13 @@ def load_session_routes():
                         volunteer_id=volunteer.id, organization_id=org.id
                     ).first()
                     if not vol_org:
-                        has_primary = VolunteerOrganization.query.filter_by(
-                            volunteer_id=volunteer.id, is_primary=True
-                        ).first()
-                        vol_org = VolunteerOrganization(
-                            volunteer_id=volunteer.id,
-                            organization_id=org.id,
+                        VolunteerOrganization.link_volunteer_to_org(
+                            volunteer,
+                            organization=org,
                             role="Professional",
-                            is_primary=not has_primary,
                             status="Current",
+                            date_source="manual",
                         )
-                        db.session.add(vol_org)
 
                 event.add_volunteer(
                     volunteer, participant_type="Presenter", status="Confirmed"

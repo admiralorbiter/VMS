@@ -717,13 +717,13 @@ class Event(db.Model):
                             db.session.flush()
 
                         # Link volunteer to organization
-                        vol_org = VolunteerOrganization(
-                            volunteer=volunteer,
+                        VolunteerOrganization.link_volunteer_to_org(
+                            volunteer,
                             organization=org,
                             role="Professional",
                             is_primary=True,
+                            date_source="csv_import",
                         )
-                        db.session.add(vol_org)
 
                 # Link volunteer to event if not already linked
                 if volunteer not in self.volunteers:
@@ -816,13 +816,13 @@ class Event(db.Model):
                             db.session.flush()
 
                         # Link volunteer to organization
-                        vol_org = VolunteerOrganization(
-                            volunteer=volunteer,
+                        VolunteerOrganization.link_volunteer_to_org(
+                            volunteer,
                             organization=org,
                             role="Professional",
                             is_primary=True,
+                            date_source="csv_import",
                         )
-                        db.session.add(vol_org)
 
                 # Update to specify participant type
                 self.add_volunteer(

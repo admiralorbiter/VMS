@@ -1,9 +1,9 @@
 # Implementation Plan: Time-Scoped Volunteer–Organization Membership
 
 > **Audience:** Junior developers
-> **Status:** ✅ Parts 0, 1, 2 COMPLETE — merged 2026-04-28
+> **Status:** ✅ Parts 0, 1, 1-D, 2 COMPLETE — merged 2026-04-28
 > **Priority:** High — affects accuracy of all Organization Reports
-> **Next PR:** Part 1-D (constructor migration) + Part 4 (Admin UI for date editing)
+> **Next PR:** Part 4 (Admin UI for date editing)
 
 ---
 
@@ -62,7 +62,7 @@ The following are deliberately deferred:
 ✅ DONE (2026-04-28)   ──►  Part 1: Model changes + Alembic migration
 ✅ DONE (2026-04-28)   ──►  Part 2: org_membership_filter.py + route/template integration
 ⏭  SKIPPED             ──►  Part 3: Cache pre-warm script (not needed — reports are fast)
-NEXT PR               ──►  Part 1-D: Migrate constructor sites to link_volunteer_to_org()
+✅ DONE (2026-04-28)   ──►  Part 1-D: Migrate constructor sites to link_volunteer_to_org()
 NEXT PR               ──►  Part 4: Admin UI for editing start_date/end_date on volunteer profile
 ```
 
@@ -88,10 +88,10 @@ All user-facing parts of this plan are implemented and verified.
 
 ### What is NOT done (next PR)
 
-| Item | Tech Debt ID | Description |
+| Item | Tech Debt ID | Status |
 |---|---|---|
-| Constructor migration | TD-054 | ~10-25 sites use `VolunteerOrganization(...)` directly. These won't auto-populate `start_date`/`date_source`. See TD-054. |
-| Admin UI for date editing | Part 4 | Allow admins to set `start_date`, `end_date`, `date_source` from the volunteer profile page. |
+| Constructor migration | TD-054 | ✅ Resolved 2026-04-28 — Hybrid: `before_insert` hook (safety net for SF import) + 14 UI call sites migrated to `link_volunteer_to_org()`. |
+| Admin UI for date editing | Part 4 | Pending — Allow admins to set `start_date`, `end_date`, `date_source` from the volunteer profile page. |
 
 ---
 
@@ -682,23 +682,22 @@ Run in this exact order:
 
 ## Deferred — Future PRs
 
-### Part 1-D: Migrate Remaining Constructor Sites (Next PR)
+### Part 1-D: Constructor Site Migration — ✅ COMPLETE (2026-04-28)
 
-These files still use `VolunteerOrganization(...)` directly. They work correctly
-today but won't auto-set `start_date` or normalize status until migrated.
-Migrate using the before/after example in Part 1-B.
+Resolved via TD-054 using a **hybrid approach**:
 
-| File | Sites |
-|---|---|
-| `routes/virtual/pathful_import/routes.py` | 10 (includes merge + alias paths) |
-| `routes/virtual/usage/session_routes.py` | 5 |
-| `routes/salesforce/organization_import.py` | 1 |
-| `routes/virtual/pathful_import/matching.py` | 1 |
-| `models/event.py` | 2 (`merge_duplicate`, `update_from_csv`) |
+1. **`before_insert` SQLAlchemy hook** added to `models/organization.py` — fires transparently on every new `VolunteerOrganization` INSERT, auto-setting `start_date` and `date_source='auto_detected'` for new `Current` rows. This preserves the N+1-free pre-loaded dict cache in `organization_import.py`.
 
-> When migrating the **merge flow** (`pathful_import/routes.py` ~line 1127),
-> copy `start_date`, `end_date`, and `date_source` from the duplicate row to the
-> canonical. These fields are currently dropped during merge.
+2. **14 Tier-2 UI call sites** migrated to `link_volunteer_to_org()` with meaningful `date_source` labels:
+
+| File | Sites | date_source |
+|---|---|---|
+| `routes/virtual/pathful_import/routes.py` | 7 | `'pathful'` |
+| `routes/virtual/usage/session_routes.py` | 5 | `'manual'` |
+| `routes/virtual/pathful_import/matching.py` | 1 | `'pathful'` |
+| `models/event.py` | 2 | `'csv_import'` |
+
+3. **10 test fixture sites** intentionally left as direct constructors — test fixtures are explicit by design.
 
 ### Part 4: Admin UI for Date Editing
 

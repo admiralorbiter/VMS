@@ -195,10 +195,15 @@ def load_pathful_routes():
 
             try:
                 from utils.cache_refresh_scheduler import invalidate_report_caches
+
                 invalidate_report_caches(reason="pathful_import")
-                current_app.logger.info("Report caches invalidated after Pathful import")
+                current_app.logger.info(
+                    "Report caches invalidated after Pathful import"
+                )
             except Exception as e:
-                current_app.logger.warning("Cache invalidation failed (non-fatal): %s", e)
+                current_app.logger.warning(
+                    "Cache invalidation failed (non-fatal): %s", e
+                )
 
             # Phase D-4: Log import completion
             from routes.utils import log_audit_action
@@ -973,15 +978,11 @@ def load_pathful_routes():
                 volunteer_id=volunteer.id, organization_id=org.id
             ).first()
             if not exists:
-                has_primary = VolunteerOrganization.query.filter_by(
-                    volunteer_id=volunteer.id, is_primary=True
-                ).first()
-                vol_org = VolunteerOrganization(
-                    volunteer_id=volunteer.id,
-                    organization_id=org.id,
-                    is_primary=not has_primary,
+                VolunteerOrganization.link_volunteer_to_org(
+                    volunteer,
+                    organization=org,
+                    date_source="pathful",
                 )
-                db.session.add(vol_org)
 
             # 2. Register the alias so the system "learns" it for next time
             failed_string = record.attempted_match_organization
@@ -1038,18 +1039,11 @@ def load_pathful_routes():
                                     organization_id=org.id,
                                 ).first()
                                 if not s_exists:
-                                    s_has_primary = (
-                                        VolunteerOrganization.query.filter_by(
-                                            volunteer_id=sib_volunteer.id,
-                                            is_primary=True,
-                                        ).first()
+                                    VolunteerOrganization.link_volunteer_to_org(
+                                        sib_volunteer,
+                                        organization=org,
+                                        date_source="pathful",
                                     )
-                                    s_vol_org = VolunteerOrganization(
-                                        volunteer_id=sib_volunteer.id,
-                                        organization_id=org.id,
-                                        is_primary=not s_has_primary,
-                                    )
-                                    db.session.add(s_vol_org)
 
                         sibling.resolve(
                             status=ResolutionStatus.RESOLVED,
@@ -1216,10 +1210,11 @@ def load_pathful_routes():
                     volunteer_id=volunteer.id, is_primary=True
                 ).first()
                 db.session.add(
-                    VolunteerOrganization(
-                        volunteer_id=volunteer.id,
-                        organization_id=org.id,
+                    VolunteerOrganization.link_volunteer_to_org(
+                        volunteer,
+                        organization=org,
                         is_primary=not has_primary,
+                        date_source="pathful",
                     )
                 )
 
@@ -1241,15 +1236,10 @@ def load_pathful_routes():
                                 volunteer_id=sib_vol.id, organization_id=org.id
                             ).first()
                             if not s_exists:
-                                s_has_primary = VolunteerOrganization.query.filter_by(
-                                    volunteer_id=sib_vol.id, is_primary=True
-                                ).first()
-                                db.session.add(
-                                    VolunteerOrganization(
-                                        volunteer_id=sib_vol.id,
-                                        organization_id=org.id,
-                                        is_primary=not s_has_primary,
-                                    )
+                                VolunteerOrganization.link_volunteer_to_org(
+                                    sib_vol,
+                                    organization=org,
+                                    date_source="pathful",
                                 )
                     sibling.resolve(
                         status=ResolutionStatus.RESOLVED,
@@ -1375,15 +1365,11 @@ def load_pathful_routes():
                         volunteer_id=volunteer.id, organization_id=org.id
                     ).first()
                     if not exists:
-                        has_primary = VolunteerOrganization.query.filter_by(
-                            volunteer_id=volunteer.id, is_primary=True
-                        ).first()
-                        vol_org = VolunteerOrganization(
-                            volunteer_id=volunteer.id,
-                            organization_id=org.id,
-                            is_primary=not has_primary,
+                        VolunteerOrganization.link_volunteer_to_org(
+                            volunteer,
+                            organization=org,
+                            date_source="pathful",
                         )
-                        db.session.add(vol_org)
                     linked_count += 1
 
             # Clear the company string from the record so it leaves the company queue

@@ -754,15 +754,11 @@ def _ensure_volunteer_org_link(
             )
 
         if not exists:
-            has_primary = VolunteerOrganization.query.filter_by(
-                volunteer_id=volunteer.id, is_primary=True
-            ).first()
-            vol_org = VolunteerOrganization(
-                volunteer_id=volunteer.id,
-                organization_id=org.id,
-                is_primary=not has_primary,
+            VolunteerOrganization.link_volunteer_to_org(
+                volunteer,
+                organization=org,
+                date_source="pathful",
             )
-            db.session.add(vol_org)
             if vol_org_set is not None:
                 vol_org_set.add((volunteer.id, org.id))
     else:

@@ -72,6 +72,7 @@ Usage Examples:
 from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, ForeignKey, Integer, String
+from sqlalchemy import event as sa_event
 from sqlalchemy.orm import relationship
 
 from models import db
@@ -490,3 +491,35 @@ class VolunteerOrganization(db.Model):
                     self.date_source = self.date_source or "auto_detected"
 
         return new_status
+
+
+# ---------------------------------------------------------------------------
+# before_insert hook — safety net for all VolunteerOrganization creations
+# ---------------------------------------------------------------------------
+# This hook fires automatically before any INSERT of a VolunteerOrganization
+# row, regardless of whether it was created via link_volunteer_to_org() or the
+# direct constructor. This ensures the high-volume Salesforce import loop
+# (which uses a pre-loaded dict cache and must NOT run per-row DB queries) gets
+# correct date/source metadata without any changes to its hot path.
+#
+# TD-054: Tier 1 fix — covers organization_import.py and any future sites.
+# The Tier 2 UI sites (pathful_import/routes.py, session_routes.py) are
+# also migrated to link_volunteer_to_org() for richer date_source labeling.
+@sa_event.listens_for(VolunteerOrganization, "before_insert")
+def _auto_set_initial_membership_dates(mapper, connection, target):
+    """
+    Ensure all new 'Current' VolunteerOrganization rows have a start_date
+    and date_source set, without requiring callers to use link_volunteer_to_org().
+
+    Only fires when:
+      - status is 'Current' (or None, which defaults to 'Current')
+      - start_date is not already explicitly set
+
+    Does NOT overwrite an explicit start_date or date_source provided by
+    the caller (e.g., link_volunteer_to_org() with a Salesforce import date).
+    """
+    effective_status = (target.status or "Current").lower()
+    if effective_status == "current" and target.start_date is None:
+        target.start_date = datetime.now(timezone.utc)
+        if target.date_source is None:
+            target.date_source = "auto_detected"

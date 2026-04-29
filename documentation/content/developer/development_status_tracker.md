@@ -554,7 +554,6 @@
 2. **Reporting Cache Management** — FR-422–425 still TBD (420, 421 now implemented)
 3. **Reporting Year-End** — FR-432 (YoY comparison, Session 5); FR-433 Excel ✅ done, PDF deferred; FR-434 deferred
 4. **District Data Tracker** — FR-525–530 (6 FRs)
-5. **TD-054** — Migrate `VolunteerOrganization()` constructors to `link_volunteer_to_org()` (next PR)
 
 ### ⚡ Medium Priority
 
