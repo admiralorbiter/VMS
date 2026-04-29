@@ -37,10 +37,10 @@ from routes.utils import (
 )
 from services.salesforce import get_salesforce_client, safe_query_all
 from services.salesforce.processors.event import (
-    fix_missing_participation_records,
     process_event_row,
     process_participation_row,
     process_student_participation_row,
+    resolve_pending_participations,
 )
 from services.salesforce.utils import safe_parse_delivery_hours
 from utils.cache_refresh_scheduler import refresh_all_caches
@@ -182,11 +182,36 @@ def import_events_from_salesforce():
     participants_result = safe_query_all(sf, participants_query)
     participant_rows = participants_result.get("records", [])
 
+    print("Pre-loading volunteer and event caches for participant import...")
+    # Pre-load ID caches to avoid N+1 queries during participation sync
+    volunteers_cache = {
+        sf_id: vol_id
+        for vol_id, sf_id in db.session.query(
+            Volunteer.id, Volunteer.salesforce_individual_id
+        )
+        .filter(Volunteer.salesforce_individual_id.isnot(None))
+        .all()
+    }
+    events_cache = {
+        sf_id: event_id
+        for event_id, sf_id in db.session.query(Event.id, Event.salesforce_id)
+        .filter(Event.salesforce_id.isnot(None))
+        .all()
+    }
+    print(
+        f"Loaded {len(volunteers_cache)} volunteers and {len(events_cache)} events into cache."
+    )
+
     participant_success = 0
     participant_error = 0
     for i, row in enumerate(participant_rows):
         participant_success, participant_error = process_participation_row(
-            row, participant_success, participant_error, errors
+            row,
+            participant_success,
+            participant_error,
+            errors,
+            volunteers_cache=volunteers_cache,
+            events_cache=events_cache,
         )
 
         # Batch commit every 100 records for resumability
@@ -199,6 +224,17 @@ def import_events_from_salesforce():
                 print(f"  → Volunteer participations batch commit failed: {batch_e}")
 
     db.session.commit()
+
+    # Sweep pending queue
+    print("\nSweeping pending participation queue for orphans...")
+    resolved_pending = resolve_pending_participations(
+        volunteers_cache=volunteers_cache, events_cache=events_cache
+    )
+    if resolved_pending > 0:
+        print(
+            f"  → Successfully healed {resolved_pending} orphaned participations from previous runs!"
+        )
+        participant_success += resolved_pending
 
     # Final summary
     print(f"\n{'='*60}")
@@ -232,19 +268,17 @@ def import_events_from_salesforce():
             else:
                 sync_status = SyncStatus.FAILED.value
 
-        sync_log = SyncLog(
+        from services.salesforce.delta_sync import create_sync_log_with_watermark
+
+        sync_log = create_sync_log_with_watermark(
             sync_type="events",
             started_at=started_at,
-            completed_at=datetime.now(timezone.utc),
             status=sync_status,
             records_processed=success_count + participant_success,
             records_failed=error_count + participant_error,
             records_skipped=skipped_count,
-            error_details=(json.dumps(actual_errors[:100]) if actual_errors else None),
-            is_delta_sync=is_delta,
-            # TD-055: Always advance watermark; set wide buffer on failure for next delta
-            last_sync_watermark=datetime.now(timezone.utc),
-            recovery_buffer_hours=48 if sync_status == SyncStatus.FAILED.value else 1,
+            error_message=(json.dumps(actual_errors[:100]) if actual_errors else None),
+            is_delta=is_delta,
         )
         db.session.add(sync_log)
         db.session.commit()
@@ -432,18 +466,16 @@ def sync_student_participants():
             else:
                 sync_status = SyncStatus.FAILED.value
 
-        sync_log = SyncLog(
+        from services.salesforce.delta_sync import create_sync_log_with_watermark
+
+        sync_log = create_sync_log_with_watermark(
             sync_type="student_participations",
             started_at=started_at,
-            completed_at=datetime.now(timezone.utc),
             status=sync_status,
             records_processed=success_count,
             records_failed=error_count,
-            error_details=json.dumps(errors[:100]) if errors else None,
-            is_delta_sync=is_delta,
-            # TD-055: Always advance watermark; set wide buffer on failure for next delta
-            last_sync_watermark=datetime.now(timezone.utc),
-            recovery_buffer_hours=48 if sync_status == SyncStatus.FAILED.value else 1,
+            error_message=json.dumps(errors[:100]) if errors else None,
+            is_delta=is_delta,
         )
         db.session.add(sync_log)
         db.session.commit()
@@ -466,10 +498,11 @@ def sync_student_participants():
 def _record_failure_sync_log(sync_type, started_at, error_message):
     """Helper to record a failed sync log entry."""
     try:
-        sync_log = SyncLog(
+        from services.salesforce.delta_sync import create_sync_log_with_watermark
+
+        sync_log = create_sync_log_with_watermark(
             sync_type=sync_type,
             started_at=started_at,
-            completed_at=datetime.now(timezone.utc),
             status=SyncStatus.FAILED.value,
             error_message=error_message,
         )

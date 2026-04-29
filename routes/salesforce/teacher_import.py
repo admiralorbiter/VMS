@@ -159,7 +159,8 @@ def import_teachers_from_salesforce():
 
         # Record sync log for delta sync tracking
         try:
-            from models.sync_log import SyncLog, SyncStatus
+            from models.sync_log import SyncStatus
+            from services.salesforce.delta_sync import create_sync_log_with_watermark
 
             sync_status = SyncStatus.SUCCESS.value
             if error_count > 0:
@@ -169,20 +170,14 @@ def import_teachers_from_salesforce():
                     else SyncStatus.FAILED.value
                 )
 
-            sync_log = SyncLog(
+            sync_log = create_sync_log_with_watermark(
                 sync_type="teachers",
                 started_at=started_at,
-                completed_at=datetime.now(tz.utc),
                 status=sync_status,
                 records_processed=success_count,
                 records_failed=error_count,
                 records_skipped=skipped_count,
-                is_delta_sync=is_delta,
-                # TD-055: Always advance watermark; set wide buffer on failure for next delta
-                last_sync_watermark=datetime.now(tz.utc),
-                recovery_buffer_hours=(
-                    48 if sync_status == SyncStatus.FAILED.value else 1
-                ),
+                is_delta=is_delta,
             )
             db.session.add(sync_log)
             db.session.commit()

@@ -66,27 +66,27 @@ On 2026-04-28, two volunteers (181650 Kiera Santulli, 181652 Addison Leitch) wer
 - `services/salesforce/delta_sync.py` — `get_watermark()` to apply wider buffer after failure
 - `services/salesforce/processors/event.py` — `process_participation_row()` error path
 
-### Phase 2 — Retry Queue for Unresolved Participations *(P1, ~2-3 days)*
+### Phase 2 — Retry Queue, Health Dashboard & N+1 Optimizations *(P1, ~2-4 days)*
 
-> Structural fix: instead of dropping EP records when volunteer/event lookup fails, queue them and re-attempt automatically on the next import after volunteers have been synced.
+> Structural fixes and performance optimizations for robust scaling.
 
-- [ ] **New model `PendingParticipationImport`** with fields: `sf_participation_id`, `sf_contact_id`, `sf_session_id`, `status`, `delivery_hours`, `first_seen_at`, `retry_count`, `last_retry_at`, `resolved_at`, `error_reason`
-- [ ] **Modify `process_participation_row`** to insert to `pending_participation_imports` on lookup miss (instead of silently dropping)
-- [ ] **Add `resolve_pending_participations()`** sweep at end of `import_events_from_salesforce()` — runs after all volunteers are current
-- [ ] **Max retries guard:** After 10 retries, flag as likely SF orphan and surface in data quality dashboard
+**Part A: N+1 Elimination**
+- [x] Pre-load ID caches for volunteers and events in `import_events_from_salesforce()`
+- [x] Refactor `process_participation_row` to use caches, eliminating 60,000 queries per run
 
-### Phase 3 — Import Health Dashboard *(P2, ~1 day)*
+**Part B: TD-057 Retry Queue**
+- [x] **New model `PendingParticipationImport`** with full retry lifecycle tracking (`retry_count`, `last_retry_at`, `resolved_at`)
+- [x] **Modify `process_participation_row`** to insert into `pending_participation_imports` on lookup miss
+- [x] **Add `resolve_pending_participations()`** sweep at the end of the import to heal orphaned records
 
-> Proactive monitoring: catch gaps before users report them.
+**Part C: Import Health Dashboard**
+- [x] Add `/admin/import-health` route showing sync status across all pipelines
+- [x] Display recovery buffer status and pending retry queue depth
 
-- [ ] Add `/admin/import-health` route showing:
-  - Last successful sync per type (volunteers, events, participants)
-  - Count of volunteers with SF `times_volunteered > 0` but 0 local EPs
-  - Count of pending retry queue entries
-  - Count of orphaned EPs (event_id pointing to missing events)
-- [ ] Link from existing admin dashboard sidebar
+**Part D: Cleanup**
+- [x] Adopt `create_sync_log_with_watermark()` across all 11 sync sites
+- [x] Remove dead code (`fix_missing_participation_records()`)
 
----
 
 ## Future Roadmap
 
@@ -168,8 +168,7 @@ The following were considered but are **not currently feasible**:
 | Sprint 3 | Dashboard enhancements | ✅ Complete |
 | Sprint 4 | Integration tests & data quality | ✅ Complete (79 tests, `str(None)` bug fix) |
 | **Phase 1** | **Delta reliability hardening** | ✅ **Complete 2026-04-28** (TD-055, TD-056 + bonus watermark key fix) |
-| **Phase 2** | **Retry queue for unresolved EPs** | 📋 Pending (TD-057) |
-| **Phase 3** | **Import health dashboard** | 📋 Pending |
+| **Phase 2** | **Retry Queue, Health Dashboard, Optimizations** | ✅ Complete (TD-057) |
 
 ---
 

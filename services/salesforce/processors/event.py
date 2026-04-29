@@ -195,6 +195,8 @@ def process_participation_row(
     success_count: int,
     error_count: int,
     errors: List[str],
+    volunteers_cache: Optional[Dict[str, int]] = None,
+    events_cache: Optional[Dict[str, int]] = None,
 ) -> Tuple[int, int]:
     """
     Process a single volunteer participation row from Salesforce data.
@@ -227,21 +229,33 @@ def process_participation_row(
                 existing.age_group = row["Age_Group__c"]
             return success_count + 1, error_count
 
-        volunteer = Volunteer.query.filter_by(
-            salesforce_individual_id=row["Contact__c"]
-        ).first()
-        event = Event.query.filter_by(salesforce_id=row["Session__c"]).first()
+        sf_contact_id = row.get("Contact__c")
+        sf_session_id = row.get("Session__c")
 
-        if not volunteer or not event:
-            sf_participation_id = row["Id"]
-            sf_contact_id = row.get("Contact__c", "")
-            sf_session_id = row.get("Session__c", "")
+        if volunteers_cache is not None:
+            vol_id = volunteers_cache.get(sf_contact_id)
+        else:
+            volunteer = Volunteer.query.filter_by(
+                salesforce_individual_id=sf_contact_id
+            ).first()
+            vol_id = volunteer.id if volunteer else None
+
+        if events_cache is not None:
+            event_id = events_cache.get(sf_session_id)
+        else:
+            event = Event.query.filter_by(salesforce_id=sf_session_id).first()
+            event_id = event.id if event else None
+
+        if not vol_id or not event_id:
+            sf_participation_id = row.get("Id", "")
+            sf_contact_id = sf_contact_id or ""
+            sf_session_id = sf_session_id or ""
 
             # Describe exactly what's missing for actionable details
             missing_parts = []
-            if not volunteer:
+            if not vol_id:
                 missing_parts.append(f"volunteer Contact__c={sf_contact_id!r}")
-            if not event:
+            if not event_id:
                 missing_parts.append(f"event Session__c={sf_session_id!r}")
 
             error_msg = f"Unmatched SF participation {sf_participation_id}: {', '.join(missing_parts)}"
@@ -279,11 +293,40 @@ def process_participation_row(
                     flag_err,
                 )
 
+            # Phase 2 (TD-057): Add to pending retry queue
+            try:
+                from models.pending_participation import PendingParticipationImport
+
+                pending = PendingParticipationImport.query.filter_by(
+                    sf_participation_id=sf_participation_id
+                ).first()
+                if not pending:
+                    pending = PendingParticipationImport(
+                        sf_participation_id=sf_participation_id,
+                        sf_contact_id=sf_contact_id,
+                        sf_session_id=sf_session_id,
+                        status=row.get("Status__c"),
+                        delivery_hours=safe_parse_delivery_hours(
+                            row.get("Delivery_Hours__c")
+                        ),
+                        age_group=row.get("Age_Group__c"),
+                        email=row.get("Email__c"),
+                        title=row.get("Title__c"),
+                        error_reason=f"Missing: {', '.join(missing_parts)}",
+                    )
+                    db.session.add(pending)
+            except Exception as q_err:
+                logger.warning(
+                    "Could not add pending participation %s: %s",
+                    sf_participation_id,
+                    q_err,
+                )
+
             return success_count, error_count + 1
 
         participation = EventParticipation(
-            volunteer_id=volunteer.id,
-            event_id=event.id,
+            volunteer_id=vol_id,
+            event_id=event_id,
             status=row["Status__c"],
             delivery_hours=safe_parse_delivery_hours(row.get("Delivery_Hours__c")),
             salesforce_id=row["Id"],
@@ -462,72 +505,88 @@ def process_student_participation_row(
         return success_count, error_count + 1
 
 
-def fix_missing_participation_records(event: Event) -> None:
+def resolve_pending_participations(
+    volunteers_cache: Optional[Dict[str, int]] = None,
+    events_cache: Optional[Dict[str, int]] = None,
+) -> int:
     """
-    Fix missing EventParticipation records for volunteers linked to an event.
-
-    This function ensures that all volunteers linked to an event through the
-    many-to-many relationship have proper EventParticipation records with
-    appropriate delivery hours.
-
-    Args:
-        event: Event object to fix participation records for
+    Sweep pending participation imports and attempt to resolve them.
+    Returns the number of successfully resolved records.
     """
-    event_volunteers = event.volunteers
+    from datetime import datetime, timezone
 
-    for volunteer in event_volunteers:
-        participation = EventParticipation.query.filter_by(
-            event_id=event.id, volunteer_id=volunteer.id
-        ).first()
+    from models.data_quality_flag import DataQualityFlag, DataQualityIssueType
+    from models.pending_participation import PendingParticipationImport
 
-        if not participation:
-            delivery_hours = None
-            if event.duration:
-                delivery_hours = event.duration / 60
-            elif event.start_date and event.end_date:
-                duration_minutes = (
-                    event.end_date - event.start_date
-                ).total_seconds() / 60
-                delivery_hours = max(1.0, duration_minutes / 60)
-            else:
-                delivery_hours = 0.0
+    resolved_count = 0
+    now = datetime.now(timezone.utc)
 
-            status = "Attended"
-            if event.status == EventStatus.COMPLETED:
-                status = "Completed"
-            elif event.status == EventStatus.CANCELLED:
-                status = "Cancelled"
-            elif event.status == EventStatus.NO_SHOW:
-                status = "No Show"
+    # Only process pending records that aren't permanently failed
+    pending_records = PendingParticipationImport.query.filter(
+        PendingParticipationImport.resolved_at.is_(None),
+        (PendingParticipationImport.error_reason != "likely_sf_orphan")
+        | (PendingParticipationImport.error_reason.is_(None)),
+    ).all()
 
-            participation = EventParticipation(
-                volunteer_id=volunteer.id,
-                event_id=event.id,
-                status=status,
-                delivery_hours=delivery_hours,
-                participant_type="Volunteer",
-            )
-            db.session.add(participation)
-            print(
-                f"Created missing participation record for volunteer {volunteer.first_name} {volunteer.last_name} in event {event.title}"
-            )
+    for pending in pending_records:
+        pending.last_retry_at = now
+        pending.retry_count += 1
 
-        elif participation.delivery_hours is None:
-            if event.duration:
-                participation.delivery_hours = event.duration / 60
-            elif event.start_date and event.end_date:
-                duration_minutes = (
-                    event.end_date - event.start_date
-                ).total_seconds() / 60
-                participation.delivery_hours = max(1.0, duration_minutes / 60)
-            else:
-                participation.delivery_hours = 0.0
-            print(
-                f"Fixed delivery hours for volunteer {volunteer.first_name} {volunteer.last_name} in event {event.title}"
-            )
+        # Use caches if provided, otherwise DB queries
+        if volunteers_cache is not None:
+            vol_id = volunteers_cache.get(pending.sf_contact_id)
+        else:
+            volunteer = Volunteer.query.filter_by(
+                salesforce_individual_id=pending.sf_contact_id
+            ).first()
+            vol_id = volunteer.id if volunteer else None
+
+        if events_cache is not None:
+            event_id = events_cache.get(pending.sf_session_id)
+        else:
+            event = Event.query.filter_by(salesforce_id=pending.sf_session_id).first()
+            event_id = event.id if event else None
+
+        if vol_id and event_id:
+            # Found both! Create the actual participation
+            # Check for existing just in case
+            existing = EventParticipation.query.filter_by(
+                salesforce_id=pending.sf_participation_id
+            ).first()
+            if not existing:
+                existing_pair = EventParticipation.query.filter_by(
+                    volunteer_id=vol_id, event_id=event_id
+                ).first()
+                if not existing_pair:
+                    participation = EventParticipation(
+                        volunteer_id=vol_id,
+                        event_id=event_id,
+                        status=pending.status,
+                        delivery_hours=pending.delivery_hours,
+                        salesforce_id=pending.sf_participation_id,
+                        age_group=pending.age_group,
+                        email=pending.email,
+                        title=pending.title,
+                    )
+                    db.session.add(participation)
+
+            # Mark resolved
+            pending.resolved_at = now
+            pending.error_reason = None
+            resolved_count += 1
+
+            # Resolve DQ flag
+            _resolve_participation_flag_if_exists(pending.sf_participation_id)
+
+        else:
+            # Still missing
+            if pending.retry_count > 10:
+                pending.error_reason = "likely_sf_orphan"
 
     try:
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        logger.exception("Error committing participation fixes: %s", e)
+        logger.exception("Error during pending participation sweep: %s", e)
+
+    return resolved_count

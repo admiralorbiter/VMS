@@ -678,14 +678,15 @@ def sync_unaffiliated_events():
                     else SyncStatus.FAILED.value
                 )
 
-            sync_log = SyncLog(
+            from services.salesforce.delta_sync import create_sync_log_with_watermark
+
+            sync_log = create_sync_log_with_watermark(
                 sync_type="unaffiliated_events",
                 started_at=started_at,
-                completed_at=datetime.now(timezone.utc),
                 status=sync_status,
                 records_processed=total_success,
                 records_failed=total_errors,
-                is_delta_sync=False,
+                is_delta=False,
             )
             db.session.add(sync_log)
             db.session.commit()

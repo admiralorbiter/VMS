@@ -68,6 +68,7 @@ from .magic_link import MagicLink
 from .organization import Organization
 from .outreach import OutreachAttempt
 from .pathful_import import PathfulImportLog, PathfulUnmatchedRecord
+from .pending_participation import PendingParticipationImport
 from .recruitment_note import RecruitmentNote, RecruitmentOutcome
 from .reports import (
     DistrictEngagementReport,
@@ -145,6 +146,7 @@ __all__ = [
     "MagicLink",
     "PathfulImportLog",
     "PathfulUnmatchedRecord",
+    "PendingParticipationImport",
     "EventFlag",
     "FlagType",
     "TeacherDataFlag",

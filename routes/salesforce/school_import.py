@@ -247,17 +247,15 @@ def import_schools():
                 else SyncStatus.FAILED.value
             )
 
-        sync_log = SyncLog(
+        from services.salesforce.delta_sync import create_sync_log_with_watermark
+
+        sync_log = create_sync_log_with_watermark(
             sync_type="schools",
             started_at=started_at,
-            completed_at=datetime.now(timezone.utc),
             status=sync_status,
             records_processed=total_success,
             records_failed=total_errors,
-            is_delta_sync=is_delta,
-            # TD-055: Always advance watermark; set wide buffer on failure for next delta
-            last_sync_watermark=datetime.now(timezone.utc),
-            recovery_buffer_hours=48 if sync_status == SyncStatus.FAILED.value else 1,
+            is_delta=is_delta,
         )
         db.session.add(sync_log)
         db.session.commit()
@@ -439,17 +437,15 @@ def import_classes():
                 else SyncStatus.FAILED.value
             )
 
-        sync_log = SyncLog(
+        from services.salesforce.delta_sync import create_sync_log_with_watermark
+
+        sync_log = create_sync_log_with_watermark(
             sync_type="classes",
             started_at=started_at,
-            completed_at=datetime.now(timezone.utc),
             status=sync_status,
             records_processed=success_count,
             records_failed=error_count,
-            is_delta_sync=is_delta,
-            # TD-055: Always advance watermark; set wide buffer on failure for next delta
-            last_sync_watermark=datetime.now(timezone.utc),
-            recovery_buffer_hours=48 if sync_status == SyncStatus.FAILED.value else 1,
+            is_delta=is_delta,
         )
         db.session.add(sync_log)
         db.session.commit()

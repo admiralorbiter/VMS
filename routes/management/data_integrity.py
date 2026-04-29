@@ -314,3 +314,67 @@ def register_data_integrity_routes(bp):
         db.session.commit()
 
         return jsonify({"success": True, "count": len(flags), "issue_type": issue_type})
+
+    @bp.route("/admin/import-health")
+    @login_required
+    @admin_required
+    @handle_route_errors
+    def import_health():
+        """
+        Dashboard for monitoring Salesforce import pipelines health.
+        """
+        from datetime import datetime, timezone
+
+        from models.data_quality_flag import DataQualityFlag, DataQualityIssueType
+        from models.pending_participation import PendingParticipationImport
+        from models.sync_log import SyncLog
+
+        sync_types = [
+            "organizations",
+            "volunteers",
+            "affiliations",
+            "events",
+            "history",
+            "students",
+            "student_participations",
+            "teachers",
+            "schools",
+            "classes",
+        ]
+
+        now = datetime.now(timezone.utc)
+
+        health_data = []
+        for st in sync_types:
+            log = SyncLog.get_latest_by_type(st)
+            watermark, buffer_hours = SyncLog.get_watermark_with_buffer(st)
+
+            watermark_age_hours = None
+            if watermark:
+                if watermark.tzinfo is None:
+                    watermark = watermark.replace(tzinfo=timezone.utc)
+                watermark_age_hours = (now - watermark).total_seconds() / 3600
+
+            health_data.append(
+                {
+                    "sync_type": st,
+                    "last_run": log,
+                    "watermark_age_hours": watermark_age_hours,
+                    "recovery_mode": buffer_hours == 48,
+                }
+            )
+
+        pending_queue_depth = PendingParticipationImport.query.filter(
+            PendingParticipationImport.resolved_at.is_(None)
+        ).count()
+
+        open_flags = DataQualityFlag.query.filter_by(
+            issue_type=DataQualityIssueType.UNMATCHED_SF_PARTICIPATION, status="open"
+        ).count()
+
+        return render_template(
+            "management/import_health.html",
+            health_data=health_data,
+            pending_queue_depth=pending_queue_depth,
+            open_flags=open_flags,
+        )

@@ -504,20 +504,15 @@ For each site:
 ## TD-057: Import Ordering Race — Participations Dropped When Volunteer Not Yet Imported
 
 **Created:** 2026-04-28 · **Priority:** P1 · **Category:** Architecture / Data Integrity
+**Status:** ✅ Resolved (2026-04-28)
 
 The event participation import (`process_participation_row`) looks up the volunteer by `salesforce_individual_id`. If the volunteer contact hasn't been imported yet (e.g. if the volunteer import and event import run close together or out of order), the lookup fails and the participation is dropped (see TD-056).
 
 The `manage_imports.py` CLI enforces the correct sequence (`volunteers` before `events`), but this is a convention, not a contract. A delta sync run on just `events` after a new volunteer is added to SF will silently miss that volunteer's participations until a full sync.
 
-### Proposed Fix (Phase 2)
+### Resolution (Phase 2)
 
-Add a `pending_participation_imports` table as a retry queue:
-
-```python
-class PendingParticipationImport(db.Model):
-    __tablename__ = "pending_participation_imports"
-    id = db.Column(db.Integer, primary_key=True)
-    sf_participation_id = db.Column(db.String(18), unique=True, nullable=False)
+Added a `pending_participation_imports` table as a retry queue. Unmatched participations are stored in this model and automatically swept and resolved at the end of subsequent delta syncs once their parent objects appear. The UI was also augmented with an Import Health Dashboard (`/admin/import-health`) to monitor queue depth and pipeline status.
     sf_contact_id = db.Column(db.String(18), index=True)
     sf_session_id = db.Column(db.String(18), index=True)
     status = db.Column(db.String(50))
@@ -554,7 +549,7 @@ Ordered by **what best unblocks future work**:
 | --- | --- | --- | --- | --- |
 | **P0** | **~~TD-055~~** | **~~Delta sync watermark freezes on import failure~~** | S | ✅ Resolved 2026-04-28 |
 | **P1** | **~~TD-056~~** | **~~Unmatched participation records dropped silently~~** | S | ✅ Resolved 2026-04-28 |
-| **P1** | **TD-057** | **Import ordering race — retry queue for unresolved EPs** | M | Pending |
+| **P1** | **TD-057** | **Import ordering race — retry queue for unresolved EPs** | M | ✅ Resolved |
 | 3 | **TD-009** | `db.session.commit()` Scattered in 44 Route Files | M | Pending |
 | 4 | **TD-011** | SQLite in Production | M | Pending |
 | 5 | **TD-013** | No True Application Factory Pattern | M | Pending |
@@ -575,7 +570,7 @@ Ordered by **what best unblocks future work**:
 
 > TD-004 is intentionally deferred — the M2M relationship is the correct path forward.
 > TD-055/056 resolved 2026-04-28 as part of the SF Import Reliability PR (Phase 1 hardening).
-> TD-057 is Phase 2 — pending.
+> TD-057 is Phase 2 — resolved via robust `PendingParticipationImport` queue.
 
 
 
