@@ -103,6 +103,7 @@ def sync_history():
                     "records_processed": log.records_processed,
                     "records_failed": log.records_failed,
                     "is_delta_sync": log.is_delta_sync,
+                    "error_message": log.error_message,
                 }
                 for log in logs
             ],

@@ -1,6 +1,6 @@
 # Development Plan
 
-**Last Updated:** March 2026
+**Last Updated:** April 2026
 **Purpose:** Single source of truth for development priorities. Replaces the former `development_roadmap.md`.
 
 > [!NOTE]
@@ -11,13 +11,8 @@
 ## Active Work
 
 | Item | Status | Notes |
-|------|--------|-------|
-| District Suite Phase 4 verification | 🔧 In Progress | Code complete, needs end-to-end testing Monday 3/16. See [phases.md](../district_suite/phases.md) |
-| Documentation consolidation | 🔧 In Progress | Merging roadmaps, archiving completed sprints |
-| TD-034 Data Quality Dashboard | ✅ Complete | Dashboard live at `/admin/data-quality` with stats, filters, pagination, dismiss |
-| Advanced Search CSV Export | ✅ Complete | FR-RECRUIT-307 — endpoint, template button, 4 integration tests. See [user guide](../user_guide/recruitment_search.md) |
-| TD-033 Student str(None) Cleanup | ✅ Complete | 158K email + 158K phone garbage records deleted. Import guard in place |
-| TD-035/036 Teacher Dedup | ✅ Complete | Name parsing fixed, 7,660 orphans pruned, merge UI built. ~11 candidates need staff review (Mon 3/16) |
+|------|--------|---------|
+| Salesforce Import Phase 3 Hardening | ✅ Complete | All sprints (A+B) complete 2026-04-30. Error observability wired across all 4 importers. See [Phase 3 Plan](import_pipeline_phase3.md) |
 
 ---
 
@@ -300,7 +295,9 @@ Items considered but not currently feasible:
 | District Suite Phase 4 | Mar 2026 | Recruitment tools — code complete, verification in progress |
 | TD-034 Data Quality Audit | Mar 2026 | Skeleton addresses, ALL CAPS names, truncated skills, connector migration, Data Quality Dashboard. See [Tech Debt Tracker](tech_debt.md) |
 | Teacher Deduplication (TD-033/035/036) | Mar 2026 | Name parsing fixed (5 locations), 7,660 orphans pruned, admin merge UI, 317K garbage student records deleted, data quality rescan. See [Tech Debt Tracker](tech_debt.md) |
-| Tech Debt TD-001 through TD-036 | Feb–Mar 2026 | 23 items resolved. See [Tech Debt Tracker](tech_debt.md#resolved-archive) |
+| Salesforce Import Phase 1 — Delta Reliability | 2026-04-28 | Watermark freeze fix (TD-055), silent EP drop fix (TD-056). Watermark now always advances; failed syncs use 48hr recovery buffer |
+| Salesforce Import Phase 2 — Retry Queue + Health Dashboard | 2026-04-28 | `PendingParticipationImport` queue (TD-057), import health dashboard at `/admin/import-health`, N+1 elimination |
+| Salesforce Import Phase 3 — Data Correctness + Observability | 2026-04-30 | Sprint A: affiliation `date_source`/status normalization, `ALL_SYNC_TYPES` unification, dead code removal (TD-058–060). Sprint B: import error DQ flags wired across all importers (`volunteer`, `organization`, `student_participations`, `pathway`), structured error UI in sync history modal and `/admin/sync-logs`, 26 flags backfilled from full import run. TD-062 (Yandell Toevs duplicate SF ID) open. |
 | Newsletter Formatter | Mar 2026 | Virtual Connector + Career Exploration + Virtual Search-and-Add modes. 15 FRs (FR-TOOLS-101–115), 42 tests. See [requirements-tools.md](../requirements/requirements-tools.md) |
 | Structural Health Audit | Mar 2026 | Codebase-wide audit: 7 structural issues catalogued (TD-041–047), 4-phase consolidation roadmap. See Section 2.7 |
 

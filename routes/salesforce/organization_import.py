@@ -11,6 +11,7 @@ Routes:
 - /organizations/import-affiliations-from-salesforce: Import volunteer-org affiliations
 """
 
+import json
 from datetime import datetime
 from datetime import timezone as tz
 
@@ -557,6 +558,38 @@ def import_affiliations_from_salesforce():
                                 )
                             errors.extend(error_msgs[: MAX_ERRORS - len(errors)])
 
+                        # Create DQ flags for missing entities so they appear in the Data Quality dashboard
+                        try:
+                            from models.data_quality_flag import (
+                                DataQualityIssueType,
+                                flag_data_quality_issue,
+                            )
+
+                            if not org and sf_org_id:
+                                flag_data_quality_issue(
+                                    entity_type="organization",
+                                    entity_id=None,
+                                    issue_type=DataQualityIssueType.IMPORT_ERROR,
+                                    details=f"Organization/School/District with Salesforce ID {sf_org_id} not found (affiliation skipped)",
+                                    salesforce_id=sf_org_id,
+                                    entity_sf_id=sf_org_id,
+                                    severity="error",
+                                    source="live_import",
+                                )
+                            if not contact and sf_contact_id:
+                                flag_data_quality_issue(
+                                    entity_type="volunteer",
+                                    entity_id=None,
+                                    issue_type=DataQualityIssueType.IMPORT_ERROR,
+                                    details=f"Contact (Volunteer/Teacher) with Salesforce ID {sf_contact_id} not found (affiliation skipped)",
+                                    salesforce_id=sf_contact_id,
+                                    entity_sf_id=sf_contact_id,
+                                    severity="error",
+                                    source="live_import",
+                                )
+                        except Exception:
+                            pass  # Don't let DQ flag errors disrupt the import
+
                     # Batch commit every 5000 records for resumability
                     # expire_on_commit=False (set above) prevents SQLAlchemy from
                     # expiring cached objects after commit — no lazy re-fetches
@@ -615,6 +648,7 @@ def import_affiliations_from_salesforce():
                 status=sync_status,
                 records_processed=affiliation_success,
                 records_failed=affiliation_error,
+                error_message=json.dumps(errors[:100]) if errors else None,
                 is_delta=is_delta,
             )
             db.session.add(sync_log)

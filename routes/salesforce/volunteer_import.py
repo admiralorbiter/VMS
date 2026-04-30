@@ -9,6 +9,7 @@ Routes:
 - /volunteers/import-from-salesforce: Import volunteer data from Salesforce
 """
 
+import json
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request
@@ -687,6 +688,29 @@ def import_from_salesforce():
                         updated_count + 1 if not is_new and updates else updated_count
                     )
 
+                    # Auto-resolve any existing import_error flag for this SF record
+                    sf_id = row.get("Id")
+                    if sf_id:
+                        from models.data_quality_flag import (
+                            DataQualityFlag,
+                            DataQualityIssueType,
+                        )
+
+                        existing_flag = DataQualityFlag.query.filter_by(
+                            entity_type="volunteer",
+                            entity_sf_id=sf_id,
+                            issue_type=DataQualityIssueType.IMPORT_ERROR,
+                            status="open",
+                        ).first()
+                        if existing_flag:
+                            existing_flag.status = "auto_fixed"
+                            from datetime import timezone as _tz
+
+                            existing_flag.resolved_at = datetime.now(_tz.utc)
+                            existing_flag.resolution_notes = (
+                                "Resolved automatically on subsequent import run."
+                            )
+
                     # Compact status output for each record
                     if i < 10 or i % 100 == 0:  # Show first 10 and every 100th
                         status = (
@@ -724,6 +748,28 @@ def import_from_salesforce():
                 print(
                     f"[{i+1:4d}] ERROR: {error_detail['record_name']} (ID: {error_detail['record_id']}) - {str(e)[:100]}"
                 )
+                # Create/update a DQ flag so this is visible in the Data Quality dashboard
+                sf_id = row.get("Id", "")
+                if sf_id:
+                    try:
+                        from models.data_quality_flag import (
+                            DataQualityIssueType,
+                            flag_data_quality_issue,
+                        )
+
+                        flag_data_quality_issue(
+                            entity_type="volunteer",
+                            entity_id=None,
+                            issue_type=DataQualityIssueType.IMPORT_ERROR,
+                            details=(f"{error_detail['record_name']} — {str(e)[:300]}"),
+                            salesforce_id=sf_id,
+                            entity_sf_id=sf_id,
+                            severity="error",
+                            source="live_import",
+                        )
+                        db.session.commit()
+                    except Exception:
+                        db.session.rollback()
 
         # Final summary
         print(f"\n{'='*60}")
@@ -769,6 +815,7 @@ def import_from_salesforce():
                     status=sync_status,
                     records_processed=success_count,
                     records_failed=error_count,
+                    error_message=json.dumps(errors[:100]) if errors else None,
                     is_delta=is_delta,
                 )
                 db.session.add(sync_log)

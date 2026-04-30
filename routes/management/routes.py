@@ -167,6 +167,19 @@ def view_sync_logs():
     )
     logs = pagination.items
 
+    # Pre-parse error_message JSON for template rendering
+    for log in logs:
+        if log.error_message:
+            try:
+                log.error_details = json.loads(log.error_message)
+            except Exception:
+                # Fallback: wrap raw string as a single-item list
+                log.error_details = [
+                    {"record_id": "", "record_name": "", "message": log.error_message}
+                ]
+        else:
+            log.error_details = None
+
     return render_template(
         "management/sync_logs.html",
         logs=logs,

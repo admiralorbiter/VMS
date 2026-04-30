@@ -219,7 +219,10 @@
             const data = await response.json();
 
             if (data.success && data.logs.length > 0) {
-                const rows = data.logs.map(log => `
+                let rows = '';
+                for (const log of data.logs) {
+                    // Main row
+                    rows += `
                     <tr>
                         <td><strong>${log.sync_type}</strong></td>
                         <td>${log.started_at ? new Date(log.started_at).toLocaleString() : '-'}</td>
@@ -228,8 +231,50 @@
                         <td>${log.records_processed || 0}</td>
                         <td>${log.records_failed || 0}</td>
                         <td>${log.is_delta_sync ? '✓' : '-'}</td>
-                    </tr>
-                `).join('');
+                    </tr>`;
+
+                    // Expandable error detail row — only shown when there are failures and stored detail
+                    if (log.records_failed > 0 && log.error_message) {
+                        let errors = [];
+                        try { errors = JSON.parse(log.error_message); } catch(e) { errors = []; }
+
+                        if (errors.length > 0) {
+                            const errorRows = errors.map(e => {
+                                const sfId   = e.record_id   || '—';
+                                const name   = e.record_name || '—';
+                                const msg    = e.message     || (typeof e === 'string' ? e : JSON.stringify(e));
+                                return `<tr>
+                                    <td class="font-monospace small" style="white-space:nowrap">${sfId}</td>
+                                    <td class="small">${name}</td>
+                                    <td class="small text-danger">${msg}</td>
+                                </tr>`;
+                            }).join('');
+
+                            rows += `
+                            <tr class="table-warning">
+                                <td colspan="7" style="padding: 0 1rem 0.75rem 2rem;">
+                                    <details>
+                                        <summary style="cursor:pointer; font-size:0.82rem; color:#6c757d; padding:0.4rem 0;">
+                                            ▶ ${errors.length} failed record${errors.length !== 1 ? 's' : ''} — click to expand
+                                        </summary>
+                                        <div style="margin-top:0.5rem; overflow-x:auto;">
+                                            <table class="table table-sm table-bordered mb-0" style="font-size:0.82rem;">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Salesforce ID</th>
+                                                        <th>Record Name</th>
+                                                        <th>Error</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>${errorRows}</tbody>
+                                            </table>
+                                        </div>
+                                    </details>
+                                </td>
+                            </tr>`;
+                        }
+                    }
+                }
                 document.getElementById('historyTableBody').innerHTML = rows;
             } else {
                 document.getElementById('historyTableBody').innerHTML = '<tr><td colspan="7" class="text-center text-muted">No sync history found</td></tr>';

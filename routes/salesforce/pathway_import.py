@@ -264,6 +264,37 @@ def _process_student_participation_row(
         student_id = students_cache.get(student_sf_id)
 
         if not event_id or not student_id:
+            # Create DQ flag for the missing entity so it appears in the Data Quality dashboard
+            try:
+                from models.data_quality_flag import (
+                    DataQualityIssueType,
+                    flag_data_quality_issue,
+                )
+
+                if not student_id and student_sf_id:
+                    flag_data_quality_issue(
+                        entity_type="student",
+                        entity_id=None,
+                        issue_type=DataQualityIssueType.IMPORT_ERROR,
+                        details=f"Student with Salesforce Contact ID {student_sf_id} not found for participation {participation_sf_id}",
+                        salesforce_id=student_sf_id,
+                        entity_sf_id=student_sf_id,
+                        severity="error",
+                        source="live_import",
+                    )
+                if not event_id and event_sf_id:
+                    flag_data_quality_issue(
+                        entity_type="event",
+                        entity_id=None,
+                        issue_type=DataQualityIssueType.IMPORT_ERROR,
+                        details=f"Event with Salesforce ID {event_sf_id} not found for participation {participation_sf_id}",
+                        salesforce_id=event_sf_id,
+                        entity_sf_id=event_sf_id,
+                        severity="error",
+                        source="live_import",
+                    )
+            except Exception:
+                pass  # Don't let DQ flag errors disrupt the import
             return success_count, error_count + 1
 
         pair_key = (event_id, student_id)

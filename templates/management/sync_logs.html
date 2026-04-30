@@ -57,11 +57,32 @@
                             </td>
                         </tr>
                         {% if log.error_details %}
-                        <tr class="table-light">
-                            <td colspan="7">
+                        <tr class="table-warning">
+                            <td colspan="7" style="padding: 0 1rem 0.75rem 2rem;">
                                 <details>
-                                    <summary class="small text-muted cursor-pointer">View Error Details</summary>
-                                    <pre class="small mt-2 overflow-auto" style="max-height: 200px;">{{ log.error_details }}</pre>
+                                    <summary style="cursor:pointer; font-size:0.82rem; color:#6c757d; padding:0.4rem 0;">
+                                        ▶ {{ log.error_details|length }} failed record{{ 's' if log.error_details|length != 1 }} — click to expand
+                                    </summary>
+                                    <div class="mt-2" style="overflow-x:auto;">
+                                        <table class="table table-sm table-bordered mb-0" style="font-size:0.82rem;">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Salesforce ID</th>
+                                                    <th>Record Name</th>
+                                                    <th>Error</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for e in log.error_details %}
+                                                <tr>
+                                                    <td class="font-monospace small" style="white-space:nowrap">{{ e.record_id or '—' }}</td>
+                                                    <td class="small">{{ e.record_name or '—' }}</td>
+                                                    <td class="small text-danger">{{ e.message or e }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </details>
                             </td>
                         </tr>

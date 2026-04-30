@@ -1,6 +1,6 @@
 # Import Pipeline — Phase 3 Hardening Plan
 
-**Status:** Ready to execute
+**Status:** ✅ Complete (2026-04-30)
 **Created:** 2026-04-29
 **Owner:** Development Team
 **Prerequisites:** Phase 1 (TD-055, TD-056) and Phase 2 (TD-057) complete ✅
@@ -138,33 +138,19 @@ Two test files import the dead `process_student_participation_row` copy:
 
 ## Sprint B — Observability (~4 hours)
 
-### B-1: DQ flags for unmatched history records
+### B-1: Import error observability — DQ flags for all importers
 
-**File:** `routes/salesforce/history_import.py` + `models/data_quality_flag.py`
+**Completed 2026-04-30** — Expanded from the original spec (history-only) to cover all import streams.
 
-Add `UNMATCHED_SF_HISTORY = "unmatched_sf_history"` to `DataQualityIssueType` (and `all_types()` / `display_name()`).
+What was implemented:
+- `SyncLog.error_message` now stores structured JSON `[{code, record_id, record_name, message}]` for failures in `volunteer_import`, `student_import`, `organization_import` (affiliations), and `event_import` (student_participations).
+- All importers create `DataQualityFlag(issue_type='import_error')` for each failed SF record using `entity_id=None` (SQLite NULL-safe unique constraint pattern).
+- On successful re-import of a previously failed record, the flag is auto-resolved (`status='auto_fixed'`).
+- The sync history modal (`/admin/salesforce/`) renders expandable per-record error rows when `records_failed > 0`.
+- The HTML sync log page (`/admin/sync-logs`) parses and renders the same structured error table.
+- **26 import_error flags** backfilled from this session's full import run: 9 organization, 16 student, 1 volunteer.
 
-In the history import loop, where a `Task` or `EmailMessage` row fails to match a local contact:
-
-```python
-from models.data_quality_flag import DataQualityIssueType, flag_data_quality_issue
-
-flag_data_quality_issue(
-    entity_type="sf_history",
-    entity_id=None,
-    entity_sf_id=row.get("Id"),
-    issue_type=DataQualityIssueType.UNMATCHED_SF_HISTORY,
-    details=(
-        f"SF history record {row.get('Id')} could not be linked. "
-        f"WhoId={row.get('WhoId')} not found in local DB."
-    ),
-    salesforce_id=row.get("Id"),
-)
-```
-
-> **Note:** The `uix_dqf_entity_issue` constraint covers `(entity_type, entity_id, issue_type)` — not `entity_sf_id`. SQLite treats NULL as distinct so multiple `entity_id=NULL` flags won't collide, but the dedup logic in `flag_data_quality_issue()` must check by `entity_sf_id` (it already does). Document this assumption.
-
-**AC:** After a history import with unmatched contacts, `DataQualityFlag.query.filter_by(issue_type='unmatched_sf_history').count()` returns the expected number.
+**AC:** `DataQualityFlag.query.filter_by(issue_type='import_error').count()` returns expected number. Flags visible and filterable at `/admin/data-quality`.
 
 ---
 
@@ -339,7 +325,7 @@ Sprint A    ──► [x] A-1 date_source fix
             ──► [x] A-4 pathway_import import fix
             ──► [x] A-5 Remove dead function copies + fix test imports
 
-Sprint B    ──► [ ] B-1 DQ flags for history
+Sprint B    ──► [x] B-1 Import error DQ flags for all importers (expanded scope — see above)
             ──► [x] B-2 Pending queue breakdown + CSV export
             ──► [x] B-3 Import ordering warning
             ──► [x] B-4 Fast-exit in resolve_pending
@@ -361,10 +347,11 @@ Sprint D    ──► [ ] D-1 Shared _map_event_fields helper
 
 | ID | Title | Status |
 |---|---|---|
-| TD-058 | Dead function copies in `routes/events/routes.py` | Addressed in Sprint A-5 |
-| TD-059 | `fix_missing_participation_records()` called on every event page load (N+1) | Addressed in Sprint A-5 |
-| TD-060 | `MISSING_ADDRESS` and `TRUNCATED_SKILL` zombie DQ issue types on dashboard | Addressed |
+| TD-058 | Dead function copies in `routes/events/routes.py` | ✅ Addressed in Sprint A-5 |
+| TD-059 | `fix_missing_participation_records()` called on every event page load (N+1) | ✅ Addressed in Sprint A-5 |
+| TD-060 | `MISSING_ADDRESS` and `TRUNCATED_SKILL` zombie DQ issue types on dashboard | ✅ Addressed |
 | TD-061 | `history` step runs before `teachers`, meaning task history for newly imported teachers is skipped in that run. | Backlog (requires reordering daily_imports.py) |
+| TD-062 | Volunteer `003UV000001hoM0YAI` (Yandell Toevs) causes UNIQUE constraint failure on `contact.salesforce_individual_id` — another contact record already claims that SF ID. Requires manual DB investigation or SF record correction. | Open — tracked as `import_error` DQ flag |
 
 ---
 

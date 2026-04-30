@@ -10,6 +10,7 @@ Routes:
 - /students/import-from-salesforce: Import student data from Salesforce (chunked)
 """
 
+import json
 from datetime import datetime
 from datetime import timezone as tz
 
@@ -410,6 +411,7 @@ def import_students_from_salesforce():
                     status=sync_status,
                     records_processed=success_count,
                     records_failed=error_count,
+                    error_message=json.dumps(errors[:100]) if errors else None,
                     is_delta=is_delta,
                 )
                 db.session.add(sync_log)
