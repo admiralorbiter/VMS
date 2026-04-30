@@ -171,9 +171,11 @@ def import_schools():
 
                 if name_matched_school and name_matched_school.id != sf_id:
                     old_id = name_matched_school.id
-                    print(f"  ↔ Reconciling school '{sf_name}': " f"{old_id} → {sf_id}")
+                    print(
+                        f"  ↔ Reconciling school '{sf_name}': " f"{old_id} -> {sf_id}"
+                    )
 
-                    # Migrate all FK references from old ID → new SF ID
+                    # Migrate all FK references from old ID -> new SF ID
                     Teacher.query.filter_by(school_id=old_id).update(
                         {"school_id": sf_id}, synchronize_session="fetch"
                     )

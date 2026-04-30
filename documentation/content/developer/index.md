@@ -272,7 +272,8 @@ flask run --port 5051
 
 - [Development Plan](development_plan) — Prioritized backlog (Tiers 1–4), tech debt, MySQL migration
 - [Tech Debt Tracker](tech_debt) — Active debt items with descriptions
-- [Salesforce Import Roadmap](salesforce_import_roadmap) — Import-specific improvements
+- [Salesforce Import Roadmap](salesforce_import_roadmap) — Import-specific improvements and history
+- [Import Pipeline Phase 3](import_pipeline_phase3) — Active sprint plan (data correctness, observability, performance)
 - [Development Status Tracker](development_status_tracker) — FR-by-FR implementation status
 - [Codebase Structure](../technical/codebase_structure) — Detailed code organization
 - [CLI Reference](cli_reference) — Common commands

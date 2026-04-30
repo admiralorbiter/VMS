@@ -364,9 +364,20 @@ def register_data_integrity_routes(bp):
                 }
             )
 
-        pending_queue_depth = PendingParticipationImport.query.filter(
-            PendingParticipationImport.resolved_at.is_(None)
-        ).count()
+        pending_stats = {
+            "total": PendingParticipationImport.query.filter(
+                PendingParticipationImport.resolved_at.is_(None)
+            ).count(),
+            "orphaned": PendingParticipationImport.query.filter(
+                PendingParticipationImport.resolved_at.is_(None),
+                PendingParticipationImport.error_reason == "likely_sf_orphan",
+            ).count(),
+            "resolvable": PendingParticipationImport.query.filter(
+                PendingParticipationImport.resolved_at.is_(None),
+                (PendingParticipationImport.error_reason != "likely_sf_orphan")
+                | (PendingParticipationImport.error_reason.is_(None)),
+            ).count(),
+        }
 
         open_flags = DataQualityFlag.query.filter_by(
             issue_type=DataQualityIssueType.UNMATCHED_SF_PARTICIPATION, status="open"
@@ -375,6 +386,47 @@ def register_data_integrity_routes(bp):
         return render_template(
             "management/import_health.html",
             health_data=health_data,
-            pending_queue_depth=pending_queue_depth,
+            pending_stats=pending_stats,
             open_flags=open_flags,
+        )
+
+    @bp.route("/admin/import-health/pending-export")
+    @login_required
+    @admin_required
+    def export_pending_participations():
+        """Export orphaned Salesforce participation IDs as CSV."""
+        import csv
+        import io
+
+        from flask import Response
+
+        from models.pending_participation import PendingParticipationImport
+
+        orphans = PendingParticipationImport.query.filter(
+            PendingParticipationImport.resolved_at.is_(None),
+            PendingParticipationImport.error_reason == "likely_sf_orphan",
+        ).all()
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(
+            ["sf_participation_id", "sf_contact_id", "sf_session_id", "first_seen_at"]
+        )
+
+        for orphan in orphans:
+            writer.writerow(
+                [
+                    orphan.sf_participation_id,
+                    orphan.sf_contact_id,
+                    orphan.sf_session_id,
+                    orphan.first_seen_at.isoformat() if orphan.first_seen_at else "",
+                ]
+            )
+
+        return Response(
+            output.getvalue(),
+            mimetype="text/csv",
+            headers={
+                "Content-disposition": "attachment; filename=orphaned_participations.csv"
+            },
         )

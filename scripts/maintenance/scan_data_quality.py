@@ -69,6 +69,7 @@ def detect_all_caps_names(dry_run=False):
                         issue_type="all_caps_name",
                         details=f"Original: {vol.first_name} {vol.last_name}",
                         salesforce_id=vol.salesforce_individual_id,
+                        source="batch_scan",
                     )
                     if flag.id is None:  # New flag (not yet flushed)
                         stats["flagged"] += 1
@@ -113,6 +114,7 @@ def detect_missing_org_type(dry_run=False):
                 issue_type="null_org_type",
                 details=f"Organization: {org.name}",
                 salesforce_id=org.salesforce_id,
+                source="batch_scan",
             )
             if flag.id is None:
                 stats["flagged"] += 1
@@ -186,6 +188,7 @@ def detect_student_none_strings(dry_run=False):
                     entity_id=student_id,
                     issue_type="other",
                     details="TD-033: email or phone contains literal string 'None'",
+                    source="batch_scan",
                 )
                 if flag.id is None:
                     stats["flagged"] += 1

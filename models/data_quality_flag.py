@@ -37,6 +37,9 @@ class DataQualityIssueType:
     TRUNCATED_SKILL = "truncated_skill"
     OTHER = "other"
     UNMATCHED_SF_PARTICIPATION = "unmatched_sf_participation"
+    UNMATCHED_SF_HISTORY = "unmatched_sf_history"
+    IMPORT_ERROR = "import_error"
+    SKIPPED_AFFILIATION = "skipped_affiliation"
 
     @classmethod
     def all_types(cls):
@@ -47,6 +50,9 @@ class DataQualityIssueType:
             cls.TRUNCATED_SKILL,
             cls.OTHER,
             cls.UNMATCHED_SF_PARTICIPATION,
+            cls.UNMATCHED_SF_HISTORY,
+            cls.IMPORT_ERROR,
+            cls.SKIPPED_AFFILIATION,
         ]
 
     @classmethod
@@ -58,6 +64,9 @@ class DataQualityIssueType:
             cls.TRUNCATED_SKILL: "Truncated Skill",
             cls.OTHER: "Other",
             cls.UNMATCHED_SF_PARTICIPATION: "Unmatched SF Participation",
+            cls.UNMATCHED_SF_HISTORY: "Unmatched SF History",
+            cls.IMPORT_ERROR: "Import Error",
+            cls.SKIPPED_AFFILIATION: "Skipped Affiliation",
         }
         return names.get(issue_type, issue_type)
 
@@ -90,6 +99,14 @@ class DataQualityFlag(db.Model):
     )  # SF record ID for cross-reference
     # For Salesforce-origin flags with no local integer entity ID (TD-056)
     entity_sf_id = Column(String(18), nullable=True, index=True)
+
+    # Context
+    severity = Column(
+        String(20), default="warning", nullable=False, index=True
+    )  # error, warning, info
+    source = Column(
+        String(50), default="unknown", nullable=False, index=True
+    )  # live_import, batch_scan, manual
 
     # Status tracking
     status = Column(
@@ -141,6 +158,8 @@ class DataQualityFlag(db.Model):
             "details": self.details,
             "salesforce_id": self.salesforce_id,
             "entity_sf_id": self.entity_sf_id,
+            "severity": self.severity,
+            "source": self.source,
             "status": self.status,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "resolved_at": self.resolved_at.isoformat() if self.resolved_at else None,
@@ -162,6 +181,8 @@ def flag_data_quality_issue(
     details: str = None,
     salesforce_id: str = None,
     entity_sf_id: str = None,
+    severity: str = "warning",
+    source: str = "unknown",
 ):
     """
     Create or update a data quality flag (idempotent).
@@ -192,6 +213,8 @@ def flag_data_quality_issue(
         details=details,
         salesforce_id=salesforce_id,
         entity_sf_id=entity_sf_id,
+        severity=severity,
+        source=source,
     )
     db.session.add(flag)
     return flag

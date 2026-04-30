@@ -29,7 +29,7 @@ from models.event import (
 )
 from models.student import Student
 from models.volunteer import EventParticipation, Volunteer
-from routes.events.routes import process_student_participation_row
+from services.salesforce.processors.event import process_student_participation_row
 
 # ==============================================================================
 # TC-170: Student Participation Sync

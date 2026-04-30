@@ -72,52 +72,50 @@ def parse_date(date_str):
     - CSV format without seconds (YYYY-MM-DD HH:MM)
     - Date only format (YYYY-MM-DD)
 
+    Always returns a plain ``datetime.date`` object (not a ``datetime``),
+    so comparisons against SQLAlchemy ``Date`` columns are exact and do not
+    produce spurious "UPD" log entries due to datetime/date type mismatch.
+
     Args:
         date_str: Date string to parse
 
     Returns:
-        datetime object if parsing successful, None otherwise
+        date object if parsing successful, None otherwise
 
     Examples:
         >>> parse_date('2025-03-05T14:15:00.000+0000')
-        datetime(2025, 3, 5, 14, 15)
+        date(2025, 3, 5)
         >>> parse_date('2025-03-05 14:15:30')
-        datetime(2025, 3, 5, 14, 15, 30)
+        date(2025, 3, 5)
         >>> parse_date('2025-03-05')
-        datetime(2025, 3, 5, 0, 0)
+        date(2025, 3, 5)
     """
     if not date_str:
         return None
 
     try:
-        # First try parsing ISO 8601 format (from Salesforce API)
-        # Example: 2025-03-05T14:15:00.000+0000
+        # ISO 8601 (Salesforce API): 2025-03-05T14:15:00.000+0000 or ...Z
         if "T" in date_str:
-            base_date = date_str.split(".")[0]
-            dt = datetime.strptime(base_date, "%Y-%m-%dT%H:%M:%S")
-            # If the original string indicates UTC, preserve that knowledge
-            if date_str.endswith("+0000") or date_str.endswith("Z"):
-                from datetime import timezone
-                return dt.replace(tzinfo=timezone.utc)
-            return dt
+            base_date = date_str.split("T")[0]
+            return datetime.strptime(base_date, "%Y-%m-%d").date()
 
-        # Try CSV format with time (YYYY-MM-DD HH:MM:SS)
+        # CSV format with time (YYYY-MM-DD HH:MM:SS)
         try:
-            parsed_date = datetime.strptime(date_str.strip(), "%Y-%m-%d %H:%M:%S")
-            return parsed_date
+            return datetime.strptime(date_str.strip(), "%Y-%m-%d %H:%M:%S").date()
         except ValueError:
-            # If that fails, try without seconds (YYYY-MM-DD HH:MM)
-            try:
-                parsed_date = datetime.strptime(date_str.strip(), "%Y-%m-%d %H:%M")
-                return parsed_date
-            except ValueError:
-                # Fallback for dates without times
-                try:
-                    return datetime.strptime(date_str.strip(), "%Y-%m-%d")
-                except ValueError:
-                    return None
+            pass
+
+        # CSV format without seconds (YYYY-MM-DD HH:MM)
+        try:
+            return datetime.strptime(date_str.strip(), "%Y-%m-%d %H:%M").date()
+        except ValueError:
+            pass
+
+        # Date-only (YYYY-MM-DD)
+        return datetime.strptime(date_str.strip(), "%Y-%m-%d").date()
+
     except Exception as e:
-        print(f"Error parsing date {date_str}: {str(e)}")  # Debug logging
+        print(f"Error parsing date {date_str}: {str(e)}")
         return None
 
 

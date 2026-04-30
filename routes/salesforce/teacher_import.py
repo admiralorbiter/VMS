@@ -140,11 +140,11 @@ def import_teachers_from_salesforce():
                 try:
                     db.session.commit()
                     print(
-                        f"  → Committed teachers batch {(i+1) // 50} ({success_count} successful, {skipped_count} skipped)"
+                        f"  -> Committed teachers batch {(i+1) // 50} ({success_count} successful, {skipped_count} skipped)"
                     )
                 except Exception as batch_e:
                     db.session.rollback()
-                    print(f"  → Batch commit failed: {batch_e}")
+                    print(f"  -> Batch commit failed: {batch_e}")
 
         # Final commit for remaining records
         db.session.commit()

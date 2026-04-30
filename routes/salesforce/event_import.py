@@ -145,10 +145,10 @@ def import_events_from_salesforce():
         if (i + 1) % 100 == 0:
             try:
                 db.session.commit()
-                print(f"  → Committed events batch {(i+1) // 100}")
+                print(f"  -> Committed events batch {(i+1) // 100}")
             except Exception as batch_e:
                 db.session.rollback()
-                print(f"  → Events batch commit failed: {batch_e}")
+                print(f"  -> Events batch commit failed: {batch_e}")
 
     # Print status summary
     print(f"\n{'='*60}")
@@ -198,8 +198,15 @@ def import_events_from_salesforce():
         .filter(Event.salesforce_id.isnot(None))
         .all()
     }
+    ep_sf_ids_cache = {
+        sf_id
+        for (sf_id,) in db.session.query(EventParticipation.salesforce_id)
+        .filter(EventParticipation.salesforce_id.isnot(None))
+        .all()
+    }
     print(
-        f"Loaded {len(volunteers_cache)} volunteers and {len(events_cache)} events into cache."
+        f"Loaded {len(volunteers_cache)} volunteers, {len(events_cache)} events, "
+        f"and {len(ep_sf_ids_cache)} existing participation SF IDs into cache."
     )
 
     participant_success = 0
@@ -212,16 +219,17 @@ def import_events_from_salesforce():
             errors,
             volunteers_cache=volunteers_cache,
             events_cache=events_cache,
+            ep_sf_ids_cache=ep_sf_ids_cache,
         )
 
         # Batch commit every 100 records for resumability
         if (i + 1) % 100 == 0:
             try:
                 db.session.commit()
-                print(f"  → Committed volunteer participations batch {(i+1) // 100}")
+                print(f"  -> Committed volunteer participations batch {(i+1) // 100}")
             except Exception as batch_e:
                 db.session.rollback()
-                print(f"  → Volunteer participations batch commit failed: {batch_e}")
+                print(f"  -> Volunteer participations batch commit failed: {batch_e}")
 
     db.session.commit()
 
@@ -232,7 +240,7 @@ def import_events_from_salesforce():
     )
     if resolved_pending > 0:
         print(
-            f"  → Successfully healed {resolved_pending} orphaned participations from previous runs!"
+            f"  -> Successfully healed {resolved_pending} orphaned participations from previous runs!"
         )
         participant_success += resolved_pending
 
@@ -414,7 +422,7 @@ def sync_student_participants():
     )
 
     print(
-        f"  → Cached {len(events_cache)} events, {len(students_cache)} students, "
+        f"  -> Cached {len(events_cache)} events, {len(students_cache)} students, "
         f"{len(participations_by_sf_id)} participation SF IDs, {len(participations_by_pair)} pairs"
     )
 
@@ -437,12 +445,12 @@ def sync_student_participants():
                 # Progress logging with percentage for large imports
                 if total_count >= 500:
                     pct = (i + 1) * 100 // total_count
-                    print(f"  → Batch {(i+1) // 100}: {i+1}/{total_count} ({pct}%)")
+                    print(f"  -> Batch {(i+1) // 100}: {i+1}/{total_count} ({pct}%)")
                 else:
-                    print(f"  → Committed student participations batch {(i+1) // 100}")
+                    print(f"  -> Committed student participations batch {(i+1) // 100}")
             except Exception as batch_e:
                 db.session.rollback()
-                print(f"  → Batch commit failed: {batch_e}")
+                print(f"  -> Batch commit failed: {batch_e}")
 
     # Final commit for remaining records
     db.session.commit()

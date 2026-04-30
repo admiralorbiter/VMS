@@ -144,7 +144,7 @@ def import_from_salesforce():
         email_cache = {(e.contact_id, e.email): e for e in Email.query.all()}
         phone_cache = {(p.contact_id, p.number): p for p in Phone.query.all()}
         print(
-            f"  → Cached: {len(volunteer_cache)} volunteers, {len(skill_cache)} skills, "
+            f"  -> Cached: {len(volunteer_cache)} volunteers, {len(skill_cache)} skills, "
             f"{len(email_cache)} emails, {len(phone_cache)} phones"
         )
 
@@ -707,7 +707,7 @@ def import_from_salesforce():
                     volunteer_cache[row["Id"]] = volunteer
 
                 if (i + 1) % 100 == 0:
-                    print(f"  → Progress: {i+1}/{total_records} records processed")
+                    print(f"  -> Progress: {i+1}/{total_records} records processed")
 
             except Exception as e:
                 db.session.rollback()

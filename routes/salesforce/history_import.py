@@ -258,7 +258,7 @@ def import_history_from_salesforce():
                     if (i + 1) % 100 == 0:
                         db.session.commit()
                         print(
-                            f"  → Committed history batch {(i+1) // 100} ({success_count} successful)"
+                            f"  -> Committed history batch {(i+1) // 100} ({success_count} successful)"
                         )
 
                 except Exception as e:

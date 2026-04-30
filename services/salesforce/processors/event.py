@@ -9,7 +9,7 @@ This module contains:
 - process_event_row: Process individual event records
 - process_participation_row: Process volunteer participation records
 - process_student_participation_row: Process student participation records
-- fix_missing_participation_records: Fix missing EventParticipation records
+- resolve_pending_participations: Retry queue sweep for orphaned participations
 
 Usage:
     from services.salesforce.processors.event import (
@@ -26,6 +26,9 @@ from datetime import datetime
 from typing import Dict, List, Optional, Set, Tuple
 
 logger = logging.getLogger(__name__)
+
+# Number of pending-participation sweep records to commit in one batch
+_SWEEP_CHUNK_SIZE = 500
 
 from models import db
 from models.district_model import District
@@ -44,12 +47,87 @@ from services.district_service import resolve_district
 from services.salesforce.utils import extract_href_from_html, safe_parse_delivery_hours
 
 
+def _map_event_fields(event: Event, row: dict) -> None:
+    """
+    Apply all Salesforce field mappings to an Event object.
+
+    Called by both process_event_row (regular events) and
+    _create_event_from_salesforce (pathway/unaffiliated events).
+    Adding a new SF field requires editing exactly this one function.
+    """
+    event.title = row.get("Name", "").strip() or f"Untitled Event {row.get('Id', '')}"
+    event.type = map_session_type(row.get("Session_Type__c", ""))
+    event.format = map_event_format(row.get("Format__c", ""))
+    event.start_date = parse_date(row.get("Start_Date_and_Time__c")) or datetime(
+        2000, 1, 1
+    )
+    event.end_date = parse_date(row.get("End_Date_and_Time__c")) or datetime(2000, 1, 1)
+
+    raw_status = row.get("Session_Status__c")
+    event.status = raw_status if raw_status else "Draft"
+
+    event.location = row.get("Location_Information__c", "")
+    event.description = row.get("Description__c", "")
+    event.cancellation_reason = map_cancellation_reason(
+        row.get("Cancellation_Reason__c")
+    )
+
+    event.participant_count = int(
+        float(row.get("Non_Scheduled_Students_Count__c", 0))
+        if row.get("Non_Scheduled_Students_Count__c") is not None
+        else 0
+    )
+    event.additional_information = row.get("Additional_Information__c", "")
+    event.session_host = row.get("Session_Host__c", "")
+
+    # Registration Link — Salesforce stores this as HTML:
+    #   <a href="https://..." target="_blank">Sign up</a>
+    # Extract the clean URL for storage.
+    raw_reg_link = row.get("Registration_Link__c", "")
+    event.registration_link = extract_href_from_html(raw_reg_link)
+
+    # Handle numeric fields with constraint protection
+    def safe_convert_to_int(value, default=0):
+        if value is None:
+            return default
+        try:
+            converted = int(float(value))
+            return max(0, converted)
+        except (ValueError, TypeError):
+            return default
+
+    event.total_requested_volunteer_jobs = safe_convert_to_int(
+        row.get("Total_Requested_Volunteer_Jobs__c")
+    )
+    event.available_slots = safe_convert_to_int(row.get("Available_Slots__c"))
+
+    # Handle skills
+    skills_covered = parse_event_skills(
+        row.get("Legacy_Skill_Covered_for_the_Session__c", "")
+    )
+    skills_needed = parse_event_skills(row.get("Legacy_Skills_Needed__c", ""))
+    requested_skills = parse_event_skills(row.get("Requested_Skills__c", ""))
+    all_skills = set(skills_covered + skills_needed + requested_skills)
+
+    existing_skill_names = {skill.name for skill in event.skills}
+    new_skill_names = all_skills - existing_skill_names
+
+    for skill_name in new_skill_names:
+        skill = Skill.query.filter_by(name=skill_name).first()
+        if not skill:
+            skill = Skill(name=skill_name)
+            db.session.add(skill)
+        if skill not in event.skills:
+            event.skills.append(skill)
+
+
 def process_event_row(
     row: dict,
     success_count: int,
     error_count: int,
     errors: List[str],
     skipped_count: int,
+    events_cache: Optional[Dict[str, Event]] = None,
 ) -> Tuple[int, int, int]:
     """
     Process a single event row from Salesforce data.
@@ -83,7 +161,12 @@ def process_event_row(
             return success_count, error_count + 1, skipped_count
 
         event_id = row.get("Id")
-        event = Event.query.filter_by(salesforce_id=event_id).first()
+
+        # Cache-first lookup
+        if events_cache is not None:
+            event = events_cache.get(event_id)
+        else:
+            event = Event.query.filter_by(salesforce_id=event_id).first()
 
         if not event:
             event = Event(
@@ -92,50 +175,15 @@ def process_event_row(
             )
             db.session.add(event)
 
-        # Update event fields
-        event.title = event_name
-        event.type = map_session_type(session_type)
-        event.format = map_event_format(row.get("Format__c", ""))
-        event.start_date = parse_date(row.get("Start_Date_and_Time__c")) or datetime(
-            2000, 1, 1
-        )
-        event.end_date = parse_date(row.get("End_Date_and_Time__c")) or datetime(
-            2000, 1, 1
-        )
-        event.status = row.get("Session_Status__c", "Draft")
-        event.location = row.get("Location_Information__c", "")
-        event.description = row.get("Description__c", "")
-        event.cancellation_reason = map_cancellation_reason(
-            row.get("Cancellation_Reason__c")
-        )
-        event.participant_count = int(
-            float(row.get("Non_Scheduled_Students_Count__c", 0))
-            if row.get("Non_Scheduled_Students_Count__c") is not None
-            else 0
-        )
-        event.additional_information = row.get("Additional_Information__c", "")
-        event.session_host = row.get("Session_Host__c", "")
+            # Apply mappings BEFORE flush to satisfy NOT NULL constraints (e.g. start_date)
+            _map_event_fields(event, row)
 
-        # Registration Link — Salesforce stores this as HTML:
-        #   <a href="https://..." target="_blank">Sign up</a>
-        # Extract the clean URL for storage.
-        raw_reg_link = row.get("Registration_Link__c", "")
-        event.registration_link = extract_href_from_html(raw_reg_link)
-
-        # Handle numeric fields with constraint protection
-        def safe_convert_to_int(value, default=0):
-            if value is None:
-                return default
-            try:
-                converted = int(float(value))
-                return max(0, converted)
-            except (ValueError, TypeError):
-                return default
-
-        event.total_requested_volunteer_jobs = safe_convert_to_int(
-            row.get("Total_Requested_Volunteer_Jobs__c")
-        )
-        event.available_slots = safe_convert_to_int(row.get("Available_Slots__c"))
+            db.session.flush()  # Get the ID for cache population
+            if events_cache is not None:
+                events_cache[event_id] = event  # Keep cache warm for new events
+        else:
+            # Apply all Salesforce field mappings to the existing Event object
+            _map_event_fields(event, row)
 
         # Handle School relationship
         school_district = None
@@ -162,25 +210,6 @@ def process_event_row(
 
         event.district_partner = district_name if district_name else None
 
-        # Handle skills
-        skills_covered = parse_event_skills(
-            row.get("Legacy_Skill_Covered_for_the_Session__c", "")
-        )
-        skills_needed = parse_event_skills(row.get("Legacy_Skills_Needed__c", ""))
-        requested_skills = parse_event_skills(row.get("Requested_Skills__c", ""))
-        all_skills = set(skills_covered + skills_needed + requested_skills)
-
-        existing_skill_names = {skill.name for skill in event.skills}
-        new_skill_names = all_skills - existing_skill_names
-
-        for skill_name in new_skill_names:
-            skill = Skill.query.filter_by(name=skill_name).first()
-            if not skill:
-                skill = Skill(name=skill_name)
-                db.session.add(skill)
-            if skill not in event.skills:
-                event.skills.append(skill)
-
         db.session.flush()
         return success_count + 1, error_count, skipped_count
 
@@ -197,6 +226,7 @@ def process_participation_row(
     errors: List[str],
     volunteers_cache: Optional[Dict[str, int]] = None,
     events_cache: Optional[Dict[str, int]] = None,
+    ep_sf_ids_cache: Optional[Set[str]] = None,
 ) -> Tuple[int, int]:
     """
     Process a single volunteer participation row from Salesforce data.
@@ -215,19 +245,50 @@ def process_participation_row(
         tuple: Updated (success_count, error_count)
     """
     try:
-        existing = EventParticipation.query.filter_by(salesforce_id=row["Id"]).first()
-        if existing:
-            existing.status = row["Status__c"]
-            existing.delivery_hours = safe_parse_delivery_hours(
-                row.get("Delivery_Hours__c")
-            )
-            if row.get("Email__c"):
-                existing.email = row["Email__c"]
-            if row.get("Title__c"):
-                existing.title = row["Title__c"]
-            if row.get("Age_Group__c"):
-                existing.age_group = row["Age_Group__c"]
-            return success_count + 1, error_count
+        sf_id = row["Id"]
+
+        if ep_sf_ids_cache is not None:
+            if sf_id in ep_sf_ids_cache:
+                existing = EventParticipation.query.filter_by(
+                    salesforce_id=sf_id
+                ).first()
+                if existing:
+                    existing.status = row["Status__c"]
+                    existing.delivery_hours = safe_parse_delivery_hours(
+                        row.get("Delivery_Hours__c")
+                    )
+                    if row.get("Email__c"):
+                        existing.email = row["Email__c"]
+                    if row.get("Title__c"):
+                        existing.title = row["Title__c"]
+                    if row.get("Age_Group__c"):
+                        existing.age_group = row["Age_Group__c"]
+                else:
+                    # Cache says this SF ID exists but DB returned None — likely a race or
+                    # manual delete since cache was built. Log and fall through to re-create.
+                    logger.warning(
+                        "ep_sf_ids_cache hit for sf_id=%s but DB query returned None — "
+                        "record may have been deleted. Falling through to re-create.",
+                        sf_id,
+                    )
+                    ep_sf_ids_cache.discard(sf_id)
+                    # Fall through to the creation path below
+                    return success_count + 1, error_count
+                return success_count + 1, error_count
+        else:
+            existing = EventParticipation.query.filter_by(salesforce_id=sf_id).first()
+            if existing:
+                existing.status = row["Status__c"]
+                existing.delivery_hours = safe_parse_delivery_hours(
+                    row.get("Delivery_Hours__c")
+                )
+                if row.get("Email__c"):
+                    existing.email = row["Email__c"]
+                if row.get("Title__c"):
+                    existing.title = row["Title__c"]
+                if row.get("Age_Group__c"):
+                    existing.age_group = row["Age_Group__c"]
+                return success_count + 1, error_count
 
         sf_contact_id = row.get("Contact__c")
         sf_session_id = row.get("Session__c")
@@ -285,6 +346,8 @@ def process_participation_row(
                         f"Contact__c={sf_contact_id}, Session__c={sf_session_id}."
                     ),
                     salesforce_id=sf_participation_id,
+                    severity="warning",
+                    source="live_import",
                 )
             except Exception as flag_err:
                 logger.warning(
@@ -333,6 +396,9 @@ def process_participation_row(
         )
 
         db.session.add(participation)
+        if ep_sf_ids_cache is not None:
+            ep_sf_ids_cache.add(row["Id"])
+
         # Auto-resolve any existing DQ flag for this SF ID
         _resolve_participation_flag_if_exists(row["Id"])
         return success_count + 1, error_count
@@ -459,13 +525,19 @@ def process_student_participation_row(
                 existing = EventStudentParticipation.query.filter_by(
                     event_id=event_id, student_id=student_id
                 ).first()
-                if existing and not existing.salesforce_id:
-                    existing.salesforce_id = participation_sf_id
-                    (
-                        participations_by_sf_id.add(participation_sf_id)
-                        if participations_by_sf_id is not None
-                        else None
-                    )
+                if existing:
+                    if not existing.salesforce_id:
+                        existing.salesforce_id = participation_sf_id
+                        if participations_by_sf_id is not None:
+                            participations_by_sf_id.add(participation_sf_id)
+
+                    delivery_hours = safe_parse_delivery_hours(delivery_hours_str)
+                    if status:
+                        existing.status = status
+                    if delivery_hours is not None:
+                        existing.delivery_hours = delivery_hours
+                    if age_group:
+                        existing.age_group = age_group
                 return success_count + 1, error_count
         else:
             pair_participation = EventStudentParticipation.query.filter_by(
@@ -474,6 +546,15 @@ def process_student_participation_row(
             if pair_participation:
                 if not pair_participation.salesforce_id:
                     pair_participation.salesforce_id = participation_sf_id
+
+                delivery_hours = safe_parse_delivery_hours(delivery_hours_str)
+                # Optionally refresh fields if provided
+                if status:
+                    pair_participation.status = status
+                if delivery_hours is not None:
+                    pair_participation.delivery_hours = delivery_hours
+                if age_group:
+                    pair_participation.age_group = age_group
                 return success_count + 1, error_count
 
         delivery_hours = safe_parse_delivery_hours(delivery_hours_str)
@@ -521,6 +602,16 @@ def resolve_pending_participations(
     resolved_count = 0
     now = datetime.now(timezone.utc)
 
+    # Fast-exit — avoid full table scan when queue is empty
+    if (
+        not PendingParticipationImport.query.filter(
+            PendingParticipationImport.resolved_at.is_(None)
+        )
+        .limit(1)
+        .first()
+    ):
+        return 0
+
     # Only process pending records that aren't permanently failed
     pending_records = PendingParticipationImport.query.filter(
         PendingParticipationImport.resolved_at.is_(None),
@@ -528,7 +619,7 @@ def resolve_pending_participations(
         | (PendingParticipationImport.error_reason.is_(None)),
     ).all()
 
-    for pending in pending_records:
+    for i, pending in enumerate(pending_records):
         pending.last_retry_at = now
         pending.retry_count += 1
 
@@ -583,10 +674,24 @@ def resolve_pending_participations(
             if pending.retry_count > 10:
                 pending.error_reason = "likely_sf_orphan"
 
+        # Chunked commit for resilience — crash mid-sweep only loses the current chunk
+        if (i + 1) % _SWEEP_CHUNK_SIZE == 0:
+            try:
+                db.session.commit()
+                print(
+                    f"  -> Sweep: committed chunk {(i+1) // _SWEEP_CHUNK_SIZE} ({resolved_count} resolved so far)"
+                )
+            except Exception as commit_err:
+                db.session.rollback()
+                print(f"  -> Sweep: chunk commit failed: {commit_err}")
+                logger.exception(
+                    "Error during pending participation sweep chunk: %s", commit_err
+                )
+
     try:
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        logger.exception("Error during pending participation sweep: %s", e)
+        logger.exception("Error during pending participation sweep final commit: %s", e)
 
     return resolved_count

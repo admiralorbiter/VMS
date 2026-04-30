@@ -19,7 +19,7 @@ Key Features:
 import re
 from datetime import datetime, timezone
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from flask_login import login_required
 from simple_salesforce import SalesforceAuthenticationFailed
 from sqlalchemy.orm import selectinload
@@ -463,16 +463,16 @@ def sync_unaffiliated_events():
                 # Progress logging
                 if (i + 1) % 50 == 0 and total_events >= 100:
                     pct = (i + 1) * 100 // total_events
-                    print(f"  → Events: {i+1}/{total_events} ({pct}%)")
+                    print(f"  -> Events: {i+1}/{total_events} ({pct}%)")
 
                 # Batch commit every 100 events for resumability
                 if (i + 1) % 100 == 0:
                     try:
                         db.session.commit()
-                        print(f"  → Committed pathway events batch {(i+1) // 100}")
+                        print(f"  -> Committed pathway events batch {(i+1) // 100}")
                     except Exception as batch_e:
                         db.session.rollback()
-                        print(f"  → Pathway events batch commit failed: {batch_e}")
+                        print(f"  -> Pathway events batch commit failed: {batch_e}")
 
             except Exception as e:
                 db.session.rollback()
@@ -537,7 +537,7 @@ def sync_unaffiliated_events():
         )
 
         print(
-            f"  → Cached: {len(events_cache)} events, {len(volunteers_cache)} volunteers, {len(students_cache)} students"
+            f"  -> Cached: {len(events_cache)} events, {len(volunteers_cache)} volunteers, {len(students_cache)} students"
         )
 
         # Step 5: Sync volunteer participants

@@ -11,12 +11,22 @@
 <!-- Data Gap Indicators -->
 <div class="row mb-4">
     <div class="col-md-6">
-        <div class="card h-100 shadow-sm {% if pending_queue_depth > 0 %}border-warning{% endif %}">
+        <div class="card h-100 shadow-sm {% if pending_stats.total > 0 %}border-warning{% endif %}">
             <div class="card-body">
-                <h5 class="card-title text-muted text-uppercase fw-semibold mb-1" style="font-size: 0.85rem; letter-spacing: 0.5px;">Retry Queue Depth</h5>
-                <h2 class="display-6 mb-0">{{ pending_queue_depth }}</h2>
-                <div class="mt-2 small text-muted">
-                    <p class="mb-0">Participations waiting for volunteer or event creation.</p>
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h5 class="card-title text-muted text-uppercase fw-semibold mb-1" style="font-size: 0.85rem; letter-spacing: 0.5px;">Pending Participations</h5>
+                        <h2 class="display-6 mb-0">{{ pending_stats.total }}</h2>
+                    </div>
+                    {% if pending_stats.orphaned > 0 %}
+                    <a href="{{ url_for('management_data_integrity.export_pending_participations') }}" class="btn btn-sm btn-outline-warning">
+                        <i class="bi bi-download"></i> Export Orphans
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="mt-2 small text-muted d-flex gap-3">
+                    <div><span class="fw-bold text-success">{{ pending_stats.resolvable }}</span> Resolvable</div>
+                    <div><span class="fw-bold text-danger">{{ pending_stats.orphaned }}</span> Orphaned</div>
                 </div>
             </div>
         </div>

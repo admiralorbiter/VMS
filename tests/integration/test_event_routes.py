@@ -206,7 +206,14 @@ def test_event_reports(client, auth_headers):
 def test_student_participation_import_guard(client, auth_headers, test_event, app):
     """Import guard should not create duplicate (event_id, student_id) pairs."""
     from datetime import datetime, timedelta, timezone
-    from models.event import EventStudentParticipation, Event, EventType, EventStatus, EventFormat
+
+    from models.event import (
+        Event,
+        EventFormat,
+        EventStatus,
+        EventStudentParticipation,
+        EventType,
+    )
     from models.student import Student
 
     with app.app_context():
@@ -241,9 +248,10 @@ def test_student_participation_import_guard(client, auth_headers, test_event, ap
         event_sf_id = "EVT_SF_1"
         row1["Session__c"] = event_sf_id
         row2["Session__c"] = event_sf_id
-        
+
         # Create a test event with the salesforce_id
-        from models.event import Event, EventType, EventStatus, EventFormat
+        from models.event import Event, EventFormat, EventStatus, EventType
+
         test_event_with_sf = Event(
             title="Test Event with SF ID",
             type=EventType.IN_PERSON,
@@ -256,12 +264,18 @@ def test_student_participation_import_guard(client, auth_headers, test_event, ap
         db.session.add(test_event_with_sf)
         db.session.commit()
 
-        from routes.events.routes import process_student_participation_row
+        from services.salesforce.processors.event import (
+            process_student_participation_row,
+        )
 
         success, errors = 0, 0
         error_list = []
-        success, errors = process_student_participation_row(row1, success, errors, error_list)
-        success, errors = process_student_participation_row(row2, success, errors, error_list)
+        success, errors = process_student_participation_row(
+            row1, success, errors, error_list
+        )
+        success, errors = process_student_participation_row(
+            row2, success, errors, error_list
+        )
         db.session.commit()
 
         # Assert only one DB row exists for this event/student

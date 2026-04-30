@@ -205,11 +205,11 @@ def import_organizations_from_salesforce():
                 try:
                     db.session.commit()
                     print(
-                        f"  → Committed orgs batch {(i+1) // 50} ({success_count} successful, {skipped_count} skipped)"
+                        f"  -> Committed orgs batch {(i+1) // 50} ({success_count} successful, {skipped_count} skipped)"
                     )
                 except Exception as batch_e:
                     db.session.rollback()
-                    print(f"  → Orgs batch commit failed: {batch_e}")
+                    print(f"  -> Orgs batch commit failed: {batch_e}")
 
         # Final commit for any remaining changes
         db.session.commit()
@@ -553,11 +553,11 @@ def import_affiliations_from_salesforce():
                             # Progress logging for large imports
                             if total_count >= 500:
                                 print(
-                                    f"  → Batch {(i+1) // 5000}: {i+1}/{total_count} ({(i+1)*100//total_count}%)"
+                                    f"  -> Batch {(i+1) // 5000}: {i+1}/{total_count} ({(i+1)*100//total_count}%)"
                                 )
                         except Exception as batch_e:
                             db.session.rollback()
-                            print(f"  → Affiliations batch commit failed: {batch_e}")
+                            print(f"  -> Affiliations batch commit failed: {batch_e}")
 
                 except Exception as e:
                     # Track processing errors

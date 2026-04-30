@@ -2,7 +2,7 @@
 Unit tests for routes/utils.py utility functions.
 """
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 import pytest
 
@@ -28,22 +28,22 @@ class TestParseDate:
     def test_parse_date_iso_8601_with_timezone(self):
         """Test ISO 8601 format with timezone offset."""
         result = parse_date("2025-03-05T14:15:00.000+0000")
-        assert result == datetime(2025, 3, 5, 14, 15, 0, tzinfo=timezone.utc)
+        assert result == date(2025, 3, 5)
 
     def test_parse_date_csv_with_seconds(self):
         """Test CSV format with time including seconds."""
         result = parse_date("2025-03-05 14:15:30")
-        assert result == datetime(2025, 3, 5, 14, 15, 30)
+        assert result == date(2025, 3, 5)
 
     def test_parse_date_csv_without_seconds(self):
         """Test CSV format with time without seconds."""
         result = parse_date("2025-03-05 14:15")
-        assert result == datetime(2025, 3, 5, 14, 15, 0)
+        assert result == date(2025, 3, 5)
 
     def test_parse_date_date_only(self):
         """Test date-only format."""
         result = parse_date("2025-03-05")
-        assert result == datetime(2025, 3, 5, 0, 0, 0)
+        assert result == date(2025, 3, 5)
 
     def test_parse_date_none_returns_none(self):
         """Test that None input returns None."""
@@ -62,7 +62,7 @@ class TestParseDate:
     def test_parse_date_with_whitespace(self):
         """Test that whitespace is stripped."""
         result = parse_date("  2025-03-05 14:15:30  ")
-        assert result == datetime(2025, 3, 5, 14, 15, 30)
+        assert result == date(2025, 3, 5)
 
 
 class TestCleanSkillName:

@@ -33,6 +33,16 @@ Organized by import frequency with delta sync controls and progress tracking.
             </div>
         </div>
 
+        {% if affiliations_stale %}
+        <div class="alert alert-warning d-flex align-items-center mb-4 shadow-sm" role="alert">
+            <i class="fas fa-exclamation-triangle fa-fw me-3 fs-4"></i>
+            <div>
+                <strong>Volunteers were synced after Affiliations.</strong>
+                Run Affiliations to ensure org links are current.
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Health Metrics Section -->
         <div class="health-metrics-section" id="health-metrics">
             <div class="health-metrics-header">

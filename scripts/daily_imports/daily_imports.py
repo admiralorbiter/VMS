@@ -510,7 +510,17 @@ class DailyImporter:
     def _import_students(
         self, chunk_size: int = 2000, last_id: Optional[str] = None
     ) -> Dict:
-        """Import students from Salesforce (chunked)."""
+        """Import students from Salesforce (chunked).
+
+        IMPORTANT: last_id must be captured as a local variable per call,
+        not relied on via closure over a mutable outer variable.
+
+        IMPORTANT: patch target must be 'routes.salesforce.student_import.request'
+        NOT 'flask.request' — Flask's LocalProxy bypasses module-attribute patches.
+        """
+        _last_id = last_id
+        _chunk_size = chunk_size
+        _use_delta = self.delta_sync
 
         def _call_import():
             try:
@@ -520,15 +530,24 @@ class DailyImporter:
 
                 original_func = import_students_from_salesforce.__wrapped__
 
-                # For students, we need to mock the request with JSON data
                 from unittest.mock import MagicMock, patch
 
                 mock_request = MagicMock()
                 mock_request.method = "POST"
-                mock_request.json = {"chunk_size": chunk_size, "last_id": last_id}
+                # Provide JSON body with pagination cursor
+                mock_request.get_json = lambda silent=False: {
+                    "chunk_size": _chunk_size,
+                    "last_id": _last_id,
+                }
+                mock_request.json = {"chunk_size": _chunk_size, "last_id": _last_id}
                 mock_request.form = {}
+                # Pass delta flag through args so DeltaSyncHelper sees it
+                mock_request.args = {"delta": "true"} if _use_delta else {}
 
-                with patch("flask.request", mock_request):
+                # Patch the request NAME in the student_import module, not flask.request.
+                # flask.request is a LocalProxy — patching flask.request does NOT affect
+                # code that has already imported 'request' from flask.
+                with patch("routes.salesforce.student_import.request", mock_request):
                     result = original_func()
                     return self._parse_import_result(
                         result, "Students imported successfully"
@@ -745,9 +764,13 @@ class DailyImporter:
 
         if overall_success:
             try:
-                from utils.cache_refresh_scheduler import invalidate_report_caches
-                invalidate_report_caches(reason="salesforce_daily_import")
-                self.logger.info("Report caches invalidated after Salesforce import")
+                with self.app.app_context():
+                    from utils.cache_refresh_scheduler import invalidate_report_caches
+
+                    invalidate_report_caches(reason="salesforce_daily_import")
+                    self.logger.info(
+                        "Report caches invalidated after Salesforce import"
+                    )
             except Exception as e:
                 self.logger.warning("Cache invalidation failed (non-fatal): %s", e)
 

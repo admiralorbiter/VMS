@@ -549,14 +549,16 @@ Ordered by **what best unblocks future work**:
 | --- | --- | --- | --- | --- |
 | **P0** | **~~TD-055~~** | **~~Delta sync watermark freezes on import failure~~** | S | ✅ Resolved 2026-04-28 |
 | **P1** | **~~TD-056~~** | **~~Unmatched participation records dropped silently~~** | S | ✅ Resolved 2026-04-28 |
-| **P1** | **TD-057** | **Import ordering race — retry queue for unresolved EPs** | M | ✅ Resolved |
+| **P1** | **~~TD-057~~** | **~~Import ordering race — retry queue for unresolved EPs~~** | M | ✅ Resolved 2026-04-28 |
+| **P1** | **TD-058** | Dead function copies in `routes/events/routes.py` (Phase 3 Sprint A-5) | S | 🔵 Phase 3 Sprint A |
+| **P1** | **TD-059** | `fix_missing_participation_records()` called on every event page load (N+1) | S | 🔵 Phase 3 Sprint A |
 | 3 | **TD-009** | `db.session.commit()` Scattered in 44 Route Files | M | Pending |
 | 4 | **TD-011** | SQLite in Production | M | Pending |
 | 5 | **TD-013** | No True Application Factory Pattern | M | Pending |
 | 6 | **~~TD-054~~** | **~~`VolunteerOrganization()` direct constructors — migrate to `link_volunteer_to_org()`~~** | S | ✅ Resolved 2026-04-28 |
 | 7 | **TD-016** | Cache Model Proliferation in `reports.py` | M | Pending |
 | 8 | **TD-022** | No Test Coverage for Extracted Blueprints | M | Pending |
-| 9 | **TD-034** | Salesforce Data Quality Audit | M | Pending |
+| 9 | **~~TD-034~~** | ~~Salesforce Data Quality Audit~~ | M | ✅ Resolved 2026-03-13 |
 | 10 | **TD-036** | Exact-Name Duplicate Teacher Records (~2,100 pairs) | M | Pending |
 | 11 | **TD-037** | Hard-Delete Pruned Teachers (after 2026-04-13) | M | Pending |
 | 12 | **TD-040** | `NEPRIS_SESSION_BASE_URL` in Single File | M | Pending |
@@ -567,10 +569,13 @@ Ordered by **what best unblocks future work**:
 | 17 | **TD-049** | Backfill `attendance_confirmed_at` for Existing Records | M | Pending |
 | 18 | **TD-050** | Consolidate Legacy Virtual Usage Routes into Tenant Dashboard | M | Pending |
 | 19 | **TD-051** | Quality Dashboard — Evaluate Usefulness & Integration | M | Pending |
+| 20 | **TD-060** | Zombie DQ issue types (`MISSING_ADDRESS`, `TRUNCATED_SKILL`) on dashboard | S | Backlog |
 
 > TD-004 is intentionally deferred — the M2M relationship is the correct path forward.
 > TD-055/056 resolved 2026-04-28 as part of the SF Import Reliability PR (Phase 1 hardening).
-> TD-057 is Phase 2 — resolved via robust `PendingParticipationImport` queue.
+> TD-057 resolved 2026-04-28 via robust `PendingParticipationImport` queue.
+> TD-034 fully resolved 2026-03-13 — 317K garbage records deleted, import guard in place, data quality rescan clean.
+> TD-058/059 discovered 2026-04-29 during Phase 3 pre-flight audit; addressed in Sprint A-5.
 
 
 
@@ -613,6 +618,9 @@ All resolved items, for historical reference:
 | TD-052 | Volunteer Org Matching — Migrate to Alias-Based Resolution | 2026-03-30 | **Fully implemented.** `OrganizationAlias` model in `models/organization.py`. `resolve_organization()` 4-tier service in `services/organization_service.py` (Cache → Exact → Alias → Suffix-strip + auto-learn). `match_volunteer()` in `matching.py` refactored to call service; on miss, raw string stored in `Volunteer.organization_name`. Unresolved volunteers surface in Unmatched Queue (`/pathful/unmatched`) with fuzzy org dropdown. Selecting an org creates `VolunteerOrganization` + `OrganizationAlias`, marks record resolved, and auto-resolves siblings with the same raw string. 6 unit tests in `tests/unit/services/test_organization_service.py`. **Pending:** Run `scripts/maintenance/backfill_org_aliases.py --commit` after working through the Unmatched Queue to retroactively register aliases from resolved records. **ADR:** The Entity Identity Reconciliation Pattern (Cache → Exact → Alias → Suffix) is now the canonical pattern for all Pathful name resolution (Districts via TD-010, Schools via TD-053, Orgs via TD-052). Auto-creation of entity relationships without admin verification is prohibited. |
 | TD-053 | SchoolAlias Admin UI | 2026-03-30 | Implemented the Entity Identity Reconciliation Pattern for School matching. Created SchoolAlias database model, built the unmatched resolving UI with fuzzy match searches, and added auto-bulk-resolving Polish feature. |
 | TD-054 | `VolunteerOrganization()` Direct Constructor Sites | 2026-04-28 | Hybrid approach: (1) `before_insert` SQLAlchemy hook added to `models/organization.py` as a universal safety net — auto-sets `start_date` and `date_source='auto_detected'` for all new `Current` rows regardless of creation path, preserving N+1-free SF import hot path. (2) 14 Tier-2 single-record UI call sites migrated to `link_volunteer_to_org()` with meaningful `date_source` labels (`'pathful'`, `'manual'`, `'csv_import'`). 10 test fixture sites intentionally left as direct constructors. |
+| TD-055 | Delta sync watermark freezes on import failure | 2026-04-28 | `last_sync_watermark` now always advances at end of every sync. `recovery_buffer_hours` column added — failed runs write 48h buffer, success/partial write 1h. `SyncLog.get_watermark_with_buffer()` applies correct lookback on next delta. |
+| TD-056 | Unmatched SF participation records dropped silently | 2026-04-28 | `process_participation_row()` now writes `DataQualityFlag(issue_type='unmatched_sf_participation')` on lookup miss. `entity_sf_id` column added to `DataQualityFlag`. Auto-resolves on next successful import. |
+| TD-057 | Import ordering race — missing EP retry queue | 2026-04-28 | New `PendingParticipationImport` model with full retry lifecycle. `resolve_pending_participations()` sweep runs at end of every event import. Records marked `likely_sf_orphan` after 10 retries. |
 
 ---
 
