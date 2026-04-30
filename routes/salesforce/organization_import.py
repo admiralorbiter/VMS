@@ -436,6 +436,14 @@ def import_affiliations_from_salesforce():
             f"{len(vol_org_lookup)} existing relationships"
         )
 
+        # Status normalization map for Salesforce values
+        _STATUS_MAP = {
+            "former": "Past",
+            "past": "Past",
+            "current": "Current",
+            "pending": "Pending",
+        }
+
         # === PROCESSING PHASE: Use lookups instead of queries ===
         # Temporarily disable expire_on_commit for performance
         # This prevents SQLAlchemy from expiring all cached objects after each
@@ -489,7 +497,9 @@ def import_affiliations_from_salesforce():
                         if not vol_org:
                             # Create new relationship
                             vol_org = VolunteerOrganization(
-                                volunteer_id=contact.id, organization_id=org.id
+                                volunteer_id=contact.id,
+                                organization_id=org.id,
+                                date_source="salesforce",
                             )
                             db.session.add(vol_org)
                             # Add to lookup for future iterations
@@ -501,7 +511,10 @@ def import_affiliations_from_salesforce():
                         # when most of 354K records are unchanged updates)
                         new_role = row.get("npe5__Role__c")
                         new_is_primary = row.get("npe5__Primary__c") == "true"
-                        new_status = row.get("npe5__Status__c")
+                        _raw_status = row.get("npe5__Status__c")
+                        new_status = _STATUS_MAP.get(
+                            (_raw_status or "").lower(), _raw_status
+                        )
                         new_start = (
                             parse_date(row["npe5__StartDate__c"])
                             if row.get("npe5__StartDate__c")

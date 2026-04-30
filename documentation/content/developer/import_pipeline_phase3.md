@@ -339,18 +339,18 @@ Sprint A    ──► [x] A-1 date_source fix
             ──► [x] A-4 pathway_import import fix
             ──► [x] A-5 Remove dead function copies + fix test imports
 
-Sprint B    ──► [x] B-1 DQ flags for history
+Sprint B    ──► [ ] B-1 DQ flags for history
             ──► [x] B-2 Pending queue breakdown + CSV export
             ──► [x] B-3 Import ordering warning
             ──► [x] B-4 Fast-exit in resolve_pending
 
-Sprint C    ──► [x] C-1 History N+1 fix
-            ──► [x] C-2 Delta sync for unaffiliated events
-            ──► [x] C-3 Event cache in process_event_row
+Sprint C    ──► [ ] C-1 History N+1 fix
+            ──► [ ] C-2 Delta sync for unaffiliated events
+            ──► [ ] C-3 Event cache in process_event_row
 
-Sprint D    ──►  D-1 Shared _map_event_fields helper
-            ──►  D-2 Shared build_participation_caches util
-            ──►  D-3 Chunked sweep commits
+Sprint D    ──► [ ] D-1 Shared _map_event_fields helper
+            ──► [ ] D-2 Shared build_participation_caches util
+            ──► [ ] D-3 Chunked sweep commits
 ```
 
 **Total estimated effort:** ~16–18 hours
@@ -363,7 +363,8 @@ Sprint D    ──►  D-1 Shared _map_event_fields helper
 |---|---|---|
 | TD-058 | Dead function copies in `routes/events/routes.py` | Addressed in Sprint A-5 |
 | TD-059 | `fix_missing_participation_records()` called on every event page load (N+1) | Addressed in Sprint A-5 |
-| TD-060 | `MISSING_ADDRESS` and `TRUNCATED_SKILL` zombie DQ issue types on dashboard | Backlog |
+| TD-060 | `MISSING_ADDRESS` and `TRUNCATED_SKILL` zombie DQ issue types on dashboard | Addressed |
+| TD-061 | `history` step runs before `teachers`, meaning task history for newly imported teachers is skipped in that run. | Backlog (requires reordering daily_imports.py) |
 
 ---
 

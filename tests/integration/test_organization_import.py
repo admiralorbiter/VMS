@@ -502,3 +502,109 @@ class TestAffiliationNullRole:
             aff = VolunteerOrganization.query.filter_by(volunteer_id=vol.id).first()
             assert aff is not None
             assert aff.role is None  # NULL role is accepted
+
+
+class TestAffiliationCloseoutFixes:
+    """Tests for the Phase 3 closeout bug fixes (date_source, status normalization)."""
+
+    def test_affiliation_date_source_is_salesforce(self, client, auth_headers, app):
+        """A new affiliation is created with date_source='salesforce', overriding the default 'auto_detected'."""
+        from models import db
+        from models.organization import Organization
+        from models.volunteer import Volunteer
+
+        with app.app_context():
+            vol = Volunteer(
+                salesforce_individual_id="003CLOSEOUT_VOL",
+                first_name="Test",
+                last_name="Vol",
+            )
+            org = Organization(salesforce_id="001CLOSEOUT_ORG", name="Test Org")
+            db.session.add_all([vol, org])
+            db.session.commit()
+
+        aff_row = {
+            "Id": "a0F_CLOSEOUT_01",
+            "Name": "Closeout Affiliation",
+            "npe5__Organization__c": "001CLOSEOUT_ORG",
+            "npe5__Contact__c": "003CLOSEOUT_VOL",
+            "npe5__Status__c": "Current",
+        }
+
+        with (
+            patch(PATCH_SF_CLIENT_ORG),
+            patch(PATCH_SAFE_QUERY_ORG) as mock_query,
+            patch(PATCH_DELTA_ORG) as mock_delta_cls,
+        ):
+            mock_delta_cls.return_value = _delta_no_sync()
+            mock_query.return_value = {"records": [aff_row]}
+
+            response = client.post(
+                "/organizations/import-affiliations-from-salesforce",
+                headers=auth_headers,
+            )
+
+        assert response.status_code == 200
+
+        from models.organization import VolunteerOrganization
+        from models.volunteer import Volunteer
+
+        with app.app_context():
+            vol = Volunteer.query.filter_by(
+                salesforce_individual_id="003CLOSEOUT_VOL"
+            ).first()
+            aff = VolunteerOrganization.query.filter_by(volunteer_id=vol.id).first()
+            assert aff is not None
+            assert aff.date_source == "salesforce"
+
+    def test_affiliation_status_former_normalized_to_past(
+        self, client, auth_headers, app
+    ):
+        """Affiliation with status 'Former' is normalized to 'Past'."""
+        from models import db
+        from models.organization import Organization
+        from models.volunteer import Volunteer
+
+        with app.app_context():
+            vol = Volunteer(
+                salesforce_individual_id="003CLOSEOUT_VOL2",
+                first_name="Test2",
+                last_name="Vol2",
+            )
+            org = Organization(salesforce_id="001CLOSEOUT_ORG2", name="Test Org2")
+            db.session.add_all([vol, org])
+            db.session.commit()
+
+        aff_row = {
+            "Id": "a0F_CLOSEOUT_02",
+            "Name": "Closeout Affiliation 2",
+            "npe5__Organization__c": "001CLOSEOUT_ORG2",
+            "npe5__Contact__c": "003CLOSEOUT_VOL2",
+            "npe5__Status__c": "Former",
+        }
+
+        with (
+            patch(PATCH_SF_CLIENT_ORG),
+            patch(PATCH_SAFE_QUERY_ORG) as mock_query,
+            patch(PATCH_DELTA_ORG) as mock_delta_cls,
+        ):
+            mock_delta_cls.return_value = _delta_no_sync()
+            mock_query.return_value = {"records": [aff_row]}
+
+            response = client.post(
+                "/organizations/import-affiliations-from-salesforce",
+                headers=auth_headers,
+            )
+
+        assert response.status_code == 200
+
+        from models.organization import VolunteerOrganization
+        from models.volunteer import Volunteer
+
+        with app.app_context():
+            vol = Volunteer.query.filter_by(
+                salesforce_individual_id="003CLOSEOUT_VOL2"
+            ).first()
+            aff = VolunteerOrganization.query.filter_by(volunteer_id=vol.id).first()
+            assert aff is not None
+            assert aff.status == "Past"

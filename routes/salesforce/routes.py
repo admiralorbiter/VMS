@@ -22,6 +22,23 @@ from routes.decorators import admin_required
 sf_dashboard_bp = Blueprint("sf_dashboard", __name__, url_prefix="/admin/salesforce")
 
 
+# Canonical list of all Salesforce sync types.
+# Must match the step names used in daily_imports.py and SyncLog.sync_type values.
+ALL_SYNC_TYPES = [
+    "organizations",
+    "volunteers",
+    "affiliations",
+    "events",
+    "history",
+    "schools",
+    "classes",
+    "teachers",
+    "students",
+    "student_participations",
+    "unaffiliated_events",
+]
+
+
 @sf_dashboard_bp.route("/")
 @login_required
 @admin_required
@@ -33,19 +50,7 @@ def import_dashboard():
     with delta sync controls and progress tracking.
     """
     # Get last sync info for each import type
-    sync_types = [
-        "organizations",
-        "volunteers",
-        "affiliations",
-        "events",
-        "history",
-        "schools",
-        "classes",
-        "teachers",
-        "students",
-        "student_participations",
-        "unaffiliated_events",
-    ]
+    sync_types = ALL_SYNC_TYPES
 
     last_syncs = {}
     for sync_type in sync_types:
@@ -56,7 +61,18 @@ def import_dashboard():
         )
         last_syncs[sync_type] = last_sync
 
-    return render_template("salesforce/import_dashboard.html", last_syncs=last_syncs)
+    affiliations_stale = False
+    vol_sync = last_syncs.get("volunteers")
+    aff_sync = last_syncs.get("affiliations")
+    if vol_sync and aff_sync and vol_sync.completed_at and aff_sync.completed_at:
+        # Use timezone-aware comparison if needed, or just direct comparison since both are from DB
+        affiliations_stale = vol_sync.completed_at > aff_sync.completed_at
+
+    return render_template(
+        "salesforce/import_dashboard.html",
+        last_syncs=last_syncs,
+        affiliations_stale=affiliations_stale,
+    )
 
 
 @sf_dashboard_bp.route("/sync-history")
@@ -112,16 +128,7 @@ def health_metrics():
     now = datetime.now(timezone.utc)
     seven_days_ago = now - timedelta(days=7)
 
-    sync_types = [
-        "organizations",
-        "volunteers",
-        "affiliations",
-        "events",
-        "history",
-        "schools",
-        "teachers",
-        "students",
-    ]
+    sync_types = ALL_SYNC_TYPES
 
     # Calculate metrics for each sync type
     metrics = {}

@@ -550,8 +550,8 @@ Ordered by **what best unblocks future work**:
 | **P0** | **~~TD-055~~** | **~~Delta sync watermark freezes on import failure~~** | S | ✅ Resolved 2026-04-28 |
 | **P1** | **~~TD-056~~** | **~~Unmatched participation records dropped silently~~** | S | ✅ Resolved 2026-04-28 |
 | **P1** | **~~TD-057~~** | **~~Import ordering race — retry queue for unresolved EPs~~** | M | ✅ Resolved 2026-04-28 |
-| **P1** | **TD-058** | Dead function copies in `routes/events/routes.py` (Phase 3 Sprint A-5) | S | 🔵 Phase 3 Sprint A |
-| **P1** | **TD-059** | `fix_missing_participation_records()` called on every event page load (N+1) | S | 🔵 Phase 3 Sprint A |
+| **P1** | **~~TD-058~~** | ~~Dead function copies in `routes/events/routes.py`~~ | S | ✅ Resolved 2026-04-30 (Phase 3 Sprint A-5) |
+| **P1** | **~~TD-059~~** | ~~`fix_missing_participation_records()` called on every event page load (N+1)~~ | S | ✅ Resolved 2026-04-30 (Phase 3 Sprint A-5) |
 | 3 | **TD-009** | `db.session.commit()` Scattered in 44 Route Files | M | Pending |
 | 4 | **TD-011** | SQLite in Production | M | Pending |
 | 5 | **TD-013** | No True Application Factory Pattern | M | Pending |
@@ -569,13 +569,15 @@ Ordered by **what best unblocks future work**:
 | 17 | **TD-049** | Backfill `attendance_confirmed_at` for Existing Records | M | Pending |
 | 18 | **TD-050** | Consolidate Legacy Virtual Usage Routes into Tenant Dashboard | M | Pending |
 | 19 | **TD-051** | Quality Dashboard — Evaluate Usefulness & Integration | M | Pending |
-| 20 | **TD-060** | Zombie DQ issue types (`MISSING_ADDRESS`, `TRUNCATED_SKILL`) on dashboard | S | Backlog |
+| 20 | **~~TD-060~~** | ~~Zombie DQ issue types (`MISSING_ADDRESS`, `TRUNCATED_SKILL`) on dashboard~~ | S | ✅ Resolved 2026-04-30 |
+| 21 | **TD-061** | `history` step runs before `teachers` — task history for newly imported teachers missed until next run | XS | Backlog |
 
 > TD-004 is intentionally deferred — the M2M relationship is the correct path forward.
 > TD-055/056 resolved 2026-04-28 as part of the SF Import Reliability PR (Phase 1 hardening).
 > TD-057 resolved 2026-04-28 via robust `PendingParticipationImport` queue.
 > TD-034 fully resolved 2026-03-13 — 317K garbage records deleted, import guard in place, data quality rescan clean.
-> TD-058/059 discovered 2026-04-29 during Phase 3 pre-flight audit; addressed in Sprint A-5.
+> TD-058/059 resolved 2026-04-30 — dead copies removed, N+1 `fix_missing_participation_records()` call eliminated.
+> TD-060 resolved 2026-04-30 — DQ dashboard now only shows issue types with ≥1 open flag.
 
 
 

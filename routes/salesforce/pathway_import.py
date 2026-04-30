@@ -32,7 +32,6 @@ from models.student import Student
 from models.sync_log import SyncLog, SyncStatus
 from models.volunteer import EventParticipation, Skill, Volunteer
 from routes.decorators import global_users_only
-from routes.salesforce.event_import import safe_parse_delivery_hours
 from routes.utils import (
     map_cancellation_reason,
     map_event_format,
@@ -42,6 +41,7 @@ from routes.utils import (
 )
 from services.salesforce import get_salesforce_client, safe_query_all
 from services.salesforce.errors import ImportErrorCode, create_import_error
+from services.salesforce.utils import safe_parse_delivery_hours
 
 # Blueprint for pathway events import functionality
 sf_pathway_import_bp = Blueprint(

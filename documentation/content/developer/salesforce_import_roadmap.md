@@ -93,23 +93,25 @@ On 2026-04-28, two volunteers (181650 Kiera Santulli, 181652 Addison Leitch) wer
 > Derived from the 2026-04-29 Import Pipeline Audit. Full implementation plan at `brain/.../phase3_import_hardening_plan.md`.
 
 **Sprint A — Silent Data Correctness (~1 hr):**
-- [ ] **A-1:** Affiliations import — set `date_source='salesforce'` on new `VolunteerOrganization` rows (`organization_import.py`)
-- [ ] **A-2:** Affiliations import — apply `STATUS_MAP` normalization before writing `vol_org.status` (`organization_import.py`)
-- [ ] **A-3:** Health metrics endpoint — add `student_participations`, `unaffiliated_events`, `classes` to sync_types list; extract as single `ALL_SYNC_TYPES` constant (`routes/salesforce/routes.py`)
-- [ ] **A-4:** Fix `pathway_import.py` import source for `safe_parse_delivery_hours` (use `services.salesforce.utils`, not `routes.salesforce.event_import`)
+- [x] **A-1:** Affiliations import — set `date_source='salesforce'` on new `VolunteerOrganization` rows (`organization_import.py`)
+- [x] **A-2:** Affiliations import — apply `STATUS_MAP` normalization before writing `vol_org.status` (`organization_import.py`)
+- [x] **A-3:** Health metrics endpoint — add `student_participations`, `unaffiliated_events`, `classes` to sync_types list; extract as single `ALL_SYNC_TYPES` constant (`routes/salesforce/routes.py`)
+- [x] **A-4:** Fix `pathway_import.py` import source for `safe_parse_delivery_hours` (use `services.salesforce.utils`, not `routes.salesforce.event_import`)
+- [x] **A-5:** Fix `affiliations_stale` variable not passed to template; fix silent broken warning banner (`routes/salesforce/routes.py`)
+- [x] **TD-060:** Hide zombie DQ issue types with 0 open flags from dashboard (`routes/management/data_integrity.py`)
 
 **Sprint B — Observability (~4 hrs):**
-- [ ] **B-1:** Raise `DataQualityFlag(issue_type='unmatched_sf_history')` for unmatched history records instead of silently dropping them (`history_import.py` + `DataQualityIssueType`)
-- [ ] **B-2:** Add pending queue breakdown to `/admin/import-health`: resolvable / orphaned / by missing side (`data_integrity.py` + template)
-- [ ] **B-3:** Show import ordering staleness warning in SF dashboard when affiliations are stale relative to volunteers (`routes.py` + template)
-- [ ] **B-4:** Fast-exit in `resolve_pending_participations()` when queue is empty (`processors/event.py`)
+- [ ] **B-1:** Raise `DataQualityFlag(issue_type='unmatched_sf_history')` for unmatched history records instead of silently dropping them (`history_import.py` + `DataQualityIssueType`) *(deferred)*
+- [x] **B-2:** Add pending queue breakdown to `/admin/import-health`: resolvable / orphaned / by missing side (`data_integrity.py` + template)
+- [x] **B-3:** Show import ordering staleness warning in SF dashboard when affiliations are stale relative to volunteers (`routes.py` + template)
+- [x] **B-4:** Fast-exit in `resolve_pending_participations()` when queue is empty (`processors/event.py`)
 
-**Sprint C — Performance (~5 hrs):**
+**Sprint C — Performance (~5 hrs) — deferred to future roadmap:**
 - [ ] **C-1:** Pre-load volunteer + teacher caches in history import to eliminate N+1 queries (`history_import.py`)
 - [ ] **C-2:** Add `LastModifiedDate` delta sync support to `sync_unaffiliated_events` (`pathway_import.py`)
 - [ ] **C-3:** Pre-load event cache and pass into `process_event_row` to eliminate per-row queries (`processors/event.py` + `event_import.py`)
 
-**Sprint D — Architecture (~6 hrs):**
+**Sprint D — Architecture (~6 hrs) — deferred to future roadmap:**
 - [ ] **D-1:** Extract `_map_event_fields(event, row)` helper shared by `process_event_row` and `_create_event_from_salesforce` (`processors/event.py` + `pathway_import.py`)
 - [ ] **D-2:** Extract `build_participation_caches()` to `services/salesforce/utils.py`; use in both `event_import.py` and `pathway_import.py`
 - [ ] **D-3:** Add chunked commits (every 500) inside `resolve_pending_participations()` sweep (`processors/event.py`)
@@ -197,7 +199,7 @@ The following were considered but are **not currently feasible**:
 | Sprint 4 | Integration tests & data quality | ✅ Complete (79 tests, `str(None)` bug fix) |
 | **Phase 1** | **Delta reliability hardening** | ✅ **Complete 2026-04-28** (TD-055, TD-056 + bonus watermark key fix) |
 | **Phase 2** | **Retry Queue, Health Dashboard, Optimizations** | ✅ Complete (TD-057) |
-| **Phase 3** | **Data Correctness, Observability & Performance** | 🔵 Planning (audit 2026-04-29) |
+| **Phase 3** | **Data Correctness, Observability & Performance** | ✅ **Sprint A+B core complete 2026-04-30** — C/D deferred |
 
 ---
 
@@ -207,8 +209,8 @@ The following were considered but are **not currently feasible**:
 - [Architecture - Sync Cadences](../technical/architecture#sync-cadences) — Integration patterns
 - [Field Mappings](../technical/field_mappings) — Data transformation rules
 - [Tech Debt Tracker](tech_debt.md) — TD-055, TD-056, TD-057
-- [Phase 3 Implementation Plan](../../../brain/eae6a31f.../phase3_import_hardening_plan.md) — Detailed sprint tasks
+- [Phase 3 Implementation Plan](import_pipeline_phase3.md) — Detailed sprint tasks
 
 ---
 
-*Last Updated: April 29, 2026 — Phase 3 planning complete.*
+*Last Updated: April 30, 2026 — Phase 3 Sprint A+B complete. C/D deferred to future roadmap.*

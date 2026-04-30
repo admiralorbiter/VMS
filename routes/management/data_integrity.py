@@ -237,8 +237,19 @@ def register_data_integrity_routes(bp):
         total_open = DataQualityFlag.query.filter_by(status="open").count()
         total_all = DataQualityFlag.query.count()
 
+        # Only show issue types that have active flags
+        from sqlalchemy import distinct
+
+        active_types = [
+            row[0]
+            for row in db.session.query(distinct(DataQualityFlag.issue_type))
+            .filter(DataQualityFlag.status == "open")
+            .all()
+        ]
+        issue_types = [t for t in DataQualityIssueType.all_types() if t in active_types]
+
         count_by_type = {}
-        for it in DataQualityIssueType.all_types():
+        for it in issue_types:
             count_by_type[it] = DataQualityFlag.query.filter_by(
                 status="open", issue_type=it
             ).count()
@@ -259,7 +270,7 @@ def register_data_integrity_routes(bp):
             total_open=total_open,
             total_all=total_all,
             count_by_type=count_by_type,
-            issue_types=DataQualityIssueType.all_types(),
+            issue_types=issue_types,
             issue_type_display=DataQualityIssueType.display_name,
             entity_types=entity_types,
         )
