@@ -389,3 +389,52 @@ def build_participation_caches() -> tuple:
     )
     events_cache = build_lightweight_cache(Event, Event.salesforce_id)
     return volunteers_cache, events_cache
+
+
+def build_history_caches(db_session=None):
+    """
+    Pre-load caches needed for history imports to eliminate N+1 queries.
+    Returns:
+        tuple: (contacts_cache, events_cache, emails_cache)
+            - contacts_cache: {salesforce_individual_id: contact.id}
+            - events_cache: {salesforce_id: event.id}
+            - emails_cache: {email_address: contact.id}
+    """
+    from models import db as _db
+    from models.contact import Contact, Email
+    from models.event import Event
+
+    session = db_session or _db.session
+
+    # 1. Contacts Cache (covers both Volunteers and Teachers via polymorphic base)
+    contacts_cache = {
+        sf_id: contact_id
+        for contact_id, sf_id in session.query(
+            Contact.id, Contact.salesforce_individual_id
+        )
+        .filter(Contact.salesforce_individual_id.isnot(None))
+        .all()
+    }
+
+    # 2. Events Cache
+    events_cache = {
+        sf_id: event_id
+        for event_id, sf_id in session.query(Event.id, Event.salesforce_id)
+        .filter(Event.salesforce_id.isnot(None))
+        .all()
+    }
+
+    # 3. Emails Cache
+    # We order by ID to guarantee we store the first created match in case of collisions
+    emails_cache = {}
+    for email_str, contact_id in (
+        session.query(Email.email, Email.contact_id)
+        .filter(Email.email.isnot(None))
+        .order_by(Email.id)
+        .all()
+    ):
+        email_lower = email_str.strip().lower()
+        if email_lower and email_lower not in emails_cache:
+            emails_cache[email_lower] = contact_id
+
+    return contacts_cache, events_cache, emails_cache

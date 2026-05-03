@@ -522,21 +522,9 @@ def sync_unaffiliated_events():
         # Step 4: Pre-load lightweight caches for participation sync
         print("Pre-loading lightweight caches for participation sync...")
 
-        events_cache = {
-            sf_id: event_id
-            for event_id, sf_id in db.session.query(Event.id, Event.salesforce_id)
-            .filter(Event.salesforce_id.isnot(None))
-            .all()
-        }
+        from services.salesforce.utils import build_participation_caches
 
-        volunteers_cache = {
-            sf_id: vol_id
-            for vol_id, sf_id in db.session.query(
-                Volunteer.id, Volunteer.salesforce_individual_id
-            )
-            .filter(Volunteer.salesforce_individual_id.isnot(None))
-            .all()
-        }
+        volunteers_cache, events_cache = build_participation_caches()
 
         students_cache = {
             sf_id: student_id

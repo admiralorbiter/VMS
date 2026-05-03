@@ -474,7 +474,7 @@ class TestCreateTaskHistory:
                 "WhatId": None,
             }
 
-            history = _create_task_history(row, vol)
+            history = _create_task_history(row, vol.id, {})
             assert "<" not in history.description
             assert "Hello" in history.description
             assert "World" in history.description
@@ -508,7 +508,7 @@ class TestCreateEmailHistory:
                 "Status": "Received",
             }
 
-            history = _create_email_history(row, vol)
+            history = _create_email_history(row, vol.id)
             assert "From: from@test.com" in history.description
             assert "To: to@test.com" in history.description
             assert "CC: cc@test.com" in history.description
@@ -541,7 +541,7 @@ class TestCreateEmailHistory:
                 "Status": "Sent",
             }
 
-            history = _create_email_history(row, vol)
+            history = _create_email_history(row, vol.id)
             assert "<" not in history.description
             assert "Rich" in history.description
             assert "content" in history.description

@@ -109,14 +109,14 @@ On 2026-04-28, two volunteers (181650 Kiera Santulli, 181652 Addison Leitch) wer
 - [x] **B-3:** Show import ordering staleness warning in SF dashboard when affiliations are stale relative to volunteers (`routes.py` + template)
 - [x] **B-4:** Fast-exit in `resolve_pending_participations()` when queue is empty (`processors/event.py`)
 
-**Sprint C — Performance (~5 hrs) — deferred to future roadmap:**
-- [ ] **C-1:** Pre-load volunteer + teacher caches in history import to eliminate N+1 queries (`history_import.py`)
+**Sprint C — Performance (~5 hrs):**
+- [x] **C-1:** Pre-load volunteer + teacher caches in history import to eliminate N+1 queries (`history_import.py`)
 - [ ] **C-2:** Add `LastModifiedDate` delta sync support to `sync_unaffiliated_events` (`pathway_import.py`)
 - [ ] **C-3:** Pre-load event cache and pass into `process_event_row` to eliminate per-row queries (`processors/event.py` + `event_import.py`)
 
-**Sprint D — Architecture (~6 hrs) — deferred to future roadmap:**
+**Sprint D — Architecture (~6 hrs):**
 - [ ] **D-1:** Extract `_map_event_fields(event, row)` helper shared by `process_event_row` and `_create_event_from_salesforce` (`processors/event.py` + `pathway_import.py`)
-- [ ] **D-2:** Extract `build_participation_caches()` to `services/salesforce/utils.py`; use in both `event_import.py` and `pathway_import.py`
+- [x] **D-2:** Extract `build_participation_caches()` to `services/salesforce/utils.py`; use in both `event_import.py` and `pathway_import.py`
 - [ ] **D-3:** Add chunked commits (every 500) inside `resolve_pending_participations()` sweep (`processors/event.py`)
 
 ---
@@ -202,7 +202,7 @@ The following were considered but are **not currently feasible**:
 | Sprint 4 | Integration tests & data quality | ✅ Complete (79 tests, `str(None)` bug fix) |
 | **Phase 1** | **Delta reliability hardening** | ✅ **Complete 2026-04-28** (TD-055, TD-056 + bonus watermark key fix) |
 | **Phase 2** | **Retry Queue, Health Dashboard, Optimizations** | ✅ Complete (TD-057) |
-| **Phase 3** | **Data Correctness, Observability & Performance** | ✅ **Sprint A+B core complete 2026-04-30** — C/D deferred |
+| **Phase 3** | **Data Correctness, Observability & Performance** | ✅ **Core complete 2026-05-03** — Major bottlenecks (C-1, D-2) resolved; minor optimizations deferred |
 
 ---
 
@@ -216,4 +216,4 @@ The following were considered but are **not currently feasible**:
 
 ---
 
-*Last Updated: April 30, 2026 — Phase 3 Sprint A+B complete. C/D deferred to future roadmap.*
+*Last Updated: May 3, 2026 — Phase 3 core complete (C-1, D-2 resolved). Minor optimizations deferred.*

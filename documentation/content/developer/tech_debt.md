@@ -571,7 +571,7 @@ Ordered by **what best unblocks future work**:
 | 19 | **TD-051** | Quality Dashboard — Evaluate Usefulness & Integration | M | Pending |
 | 20 | **~~TD-060~~** | ~~Zombie DQ issue types (`MISSING_ADDRESS`, `TRUNCATED_SKILL`) on dashboard~~ | S | ✅ Resolved 2026-04-30 |
 | 21 | **TD-061** | `history` step runs before `teachers` — task history for newly imported teachers missed until next run | XS | Backlog |
-| 22 | **TD-063** | Duplicate event query condition builder in `district_year_end/routes.py` | XS | Backlog |
+| 22 | **~~TD-063~~** | ~~Duplicate event query condition builder in `district_year_end/routes.py`~~ | XS | ✅ Resolved 2026-05-03 |
 
 > TD-004 is intentionally deferred — the M2M relationship is the correct path forward.
 > TD-055/056 resolved 2026-04-28 as part of the SF Import Reliability PR (Phase 1 hardening).
@@ -579,12 +579,13 @@ Ordered by **what best unblocks future work**:
 > TD-034 fully resolved 2026-03-13 — 317K garbage records deleted, import guard in place, data quality rescan clean.
 > TD-058/059 resolved 2026-04-30 — dead copies removed, N+1 `fix_missing_participation_records()` call eliminated.
 > TD-060 resolved 2026-04-30 — DQ dashboard now only shows issue types with ≥1 open flag.
+> TD-063 resolved 2026-05-03 — Query builder consolidated into `build_district_event_conditions` helper.
 
 ---
 
-## TD-063: Duplicate Event Query Condition Builder in `district_year_end/routes.py`
+## ~~TD-063: Duplicate Event Query Condition Builder in `district_year_end/routes.py`~~
 
-**Created:** 2026-05-03 · **Priority:** Low · **Category:** Maintainability
+**Created:** 2026-05-03 · **Priority:** Low · **Category:** Maintainability · **Status:** ✅ Resolved 2026-05-03
 
 The event attribution query condition builder (district name + alias + school name `OR` chain) is duplicated in **two places** within `routes/reports/district_year_end/routes.py` (approx. lines 380 and 476). Each builds the same `query_conditions` list independently. A comment at each site says `# Build query conditions (Duplicate logic - consider refactoring into a helper)` but no ticket existed to track this.
 

@@ -170,12 +170,64 @@ def import_history_from_salesforce():
         no_contact_count = 0
         other_skip_reasons = 0
 
+        # C-1 Hardening: Build memory-resident caches
+        from services.salesforce.utils import build_history_caches
+
+        contacts_cache, events_cache, emails_cache = build_history_caches(db.session)
+
+        # Pre-fetch Case and Account data to eliminate SOQL API N+1 queries
+        # 1. Cases
+        case_ids = {
+            r["RelatedToId"]
+            for r in email_rows
+            if (r.get("RelatedToId") or "").startswith("500")
+        }
+        case_to_contact_cache = {}
+        if case_ids:
+            case_ids_list = list(case_ids)
+            for chunk_start in range(0, len(case_ids_list), 200):
+                chunk = case_ids_list[chunk_start : chunk_start + 200]
+                ids_str = ",".join([f"'{i}'" for i in chunk])
+                case_query = f"SELECT Id, ContactId FROM Case WHERE Id IN ({ids_str})"
+                try:
+                    case_res = sf.query_all(case_query)
+                    for c_rec in case_res.get("records", []):
+                        if c_rec.get("ContactId"):
+                            case_to_contact_cache[c_rec["Id"]] = c_rec["ContactId"]
+                except Exception as e:
+                    print(f"Error bulk querying Cases: {e}")
+
+        # 2. Accounts
+        account_ids = {
+            r["RelatedToId"]
+            for r in email_rows
+            if (r.get("RelatedToId") or "").startswith("001")
+        }
+        account_to_contacts_cache = {}
+        if account_ids:
+            acc_ids_list = list(account_ids)
+            for chunk_start in range(0, len(acc_ids_list), 200):
+                chunk = acc_ids_list[chunk_start : chunk_start + 200]
+                ids_str = ",".join([f"'{i}'" for i in chunk])
+                acc_query = f"SELECT AccountId, Id, Email FROM Contact WHERE AccountId IN ({ids_str}) AND (Contact_Type__c = 'Volunteer' OR Contact_Type__c = '' OR Contact_Type__c = 'Teacher')"
+                try:
+                    acc_res = sf.query_all(acc_query)
+                    for acc_rec in acc_res.get("records", []):
+                        acc_id = acc_rec.get("AccountId")
+                        if acc_id not in account_to_contacts_cache:
+                            account_to_contacts_cache[acc_id] = []
+                        account_to_contacts_cache[acc_id].append(
+                            {"Email": acc_rec.get("Email"), "Id": acc_rec.get("Id")}
+                        )
+                except Exception as e:
+                    print(f"Error bulk querying Accounts: {e}")
+
         # Use no_autoflush to prevent premature flushing
         with db.session.no_autoflush:
             for i, row in enumerate(all_records):
                 try:
                     record_type = row.get("record_type", "Task")
-                    contact = None
+                    contact_id = None
 
                     if record_type == "Task":
                         # Process Task record
@@ -183,17 +235,9 @@ def import_history_from_salesforce():
                             skipped_count += 1
                             continue
 
-                        # Search across all contact types (volunteers, teachers, etc.)
-                        contact = Volunteer.query.filter_by(
-                            salesforce_individual_id=row["WhoId"]
-                        ).first()
+                        contact_id = contacts_cache.get(row["WhoId"])
 
-                        if not contact:
-                            contact = Teacher.query.filter_by(
-                                salesforce_individual_id=row["WhoId"]
-                            ).first()
-
-                        if not contact:
+                        if not contact_id:
                             no_contact_count += 1
                             skipped_count += 1
                             import_error = create_import_error(
@@ -203,7 +247,7 @@ def import_history_from_salesforce():
                                 field="WhoId",
                                 name_fields=("Subject",),
                             )
-                            print(f"NO_CONTACT: {import_error}")
+                            # Supressed excessive prints, N+1 fix
                             errors.append(import_error.to_dict())
                             continue
 
@@ -213,9 +257,15 @@ def import_history_from_salesforce():
                             skipped_count += 1
                             continue
 
-                        contact = _find_contact_for_email(sf, row, db)
+                        contact_id = _find_contact_for_email(
+                            row,
+                            contacts_cache,
+                            emails_cache,
+                            case_to_contact_cache,
+                            account_to_contacts_cache,
+                        )
 
-                        if not contact:
+                        if not contact_id:
                             no_contact_count += 1
                             skipped_count += 1
                             import_error = create_import_error(
@@ -225,7 +275,7 @@ def import_history_from_salesforce():
                                 field="RelatedToId",
                                 name_fields=("Subject",),
                             )
-                            print(f"NO_CONTACT: {import_error}")
+                            # Supressed excessive prints, N+1 fix
                             errors.append(import_error.to_dict())
                             continue
 
@@ -246,10 +296,10 @@ def import_history_from_salesforce():
 
                     # Create new history record based on record type
                     if record_type == "Task":
-                        history = _create_task_history(row, contact)
+                        history = _create_task_history(row, contact_id, events_cache)
 
                     elif record_type == "EmailMessage":
-                        history = _create_email_history(row, contact)
+                        history = _create_email_history(row, contact_id)
 
                     db.session.add(history)
                     success_count += 1
@@ -357,143 +407,61 @@ def import_history_from_salesforce():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-def _find_contact_for_email(sf, row, db):
+def _find_contact_for_email(
+    row, contacts_cache, emails_cache, case_cache, account_cache
+):
     """
-    Find a contact for an EmailMessage record.
-
-    Tries multiple methods:
-    1. Email address matching from ToAddress/FromAddress
-    2. Direct contact match by RelatedToId
-    3. Case-based contact lookup
-    4. Account-based contact lookup
+    Find a contact for an EmailMessage record using in-memory caches.
+    Returns contact_id instead of full contact object to eliminate N+1 queries.
     """
-    contact = None
-    related_to_id = row["RelatedToId"]
+    contact_id = None
+    related_to_id = row.get("RelatedToId", "")
 
-    # Method 1: Try to match by email address (most reliable for EmailMessage)
+    # Method 1: Try to match by email address
     to_address = row.get("ToAddress", "")
     from_address = row.get("FromAddress", "")
 
-    # Try to find contact by email in ToAddress
     if to_address:
-        emails = [email.strip() for email in to_address.split(",")]
+        emails = [email.strip().lower() for email in to_address.split(",")]
         for email in emails:
-            email = email.strip().lower()
-            if email:
-                contact = (
-                    db.session.query(Volunteer)
-                    .join(Email)
-                    .filter(db.func.lower(Email.email) == email)
-                    .first()
-                )
-                if not contact:
-                    contact = (
-                        db.session.query(Teacher)
-                        .join(Email)
-                        .filter(db.func.lower(Email.email) == email)
-                        .first()
-                    )
-                if contact:
-                    break
+            if email in emails_cache:
+                contact_id = emails_cache[email]
+                break
 
-    # Try FromAddress if still no match
-    if not contact and from_address:
+    if not contact_id and from_address:
         from_email = from_address.strip().lower()
-        if from_email:
-            contact = (
-                db.session.query(Volunteer)
-                .join(Email)
-                .filter(db.func.lower(Email.email) == from_email)
-                .first()
-            )
-            if not contact:
-                contact = (
-                    db.session.query(Teacher)
-                    .join(Email)
-                    .filter(db.func.lower(Email.email) == from_email)
-                    .first()
-                )
+        if from_email in emails_cache:
+            contact_id = emails_cache[from_email]
 
     # Method 2: Direct contact match
-    if not contact:
-        contact = Volunteer.query.filter_by(
-            salesforce_individual_id=related_to_id
-        ).first()
-        if not contact:
-            contact = Teacher.query.filter_by(
-                salesforce_individual_id=related_to_id
-            ).first()
+    if not contact_id:
+        contact_id = contacts_cache.get(related_to_id)
 
     # Method 3: Case-based lookup
-    if not contact:
-        try:
-            case_query = f"""
-                SELECT ContactId, AccountId
-                FROM Case
-                WHERE Id = '{related_to_id}'
-            """
-            case_result = sf.query_all(case_query)
-            if case_result.get("records"):
-                case_record = case_result["records"][0]
-                contact_id = case_record.get("ContactId")
-                if contact_id:
-                    contact = Volunteer.query.filter_by(
-                        salesforce_individual_id=contact_id
-                    ).first()
-                    if not contact:
-                        contact = Teacher.query.filter_by(
-                            salesforce_individual_id=contact_id
-                        ).first()
-        except Exception as e:
-            print(f"Error querying case for RelatedToId {related_to_id}: {e}")
+    if not contact_id and related_to_id.startswith("500"):
+        case_contact_sf_id = case_cache.get(related_to_id)
+        if case_contact_sf_id:
+            contact_id = contacts_cache.get(case_contact_sf_id)
 
     # Method 4: Account-based lookup
-    if not contact:
-        try:
-            account_query = f"""
-                SELECT Id, FirstName, LastName, Email
-                FROM Contact
-                WHERE AccountId = '{related_to_id}'
-                AND (Contact_Type__c = 'Volunteer' OR Contact_Type__c = '' OR Contact_Type__c = 'Teacher')
-            """
-            account_result = sf.query_all(account_query)
-            if account_result.get("records"):
-                for contact_record in account_result["records"]:
-                    contact_email = contact_record.get("Email", "")
-                    if contact_email in [to_address, from_address]:
-                        contact = Volunteer.query.filter_by(
-                            salesforce_individual_id=contact_record["Id"]
-                        ).first()
-                        if not contact:
-                            contact = Teacher.query.filter_by(
-                                salesforce_individual_id=contact_record["Id"]
-                            ).first()
-                        if contact:
-                            break
-        except Exception as e:
-            print(f"Error querying account for RelatedToId {related_to_id}: {e}")
+    if not contact_id and related_to_id.startswith("001"):
+        acc_contacts = account_cache.get(related_to_id, [])
+        for acc_contact in acc_contacts:
+            contact_email = acc_contact.get("Email", "")
+            if contact_email in [to_address, from_address]:
+                contact_id = contacts_cache.get(acc_contact["Id"])
+                if contact_id:
+                    break
 
-    # Method 5: Direct email table lookup
-    if not contact:
-        if to_address:
-            email_match = Email.query.filter_by(email=to_address).first()
-            if email_match:
-                contact = Volunteer.query.get(email_match.contact_id)
-
-        if not contact and from_address:
-            email_match = Email.query.filter_by(email=from_address).first()
-            if email_match:
-                contact = Volunteer.query.get(email_match.contact_id)
-
-    return contact
+    return contact_id
 
 
-def _create_task_history(row, contact):
+def _create_task_history(row, contact_id, events_cache):
     """Create a History record from a Task row."""
     activity_date = parse_date(row.get("ActivityDate")) or datetime.now(timezone.utc)
 
     history = History(
-        contact_id=contact.id,
+        contact_id=contact_id,
         activity_date=activity_date,
         history_type="activity",
         salesforce_id=row["Id"],
@@ -524,14 +492,14 @@ def _create_task_history(row, contact):
 
     # Handle event relationship
     if row.get("WhatId"):
-        event = Event.query.filter_by(salesforce_id=row["WhatId"]).first()
-        if event:
-            history.event_id = event.id
+        event_id = events_cache.get(row["WhatId"])
+        if event_id:
+            history.event_id = event_id
 
     return history
 
 
-def _create_email_history(row, contact):
+def _create_email_history(row, contact_id):
     """Create a History record from an EmailMessage row."""
     message_date = parse_date(row.get("MessageDate")) or datetime.now(timezone.utc)
 
@@ -557,7 +525,7 @@ def _create_email_history(row, contact):
         email_content.append(body_content)
 
     history = History(
-        contact_id=contact.id,
+        contact_id=contact_id,
         activity_date=message_date,
         history_type="activity",
         salesforce_id=row["Id"],
