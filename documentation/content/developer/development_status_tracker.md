@@ -209,7 +209,7 @@
 | FR-REPORTING-421 | Dashboard served from cache | ✅ | Org summary + detail cache; bypassed for Full History mode |
 | FR-REPORTING-422 | Manual cache invalidation | 📋 | TBD — currently via `?refresh=1` on org report |
 | FR-REPORTING-423 | Cache status on admin dashboard | 📋 | TBD |
-| FR-REPORTING-424 | Automatic cache warming | ⟭  | Skipped — reports are fast enough without pre-warming |
+| FR-REPORTING-424 | Automatic cache warming | ➖ | Skipped — reports are fast enough without pre-warming |
 | FR-REPORTING-425 | Cache keys with filter params | 📋 | TBD |
 
 ### Year-End Reporting
@@ -353,7 +353,7 @@
 
 | ID | Requirement | Status | Notes |
 |----|-------------|--------|-------|
-| FR-EMAIL-850 | Mailjet integration | 📋 | TBD |
+| FR-EMAIL-850 | Email provider integration | 📋 | TBD — Mailjet decommissioned 2026-04-28; provider-agnostic stub in place; re-integration with new provider pending |
 | FR-EMAIL-851 | Capture Mailjet response | 📋 | TBD |
 | FR-EMAIL-852 | Secure credential storage | 📋 | TBD |
 
