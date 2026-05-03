@@ -12,7 +12,7 @@
 
 | Item | Status | Notes |
 |------|--------|---------|
-| Salesforce Import Phase 3 Hardening | ✅ Complete | All sprints (A+B) complete 2026-04-30. Error observability wired across all 4 importers. See [Phase 3 Plan](import_pipeline_phase3.md) |
+| Salesforce Import Phase 3 Hardening | ✅ Complete | All sprints (A+B) complete 2026-04-30. Error observability wired across all 4 importers. See [Phase 3 Plan](../archive/import_pipeline_phase3.md) |
 
 ---
 
@@ -85,11 +85,9 @@ Foundational improvements that unblock future work and reduce risk.
 - [ ] Audit `scripts/maintenance/optimize_*.py` for raw SQL
 - [ ] Add conditional engine options in `Config`: `if 'sqlite' in uri` guard for `check_same_thread`, `timeout`
 
-### 2.5 — Generic ReportCache Model *(TD-016)*
+### ~~2.5 — Generic ReportCache Model *(TD-016)*~~ ✅ CLOSED
 
-- [ ] Create `models/report_cache.py` with `cache_key`, `data` (JSON), `ttl`, `last_updated`
-- [ ] Migrate existing cache models one at a time
-- [ ] Delete old models as each migration completes
+> **Closed May 2026** after full cache audit. Dead `DistrictEngagementReport` model deleted (Alembic migration applied). Remaining 8 cache tables are all active and well-structured. FR-425 (filter-param keys) already handled by intentional design — only `host_filter=all/mode=verified` is cached; other combos run live. Migration risk of consolidating tables outweighs the benefit with no new caches planned.
 
 ### 2.6 — Test Coverage for Extracted Blueprints *(TD-022)*
 
@@ -232,8 +230,8 @@ Remaining requirements from the [Status Tracker](development_status_tracker.md).
 | Area | FRs | Count |
 |------|-----|-------|
 | Email System | FR-EMAIL-801–852 | 22 |
-| Reporting Cache Management | FR-REPORTING-420–425 | 6 |
-| Year-End Reporting | FR-REPORTING-430–434 | 5 |
+| ~~Reporting Cache Management~~ | ~~FR-REPORTING-420–425~~ | ~~6~~ |
+| ~~Year-End Reporting~~ | ~~FR-REPORTING-430–434~~ | ~~5~~ |
 | District Data Tracker | FR-DISTRICT-525–530 | 6 |
 
 ### ⚡ Medium Priority
@@ -299,7 +297,7 @@ Items considered but not currently feasible:
 | Salesforce Import Phase 2 — Retry Queue + Health Dashboard | 2026-04-28 | `PendingParticipationImport` queue (TD-057), import health dashboard at `/admin/import-health`, N+1 elimination |
 | Salesforce Import Phase 3 — Data Correctness + Observability | 2026-04-30 | Sprint A: affiliation `date_source`/status normalization, `ALL_SYNC_TYPES` unification, dead code removal (TD-058–060). Sprint B: import error DQ flags wired across all importers (`volunteer`, `organization`, `student_participations`, `pathway`), structured error UI in sync history modal and `/admin/sync-logs`, 26 flags backfilled from full import run. TD-062 (Yandell Toevs duplicate SF ID) open. |
 | Newsletter Formatter | Mar 2026 | Virtual Connector + Career Exploration + Virtual Search-and-Add modes. 15 FRs (FR-TOOLS-101–115), 42 tests. See [requirements-tools.md](../requirements/requirements-tools.md) |
-| District Year-End Report Hardening | Apr 2026 | Pieces 1–9 complete: CSS deduplication, layout fix, dead-code removal, logging cleanup, test URL updates, cache deprecation, scheduler age-check pattern, DistrictEngagementReport cleanup, UI/UX polish (horizontal stat strip, pill filter buttons, JS data-type filtering). See [fix plan](district_year_end_fix_plan.md). |
+| District Year-End Report Hardening | Apr 2026 | Pieces 1–9 complete: CSS deduplication, layout fix, dead-code removal, logging cleanup, test URL updates, cache deprecation, scheduler age-check pattern, DistrictEngagementReport cleanup, UI/UX polish (horizontal stat strip, pill filter buttons, JS data-type filtering). See [fix plan](../archive/district_year_end_fix_plan.md). |
 | Structural Health Audit | Mar 2026 | Codebase-wide audit: 7 structural issues catalogued (TD-041–047), 4-phase consolidation roadmap. See Section 2.7 |
 
 ---

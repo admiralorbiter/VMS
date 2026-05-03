@@ -47,6 +47,7 @@ from models.district_model import District
 from models.event import Event
 from models.organization import Organization
 from models.reports import (
+    DIAEventsReportCache,
     DistrictYearEndReport,
     FirstTimeVolunteerReportCache,
     OrganizationDetailCache,
@@ -60,9 +61,7 @@ from models.reports import (
 from models.volunteer import Volunteer
 
 # Import report generation functions
-from routes.reports.district_year_end import (
-    refresh_district_cache,
-)
+from routes.reports.district_year_end import refresh_district_cache
 from routes.reports.recent_volunteers import (
     _query_active_volunteers_all,
     _query_first_time_in_range,
@@ -201,21 +200,27 @@ class CacheRefreshScheduler:
         No nightly deletion needed — stale data is naturally replaced when the year
         selector changes at the start of each school year.
         """
-        logger.info("Organization caches are route-managed (write-through). No action needed in scheduler.")
+        logger.info(
+            "Organization caches are route-managed (write-through). No action needed in scheduler."
+        )
 
     def _refresh_virtual_session_caches(self):
         """
         Virtual session caches are managed via write-through in the virtual session routes.
         No nightly deletion needed.
         """
-        logger.info("Virtual session caches are route-managed (write-through). No action needed in scheduler.")
+        logger.info(
+            "Virtual session caches are route-managed (write-through). No action needed in scheduler."
+        )
 
     def _refresh_volunteer_caches(self):
         """
         Volunteer caches are managed via write-through in the volunteer report routes.
         No nightly deletion needed.
         """
-        logger.info("Volunteer caches are route-managed (write-through). No action needed in scheduler.")
+        logger.info(
+            "Volunteer caches are route-managed (write-through). No action needed in scheduler."
+        )
 
     def _refresh_recruitment_caches(self):
         """Refresh recruitment caches."""
@@ -333,7 +338,9 @@ def invalidate_report_caches(school_year: str = None, reason: str = "import") ->
     if school_year is None:
         school_year = get_current_school_year()
 
-    logger.info("Cache invalidation triggered by: %s (school_year=%s)", reason, school_year)
+    logger.info(
+        "Cache invalidation triggered by: %s (school_year=%s)", reason, school_year
+    )
     results = {}
 
     try:
@@ -350,10 +357,14 @@ def invalidate_report_caches(school_year: str = None, reason: str = "import") ->
         results["recent_volunteers"] = RecentVolunteersReportCache.query.filter_by(
             school_year=school_year
         ).delete()
-        results["first_time_volunteers"] = FirstTimeVolunteerReportCache.query.filter_by(
-            school_year=school_year
-        ).delete()
+        results["first_time_volunteers"] = (
+            FirstTimeVolunteerReportCache.query.filter_by(
+                school_year=school_year
+            ).delete()
+        )
         results["recruitment"] = RecruitmentCandidatesCache.query.delete()
+        # DIA events cache has no school_year key — clear all (small table, upcoming events only)
+        results["dia_events"] = DIAEventsReportCache.query.delete()
 
         # Virtual caches use a different key format (e.g. "2025-2026")
         year_start = f"20{school_year[:2]}"
@@ -371,9 +382,7 @@ def invalidate_report_caches(school_year: str = None, reason: str = "import") ->
 
         # --- District year-end: proactively regenerate (cannot self-heal) ---
         try:
-            from routes.reports.district_year_end import (
-                refresh_district_cache,
-            )
+            from routes.reports.district_year_end import refresh_district_cache
 
             DistrictYearEndReport.query.filter_by(school_year=school_year).delete()
             db.session.commit()

@@ -16,7 +16,7 @@ The VMS cache management system provides automated 24-hour cache refresh for all
 
 | Cache Type | Model | Refresh | Approx. Size |
 |------------|-------|---------|--------------|
-| **District Reports** | `DistrictYearEndReport`, `DistrictEngagementReport` | 24 hours | 50-100KB/district |
+| **District Reports** | `DistrictYearEndReport` | 24 hours | 50-100KB/district |
 | **Organization Reports** | `OrganizationReport`, `OrganizationSummaryCache` | 24 hours | 20-50KB/org |
 | **Virtual Sessions** | `VirtualSessionReportCache`, `VirtualSessionDistrictCache` | 24 hours | 100-500KB/year |
 | **Volunteer Reports** | `RecentVolunteersReportCache`, `FirstTimeVolunteerReportCache` | 24 hours | 50-200KB/year |

@@ -7,7 +7,6 @@ from models import db
 from models.district_model import District
 from models.organization import Organization
 from models.reports import (
-    DistrictEngagementReport,
     DistrictYearEndReport,
     OrganizationDetailCache,
     OrganizationReport,
@@ -24,7 +23,6 @@ def test_district(app):
         yield district
         # Cleanup - delete related reports first
         DistrictYearEndReport.query.filter_by(district_id=district.id).delete()
-        DistrictEngagementReport.query.filter_by(district_id=district.id).delete()
         db.session.commit()
         db.session.delete(district)
         db.session.commit()
@@ -75,37 +73,6 @@ def test_district_year_end_report(app, test_district):
         assert report.events_data == events_data
         assert report.last_updated is not None
         assert report.district.name == "Test District"
-
-        # Cleanup
-        db.session.delete(report)
-        db.session.commit()
-
-
-def test_district_engagement_report(app, test_district):
-    with app.app_context():
-        summary_stats = {"total_engagements": 25, "active_volunteers": 75}
-        volunteers_data = [
-            {"id": 1, "name": "Volunteer 1"},
-            {"id": 2, "name": "Volunteer 2"},
-        ]
-
-        report = DistrictEngagementReport(
-            district_id=test_district.id,
-            school_year="2024",
-            summary_stats=summary_stats,
-            volunteers_data=volunteers_data,
-        )
-        db.session.add(report)
-        db.session.commit()
-
-        assert report.id is not None
-        assert str(report.district_id) == str(
-            test_district.id
-        )  # Convert to string for comparison
-        assert report.school_year == "2024"
-        assert report.summary_stats == summary_stats
-        assert report.volunteers_data == volunteers_data
-        assert report.last_updated is not None
 
         # Cleanup
         db.session.delete(report)

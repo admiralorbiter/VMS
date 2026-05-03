@@ -33,7 +33,7 @@ Relationships:
 - One-to-many with School model (defined in school_model.py)
 - Many-to-many with Event model through event_districts
 - One-to-many with DistrictYearEndReport model
-- One-to-many with DistrictEngagementReport model
+- One-to-many with DistrictYearEndReport model
 
 Performance Features:
 - Indexed salesforce_id for fast lookups
@@ -95,7 +95,7 @@ class District(db.Model):
         - One-to-many with School model (defined in school_model.py)
         - Many-to-many with Event model through event_districts
         - One-to-many with DistrictYearEndReport model
-        - One-to-many with DistrictEngagementReport model
+        - One-to-many with DistrictYearEndReport model
 
     Performance Features:
         - Indexed salesforce_id for fast lookups

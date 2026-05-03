@@ -70,12 +70,7 @@ from .outreach import OutreachAttempt
 from .pathful_import import PathfulImportLog, PathfulUnmatchedRecord
 from .pending_participation import PendingParticipationImport
 from .recruitment_note import RecruitmentNote, RecruitmentOutcome
-from .reports import (
-    DistrictEngagementReport,
-    DistrictManualInput,
-    DistrictYearEndReport,
-    OrganizationReport,
-)
+from .reports import DistrictManualInput, DistrictYearEndReport, OrganizationReport
 from .roster_import_log import RosterImportLog  # Must be before TeacherProgress
 from .school_model import School
 from .student import Student
@@ -127,7 +122,6 @@ __all__ = [
     "Class",
     "ClientProject",
     "DistrictYearEndReport",
-    "DistrictEngagementReport",
     "DistrictManualInput",
     "OrganizationReport",
     "ValidationRun",
