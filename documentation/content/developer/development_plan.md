@@ -299,6 +299,7 @@ Items considered but not currently feasible:
 | Salesforce Import Phase 2 — Retry Queue + Health Dashboard | 2026-04-28 | `PendingParticipationImport` queue (TD-057), import health dashboard at `/admin/import-health`, N+1 elimination |
 | Salesforce Import Phase 3 — Data Correctness + Observability | 2026-04-30 | Sprint A: affiliation `date_source`/status normalization, `ALL_SYNC_TYPES` unification, dead code removal (TD-058–060). Sprint B: import error DQ flags wired across all importers (`volunteer`, `organization`, `student_participations`, `pathway`), structured error UI in sync history modal and `/admin/sync-logs`, 26 flags backfilled from full import run. TD-062 (Yandell Toevs duplicate SF ID) open. |
 | Newsletter Formatter | Mar 2026 | Virtual Connector + Career Exploration + Virtual Search-and-Add modes. 15 FRs (FR-TOOLS-101–115), 42 tests. See [requirements-tools.md](../requirements/requirements-tools.md) |
+| District Year-End Report Hardening | Apr 2026 | Pieces 1–9 complete: CSS deduplication, layout fix, dead-code removal, logging cleanup, test URL updates, cache deprecation, scheduler age-check pattern, DistrictEngagementReport cleanup, UI/UX polish (horizontal stat strip, pill filter buttons, JS data-type filtering). See [fix plan](district_year_end_fix_plan.md). |
 | Structural Health Audit | Mar 2026 | Codebase-wide audit: 7 structural issues catalogued (TD-041–047), 4-phase consolidation roadmap. See Section 2.7 |
 
 ---

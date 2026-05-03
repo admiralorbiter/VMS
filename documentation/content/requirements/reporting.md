@@ -70,10 +70,20 @@
 | ID | Requirement | Test Coverage | Related Stories |
 |----|-------------|---------------|-----------------|
 | <a id="fr-reporting-430"></a>**FR-REPORTING-430** | The system shall provide a **District Year-End Report** aggregating annual metrics for a selected district and academic year. | *TBD* | *Technical* |
-| <a id="fr-reporting-431"></a>**FR-REPORTING-431** | The year-end report shall include: total events, unique volunteers, volunteer hours, unique students reached, schools served, and teacher participation rates. | *TBD* | *Technical* |
+| <a id="fr-reporting-431"></a>**FR-REPORTING-431** | The year-end report shall include the following **auto-computed core metrics** per district per academic year: total events (in-person + virtual split), total students reached (in-person actual + virtual estimated), unique students (in-person only), total volunteer engagements, unique volunteers, total volunteer hours, unique organizations engaged, schools served, and career clusters. | TC-740, TC-741 | *Technical* |
+| <a id="fr-reporting-431a"></a>**FR-REPORTING-431a** | The year-end report shall include a **program-type breakdown** computing student counts (total + unique) per program: Career Jumping, Career Speakers, Career/College Fair (HS students only), HealthStart, BFI, DIA, SLA, Client Connected Projects, P2T, P2GD, Math Relays (event count only), and Connector Sessions (teacher count + estimated students). See [Metrics Bible — YE-C4](metrics-bible#ye-c4) for exact EventType mappings. | *TBD* | *Technical* |
+| <a id="fr-reporting-431b"></a>**FR-REPORTING-431b** | The year-end report shall include a **manual input layer** for program outcomes not derivable from event attendance: Math Relays splits (HS/JR participants, HS/MS awards), DIA IRC credentials earned, P2GD dual credit, P2T completions, CNA/CMA students, college credits (students + total), Careers on Wheels, and Holland 1916 visits. Stored in `DistrictManualInput` model. See [Metrics Bible — YE-C6](metrics-bible#ye-c6). | *TBD* | *Technical* |
 | <a id="fr-reporting-432"></a>**FR-REPORTING-432** | The year-end report shall support **comparison to previous year** showing growth/decline percentages. | *TBD* | *Technical* |
+
+> **FR-432 Status: Deferred.** Not implemented as of May 2026. Planned for a future sprint (Session 5+). No blocking dependencies; requires historical cache to be populated for prior years first.
+
 | <a id="fr-reporting-433"></a>**FR-REPORTING-433** | Year-end reports shall be exportable as **PDF** and **Excel** for stakeholder distribution. | *TBD* | *Technical* |
+
+> **FR-433 Status: Partial.** Excel export implemented (`GET /reports/district/year-end/<district>/excel`). PDF export deferred — out of current sprint scope.
+
 | <a id="fr-reporting-434"></a>**FR-REPORTING-434** | The system shall allow scheduling of **automated year-end report generation** at academic year boundaries. | *TBD* | *Technical* |
+
+> **FR-434 Status: Deferred.** Out of sprint scope. Depends on background task infrastructure (Tier 3.4 in Development Plan).
 
 ---
 
@@ -87,4 +97,4 @@
 
 ---
 
-*Last updated: February 2026 · Version 1.1*
+*Last updated: May 2026 · Version 1.2 — Expanded FR-431 into 431/431a/431b; added FR-432/433/434 status notes*

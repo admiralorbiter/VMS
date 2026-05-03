@@ -1,8 +1,11 @@
 # Salesforce Import Improvement Roadmap
 
-**Status**: Active Development
+**Status**: Maintained — Phases 1–3 complete. Sprint C/D deferred to future roadmap.
 **Created**: February 2026
+**Last Updated**: April 30, 2026
 **Owner**: Development Team
+
+> Active sprint detail docs are in [archive/](../archive/). This roadmap is the long-term reference.
 
 ---
 

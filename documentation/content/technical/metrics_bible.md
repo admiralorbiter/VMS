@@ -688,6 +688,192 @@ Attribute to event's school, not student's home school.
 - `School` entity (see [Data Dictionary](data_dictionary#entity-school))
 - `Student` entity (see [Data Dictionary](data_dictionary#entity-student))
 
+## Year-End Report Conventions
+
+> [!IMPORTANT]
+> These rules apply **only** to the District Year-End Report (`/reports/district/year-end`).
+> They extend — and in some cases override — the global conventions above.
+> Implementation: `routes/reports/district_year_end/computation.py` and `routes/reports/common.py`.
+
+---
+
+### YE-C1 — Academic Year Window
+
+The year-end reporting window is **August 1 – July 31** of the selected academic year.
+
+| Format | Example | Meaning |
+|--------|---------|---------|
+| `YYZZ` (storage) | `2425` | 2024-2025 school year |
+| `YYYY-YYYY` (display) | `2024-2025` | Same year, human-readable |
+
+**Implementation:** `get_school_year_date_range(school_year)` in `routes/reports/common.py`
+
+---
+
+### YE-C2 — Connector Session Inclusion Split
+
+This is the most non-obvious rule in the year-end report. Connector sessions (`EventType.CONNECTOR_SESSION`) and Virtual Sessions (`EventType.VIRTUAL_SESSION`) are treated **differently** in two parts of the report:
+
+| Report Section | connector_session included? | virtual_session included? | Rationale |
+|---|---|---|---|
+| **Event Timeline / Events by Month** | ❌ Excluded | ✅ Included | Timeline is for "visible" in-person-adjacent events only |
+| **Enhanced Stats & Program Breakdown** | ✅ Included (counted as virtual) | ✅ Included | Stats must capture full picture for grant reporting |
+
+**Implementation reference:**
+- Timeline query: `~Event.type.in_([EventType.CONNECTOR_SESSION])` exclusion filter in `routes.py`
+- Connector events fetched separately and added to `all_events_for_stats` before `calculate_enhanced_district_stats()`
+- Program breakdown: `connector_sessions` bucket includes both `VIRTUAL_SESSION` and `CONNECTOR_SESSION`
+
+---
+
+### YE-C3 — Enhanced Stats Schema (`calculate_enhanced_district_stats`)
+
+The `enhanced` key in `report_data` follows this structure:
+
+```python
+{
+  "events": {
+    "total": int,
+    "in_person": int,
+    "virtual": int,
+    "in_person_pct": float,
+    "virtual_pct": float
+  },
+  "students": {
+    "total": int,          # in_person actual + virtual estimated
+    "in_person": int,      # from EventStudentParticipation WHERE status='Attended'
+    "virtual": int,        # confirmed_teachers × 25 (district-scoped)
+    "unique_total": int,   # unique student IDs, in-person only
+    "unique_in_person": int,
+    "unique_virtual": int  # always 0 (not trackable for virtual)
+  },
+  "volunteers": {
+    "total": int,           # total engagements (one volunteer × 3 events = 3)
+    "in_person": int,
+    "virtual": int,
+    "unique_total": int,
+    "unique_in_person": int,
+    "unique_virtual": int,
+    "hours_total": float,
+    "hours_in_person": float,
+    "hours_virtual": float,
+    "hours_in_person_pct": float,
+    "hours_virtual_pct": float
+  },
+  "organizations": {
+    "unique_total": int,
+    "unique_in_person": int,
+    "unique_virtual": int,
+    "volunteer_hours_total": float,
+    "volunteer_hours_in_person": float,
+    "volunteer_hours_virtual": float
+  },
+  "virtual_sessions": {
+    "classrooms_reached": int,    # confirmed teachers from district schools only
+    "unique_teachers": int,
+    "confirmed_teachers": int,
+    "registered_teachers": int
+  },
+  "event_types": { "career_jumping": int, ... },
+  "event_types_by_format": {
+    "in_person": { "career_jumping": int, ... },
+    "virtual": { "virtual_session": int, ... }
+  }
+}
+```
+
+> [!NOTE]
+> `unique_virtual` for students is always `0`. Individual student tracking is impossible for virtual sessions
+> because student counts are estimated from teacher class sizes, not individual records.
+
+---
+
+### YE-C4 — Program Breakdown Metrics (`calculate_program_breakdown`)
+
+The `program_breakdown` key in `report_data` provides per-program student counts. All counts use `EventStudentParticipation.status = 'Attended'` and are scoped to the district's schools.
+
+| Breakdown Key | EventType(s) | Student Filter | Notes |
+|---|---|---|---|
+| `in_person_students` | All except `VIRTUAL_SESSION`, `CONNECTOR_SESSION` | District, Attended | Total + unique |
+| `career_jumping_students` | `CAREER_JUMPING` | District, Attended | Total + unique |
+| `career_speakers_students` | `CAREER_SPEAKER` | District, Attended | Total + unique |
+| `career_college_fair_hs_students` | `CAREER_FAIR`, `COLLEGE_APPLICATION_FAIR` | District, Attended, **School.level = 'High'** | HS students only |
+| `healthstart_students` | `HEALTHSTART` | District, Attended | Total + unique |
+| `bfi_students` | `BFI` | District, Attended | Total + unique |
+| `dia_students` | `DIA`, `DIA_CLASSROOM_SPEAKER` | District, Attended | Total + unique |
+| `sla_students` | `SLA` | District, Attended | Total + unique |
+| `client_connected_students` | `CLIENT_CONNECTED_PROJECT` | District, Attended | Total + unique |
+| `p2t_students` | `P2T` | District, Attended | Total + unique |
+| `p2gd_students` | `P2GD` | District, Attended | Total + unique |
+| `math_relays_count` | `MATH_RELAYS` | N/A | **Event count only**, no student tracking |
+| `connector_sessions.session_count` | `VIRTUAL_SESSION`, `CONNECTOR_SESSION` | N/A | Session count |
+| `connector_sessions.teachers_engaged` | `VIRTUAL_SESSION`, `CONNECTOR_SESSION` | `attendance_confirmed_at IS NOT NULL`, district schools | Total + unique |
+| `connector_sessions.students_participated` | Derived | N/A | `confirmed_teachers × 25` (estimated); `unique = None` (not trackable) |
+
+**Key rule:** `connector_sessions.students_participated.unique` is always `None` — this is intentional, not a bug.
+
+---
+
+### YE-C5 — Virtual Student Estimation (Year-End Context)
+
+Same as global M73, but district-scoped:
+
+```
+estimated_students = COUNT(confirmed district teachers) × 25
+```
+
+**"District teacher"** means `EventTeacher.teacher.school_id IN [district school IDs]`.
+
+This is stricter than the global M73 definition, which doesn't filter by district.
+
+---
+
+### YE-C6 — Manual Input Override Layer (`DistrictManualInput`)
+
+Some metrics cannot be computed from event data and must be entered by staff in the **Input Data** view (`/reports/district/year-end/<district>/input`).
+
+Manual inputs are stored in `district_manual_inputs` (model: `DistrictManualInput`) keyed by `(district_id, school_year, host_filter, data_type)`.
+
+| `data_type` key | Category | What it captures |
+|---|---|---|
+| `math_relays_hs` | Math Relays | HS participants |
+| `math_relays_jr` | Math Relays | Junior high participants |
+| `math_relays_awards_hs` | Math Relays | HS award recipients |
+| `math_relays_awards_ms` | Math Relays | MS award recipients |
+| `dia_irc_earned` | DIA | IRC credentials earned |
+| `p2gd_dual_credit` | Pathway Programs | P2GD dual credit earners |
+| `p2t_completed` | Pathway Programs | P2T completions (credential/project/dual credit) |
+| `cna_students` | Health Credentials | CNA credential students |
+| `cma_students` | Health Credentials | CMA credential students |
+| `college_credits_students` | College Credits | Students earning college credits |
+| `college_credits_total` | College Credits | Total college credits earned |
+| `careers_on_wheels` | Special Programs | Center 5th graders (Careers on Wheels) |
+| `holland_visits` | Special Programs | KCKPS Holland 1916 campus visits |
+| `data_science` | Special Programs | Data Science participation |
+
+> [!WARNING]
+> Manual inputs are **additive context only** — they are displayed alongside auto-computed metrics
+> in the report template but do **not** modify or override any of the computed values above.
+> They exist because these outcomes (credential completions, award counts) have no direct
+> event-attendance data source.
+
+---
+
+### YE-C7 — Host Filter Dimension
+
+All year-end metrics support an optional `host_filter` parameter:
+
+| Value | Behavior |
+|-------|----------|
+| `all` (default) | All completed events regardless of who hosted |
+| `prepkc` | Restrict to events where `Event.session_host ILIKE '%PrepKC%'` |
+
+The filter is applied uniformly at query time across the main event query, connector events query, program breakdown queries, and manual input lookups. Cache records are stored separately per `(district_id, school_year, host_filter)` triple.
+
+**When to use `prepkc`:** For grant reports where the funder specifically requires PrepKC-hosted activity only, excluding partner-hosted events in the same district.
+
+---
+
 ## Auditability
 
 Every dashboard/export must show:
@@ -722,9 +908,9 @@ Data as of: 2025-01-15 14:30:00 UTC (Salesforce sync: 2025-01-15 14:00:00 UTC)
 
 **Reference:**
 - See `routes/reports/` for implementation examples
-- Cache timestamps in `OrganizationDetailCache`, `DistrictStatsCache` models
+- Cache timestamps in `OrganizationDetailCache`, `DistrictYearEndReport` models
 
 ---
 
-*Last updated: February 2026*
-*Version: 1.0*
+*Last updated: May 2026*
+*Version: 1.1 — Added Year-End Report Conventions (YE-C1 through YE-C7)*
