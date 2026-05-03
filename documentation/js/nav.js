@@ -54,6 +54,7 @@ const PAGE_MANIFEST = {
     'user-guide-district-teacher-progress': 'user_guide/district_teacher_progress',
     'user-guide-student-management': 'user_guide/student_management',
     'user-guide-reporting': 'user_guide/reporting',
+    'user-guide-district-year-end-reports': 'user_guide/district_year_end_reports',
     'user-guide-email-system': 'user_guide/email_system',
     'user-guide-data-tracker': 'user_guide/data_tracker',
     'user-guide-presenter-recruitment': 'user_guide/presenter_recruitment',

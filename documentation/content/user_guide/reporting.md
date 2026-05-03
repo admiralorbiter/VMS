@@ -17,7 +17,7 @@ Access reports via the **Reports** menu.
 
 ### District Impact
 -   **Purpose**: Reporting to school districts.
--   **Metrics**: Unique students reached, Schools served, Teacher completion rates.
+-   **Details**: For a comprehensive breakdown of District Year-End reporting, including Excel and Google Sheets exports, see the dedicated [District Year-End Reports Guide](district_year_end_reports).
 
 ## 2. Ad Hoc Reporting
 

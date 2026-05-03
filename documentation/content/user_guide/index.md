@@ -76,6 +76,16 @@ Welcome to the VMS User Guide. This section provides detailed, step-by-step inst
   </div>
 
   <div class="qn-card">
+    <a href="#user-guide-district-year-end-reports" class="qn-card-link">
+      <div class="qn-icon">📈</div>
+      <div class="qn-body">
+        <div class="qn-title">District Year-End Reports</div>
+        <div class="qn-desc">Generate, review, and export comprehensive year-end impact reports for district partners.</div>
+      </div>
+    </a>
+  </div>
+
+  <div class="qn-card">
     <a href="#user-guide-email-system" class="qn-card-link">
       <div class="qn-icon">📧</div>
       <div class="qn-body">
