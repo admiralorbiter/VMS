@@ -355,3 +355,37 @@ def build_lightweight_cache(model, id_field, value_field=None) -> Dict:
 
     query = db.session.query(value_field, id_field).filter(id_field.isnot(None))
     return {sf_id: local_id for local_id, sf_id in query.all()}
+
+
+def build_participation_caches() -> tuple:
+    """
+    Pre-load the standard volunteer and event ID caches for participation processing.
+
+    Returns the two dicts that all participation import loops need to avoid N+1 queries.
+    Requires an active Flask application context.
+
+    Returns:
+        tuple: (volunteers_cache, events_cache) where
+            volunteers_cache: {salesforce_individual_id (str) -> volunteer.id (int)}
+            events_cache:     {salesforce_id (str)           -> event.id (int)}
+
+    Usage::
+
+        volunteers_cache, events_cache = build_participation_caches()
+        process_participation_row(row, ..., volunteers_cache=volunteers_cache,
+                                           events_cache=events_cache)
+
+    Note:
+        Caches are built at call time and are not updated during the import run.
+        Records created *after* this call will not appear in the returned dicts.
+        For participation import this is safe because new volunteers/events are
+        never created mid-participation-loop.
+    """
+    from models.event import Event
+    from models.volunteer import Volunteer
+
+    volunteers_cache = build_lightweight_cache(
+        Volunteer, Volunteer.salesforce_individual_id
+    )
+    events_cache = build_lightweight_cache(Event, Event.salesforce_id)
+    return volunteers_cache, events_cache

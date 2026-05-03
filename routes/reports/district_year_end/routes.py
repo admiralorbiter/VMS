@@ -43,6 +43,7 @@ from models.volunteer import EventParticipation
 from routes.decorators import district_scoped_required, handle_route_errors
 from routes.reports.common import (
     DISTRICT_MAPPING,
+    build_district_event_conditions,
     generate_district_stats,
     get_current_school_year,
     get_district_student_count_for_event,
@@ -377,27 +378,10 @@ def load_routes(bp):
         start_date, end_date = get_school_year_date_range(school_year)
         excluded_event_types = ["connector_session"]
 
-        # Build query conditions (Duplicate logic - consider refactoring into a helper)
-        query_conditions = [
-            Event.districts.contains(district),
-            Event.school.in_([school.id for school in district.schools]),
-            *[Event.title.ilike(f"%{school.name}%") for school in district.schools],
-            *[
-                Event.district_partner.ilike(f"%{school.name}%")
-                for school in district.schools
-            ],
-            Event.district_partner.ilike(f"%{district.name}%"),
-            Event.district_partner.ilike(
-                f"%{district.name.replace(' School District', '')}%"
-            ),
-        ]
-
-        if district_mapping and "aliases" in district_mapping:
-            for alias in district_mapping["aliases"]:
-                query_conditions.append(Event.district_partner.ilike(f"%{alias}%"))
-                query_conditions.append(
-                    Event.districts.any(District.name.ilike(f"%{alias}%"))
-                )
+        # Build query conditions via shared helper (TD-063-X)
+        query_conditions = build_district_event_conditions(
+            district, district_mapping=district_mapping
+        )
 
         # Fetch events (excluding connector_session for main display)
         events_query = (
@@ -836,27 +820,10 @@ def load_routes(bp):
         start_date, end_date = get_school_year_date_range(school_year)
         excluded_event_types = ["connector_session"]
 
-        # Build query conditions (same logic as main detail view)
-        query_conditions = [
-            Event.districts.contains(district),
-            Event.school.in_([school.id for school in district.schools]),
-            *[Event.title.ilike(f"%{school.name}%") for school in district.schools],
-            *[
-                Event.district_partner.ilike(f"%{school.name}%")
-                for school in district.schools
-            ],
-            Event.district_partner.ilike(f"%{district.name}%"),
-            Event.district_partner.ilike(
-                f"%{district.name.replace(' School District', '')}%"
-            ),
-        ]
-
-        if district_mapping and "aliases" in district_mapping:
-            for alias in district_mapping["aliases"]:
-                query_conditions.append(Event.district_partner.ilike(f"%{alias}%"))
-                query_conditions.append(
-                    Event.districts.any(District.name.ilike(f"%{alias}%"))
-                )
+        # Build query conditions via shared helper (TD-063-X)
+        query_conditions = build_district_event_conditions(
+            district, district_mapping=district_mapping
+        )
 
         events_query = (
             Event.query.outerjoin(School, Event.school == School.id)
@@ -1018,27 +985,10 @@ def load_routes(bp):
         start_date, end_date = get_school_year_date_range(school_year)
         excluded_event_types = ["connector_session"]
 
-        # Build query conditions (same logic as main detail view)
-        query_conditions = [
-            Event.districts.contains(district),
-            Event.school.in_([school.id for school in district.schools]),
-            *[Event.title.ilike(f"%{school.name}%") for school in district.schools],
-            *[
-                Event.district_partner.ilike(f"%{school.name}%")
-                for school in district.schools
-            ],
-            Event.district_partner.ilike(f"%{district.name}%"),
-            Event.district_partner.ilike(
-                f"%{district.name.replace(' School District', '')}%"
-            ),
-        ]
-
-        if district_mapping and "aliases" in district_mapping:
-            for alias in district_mapping["aliases"]:
-                query_conditions.append(Event.district_partner.ilike(f"%{alias}%"))
-                query_conditions.append(
-                    Event.districts.any(District.name.ilike(f"%{alias}%"))
-                )
+        # Build query conditions via shared helper (TD-063-X)
+        query_conditions = build_district_event_conditions(
+            district, district_mapping=district_mapping
+        )
 
         events = (
             Event.query.outerjoin(School, Event.school == School.id)

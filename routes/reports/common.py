@@ -141,6 +141,70 @@ def get_school_year_date_range(school_year):
     return start_date, end_date
 
 
+def build_district_event_conditions(district, schools=None, district_mapping=None):
+    """
+    Build the SQLAlchemy OR condition list for finding events attributed to a district.
+
+    Covers all attribution paths:
+    - M2M FK (Event.districts.contains)
+    - School FK (Event.school.in_)
+    - School name fuzzy match in Event.title / Event.district_partner
+    - District name ilike match in Event.district_partner
+    - District short-name match (strips ' School District' suffix)
+    - DISTRICT_MAPPING alias matches (both district_partner and districts.any)
+
+    Args:
+        district: District model instance.
+        schools: Optional pre-fetched list of School objects for this district.
+                 If None, district.schools (lazy relationship) is used.
+        district_mapping: Optional pre-looked-up DISTRICT_MAPPING entry dict.
+                          If None, looked up automatically by district.name.
+
+    Returns:
+        list: SQLAlchemy column expressions. Pass to db.or_(*result).
+
+    Example::
+
+        conditions = build_district_event_conditions(district, schools=schools,
+                                                     district_mapping=mapping)
+        events = Event.query.filter(
+            Event.status == EventStatus.COMPLETED,
+            Event.start_date.between(start, end),
+            db.or_(*conditions),
+        ).all()
+    """
+    if schools is None:
+        schools = district.schools
+
+    conditions = [
+        Event.districts.contains(district),
+        Event.school.in_([s.id for s in schools]),
+        *[Event.title.ilike(f"%{s.name}%") for s in schools],
+        *[Event.district_partner.ilike(f"%{s.name}%") for s in schools],
+        Event.district_partner.ilike(f"%{district.name}%"),
+        Event.district_partner.ilike(
+            f"%{district.name.replace(' School District', '')}%"
+        ),
+    ]
+
+    if district_mapping is None:
+        district_mapping = next(
+            (
+                mapping
+                for mapping in DISTRICT_MAPPING.values()
+                if mapping["name"] == district.name
+            ),
+            None,
+        )
+
+    if district_mapping and "aliases" in district_mapping:
+        for alias in district_mapping["aliases"]:
+            conditions.append(Event.district_partner.ilike(f"%{alias}%"))
+            conditions.append(Event.districts.any(District.name.ilike(f"%{alias}%")))
+
+    return conditions
+
+
 # --- Virtual Year Helper Functions ---
 
 
@@ -629,33 +693,8 @@ def calculate_program_breakdown(
     if preloaded_events is not None:
         base_events = preloaded_events
     else:
-        # Build query conditions
-        query_conditions = [
-            Event.districts.contains(district),
-            Event.school.in_(school_ids),
-            *[Event.title.ilike(f"%{school.name}%") for school in schools],
-            *[Event.district_partner.ilike(f"%{school.name}%") for school in schools],
-            Event.district_partner.ilike(f"%{district.name}%"),
-            Event.district_partner.ilike(
-                f"%{district.name.replace(' School District', '')}%"
-            ),
-        ]
-
-        # Get district mapping for aliases
-        district_mapping = next(
-            (
-                mapping
-                for salesforce_id, mapping in DISTRICT_MAPPING.items()
-                if mapping["name"] == district.name
-            ),
-            None,
-        )
-        if district_mapping and "aliases" in district_mapping:
-            for alias in district_mapping["aliases"]:
-                query_conditions.append(Event.district_partner.ilike(f"%{alias}%"))
-                query_conditions.append(
-                    Event.districts.any(District.name.ilike(f"%{alias}%"))
-                )
+        # Build query conditions via shared helper (TD-063-X)
+        query_conditions = build_district_event_conditions(district, schools=schools)
 
         # Base query for all completed events in date range
         base_query = Event.query.filter(
