@@ -1,7 +1,13 @@
 # Ignore data directory
 data/
+scratch/
 .vscode/
 .pytest_cache/
+
+# Environment files — machine-specific, never commit
+.env
+.env.*
+!.env.example
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
