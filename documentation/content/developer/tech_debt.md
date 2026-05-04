@@ -529,6 +529,46 @@ On lookup miss: insert to queue. At the **end** of each event import (after all 
 ---
 
 
+## TD-064: Pathful Teacher `school_id` Not Populated During Import
+
+**Created:** 2026-05-04 · **Priority:** Low · **Category:** Data Quality
+
+Pathful-imported teachers have `Teacher.salesforce_school_id` set (when the manual school-match UI is used), but `Teacher.school_id` — the canonical FK used for `Teacher → School → District` joins — is **never populated** during Pathful import.
+
+**Scale:** 169 of 199 Grandview 25-26 virtual session teacher registrations had `school_id=NULL`. Across the full system, the ratio is likely similar for all Pathful-origin teachers.
+
+**Current impact:** Mitigated — the virtual session student count was updated (2026-05-04) to use event-level district attribution (`EventTeacher.status` × `VIRTUAL_STUDENTS_PER_TEACHER`) instead of the broken `Teacher → School → District` chain. The constant is defined in `routes/reports/common.py`.
+
+**Residual risk:** Any future feature needing school-level attribution for virtual session teachers (e.g. "which school did each teacher come from?") will encounter the same NULL problem.
+
+### Root Cause
+
+In `routes/virtual/pathful_import/routes.py`, the `match_school` action sets:
+```python
+teacher.salesforce_school_id = school.id  # set
+teacher.school_id = school.id             # NOT set — this is the gap
+```
+
+### Proposed Fix
+
+1. **Patch the `match_school` handler** to also write `teacher.school_id = school.id` alongside `salesforce_school_id`. One line change.
+2. **Backfill existing records** where `salesforce_school_id IS NOT NULL AND school_id IS NULL` via a one-time maintenance script:
+   ```sql
+   UPDATE teacher SET school_id = salesforce_school_id
+   WHERE salesforce_school_id IS NOT NULL AND school_id IS NULL;
+   ```
+3. **Optional future improvement:** Auto-resolve school during Pathful import using the existing `school_by_name` cache in `matching.py` (fuzzy match on teacher's school name string from Pathful data). This would reduce the manual match burden.
+
+**Risk:** Low — additive only; no existing behavior changes.
+
+**Effort:** XS for the one-line patch; S for the backfill script; M for automated school resolution.
+
+**Tracking tag:** `DQ-PATHFUL-SCHOOL-LINK` (referenced in `routes/reports/common.py` and `routes/reports/district_year_end/computation.py` comments).
+
+---
+
+---
+
 ## Priority Order
 
 Ordered by **what best unblocks future work**:
@@ -560,6 +600,7 @@ Ordered by **what best unblocks future work**:
 | 20 | **~~TD-060~~** | ~~Zombie DQ issue types (`MISSING_ADDRESS`, `TRUNCATED_SKILL`) on dashboard~~ | S | ✅ Resolved 2026-04-30 |
 | 21 | **TD-061** | `history` step runs before `teachers` — task history for newly imported teachers missed until next run | XS | Backlog |
 | 22 | **~~TD-063~~** | ~~Duplicate event query condition builder in `district_year_end/routes.py`~~ | XS | ✅ Resolved 2026-05-03 |
+| 23 | **TD-064** | Pathful teacher `school_id` not populated during import | XS–S | Backlog |
 
 > TD-004 is intentionally deferred — the M2M relationship is the correct path forward.
 > TD-055/056 resolved 2026-04-28 as part of the SF Import Reliability PR (Phase 1 hardening).

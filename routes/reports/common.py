@@ -13,6 +13,14 @@ from models.reports import DistrictYearEndReport
 from models.school_model import School
 from models.student import Student
 
+# ---------------------------------------------------------------------------
+# Virtual session student estimation constant
+# ---------------------------------------------------------------------------
+# Each attending teacher is assumed to represent one classroom of students.
+# This constant is the single source of truth for that assumption.
+# Update here to change the estimate globally across all reports.
+VIRTUAL_STUDENTS_PER_TEACHER = 25
+
 # from models.upcoming_events import UpcomingEvent  # Moved to microservice
 
 # District mapping configuration
@@ -77,27 +85,34 @@ def get_district_student_count_for_event(event, target_district_id):
     """
     Count students for an event that belong to the specified district.
 
+    For virtual sessions: counts all EventTeacher records with status
+    'attended' or 'registered' (registered = assumed present for past events)
+    and multiplies by VIRTUAL_STUDENTS_PER_TEACHER. The teacher→school→district
+    chain is intentionally bypassed — the event is already attributed to the
+    correct district via event.districts, and many Pathful-imported teachers
+    lack school_id linkage (tracked as DQ-PATHFUL-SCHOOL-LINK).
+
+    For in-person events: uses manual EventAttendanceDetail if available,
+    then falls back to EventStudentParticipation aggregate counts.
+
     Args:
         event: Event object
-        target_district_id: The district ID to filter students by
+        target_district_id: The district ID (used only for in-person events)
 
     Returns:
-        int: Count of students from the specified district who attended the event
+        int: Estimated or actual student count for the event
     """
-    if event.type == EventType.VIRTUAL_SESSION:
-        # For virtual sessions, count teachers from the district and multiply by 25
-        district_teachers_count = 0
-        for teacher_registration in event.teacher_registrations:
-            teacher = teacher_registration.teacher
-            if teacher.school_id:
-                school = School.query.filter_by(id=teacher.school_id).first()
-                if (
-                    school
-                    and hasattr(school, "district_id")
-                    and school.district_id == target_district_id
-                ):
-                    district_teachers_count += 1
-        return district_teachers_count * 25
+    if event.type in (EventType.VIRTUAL_SESSION, EventType.CONNECTOR_SESSION):
+        # Count all teachers who attended or are registered (assumed present)
+        # No school→district join needed; the event itself is already district-attributed.
+        from models.event import EventTeacher
+
+        teacher_count = sum(
+            1
+            for et in event.teacher_registrations
+            if et.status in ("attended", "registered")
+        )
+        return teacher_count * VIRTUAL_STUDENTS_PER_TEACHER
     else:
         # Check if event is shared across districts (multi-attribution)
         # Proxy: if district_partner contains a comma, or event is in >1 district M2M

@@ -10,6 +10,7 @@ Contains:
 """
 
 import logging
+import math
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,7 @@ from models.student import Student
 from models.volunteer import EventParticipation
 from routes.reports.common import (
     DISTRICT_MAPPING,
+    VIRTUAL_STUDENTS_PER_TEACHER,
     build_district_event_conditions,
     generate_district_stats,
     get_district_student_count_for_event,
@@ -379,24 +381,37 @@ def refresh_district_cache(school_year, host_filter="all"):
             for d, _ in active_districts:
                 preloaded_volunteers[d.id][e_id].append((v_id, hours or 0))
 
-        # Pre-load teachers
+        # Pre-load teachers for virtual session student estimation.
+        # Uses event-level attribution (not teacher→school→district) because:
+        # - The event is already district-attributed via event.districts.
+        # - Many Pathful-imported teachers lack school_id (DQ-PATHFUL-SCHOOL-LINK).
+        # Counts teachers with status 'attended' or 'registered' per event.
         from models.event import EventTeacher
-        from models.teacher import Teacher
 
         teacher_rows = (
             db.session.query(
                 EventTeacher.event_id,
-                School.district_id,
                 EventTeacher.teacher_id,
-                EventTeacher.attendance_confirmed_at,
+                EventTeacher.status,
             )
-            .join(Teacher, EventTeacher.teacher_id == Teacher.id)
-            .join(School, Teacher.school_id == School.id)
-            .filter(EventTeacher.event_id.in_(event_ids))
+            .filter(
+                EventTeacher.event_id.in_(event_ids),
+                EventTeacher.status.in_(["attended", "registered"]),
+            )
             .all()
         )
-        for e_id, d_id, t_id, confirmed_at in teacher_rows:
-            preloaded_teachers[d_id][e_id].append((t_id, confirmed_at))
+        # Build a per-event count (district-agnostic; district scoping is via event_ids)
+        # preloaded_teachers[district.id][event_id] = list of (teacher_id, None)
+        # The structure is preserved for compatibility with calculate_program_breakdown.
+        # Pre-build event→district lookup for O(1) access during the teacher loop.
+        event_to_district_ids: dict = {}
+        for d, _ in active_districts:
+            for e in district_events.get(d.id, []):
+                event_to_district_ids.setdefault(e.id, set()).add(d.id)
+
+        for e_id, t_id, _status in teacher_rows:
+            for d_id in event_to_district_ids.get(e_id, set()):
+                preloaded_teachers[d_id][e_id].append((t_id, None))
 
     # Pre-load attendance details
     from models.attendance import EventAttendanceDetail
@@ -498,12 +513,33 @@ def refresh_district_cache(school_year, host_filter="all"):
                         s_count = len(preloaded_students[district.id].get(event.id, []))
                 else:
                     s_count = (
-                        len(preloaded_teachers[district.id].get(event.id, [])) * 25
+                        len(preloaded_teachers[district.id].get(event.id, []))
+                        * VIRTUAL_STUDENTS_PER_TEACHER
                     )
 
                 v_entries = preloaded_volunteers[district.id].get(event.id, [])
                 v_count = len(v_entries)
                 v_hours = sum(h for _, h in v_entries)
+
+                # Fallback for virtual sessions with no EP delivery_hours:
+                # derive hours from Event.duration (in minutes) so Pathful-only
+                # sessions aren't reported as 0. Only fires when v_hours is 0
+                # AND the event is virtual — Salesforce-linked events with real
+                # EP records are never affected.
+                if (
+                    v_hours == 0
+                    and event_type
+                    in [
+                        EventType.VIRTUAL_SESSION,
+                        EventType.CONNECTOR_SESSION,
+                    ]
+                    and getattr(event, "duration", None)
+                ):
+                    # Round up to the nearest whole hour so a 30-min session
+                    # shows as 1.0 rather than 0.5. When Salesforce is fixed
+                    # and EP records are backfilled, those real values take
+                    # over automatically (v_hours > 0 skips this branch).
+                    v_hours = float(math.ceil(event.duration / 60))
 
                 events_by_month[month]["events"].append(
                     {
@@ -1081,23 +1117,21 @@ def calculate_enhanced_district_stats(events, district_id):
         )
 
         # Get student count for this district
-        # For virtual/connector sessions, we need to use confirmed teachers from district only
         if is_virtual:
-            # Count confirmed teachers from this district
-            confirmed_teacher_regs = [
-                reg
-                for reg in event.teacher_registrations
-                if reg.attendance_confirmed_at is not None
-            ]
-            # Filter by district: only count teachers from this district's schools
-            district_confirmed_teachers = [
-                reg
-                for reg in confirmed_teacher_regs
-                if reg.teacher.school_id
-                and reg.teacher.school_id in district_school_ids
-            ]
-            # Estimate students: confirmed teachers Ã— 25
-            student_count = len(district_confirmed_teachers) * 25
+            # Count teachers with status 'attended' or 'registered' (assumed present).
+            # We use event-level attribution rather than teacher→school→district because:
+            # - The event is already district-attributed via event.districts.
+            # - Many Pathful-imported teachers lack school_id (see TD-064).
+            # ENGAGEMENTS: each event counts all its qualifying teachers independently
+            # (same teacher in 5 sessions = 5 engagements = 5 × 25 students reached)
+            event_teacher_ids = {
+                et.teacher_id
+                for et in event.teacher_registrations
+                if et.status in ("attended", "registered")
+            }
+            student_count = len(event_teacher_ids) * VIRTUAL_STUDENTS_PER_TEACHER
+            # Track unique teachers across ALL virtual events for deduplication later
+            unique_teachers_virtual.update(event_teacher_ids)
         else:
             student_count = get_district_student_count_for_event(event, district_id)
 
@@ -1123,6 +1157,11 @@ def calculate_enhanced_district_stats(events, district_id):
 
         # Calculate volunteer hours
         volunteer_hours = sum(p.delivery_hours or 0 for p in volunteer_participations)
+        # Fallback for virtual sessions with no EP records (Pathful-only events):
+        # derive hours from Event.duration so they aren't reported as 0.
+        # Strictly guarded by is_virtual — in-person and Salesforce events unaffected.
+        if is_virtual and volunteer_hours == 0 and getattr(event, "duration", None):
+            volunteer_hours = float(math.ceil(event.duration / 60))
         stats["volunteers"]["hours_total"] += volunteer_hours
         if is_virtual:
             stats["volunteers"]["hours_virtual"] += volunteer_hours
@@ -1202,40 +1241,30 @@ def calculate_enhanced_district_stats(events, district_id):
 
         # Track virtual session specific metrics
         if is_virtual:
-            # Count teachers for virtual sessions (all registered)
+            # Count all teacher registrations (any status) for the totals
             teacher_registrations = event.teacher_registrations
             stats["virtual_sessions"]["registered_teachers"] += len(
                 teacher_registrations
             )
 
-            # Count confirmed teachers (those with attendance confirmed) - ALL teachers
+            # Confirmed teachers = those with attendance_confirmed_at set (any school)
             confirmed_teacher_regs = [
                 t
                 for t in teacher_registrations
                 if t.attendance_confirmed_at is not None
             ]
-
-            # Filter by district: only count teachers from this district's schools
-            district_confirmed_teachers = [
-                reg
-                for reg in confirmed_teacher_regs
-                if reg.teacher.school_id
-                and reg.teacher.school_id in district_school_ids
-            ]
-
             stats["virtual_sessions"]["confirmed_teachers"] += len(
-                district_confirmed_teachers
+                confirmed_teacher_regs
             )
 
-            # Track unique teachers (only from district, only confirmed)
-            for teacher_reg in district_confirmed_teachers:
-                unique_teachers_virtual.add(teacher_reg.teacher_id)
-
-            # Count classrooms reached (assuming each teacher represents a classroom)
-            # Use confirmed teachers from district only
-            stats["virtual_sessions"]["classrooms_reached"] += len(
-                district_confirmed_teachers
+            # Classrooms reached = teachers who attended or are registered this event
+            # (unique_teachers_virtual is already updated in the student count block above)
+            event_classroom_count = sum(
+                1
+                for et in teacher_registrations
+                if et.status in ("attended", "registered")
             )
+            stats["virtual_sessions"]["classrooms_reached"] += event_classroom_count
 
     # Set unique counts
     stats["volunteers"]["unique_total"] = len(unique_volunteers_total)
@@ -1244,7 +1273,15 @@ def calculate_enhanced_district_stats(events, district_id):
 
     stats["students"]["unique_total"] = len(unique_students_total)
     stats["students"]["unique_in_person"] = len(unique_students_in_person)
-    stats["students"]["unique_virtual"] = len(unique_students_virtual)
+    # Unique virtual students: unique teachers across all virtual sessions × constant.
+    # A teacher attending 5 sessions represents the same classroom of students each time,
+    # so we deduplicate by teacher ID rather than summing per-event estimates.
+    stats["students"]["unique_virtual"] = (
+        len(unique_teachers_virtual) * VIRTUAL_STUDENTS_PER_TEACHER
+    )
+    stats["students"]["unique_total"] = (
+        stats["students"]["unique_in_person"] + stats["students"]["unique_virtual"]
+    )
 
     stats["organizations"]["unique_total"] = len(unique_orgs_total)
     stats["organizations"]["unique_in_person"] = len(unique_orgs_in_person)

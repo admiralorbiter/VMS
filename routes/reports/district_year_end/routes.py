@@ -7,6 +7,7 @@ Contains the blueprint creation and load_routes() with 14 nested route handlers.
 
 import io
 import logging
+import math
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -484,6 +485,14 @@ def load_routes(bp):
             volunteer_hours = sum(
                 p.delivery_hours or 0 for p in volunteer_participations
             )
+            # Fallback for virtual sessions with no EP records (Pathful-only events)
+            if (
+                volunteer_hours == 0
+                and getattr(event, "type", None)
+                in [EventType.VIRTUAL_SESSION, EventType.CONNECTOR_SESSION]
+                and getattr(event, "duration", None)
+            ):
+                volunteer_hours = float(math.ceil(event.duration / 60))
 
             # Update event data and totals in events_by_month
             event_date = datetime.fromisoformat(event.start_date.isoformat())
