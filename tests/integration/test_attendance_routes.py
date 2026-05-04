@@ -129,16 +129,41 @@ def test_get_attendance_detail(client, auth_headers):
 
 def test_update_attendance_detail(client, auth_headers):
     """Test updating attendance detail"""
-    update_data = {"total_students": 15, "total_teachers": 3}
+    update_data = {"total_students": 15, "num_classrooms": 3}
 
     response = safe_route_test(
         client,
-        "/attendance/detail/1",
-        method="PUT",
+        "/attendance/details/1/detail",
+        method="POST",
         json_data=update_data,
         headers=auth_headers,
     )
     assert_route_response(response, expected_statuses=[200, 404, 500])
+
+
+def test_update_attendance_detail_validation(client, auth_headers):
+    """Test validation in update attendance detail"""
+    # Test negative total_students
+    invalid_data_negative = {"total_students": -15}
+    response_negative = safe_route_test(
+        client,
+        "/attendance/details/1/detail",
+        method="POST",
+        json_data=invalid_data_negative,
+        headers=auth_headers,
+    )
+    assert_route_response(response_negative, expected_statuses=[400, 404, 500])
+
+    # Test unrealistically large total_students
+    invalid_data_large = {"total_students": 15000}
+    response_large = safe_route_test(
+        client,
+        "/attendance/details/1/detail",
+        method="POST",
+        json_data=invalid_data_large,
+        headers=auth_headers,
+    )
+    assert_route_response(response_large, expected_statuses=[400, 404, 500])
 
 
 def test_attendance_analytics(client, auth_headers):

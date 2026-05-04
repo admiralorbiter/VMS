@@ -5,7 +5,7 @@
 # - Managing event attendance details
 # - Data purging operations
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 from flask import Blueprint, jsonify, render_template, request
 from flask_login import current_user, login_required
@@ -453,6 +453,23 @@ def update_attendance_detail(event_id):
     if total_students:
         try:
             total_students = int(total_students)
+            if total_students < 0:
+                return (
+                    jsonify(
+                        {"success": False, "error": "total_students cannot be negative"}
+                    ),
+                    400,
+                )
+            if total_students > 10000:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "total_students value seems unrealistic",
+                        }
+                    ),
+                    400,
+                )
         except (ValueError, TypeError):
             total_students = None
 
@@ -483,5 +500,31 @@ def update_attendance_detail(event_id):
         if detail.num_classrooms > 0 and detail.rotations > 0:
             detail.students_per_volunteer = detail.calculate_students_per_volunteer()
 
+    # Update provenance fields
+    detail.data_source = data.get("data_source", "manual")
+    detail.last_verified_at = datetime.now(timezone.utc)
+    detail.last_updated_by = current_user.id
+    detail.notes = data.get("notes")
+
     db.session.commit()
+
+    # Invalidate DistrictYearEndReport cache for districts associated with this event
+    import logging
+
+    from models.reports import DistrictYearEndReport
+
+    logger = logging.getLogger(__name__)
+
+    affected_district_ids = [d.id for d in event.districts]
+    if affected_district_ids:
+        DistrictYearEndReport.query.filter(
+            DistrictYearEndReport.district_id.in_(affected_district_ids)
+        ).delete(synchronize_session=False)
+        db.session.commit()
+        logger.info(
+            "Invalidated DistrictYearEndReport cache for %d districts after attendance update on event %d",
+            len(affected_district_ids),
+            event_id,
+        )
+
     return jsonify({"success": True})

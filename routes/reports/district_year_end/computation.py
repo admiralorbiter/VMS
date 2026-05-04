@@ -398,6 +398,31 @@ def refresh_district_cache(school_year, host_filter="all"):
         for e_id, d_id, t_id, confirmed_at in teacher_rows:
             preloaded_teachers[d_id][e_id].append((t_id, confirmed_at))
 
+    # Pre-load attendance details
+    from models.attendance import EventAttendanceDetail
+
+    attendance_rows = (
+        db.session.query(
+            EventAttendanceDetail.event_id,
+            EventAttendanceDetail.total_students,
+        )
+        .filter(
+            EventAttendanceDetail.event_id.in_(event_ids),
+            EventAttendanceDetail.total_students.isnot(None),
+        )
+        .all()
+    )
+    preloaded_attendance = {e_id: total for e_id, total in attendance_rows}
+
+    # Identify shared events (appear in >1 district's partition)
+    event_district_count = defaultdict(int)
+    for d_id, e_list in district_events.items():
+        for e in e_list:
+            event_district_count[e.id] += 1
+    preloaded_shared_events = {
+        e_id for e_id, count in event_district_count.items() if count > 1
+    }
+
     logger.info(
         "[refresh_district_cache] Participation data loaded in %.2fs", time.time() - t2
     )
@@ -459,7 +484,23 @@ def refresh_district_cache(school_year, host_filter="all"):
                         "total_volunteer_hours": 0,
                     }
 
-                s_count = len(preloaded_students[district.id].get(event.id, []))
+                event_type = getattr(event, "type", None)
+                if event_type not in [
+                    EventType.VIRTUAL_SESSION,
+                    EventType.CONNECTOR_SESSION,
+                ]:
+                    if (
+                        event.id not in preloaded_shared_events
+                        and event.id in preloaded_attendance
+                    ):
+                        s_count = preloaded_attendance[event.id]
+                    else:
+                        s_count = len(preloaded_students[district.id].get(event.id, []))
+                else:
+                    s_count = (
+                        len(preloaded_teachers[district.id].get(event.id, [])) * 25
+                    )
+
                 v_entries = preloaded_volunteers[district.id].get(event.id, [])
                 v_count = len(v_entries)
                 v_hours = sum(h for _, h in v_entries)
@@ -487,6 +528,16 @@ def refresh_district_cache(school_year, host_filter="all"):
                         "students": s_count,
                         "volunteers": v_count,
                         "volunteer_hours": v_hours,
+                        "has_attendance_detail": event.id in preloaded_attendance,
+                        "needs_attendance": (
+                            getattr(event, "type", None)
+                            not in [
+                                EventType.VIRTUAL_SESSION,
+                                EventType.CONNECTOR_SESSION,
+                            ]
+                            and not s_count
+                            and event.id not in preloaded_attendance
+                        ),
                     }
                 )
                 events_by_month[month]["total_students"] += s_count
@@ -505,9 +556,26 @@ def refresh_district_cache(school_year, host_filter="all"):
                     if getattr(e, "school_id", None) == school.id
                     or getattr(e, "school", None) == school.name
                 ]
-                s_total_students = sum(
-                    len(preloaded_students[district.id].get(e.id, [])) for e in s_events
-                )
+                s_total_students = 0
+                for e in s_events:
+                    e_type = getattr(e, "type", None)
+                    if e_type not in [
+                        EventType.VIRTUAL_SESSION,
+                        EventType.CONNECTOR_SESSION,
+                    ]:
+                        if (
+                            e.id not in preloaded_shared_events
+                            and e.id in preloaded_attendance
+                        ):
+                            s_total_students += preloaded_attendance[e.id]
+                        else:
+                            s_total_students += len(
+                                preloaded_students[district.id].get(e.id, [])
+                            )
+                    else:
+                        s_total_students += (
+                            len(preloaded_teachers[district.id].get(e.id, [])) * 25
+                        )
                 s_unique_volunteers = set()
                 s_total_v_hours = 0
                 s_events_list = []
@@ -538,8 +606,27 @@ def refresh_district_cache(school_year, host_filter="all"):
                                 if getattr(e, "type", None)
                                 else "Unknown"
                             ),
-                            "students": len(
-                                preloaded_students[district.id].get(e.id, [])
+                            "students": (
+                                preloaded_attendance[e.id]
+                                if getattr(e, "type", None)
+                                not in [
+                                    EventType.VIRTUAL_SESSION,
+                                    EventType.CONNECTOR_SESSION,
+                                ]
+                                and e.id not in preloaded_shared_events
+                                and e.id in preloaded_attendance
+                                else (
+                                    len(preloaded_students[district.id].get(e.id, []))
+                                    if getattr(e, "type", None)
+                                    not in [
+                                        EventType.VIRTUAL_SESSION,
+                                        EventType.CONNECTOR_SESSION,
+                                    ]
+                                    else len(
+                                        preloaded_teachers[district.id].get(e.id, [])
+                                    )
+                                    * 25
+                                )
                             ),
                             "volunteers": len(v_entries),
                             "volunteer_hours": e_v_hours,

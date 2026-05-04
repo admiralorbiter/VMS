@@ -16,6 +16,30 @@
         </div>
         <h1>{{ district.name }}</h1>
         <div class="school-year">{{ school_year[:2] }}-{{ school_year[2:] }} School Year</div>
+
+        {% set ns = namespace(total_inperson=0, with_attendance=0) %}
+        {% for month, data in events_by_month.items() %}
+          {% for event in data.events %}
+            {% if event.type not in ['virtual_session', 'connector_session'] %}
+              {% set ns.total_inperson = ns.total_inperson + 1 %}
+              {% if not event.needs_attendance %}
+                {% set ns.with_attendance = ns.with_attendance + 1 %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+        {% endfor %}
+        {% set attendance_pct = (ns.with_attendance / ns.total_inperson * 100)|round(1) if ns.total_inperson > 0 else 100 %}
+        <div class="attendance-progress" style="margin-top: 1rem; width: 100%; max-width: 400px;" data-total="{{ ns.total_inperson }}" data-with="{{ ns.with_attendance }}">
+          <div class="progress-label" style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem;">
+            <span>Attendance Recorded</span>
+            <span id="attendance-fraction">{{ ns.with_attendance }} / {{ ns.total_inperson }} events</span>
+          </div>
+          <div class="progress-bar-track" style="background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden;">
+            <div id="attendance-progress-fill" class="progress-bar-fill"
+                 style="background: {% if attendance_pct == 100 %}#10b981{% else %}#3b82f6{% endif %}; width: {{ attendance_pct }}%; height: 100%; transition: width 0.3s ease;">
+            </div>
+          </div>
+        </div>
     </div>
 
     <!-- Host filter removed for cleaner UI -->
@@ -237,7 +261,42 @@
                                     <span class="event-type-badge {{ event.type|replace('_', '-') }}">{{ event.type|replace('_', ' ')|title }}</span>
                                 </td>
                                 <td>{{ event.location }}</td>
-                                <td>{{ event.students }}</td>
+                                <td class="student-count-cell" data-event-id="{{ event.id }}" data-is-virtual="{{ 'true' if event.type in ['virtual_session', 'connector_session'] else 'false' }}">
+                                    {% if event.type in ['virtual_session', 'connector_session'] %}
+                                        <span class="count-display virtual" title="Virtual calculation">
+                                            {{ event.students }}
+                                        </span>
+                                    {% else %}
+                                        {% if event.has_attendance_detail %}
+                                            <span class="count-display verified" title="Manually recorded" style="cursor: pointer; display: inline-flex; align-items: center;">
+                                                {{ event.students }}
+                                                <i class="fas fa-check-circle attendance-verified-icon" style="color: #10b981; margin-left: 4px; font-size: 0.8em;"></i>
+                                            </span>
+                                        {% elif not event.needs_attendance %}
+                                            <span class="count-display sf-verified" title="Salesforce records" style="cursor: pointer; display: inline-flex; align-items: center;">
+                                                {{ event.students }}
+                                                <i class="fas fa-cloud-download-alt" style="color: #6366f1; margin-left: 4px; font-size: 0.8em;"></i>
+                                            </span>
+                                        {% else %}
+                                            <span class="count-display unverified" title="Click to record attendance" style="cursor: pointer; color: #f59e0b; font-weight: bold; display: inline-flex; align-items: center;">
+                                                {{ event.students or '—' }}
+                                                <i class="fas fa-exclamation-circle attendance-warning-icon" style="margin-left: 4px; font-size: 0.8em;"></i>
+                                            </span>
+                                        {% endif %}
+                                        <input
+                                            type="number"
+                                            class="attendance-inline-input"
+                                            min="0"
+                                            max="10000"
+                                            data-event-id="{{ event.id }}"
+                                            style="display: none; width: 60px; padding: 2px;"
+                                            placeholder="#"
+                                        />
+                                        <a href="#" class="attendance-full-detail-link" data-event-id="{{ event.id }}" data-event-title="{{ event.title }}" title="Edit full attendance detail" style="margin-left: 4px; color: #64748b; font-size: 0.8em;">
+                                            <i class="fas fa-sliders-h"></i>
+                                        </a>
+                                    {% endif %}
+                                </td>
                                 <td>{{ event.volunteers }}</td>
                                 <td>{{ "%.1f"|format(event.volunteer_hours) }}</td>
                             </tr>
@@ -1110,5 +1169,115 @@ function updateBreakdownCardData(card, total, inPerson, virtual, inPersonPct, vi
         if (virtualPercent && virtualPct !== undefined) virtualPercent.textContent = `(${virtualPct}%)`;
     }
 }
+
+// --- Inline Attendance Editor Logic ---
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.student-count-cell').forEach(cell => {
+        if (cell.dataset.isVirtual === 'true') return;
+
+        const display = cell.querySelector('.count-display');
+        const input = cell.querySelector('.attendance-inline-input');
+        if (!display || !input) return;
+
+        display.addEventListener('click', function(e) {
+            e.stopPropagation();
+            display.style.display = 'none';
+            input.style.display = 'inline-block';
+            let val = display.textContent.trim().replace('—', '');
+            val = val.replace(/[^0-9]/g, '');
+            input.value = val;
+            input.focus();
+        });
+    });
+
+    function restoreDisplay(input) {
+        const cell = input.closest('td');
+        const display = cell.querySelector('.count-display');
+        input.style.display = 'none';
+        display.style.display = 'inline-flex';
+    }
+
+    function updateCellToVerified(cell, value) {
+        const display = cell.querySelector('.count-display');
+        display.className = 'count-display verified';
+        display.title = 'Manually recorded';
+        display.style.color = '';
+        display.style.fontWeight = '';
+        display.innerHTML = `${value} <i class="fas fa-check-circle attendance-verified-icon" style="color: #10b981; margin-left: 4px; font-size: 0.8em;"></i>`;
+
+        const progressDiv = document.querySelector('.attendance-progress');
+        if (progressDiv) {
+            let total = parseInt(progressDiv.dataset.total);
+            let withAtt = parseInt(progressDiv.dataset.with);
+            if (!cell.dataset.alreadyVerified) {
+                withAtt = Math.min(withAtt + 1, total);
+                progressDiv.dataset.with = withAtt;
+                document.getElementById('attendance-fraction').textContent = `${withAtt} / ${total} events`;
+                let pct = total > 0 ? (withAtt / total * 100).toFixed(1) : 100;
+                const fill = document.getElementById('attendance-progress-fill');
+                fill.style.width = `${pct}%`;
+                fill.style.background = pct == 100 ? '#10b981' : '#3b82f6';
+                cell.dataset.alreadyVerified = 'true';
+            }
+        }
+    }
+
+    document.querySelectorAll('.attendance-inline-input').forEach(input => {
+        ['keydown', 'blur'].forEach(evt => {
+            input.addEventListener(evt, async function(e) {
+                if (evt === 'keydown' && e.key === 'Escape') {
+                    restoreDisplay(this);
+                    return;
+                }
+                if (evt === 'keydown' && e.key !== 'Enter' && e.key !== 'Tab') return;
+                if (e.type === 'blur' && this.style.display === 'none') return;
+
+                const eventId = this.dataset.eventId;
+                const value = parseInt(this.value);
+                if (isNaN(value) || value < 0) {
+                    restoreDisplay(this);
+                    return;
+                }
+
+                this.disabled = true;
+
+                try {
+                    const response = await fetch(`/attendance/details/${eventId}/detail`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            total_students: value,
+                            data_source: 'manual'
+                        })
+                    });
+
+                    if (response.ok) {
+                        updateCellToVerified(this.closest('td'), value);
+                        this.style.display = 'none';
+                    } else {
+                        alert('Failed to save attendance count');
+                        restoreDisplay(this);
+                    }
+                } catch(err) {
+                    alert('Network error saving attendance');
+                    restoreDisplay(this);
+                } finally {
+                    this.disabled = false;
+                }
+            });
+        });
+    });
+
+    document.querySelectorAll('.attendance-full-detail-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const eventId = this.dataset.eventId;
+            window.open(`/attendance/details?event_id=${eventId}`, '_blank');
+        });
+    });
+});
 </script>
 {% endblock %}

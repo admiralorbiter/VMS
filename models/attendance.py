@@ -158,8 +158,31 @@ class EventAttendanceDetail(db.Model):
         db.String(512), nullable=True
     )  # URL to external attendance system
 
+    # Provenance fields
+    data_source = db.Column(
+        db.String(32), nullable=True
+    )  # 'manual', 'csv_import', 'google_sheets_api', 'salesforce'
+
+    last_verified_at = db.Column(
+        db.DateTime(timezone=True), nullable=True
+    )  # When was this record last confirmed correct?
+
+    notes = db.Column(
+        db.Text, nullable=True
+    )  # Free text, e.g. "Per Grandview attendance sheet tab 3"
+
+    last_updated_by = db.Column(
+        db.Integer, db.ForeignKey("users.id"), nullable=True
+    )  # FK to user who last saved this record
+
     # Relationship to Event model - back_populates creates bidirectional relationship
     event = relationship("Event", back_populates="attendance_detail")
+
+    last_updated_by_user = relationship(
+        "User",
+        foreign_keys=[last_updated_by],
+        backref=db.backref("attendance_updates", lazy="dynamic"),
+    )
 
     def calculate_students_per_volunteer(self):
         """

@@ -99,6 +99,21 @@ def get_district_student_count_for_event(event, target_district_id):
                     district_teachers_count += 1
         return district_teachers_count * 25
     else:
+        # Check if event is shared across districts (multi-attribution)
+        # Proxy: if district_partner contains a comma, or event is in >1 district M2M
+        # This is a best-effort heuristic for the live-compute path;
+        # the cache refresh path uses the more accurate preloaded_shared_events set.
+        is_likely_shared = len(event.districts) > 1 or (
+            "," in (event.district_partner or "")
+        )
+
+        if (
+            not is_likely_shared
+            and getattr(event, "attendance_detail", None)
+            and getattr(event.attendance_detail, "total_students", None) is not None
+        ):
+            return event.attendance_detail.total_students
+
         # For non-virtual events, count actual student participations from the district
         from models.student import Student
 
