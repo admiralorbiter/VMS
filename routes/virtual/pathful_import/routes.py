@@ -858,27 +858,79 @@ def load_pathful_routes():
                 _ensure_volunteer_org_link,
             )
 
-            volunteer_id = request.form.get("volunteer_id")
-            if volunteer_id:
-                volunteer = Volunteer.query.get(volunteer_id)
+            canonical_id = request.form.get("volunteer_id")
+            if canonical_id:
+                canonical = Volunteer.query.get(canonical_id)
+                duplicate = Volunteer.query.get(record.resolved_volunteer_id)
                 import_log = PathfulImportLog.query.get(record.import_log_id)
 
-                # If they had an organization string that failed naturally along with the volunteer, re-evaluate it now
-                if volunteer and import_log and record.attempted_match_organization:
-                    _ensure_volunteer_org_link(
-                        volunteer=volunteer,
-                        organization_name=record.attempted_match_organization,
-                        import_log=import_log,
-                        row_number=record.row_number,
-                        raw_data=record.raw_data,
-                        caches=None,
+                if canonical and duplicate:
+                    # 1. Backfill pathful_user_id onto canonical so future imports hit Priority 1
+                    if duplicate.pathful_user_id and not canonical.pathful_user_id:
+                        canonical.pathful_user_id = duplicate.pathful_user_id
+
+                    # 2. Re-parent all event_volunteers rows from duplicate -> canonical
+                    db.session.execute(
+                        db.text(
+                            "DELETE FROM event_volunteers "
+                            "WHERE volunteer_id = :did "
+                            "AND event_id IN ("
+                            "  SELECT event_id FROM event_volunteers WHERE volunteer_id = :cid"
+                            ")"
+                        ),
+                        {"cid": canonical.id, "did": duplicate.id},
                     )
+                    db.session.execute(
+                        db.text(
+                            "UPDATE event_volunteers SET volunteer_id = :cid "
+                            "WHERE volunteer_id = :did"
+                        ),
+                        {"cid": canonical.id, "did": duplicate.id},
+                    )
+
+                    # 3. Re-parent event_participation rows
+                    db.session.execute(
+                        db.text(
+                            "DELETE FROM event_participation "
+                            "WHERE volunteer_id = :did "
+                            "AND event_id IN ("
+                            "  SELECT event_id FROM event_participation WHERE volunteer_id = :cid"
+                            ")"
+                        ),
+                        {"cid": canonical.id, "did": duplicate.id},
+                    )
+                    db.session.execute(
+                        db.text(
+                            "UPDATE event_participation SET volunteer_id = :cid "
+                            "WHERE volunteer_id = :did"
+                        ),
+                        {"cid": canonical.id, "did": duplicate.id},
+                    )
+
+                    # 4. Handle organization link re-evaluation
+                    if import_log and record.attempted_match_organization:
+                        _ensure_volunteer_org_link(
+                            volunteer=canonical,
+                            organization_name=record.attempted_match_organization,
+                            import_log=import_log,
+                            row_number=record.row_number,
+                            raw_data=record.raw_data,
+                            caches=None,
+                        )
+
+                    # 5. Soft-delete or mark duplicate as merged (in our case, we can delete the stub)
+                    try:
+                        db.session.delete(duplicate)
+                    except Exception as e:
+                        current_app.logger.warning(
+                            f"Could not delete duplicate volunteer stub {duplicate.id}: {e}"
+                        )
 
                 record.resolve(
                     status=ResolutionStatus.RESOLVED,
                     notes=notes,
                     resolved_by=current_user.id,
-                    volunteer_id=int(volunteer_id),
+                    volunteer_id=int(canonical_id),
                 )
                 flash("Record matched to volunteer.", "success")
 
@@ -1086,6 +1138,17 @@ def load_pathful_routes():
                 canonical.pathful_user_id = duplicate.pathful_user_id
 
             # 2. Re-parent all event_volunteers rows from duplicate -> canonical
+            # First, delete any duplicates that would cause a UniqueViolation
+            db.session.execute(
+                db.text(
+                    "DELETE FROM event_volunteers "
+                    "WHERE volunteer_id = :did "
+                    "AND event_id IN ("
+                    "  SELECT event_id FROM event_volunteers WHERE volunteer_id = :cid"
+                    ")"
+                ),
+                {"cid": canonical.id, "did": duplicate.id},
+            )
             ev_count = db.session.execute(
                 db.text(
                     "UPDATE event_volunteers SET volunteer_id = :cid "
@@ -1095,6 +1158,17 @@ def load_pathful_routes():
             ).rowcount
 
             # 3. Re-parent event_participation rows if they exist
+            # First, delete any duplicates that would cause a UniqueViolation
+            db.session.execute(
+                db.text(
+                    "DELETE FROM event_participation "
+                    "WHERE volunteer_id = :did "
+                    "AND event_id IN ("
+                    "  SELECT event_id FROM event_participation WHERE volunteer_id = :cid"
+                    ")"
+                ),
+                {"cid": canonical.id, "did": duplicate.id},
+            )
             db.session.execute(
                 db.text(
                     "UPDATE event_participation SET volunteer_id = :cid "

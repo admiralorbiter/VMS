@@ -432,9 +432,53 @@ def process_session_report_row(
                 raw_data=raw_data,
                 caches=caches,
             )
-            # If matched, link volunteer to event
-            if volunteer and volunteer not in event.volunteers:
-                event.volunteers.append(volunteer)
+            # If matched, link volunteer to event M2M and EventParticipation
+            if volunteer:
+                if volunteer not in event.volunteers:
+                    event.volunteers.append(volunteer)
+
+                # Create or update EventParticipation record
+                from models.volunteer import EventParticipation as _EP
+
+                mapped_event_status = EventStatus.map_status(status)
+                if mapped_event_status == EventStatus.COMPLETED:
+                    ep_status = "Attended"
+                elif mapped_event_status in (
+                    EventStatus.CANCELLED,
+                    EventStatus.NO_SHOW,
+                ):
+                    ep_status = "No-Show"
+                else:
+                    ep_status = "Registered"
+
+                existing_ep = _EP.query.filter_by(
+                    event_id=event.id, volunteer_id=volunteer.id
+                ).first()
+
+                # Calculate hours: ceiling of (duration / 60)
+                calc_hours = 0.0
+                if event.duration:
+                    import math
+
+                    calc_hours = float(math.ceil(event.duration / 60))
+
+                if not existing_ep:
+                    ep = _EP(
+                        event_id=event.id,
+                        volunteer_id=volunteer.id,
+                        status=ep_status,
+                        delivery_hours=calc_hours,
+                    )
+                    db.session.add(ep)
+                else:
+                    # Update existing record if progressing to terminal state
+                    if (
+                        ep_status in ("Attended", "No-Show")
+                        and existing_ep.status != ep_status
+                    ):
+                        existing_ep.status = ep_status
+                        if not existing_ep.delivery_hours:
+                            existing_ep.delivery_hours = calc_hours
 
             # Store professional name on event (accumulate if multiple)
             if name:
