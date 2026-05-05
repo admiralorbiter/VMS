@@ -24,12 +24,30 @@ _storage_uri = os.environ.get(
     "memory://",  # Use in-memory for development, file/redis for production
 )
 
+
+def get_anonymous_ip():
+    """
+    Key function for the default rate limit.
+    Returns the IP for anonymous (unauthenticated) requests only.
+    Returns None for authenticated users, making them exempt from the default limit.
+    Authenticated routes use their own explicit @limiter.limit() decorators.
+    """
+    try:
+        from flask_login import current_user
+
+        if current_user and current_user.is_authenticated:
+            return None  # Exempt authenticated users from the default limit
+    except Exception:
+        pass
+    return get_remote_address()
+
+
 # Create the limiter instance (will be initialized with app later)
 limiter = Limiter(
-    key_func=get_remote_address,
+    key_func=get_anonymous_ip,
     storage_uri=_storage_uri,
-    default_limits=["200 per day", "50 per hour"],  # Default for unauthenticated
-    strategy="fixed-window",  # or "moving-window" for stricter limiting
+    default_limits=["200 per day", "50 per hour"],  # Applies to anonymous traffic only
+    strategy="fixed-window",
 )
 
 
