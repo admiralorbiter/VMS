@@ -105,10 +105,8 @@ for row in prod_rows:
         if action == "add":
             # Get the teacher_id (contact ID) from the teacher_progress email
             local_teacher_row = lc.execute(
-                "SELECT t.id FROM teacher t "
-                "JOIN contact c ON t.id = c.id "
-                "JOIN teacher_progress tp ON tp.email = c.email "
-                "WHERE tp.id = ? LIMIT 1",
+                "SELECT tp.teacher_id FROM teacher_progress tp "
+                "WHERE tp.id = ? AND tp.teacher_id IS NOT NULL LIMIT 1",
                 (local_tp_id,),
             ).fetchone()
 
@@ -123,10 +121,8 @@ for row in prod_rows:
                 if not et_exists:
                     # Pull the EventTeacher row from prod to get exact status/metadata
                     prod_teacher_row = pc.execute(
-                        "SELECT t.id FROM teacher t "
-                        "JOIN contact c ON t.id = c.id "
-                        "JOIN teacher_progress tp ON tp.email = c.email "
-                        "WHERE tp.id = ? LIMIT 1",
+                        "SELECT tp.teacher_id FROM teacher_progress tp "
+                        "WHERE tp.id = ? AND tp.teacher_id IS NOT NULL LIMIT 1",
                         (prod_tp_id,),
                     ).fetchone()
                     prod_et = None
@@ -154,7 +150,7 @@ for row in prod_rows:
                             et_row,
                         )
                         print(
-                            f"    → also synced EventTeacher({local_teacher_id}, event={event_id}, "
+                            f"    -> also synced EventTeacher({local_teacher_id}, event={event_id}, "
                             f"status={prod_et[et_cols.index('status')]})"
                         )
                     else:
@@ -165,7 +161,7 @@ for row in prod_rows:
                             (local_teacher_id, event_id),
                         )
                         print(
-                            f"    → inserted stub EventTeacher({local_teacher_id}, event={event_id})"
+                            f"    -> inserted stub EventTeacher({local_teacher_id}, event={event_id})"
                         )
 
     ov_inserted += 1
