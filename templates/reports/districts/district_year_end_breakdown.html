@@ -69,6 +69,30 @@
     color: white;
 }
 
+.refresh-button {
+    background-color: #2563eb;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background-color 0.2s ease;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.refresh-button:hover:not(:disabled) {
+    background-color: #1d4ed8;
+}
+
+.refresh-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
 .back-link {
     color: var(--ucla-blue);
     text-decoration: none;
@@ -276,6 +300,9 @@ tr.all-zeros:hover { opacity: 1; }
             <h1>Detailed Stats Breakdown {{ school_year }}</h1>
         </div>
         <div class="header-controls">
+            <button id="refresh-btn" onclick="refreshCache()" class="refresh-button">
+                <i class="fas fa-sync-alt"></i> Refresh Cache
+            </button>
             <a href="{{ url_for('report.district_year_end_breakdown_export', school_year=school_year, host_filter=host_filter) }}"
                class="export-button">
                 <i class="fas fa-file-excel"></i> Export Excel
@@ -765,6 +792,34 @@ tr.all-zeros:hover { opacity: 1; }
     const ov = row.querySelector('.overall-column');
     if (ov) ov.textContent = total.toLocaleString();
   }
+
+  // ── Refresh Cache ──
+  window.refreshCache = async function() {
+    const btn = document.getElementById('refresh-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+    try {
+      const resp = await fetch(
+        `{{ url_for('report.refresh_district_year_end') }}?school_year={{ school_year }}&host_filter={{ host_filter }}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' } }
+      );
+      const data = await resp.json();
+      if (data.success) {
+        btn.innerHTML = '<i class="fas fa-check"></i> Done!';
+        btn.style.backgroundColor = '#059669';
+        setTimeout(() => window.location.reload(), 800);
+      } else {
+        btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed';
+        btn.style.backgroundColor = '#dc2626';
+        btn.disabled = false;
+        setTimeout(() => { btn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh Cache'; btn.style.backgroundColor = ''; btn.disabled = false; }, 3000);
+      }
+    } catch (e) {
+      btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Network Error';
+      btn.style.backgroundColor = '#dc2626';
+      setTimeout(() => { btn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh Cache'; btn.style.backgroundColor = ''; btn.disabled = false; }, 3000);
+    }
+  };
 
   window.toggleGroup = function(groupClass) {
     const rows = document.querySelectorAll('.' + groupClass);
