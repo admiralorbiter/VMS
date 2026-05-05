@@ -46,7 +46,10 @@ def get_anonymous_ip():
 limiter = Limiter(
     key_func=get_anonymous_ip,
     storage_uri=_storage_uri,
-    default_limits=["200 per day", "50 per hour"],  # Applies to anonymous traffic only
+    default_limits=[
+        "2000 per day",
+        "500 per hour",
+    ],  # Applies to anonymous traffic only
     strategy="fixed-window",
 )
 
