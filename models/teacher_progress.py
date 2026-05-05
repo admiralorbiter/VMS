@@ -43,11 +43,31 @@ Usage Examples:
     ).all()
 """
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, UniqueConstraint
+import enum
+
+from sqlalchemy import Column, DateTime
+from sqlalchemy import Enum as SQLAlchemyEnum
+from sqlalchemy import ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from models import db
+
+
+class DeactivationSource(str, enum.Enum):
+    IMPORT_DIFF = "import_diff"
+    MANUAL_ADMIN = "manual_admin"
+    YEAR_END = "year_end"
+    PURGE = "purge"
+
+
+DEACTIVATION_REASONS = [
+    "Left district",
+    "Transferred to another school",
+    "Retired",
+    "Data entry error",
+    "Other",
+]
 
 
 class TeacherProgress(db.Model):
@@ -107,6 +127,14 @@ class TeacherProgress(db.Model):
 
     # [NEW] Fields for roster import refactoring
     is_active = Column(db.Boolean, default=True, nullable=False)
+    deactivation_source = Column(SQLAlchemyEnum(DeactivationSource), nullable=True)
+    deactivated_by = Column(
+        Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    deactivated_at = Column(DateTime(timezone=True), nullable=True)
+    deactivation_reason = Column(String(200), nullable=True)
+    deactivation_notes = Column(String(500), nullable=True)
+
     district_name = Column(String(200), nullable=True)  # Nullable for legacy data
     last_import_id = Column(Integer, ForeignKey("roster_import_log.id"), nullable=True)
 

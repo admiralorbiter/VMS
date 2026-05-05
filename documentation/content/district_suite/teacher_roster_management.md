@@ -1,6 +1,6 @@
 # Teacher Roster Management Improvement
 
-**Status:** 📋 Proposed · **Priority:** Medium · **Created:** March 2026
+**Status:** 📋 In Progress (FR-610–612, FR-614 ✅ Shipped 2026-05-05 · FR-613 pending) · **Priority:** Medium · **Created:** March 2026 · **Updated:** May 2026
 
 > [!NOTE]
 > This document is a **feature proposal** — it describes planned improvements, not current functionality. For the current teacher management workflow, see [District & Teacher Progress](../user_guide/district_teacher_progress.md).
@@ -85,6 +85,34 @@ Add an **"Add Teacher"** button directly inside Polaris that allows district adm
 | FR-DISTRICT-608 | Bulk import via spreadsheet remains available as an alternative | Low |
 | FR-DISTRICT-609 | District admin can search/filter the teacher roster by building, name, or status | Medium |
 
+---
+
+### Intentional-Deletion Protection (FR-DISTRICT-610–614)
+
+**Problem discovered:** May 2026 — a gap exists where an admin deletes a teacher from VMS (because they left the district), but the person who manages the Google Sheet roster is not notified. When the next roster upload happens and that teacher is still on the sheet, the system silently **re-activates** them as if nothing happened. This directly contradicts the intent of the original deletion.
+
+This is not a technical failure — it is a **workflow trust gap**. The roster sheet does not automatically reflect manual admin decisions, so two sources of truth drift apart. The correct behavior is to **protect** intentional decisions and **flag** conflicts for human review, not to blindly defer to whatever is in the sheet.
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| <a id="fr-district-610"></a>**FR-DISTRICT-610** | The system shall distinguish between automatic deactivations (from roster import diff) and intentional deactivations (from a direct admin action). | **High** |
+| <a id="fr-district-611"></a>**FR-DISTRICT-611** | When a roster import encounters an email that was **intentionally deactivated**, it shall skip re-activation and emit a warning in the import result instead. | **High** |
+| <a id="fr-district-612"></a>**FR-DISTRICT-612** | The import result summary shall list all skipped/flagged teachers by name and email with a message explaining the skip reason. | **High** |
+| <a id="fr-district-613"></a>**FR-DISTRICT-613** | An admin shall be able to explicitly override a manual-deactivation flag and re-activate a teacher via a dedicated UI action (not via raw import). | **Medium** |
+| <a id="fr-district-614"></a>**FR-DISTRICT-614** | All intentional deactivations (and their subsequent admin overrides) shall be logged in the `RosterImportLog` with user identity, timestamp, and optional reason text. | **High** |
+
+**Implementation status** (see [ADR D-012](../technical/adr.md#2026-05-05-d-012--intent-aware-teacher-deactivation) — ✅ Accepted 2026-05-05):
+
+| FR | Requirement | Status |
+|----|-------------|--------|
+| FR-DISTRICT-610 | Distinguish MANUAL_ADMIN vs IMPORT_DIFF deactivation sources | ✅ Shipped — `DeactivationSource` enum on `TeacherProgress` |
+| FR-DISTRICT-611 | Skip re-activation for intentionally deactivated teachers on import | ✅ Shipped — `utils/roster_import.py` update branch |
+| FR-DISTRICT-612 | Import result lists skipped teachers; persistent `DataQualityFlag` per teacher in admin DQ Dashboard | ✅ Shipped — `models/data_quality_flag.py` `PROTECTED_TEACHER_SKIPPED` type |
+| FR-DISTRICT-613 | Admin can explicitly re-activate a protected teacher via UI | ⏳ Pending — no dedicated re-activate route yet |
+| FR-DISTRICT-614 | Deactivations logged in `RosterImportLog` with user identity and timestamp | ✅ Shipped — `records_flagged` + `flagged_details` in log |
+
+**See also:** [TD-065 in tech debt tracker](../developer/tech_debt.md#td-065-intentional-deletion-not-protected-against-roster-re-import) — ✅ Resolved 2026-05-05
+
 #### Technical Analysis
 
 **Existing Patterns to Follow:**
@@ -139,4 +167,4 @@ The District Suite already implements an identical pattern for **volunteers** (P
 
 ---
 
-*Last updated: March 2026*
+*Last updated: May 2026*

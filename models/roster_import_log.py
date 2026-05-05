@@ -20,6 +20,8 @@ class RosterImportLog(db.Model):
     records_added = Column(Integer, default=0)
     records_updated = Column(Integer, default=0)
     records_deactivated = Column(Integer, default=0)
+    records_flagged = Column(Integer, nullable=False, default=0, server_default="0")
+    flagged_details = Column(Text, nullable=True)  # JSON string
     status = Column(String(20), default="pending")  # 'success', 'failed', 'partial'
     error_message = Column(Text)
 

@@ -6,6 +6,7 @@ Handles the logic for safely importing teacher rosters from Google Sheets.
 Implements merge/upsert strategy instead of destructive replacement.
 """
 
+import json
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -13,10 +14,11 @@ from flask import current_app
 from sqlalchemy import func
 
 from models import db
+from models.data_quality_flag import DataQualityIssueType, flag_data_quality_issue
 from models.roster_import_log import RosterImportLog
 from models.school_model import School
 from models.teacher import Teacher
-from models.teacher_progress import TeacherProgress
+from models.teacher_progress import DeactivationSource, TeacherProgress
 
 
 def _find_school_by_building_name(building_name, district_id=None):
@@ -299,6 +301,8 @@ def import_roster(
         records_added = 0
         records_updated = 0
         records_deactivated = 0
+        records_flagged = 0
+        flagged_details_list = []
 
         # 3. Process Import Data (Upsert)
         processed_emails = set()
@@ -308,17 +312,62 @@ def import_roster(
             processed_emails.add(email_key)
 
             if email_key in existing_map:
+                existing_record = existing_map[email_key]
+
+                # Check for Intentional Removal protection
+                target_is_active = True
+                if (
+                    getattr(existing_record, "deactivation_source", None)
+                    == DeactivationSource.MANUAL_ADMIN
+                    and not existing_record.is_active
+                ):
+                    target_is_active = False
+                    records_flagged += 1
+
+                    reason = (
+                        existing_record.deactivation_reason
+                        or "Intentional Admin Removal"
+                    )
+                    flagged_details_list.append(
+                        {
+                            "email": existing_record.email,
+                            "name": existing_record.name,
+                            "reason": reason,
+                            "date": (
+                                existing_record.deactivated_at.isoformat()
+                                if existing_record.deactivated_at
+                                else None
+                            ),
+                        }
+                    )
+
+                    flag_data_quality_issue(
+                        entity_type="teacher",
+                        entity_id=existing_record.id,
+                        issue_type=DataQualityIssueType.PROTECTED_TEACHER_SKIPPED,
+                        details=json.dumps(
+                            {
+                                "email": existing_record.email,
+                                "reason": reason,
+                                "last_challenged_at": datetime.now(
+                                    timezone.utc
+                                ).isoformat(),
+                            }
+                        ),
+                        source="roster_import",
+                    )
+
                 # Update existing - Using Core Update
                 from sqlalchemy import update
 
                 stmt = (
                     update(TeacherProgress)
-                    .where(TeacherProgress.id == existing_map[email_key].id)
+                    .where(TeacherProgress.id == existing_record.id)
                     .values(
                         building=row["building"],
                         name=row["name"],
                         grade=row["grade"],
-                        is_active=True,
+                        is_active=target_is_active,
                         updated_at=datetime.now(timezone.utc),
                     )
                 )
@@ -360,7 +409,11 @@ def import_roster(
                 stmt = (
                     update(TeacherProgress)
                     .where(TeacherProgress.id == record.id)
-                    .values(is_active=False, updated_at=datetime.now(timezone.utc))
+                    .values(
+                        is_active=False,
+                        deactivation_source=DeactivationSource.IMPORT_DIFF,
+                        updated_at=datetime.now(timezone.utc),
+                    )
                 )
 
                 db.session.execute(stmt)
@@ -375,6 +428,10 @@ def import_roster(
         import_log.records_added = records_added
         import_log.records_updated = records_updated
         import_log.records_deactivated = records_deactivated
+        import_log.records_flagged = records_flagged
+        import_log.flagged_details = (
+            json.dumps(flagged_details_list) if flagged_details_list else None
+        )
         import_log.status = "success"
 
         db.session.commit()

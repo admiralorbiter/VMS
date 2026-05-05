@@ -10,7 +10,11 @@
 {% block content %}
 <div class="import-container">
     <div class="page-header">
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('virtual.virtual_sessions') }}" class="back-link">
+        {% else %}
         <a href="{{ url_for('district.virtual_sessions') }}" class="back-link">
+        {% endif %}
             <i class="fas fa-arrow-left"></i> Back to Virtual Sessions
         </a>
         <h1><i class="fas fa-file-import"></i> Teacher Import</h1>
@@ -35,6 +39,19 @@
     {% endfor %}
     {% endif %}
     {% endwith %}
+
+    {% if flagged_count and flagged_count > 0 %}
+    <div class="alert alert-warning" style="display: flex; flex-direction: column; gap: 10px; border-left: 5px solid #ffc107; margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div>
+                <i class="fas fa-shield-alt" style="color: #d39e00; margin-right: 5px; font-size: 1.2rem;"></i>
+                <strong>Import Protection Activated:</strong> {{ flagged_count }} teacher(s) on this spreadsheet were skipped because they were previously manually deactivated.
+                <br>
+                <span style="font-size: 0.9em; color: #666; margin-left: 27px;">Action required: If this was unexpected, please contact your Polaris Administrator to review the protected records.</span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Stats Row -->
     <div class="stats-row">
@@ -216,7 +233,7 @@
         <div class="section-header">
             <h2>Current Teachers ({{ teachers|length }})</h2>
             {% if teachers %}
-            <a href="{{ url_for('teacher_import.list_teachers', year=academic_year) }}" class="btn btn-outline">
+            <a href="{{ url_for('teacher_import.list_teachers', year=academic_year, **({'tenant_id': admin_tenant_id} if admin_tenant_id else {})) }}" class="btn btn-outline">
                 <i class="fas fa-list"></i> View All
             </a>
             {% endif %}
@@ -246,7 +263,7 @@
             {% if teachers|length > 10 %}
             <p style="text-align: center; margin-top: 15px; color: #666;">
                 Showing 10 of {{ teachers|length }} teachers.
-                <a href="{{ url_for('teacher_import.list_teachers', year=academic_year) }}">View all →</a>
+                <a href="{{ url_for('teacher_import.list_teachers', year=academic_year, **({'tenant_id': admin_tenant_id} if admin_tenant_id else {})) }}">View all →</a>
             </p>
             {% endif %}
             {% else %}

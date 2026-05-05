@@ -569,6 +569,69 @@ teacher.school_id = school.id             # NOT set — this is the gap
 
 ---
 
+## TD-065: Intentional Deletion Not Protected Against Roster Re-Import *(Resolved)*
+
+**Created:** 2026-05-05 · **Resolved:** 2026-05-05 · **Priority:** High · **Category:** Data Integrity / Workflow Trust
+
+**Problem:** When an admin manually deactivates a `TeacherProgress` record (because a teacher has left the district), the system sets `is_active=False` with no additional context. When a roster import runs and that teacher's email is still in the Google Sheet, the import unconditionally re-activates the record — **silently reversing an intentional, informed decision** made by someone who had ground-truth knowledge about the teacher's status.
+
+This is a **workflow trust gap**: the Google Sheet and the VMS database can diverge, and the import currently always trusts the sheet. The correct behavior is to trust **intentional admin decisions** over sheet contents, and to surface the conflict for human review.
+
+**Root cause:** `TeacherProgress.is_active` has no provenance. The system cannot distinguish:
+- `is_active=False` set by the import diff (safe to reverse)
+- `is_active=False` set by an explicit admin action (must NOT be auto-reversed)
+
+**Related ADR:** [D-012 — Intent-Aware Teacher Deactivation](../technical/adr.md#2026-05-05-d-012--intent-aware-teacher-deactivation)
+
+**Related FRs:** FR-DISTRICT-610 through FR-DISTRICT-614
+
+### Proposed Fix
+
+**Phase 1 — Schema (Alembic migration):** Add 4 new columns to `teacher_progress`:
+
+```python
+manually_deactivated = Column(Boolean, default=False, nullable=False)
+deactivated_by       = Column(Integer, ForeignKey("users.id"), nullable=True)
+deactivated_at       = Column(DateTime(timezone=True), nullable=True)
+deactivation_reason  = Column(String(500), nullable=True)
+```
+
+Zero-risk backfill: all existing rows default to `manually_deactivated=False`, so no existing behavior changes.
+
+**Phase 2 — Import logic (`utils/roster_import.py`):** In the update branch, check intent before re-activating:
+
+```python
+if not record.is_active and record.manually_deactivated:
+    records_flagged.append({"name": record.name, "email": record.email})
+    continue   # do NOT re-activate
+```
+
+**Phase 3 — Service layer (`services/teacher_import_service.py`):** Add `records_flagged: int` and `flagged_details: List[dict]` to `ImportResult`.
+
+**Phase 4 — UI (`routes/district/tenant_teacher_import.py`):** Surface flagged teachers in the import response with a warning panel. Flagged records should be clearly listed with name/email.
+
+**Phase 5 — Manual deactivation callsite:** Ensure any route that allows an admin to deactivate a teacher sets `manually_deactivated=True`, `deactivated_by=current_user.id`, and `deactivated_at=now()`. If no such route exists yet (see FR-DISTRICT-606), it must be created in tandem.
+
+### Testing Strategy
+
+| Test | Type | Target |
+|------|------|--------|
+| Import re-activates an automatically deactivated teacher | Unit | `utils/roster_import.py` |
+| Import does NOT re-activate an intentionally deactivated teacher | Unit | `utils/roster_import.py` |
+| Import result contains correct `records_flagged` count and `flagged_details` | Unit | `services/teacher_import_service.py` |
+| Import succeeds even when some teachers are flagged (non-blocking) | Integration | full import pipeline |
+| Admin can explicitly re-activate a flagged teacher via UI route | Integration | deactivation route |
+| Re-activation clears `manually_deactivated=False` and logs the action | Integration | deactivation route |
+| Import of a fully clean sheet (no conflicts) has `records_flagged=0` | Regression | full import pipeline |
+
+**Risk:** Low \u2014 all new fields are nullable/default. No existing records or behavior are affected until an admin takes a manual deactivation action using the new flow.
+
+**Effort:** Small\u2013Medium (1\u20132 sessions across 5\u20136 files + migration + tests).
+
+---
+
+---
+
 ## Priority Order
 
 Ordered by **what best unblocks future work**:
@@ -580,6 +643,7 @@ Ordered by **what best unblocks future work**:
 | **P1** | **~~TD-057~~** | **~~Import ordering race — retry queue for unresolved EPs~~** | M | ✅ Resolved 2026-04-28 |
 | **P1** | **~~TD-058~~** | ~~Dead function copies in `routes/events/routes.py`~~ | S | ✅ Resolved 2026-04-30 (Phase 3 Sprint A-5) |
 | **P1** | **~~TD-059~~** | ~~`fix_missing_participation_records()` called on every event page load (N+1)~~ | S | ✅ Resolved 2026-04-30 (Phase 3 Sprint A-5) |
+| **P1** | **✔️TD-065** | ~~Intentional deletion not protected against roster re-import~~ | S–M | ✅ Resolved 2026-05-05 |
 | 3 | **TD-009** | `db.session.commit()` Scattered in 44 Route Files | M | Pending |
 | 4 | **TD-011** | SQLite in Production | M | Pending |
 | 5 | **TD-013** | No True Application Factory Pattern | M | Pending |

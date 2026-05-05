@@ -35,6 +35,7 @@ ADRs are immutable records of significant technical decisions that capture conte
 | D-004 | Auto-Link TeacherProgress to Teacher on Import | ✅ Accepted | 2026-02 |
 | D-010 | Shared Session Status Classification Service | ✅ Accepted | 2026-03 |
 | D-011 | Hybrid Teacher Attendance Check | ✅ Accepted | 2026-03 |
+| D-012 | Intent-Aware Teacher Deactivation | ✅ Accepted | 2026-05 |
 
 ### GUI Enhancement Decisions
 
@@ -293,6 +294,94 @@ This follows the pattern established by `session_status_service.py` (D-010) whic
 - ⚠️ Large scope — 7 TD items across 4 phases
 
 **Related:** TD-041 through TD-047. See [Development Plan § 2.7](../developer/development_plan.md#27--structural-consolidation-sprint-td-041047).
+
+---
+
+---
+
+### 2026-05-05: D-012 — Intent-Aware Teacher Deactivation
+
+**Status:** ✅ Accepted
+
+**Context:** A workflow trust gap was identified where a school administrator manually deactivates a teacher in VMS (because they know the teacher has left the district), but the VMS admin managing the Google Sheet roster is unaware of this action. On the next roster import, the teacher's email is still in the sheet, and the current `import_roster()` logic unconditionally re-activates the `TeacherProgress` record. This silently reverses an informed, intentional administrative decision.
+
+The root cause is that `TeacherProgress.is_active = False` carries no provenance — it does not distinguish between:
+- **Automatic deactivation**: dropped from the roster sheet on last import (safe to reverse)
+- **Intentional deactivation**: an admin explicitly removed the teacher (must NOT be auto-reversed)
+
+This was discovered during a documentation audit in May 2026 and is separately tracked as [TD-065](../developer/tech_debt.md#td-065-intentional-deletion-not-protected-against-roster-re-import).
+
+**Decision:** Add **intent provenance fields** to `TeacherProgress` and modify the import logic to respect intentional deactivations by **flagging** rather than overriding them. Additionally, persist flagged records as `DataQualityFlag` entries so they surface in the admin Data Quality Dashboard for persistent, actionable review — not just as ephemeral flash warnings visible only to the person running the import.
+
+**Schema Changes** (`models/teacher_progress.py`):
+```python
+deactivation_source  = Column(Enum(DeactivationSource), nullable=True)  # MANUAL_ADMIN | IMPORT_DIFF
+deactivated_by       = Column(Integer, ForeignKey("users.id"), nullable=True)
+deactivated_at       = Column(DateTime(timezone=True), nullable=True)
+deactivation_reason  = Column(String(500), nullable=True)
+```
+
+**Import Logic Change** (`utils/roster_import.py`, update branch):
+```python
+if not record.is_active and record.deactivation_source == DeactivationSource.MANUAL_ADMIN:
+    # INTENTIONAL removal — do NOT re-activate; create a persistent DQ flag
+    flag_data_quality_issue(
+        entity_type="teacher",
+        entity_id=record.id,
+        issue_type=DataQualityIssueType.PROTECTED_TEACHER_SKIPPED,
+        details=json.dumps({"email": record.email, "reason": ..., "last_challenged_at": ...}),
+        source="roster_import"
+    )
+    records_flagged.append({"name": record.name, "email": record.email})
+    continue
+```
+
+**Escalation Layer (added 2026-05-05):** Instead of surfacing conflicts only as ephemeral flash banners, each skipped teacher generates a `DataQualityFlag` row (`issue_type = "protected_teacher_skipped"`, idempotent — one flag per teacher updated on re-challenge). This surfaces in the existing `/admin/data-quality` dashboard automatically, giving the administrator a persistent, reviewable, dismissable audit trail without requiring a new UI.
+
+**Service Layer Change** (`services/teacher_import_service.py`):
+```python
+@dataclass
+class ImportResult:
+    ...existing fields...
+    records_flagged: int = 0
+    flagged_details: List[dict] = field(default_factory=list)  # [{name, email, reason, date}]
+```
+
+**Coordinator UX:** The import flash banner now instructs the data coordinator to contact their Polaris Administrator rather than exposing the expandable detail table — correctly routing responsibility to the person who can act on it.
+
+**Alternatives Considered:**
+
+| Alternative | Reason Rejected |
+|-------------|----------------|
+| Block the entire import if any intentional deletion is in the sheet | Too aggressive — one stale teacher should not block a full district import |
+| Always defer to the sheet (current behavior) | Silent data corruption — overrides informed admin decisions without any visibility |
+| Require the sheet to be corrected before importing | Puts burden on the admin to coordinate two systems before every import — not scalable |
+| Build a separate "Protected Teachers" dashboard page for district VAs | Over-engineered — admin-only DQ dashboard already exists and is the correct home for this |
+| Email notification on conflict | Good supplementary measure but not a substitute for in-app flagging |
+
+**Consequences:**
+- ✅ Intentional deactivations are protected from silent reversal
+- ✅ Import still succeeds for all non-flagged teachers — no blocking behavior
+- ✅ Persistent `DataQualityFlag` rows give admins a discoverable audit trail across all districts
+- ✅ Coordinator flash banner correctly routes responsibility without overwhelming non-admin users
+- ✅ Idempotent flag creation (one flag per teacher) prevents dashboard noise across repeated imports
+- ✅ Explicit re-activation path (FR-DISTRICT-613) forces a conscious decision
+- ⚠️ Requires Alembic migration (`deactivation_source` enum + related columns)
+- ⚠️ `deactivation_source=MANUAL_ADMIN` must be set at the correct callsite when admin removes a teacher manually via the UI
+
+**Requirements Coverage:** FR-DISTRICT-610 through FR-DISTRICT-614
+
+**Files Changed:**
+- `models/teacher_progress.py` — `DeactivationSource` enum + provenance fields
+- `models/data_quality_flag.py` — `PROTECTED_TEACHER_SKIPPED` issue type added
+- `models/roster_import_log.py` — `records_flagged` + `flagged_details` columns
+- `utils/roster_import.py` — intent-aware update branch + DQ flag generation
+- `services/teacher_import_service.py` — `records_flagged` + `flagged_details` in `ImportResult`
+- `routes/district/tenant_teacher_import.py` — surface flagged teachers in import response; Global Admin routing fix
+- `templates/district/teacher_import/index.html` — simplified coordinator banner + admin-aware back link
+- `templates/district/teacher_import/teachers.html` — Admin Removed badges on teacher list
+- `templates/management/data_quality_dashboard.html` — Protected Teachers stat pill
+- `alembic/versions/` — migration for new columns
 
 ---
 

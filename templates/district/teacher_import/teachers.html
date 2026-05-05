@@ -159,6 +159,102 @@
         color: white;
     }
 
+    .btn-danger {
+        background: #dc3545;
+        color: white;
+    }
+
+    .btn-danger:hover {
+        background: #c82333;
+        color: white;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #5a6268;
+        color: white;
+    }
+
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 500px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+
+    .modal-header {
+        margin-bottom: 20px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 15px;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        color: #1d3354;
+    }
+
+    .modal-header p {
+        margin: 10px 0 0 0;
+        color: #6c757d;
+        font-size: 0.95rem;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+        color: #495057;
+    }
+
+    .form-group select, .form-group textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        font-family: inherit;
+        box-sizing: border-box;
+    }
+
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 25px;
+    }
+
     .empty-state {
         text-align: center;
         padding: 60px 20px;
@@ -183,7 +279,7 @@
 {% block content %}
 <div class="teachers-container">
     <div class="page-header">
-        <a href="{{ url_for('teacher_import.index', year=academic_year) }}" class="back-link">
+        <a href="{{ url_for('teacher_import.index', year=academic_year, **({'tenant_id': admin_tenant_id} if admin_tenant_id else {})) }}" class="back-link">
             <i class="fas fa-arrow-left"></i> Back to Import
         </a>
         <h1><i class="fas fa-users"></i> All Teachers</h1>
@@ -193,6 +289,9 @@
     <div class="controls">
         <form method="GET" class="filter-form">
             <input type="hidden" name="year" value="{{ academic_year }}">
+            {% if admin_tenant_id %}
+            <input type="hidden" name="tenant_id" value="{{ admin_tenant_id }}">
+            {% endif %}
             <label>
                 <input type="checkbox" name="show_inactive" value="true" {% if show_inactive %}checked{% endif %}
                     onchange="this.form.submit()">
@@ -200,7 +299,7 @@
             </label>
         </form>
 
-        <a href="{{ url_for('teacher_import.index', year=academic_year) }}" class="btn btn-primary">
+        <a href="{{ url_for('teacher_import.index', year=academic_year, **({'tenant_id': admin_tenant_id} if admin_tenant_id else {})) }}" class="btn btn-primary">
             <i class="fas fa-file-import"></i> Import More
         </a>
     </div>
@@ -222,6 +321,7 @@
                         {% if show_inactive %}
                         <th>Status</th>
                         {% endif %}
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -240,11 +340,22 @@
                         <td>
                             {% if teacher.is_active %}
                             <span class="status-active"><i class="fas fa-check-circle"></i> Active</span>
+                            {% elif teacher.deactivation_source and teacher.deactivation_source.name == 'MANUAL_ADMIN' %}
+                            <span class="status-inactive" style="color: #d39e00;" title="Protected from import reactivation: {{ teacher.deactivation_notes or 'No notes provided' }}">
+                                <i class="fas fa-shield-alt"></i> Admin Removed ({{ teacher.deactivation_reason }})
+                            </span>
                             {% else %}
                             <span class="status-inactive"><i class="fas fa-times-circle"></i> Inactive</span>
                             {% endif %}
                         </td>
                         {% endif %}
+                        <td>
+                            {% if teacher.is_active %}
+                            <button class="btn btn-danger btn-sm" onclick="openDeactivateModal({{ teacher.id }}, '{{ teacher.name|escape }}')">
+                                <i class="fas fa-user-times"></i> Deactivate
+                            </button>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -257,10 +368,94 @@
         <i class="fas fa-users"></i>
         <h3>No Teachers Found</h3>
         <p>No teachers have been imported for this academic year yet.</p>
-        <a href="{{ url_for('teacher_import.index', year=academic_year) }}" class="btn btn-primary">
+        <a href="{{ url_for('teacher_import.index', year=academic_year, **({'tenant_id': admin_tenant_id} if admin_tenant_id else {})) }}" class="btn btn-primary">
             <i class="fas fa-file-import"></i> Import Teachers
         </a>
     </div>
     {% endif %}
 </div>
+
+<!-- Deactivate Teacher Modal -->
+<div class="modal-overlay" id="deactivateModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Deactivate Teacher</h3>
+            <p>Remove <strong id="deactivateTeacherName"></strong> from active rosters. They will not be automatically re-activated in future imports.</p>
+        </div>
+        <form id="deactivateForm">
+            <input type="hidden" id="deactivateTeacherId" name="tp_id">
+            <div class="form-group">
+                <label for="deactivateReason">Reason for Removal (Required)</label>
+                <select id="deactivateReason" name="reason" required>
+                    <option value="">Select a reason...</option>
+                    {% for reason in deactivation_reasons %}
+                    <option value="{{ reason }}">{{ reason }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="deactivateNotes">Additional Notes (Optional)</label>
+                <textarea id="deactivateNotes" name="notes" rows="3" placeholder="Provide context to other administrators..."></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeDeactivateModal()">Cancel</button>
+                <button type="submit" class="btn btn-danger">Confirm Deactivation</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function openDeactivateModal(id, name) {
+        document.getElementById('deactivateTeacherId').value = id;
+        document.getElementById('deactivateTeacherName').textContent = name;
+        document.getElementById('deactivateForm').reset();
+        document.getElementById('deactivateModal').classList.add('active');
+    }
+
+    function closeDeactivateModal() {
+        document.getElementById('deactivateModal').classList.remove('active');
+    }
+
+    document.getElementById('deactivateForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const id = document.getElementById('deactivateTeacherId').value;
+        const formData = new FormData(this);
+        const submitBtn = this.querySelector('button[type="submit"]');
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+
+        // Ensure tenant_id is preserved if we are global admin accessing a tenant
+        const urlParams = new URLSearchParams(window.location.search);
+        let endpoint = `/district/teacher-import/teachers/${id}/deactivate`;
+        if (urlParams.has('tenant_id')) {
+            endpoint += `?tenant_id=${urlParams.get('tenant_id')}`;
+        }
+
+        fetch(endpoint, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert(data.error || 'An error occurred');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Confirm Deactivation';
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('A network error occurred.');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Confirm Deactivation';
+        });
+    });
+</script>
 {% endblock %}

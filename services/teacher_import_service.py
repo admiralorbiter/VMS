@@ -43,6 +43,8 @@ class ImportResult:
     records_updated: int = 0
     records_deactivated: int = 0
     records_skipped: int = 0
+    records_flagged: int = 0
+    flagged_details: Optional[str] = None
     warnings: List[str] = field(default_factory=list)
     error_message: Optional[str] = None
 
@@ -359,6 +361,8 @@ class TeacherImportService:
                 records_updated=import_log.records_updated,
                 records_deactivated=import_log.records_deactivated,
                 records_skipped=len(warnings),
+                records_flagged=import_log.records_flagged or 0,
+                flagged_details=import_log.flagged_details,
                 warnings=warnings,
             )
         except Exception as e:

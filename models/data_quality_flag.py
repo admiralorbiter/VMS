@@ -40,6 +40,7 @@ class DataQualityIssueType:
     UNMATCHED_SF_HISTORY = "unmatched_sf_history"
     IMPORT_ERROR = "import_error"
     SKIPPED_AFFILIATION = "skipped_affiliation"
+    PROTECTED_TEACHER_SKIPPED = "protected_teacher_skipped"
 
     @classmethod
     def all_types(cls):
@@ -53,6 +54,7 @@ class DataQualityIssueType:
             cls.UNMATCHED_SF_HISTORY,
             cls.IMPORT_ERROR,
             cls.SKIPPED_AFFILIATION,
+            cls.PROTECTED_TEACHER_SKIPPED,
         ]
 
     @classmethod
@@ -67,6 +69,7 @@ class DataQualityIssueType:
             cls.UNMATCHED_SF_HISTORY: "Unmatched SF History",
             cls.IMPORT_ERROR: "Import Error",
             cls.SKIPPED_AFFILIATION: "Skipped Affiliation",
+            cls.PROTECTED_TEACHER_SKIPPED: "Protected Teacher Skipped",
         }
         return names.get(issue_type, issue_type)
 

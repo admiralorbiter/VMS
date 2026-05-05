@@ -10,7 +10,8 @@ Access Control:
 - Requires VIRTUAL_ADMIN or ADMIN tenant role
 """
 
-from datetime import datetime
+import json
+from datetime import datetime, timezone
 from functools import wraps
 
 from flask import (
@@ -21,12 +22,18 @@ from flask import (
     redirect,
     render_template,
     request,
+    session,
     url_for,
 )
 from flask_login import current_user, login_required
 
 from models import db
-from models.teacher_progress import TeacherProgress
+from models.audit_log import AuditLog
+from models.teacher_progress import (
+    DEACTIVATION_REASONS,
+    DeactivationSource,
+    TeacherProgress,
+)
 from models.user import TenantRole
 from services.teacher_import_service import TeacherImportService
 
@@ -139,6 +146,9 @@ def index():
     # Common grade options
     grade_options = ["K", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
 
+    flagged_details = session.pop("flagged_import_details", None)
+    flagged_count = session.pop("flagged_import_count", 0)
+
     return render_template(
         "district/teacher_import/index.html",
         academic_year=academic_year,
@@ -149,6 +159,8 @@ def index():
         schools=schools,
         grade_options=grade_options,
         admin_tenant_id=tenant_id if current_user.is_admin else None,
+        flagged_details=flagged_details,
+        flagged_count=flagged_count,
     )
 
 
@@ -267,12 +279,24 @@ def do_import():
     elif import_type == "csv":
         if "csv_file" not in request.files:
             flash("Please upload a CSV file.", "error")
-            return redirect(url_for("teacher_import.index", year=academic_year))
+            return redirect(
+                url_for(
+                    "teacher_import.index",
+                    year=academic_year,
+                    **({"tenant_id": tenant_id} if current_user.is_admin else {}),
+                )
+            )
 
         file = request.files["csv_file"]
         if file.filename == "":
             flash("No file selected.", "error")
-            return redirect(url_for("teacher_import.index", year=academic_year))
+            return redirect(
+                url_for(
+                    "teacher_import.index",
+                    year=academic_year,
+                    **({"tenant_id": tenant_id} if current_user.is_admin else {}),
+                )
+            )
 
         file_content = file.read()
         result = TeacherImportService.import_from_csv(
@@ -284,7 +308,13 @@ def do_import():
         )
     else:
         flash("Invalid import type.", "error")
-        return redirect(url_for("teacher_import.index", year=academic_year))
+        return redirect(
+            url_for(
+                "teacher_import.index",
+                year=academic_year,
+                **({"tenant_id": tenant_id} if current_user.is_admin else {}),
+            )
+        )
 
     if result.success:
         msg = (
@@ -295,6 +325,16 @@ def do_import():
         if result.records_skipped > 0:
             msg += f", Skipped duplicates: {result.records_skipped}"
         flash(msg, "success")
+
+        if result.records_flagged > 0:
+            details = []
+            if result.flagged_details:
+                try:
+                    details = json.loads(result.flagged_details)
+                except Exception:
+                    pass
+            session["flagged_import_details"] = details
+            session["flagged_import_count"] = result.records_flagged
 
         # Show warnings for skipped duplicates (limit to first 5 to avoid flooding)
         if result.warnings:
@@ -312,7 +352,13 @@ def do_import():
     else:
         flash(f"Import failed: {result.error_message}", "error")
 
-    return redirect(url_for("teacher_import.index", year=academic_year))
+    return redirect(
+        url_for(
+            "teacher_import.index",
+            year=academic_year,
+            **({"tenant_id": tenant_id} if current_user.is_admin else {}),
+        )
+    )
 
 
 @teacher_import_bp.route("/teachers")
@@ -321,7 +367,7 @@ def do_import():
 def list_teachers():
     """List all imported teachers for the tenant."""
     academic_year = request.args.get("year", get_current_academic_year())
-    tenant_id = current_user.tenant_id
+    tenant_id = _resolve_tenant_id()
     show_inactive = request.args.get("show_inactive", "false") == "true"
 
     query = TeacherProgress.query.filter_by(
@@ -346,7 +392,9 @@ def list_teachers():
         buildings=buildings,
         academic_year=academic_year,
         show_inactive=show_inactive,
-        district_name=get_tenant_district_name(),
+        district_name=get_tenant_district_name(tenant_id),
+        deactivation_reasons=DEACTIVATION_REASONS,
+        admin_tenant_id=tenant_id if current_user.is_admin else None,
     )
 
 
@@ -388,7 +436,12 @@ def add_single_teacher():
 
     if not tenant_id:
         flash("Cannot add teacher without a tenant context.", "error")
-        return redirect(url_for("teacher_import.index"))
+        return redirect(
+            url_for(
+                "teacher_import.index",
+                **({"tenant_id": tenant_id} if current_user.is_admin else {}),
+            )
+        )
 
     # Get form fields
     building = request.form.get("building", "").strip()
@@ -413,7 +466,13 @@ def add_single_teacher():
     if errors:
         for error in errors:
             flash(error, "error")
-        return redirect(url_for("teacher_import.index", year=academic_year))
+        return redirect(
+            url_for(
+                "teacher_import.index",
+                year=academic_year,
+                **({"tenant_id": tenant_id} if current_user.is_admin else {}),
+            )
+        )
 
     # Check for existing teacher with same email in this academic year
     existing = TeacherProgress.query.filter_by(
@@ -448,4 +507,55 @@ def add_single_teacher():
         db.session.commit()
         flash(f"Successfully added teacher: {name}", "success")
 
-    return redirect(url_for("teacher_import.index", year=academic_year))
+    return redirect(
+        url_for(
+            "teacher_import.index",
+            year=academic_year,
+            **({"tenant_id": tenant_id} if current_user.is_admin else {}),
+        )
+    )
+
+
+@teacher_import_bp.route("/teachers/<int:tp_id>/deactivate", methods=["POST"])
+@login_required
+@virtual_admin_required
+def deactivate_teacher(tp_id):
+    """Manually deactivate a TeacherProgress record (protected from re-import)."""
+    tenant_id = _resolve_tenant_id()
+    if not tenant_id:
+        return jsonify({"success": False, "error": "Tenant context required"}), 400
+
+    tp = TeacherProgress.query.filter_by(id=tp_id, tenant_id=tenant_id).first_or_404()
+
+    reason = request.form.get("reason", "").strip()
+    notes = request.form.get("notes", "").strip()
+
+    if reason not in DEACTIVATION_REASONS:
+        return jsonify({"success": False, "error": "Invalid reason"}), 400
+
+    tp.is_active = False
+    tp.deactivation_source = DeactivationSource.MANUAL_ADMIN
+    tp.deactivated_by = current_user.id
+    tp.deactivated_at = datetime.now(timezone.utc)
+    tp.deactivation_reason = reason
+    tp.deactivation_notes = notes or None
+
+    # Immutable audit trail
+    audit = AuditLog(
+        user_id=current_user.id,
+        action="teacher_deactivated",
+        resource_type="teacher_progress",
+        resource_id=str(tp.id),
+        meta={
+            "name": tp.name,
+            "email": tp.email,
+            "reason": reason,
+            "notes": notes,
+            "source": "manual_admin",
+            "tenant_id": tenant_id,
+        },
+    )
+    db.session.add(audit)
+    db.session.commit()
+
+    return jsonify({"success": True, "message": f"{tp.name} deactivated."})
