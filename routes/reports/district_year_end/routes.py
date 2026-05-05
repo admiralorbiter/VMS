@@ -156,12 +156,26 @@ def load_routes(bp):
         }
 
         if not district_stats:
-            district_stats = generate_district_stats(
-                school_year, host_filter=host_filter
+            # Cache is empty — trigger a fast single-pass refresh instead of the
+            # slow legacy generate_district_stats path, which blocks for minutes.
+            logger.info(
+                "[district_year_end] Cache miss for %s/%s — triggering refresh_district_cache",
+                school_year,
+                host_filter,
             )
-            cache_district_stats_with_events(
-                school_year, district_stats, host_filter=host_filter
-            )
+            try:
+                refresh_district_cache(school_year, host_filter=host_filter)
+                # Re-query after refresh
+                cached_reports = DistrictYearEndReport.query.filter_by(
+                    school_year=school_year, host_filter=host_filter
+                ).all()
+                district_stats = {
+                    report.district.name: report.report_data
+                    for report in cached_reports
+                }
+            except Exception as e:
+                logger.error("[district_year_end] Cache refresh failed: %s", e)
+                district_stats = {}
 
         # Filter district stats based on user scope
         if current_user.scope_type == "district" and current_user.allowed_districts:
@@ -1196,7 +1210,7 @@ def load_routes(bp):
             "p2t_students": {"total": 0, "unique": 0},
             "p2gd_students": {"total": 0, "unique": 0},
             "math_relays_count": 0,
-            "connector_sessions": {
+            "virtual_sessions": {
                 "teachers_engaged": {"total": 0, "unique": 0},
                 "students_participated": {"total": 0, "unique": None},
                 "session_count": 0,
@@ -1204,12 +1218,21 @@ def load_routes(bp):
         }
 
         # Track unique IDs across all districts for overall totals
-        overall_unique_in_person_students = set()
-        overall_unique_in_person_volunteers = set()
-        overall_unique_career_jumping_students = set()
-        overall_unique_career_speakers_students = set()
-        overall_unique_career_fair_hs_students = set()
-        overall_unique_connector_teachers = set()
+        overall_unique_sets = {
+            "in_person_students": set(),
+            "in_person_volunteers": set(),
+            "career_jumping_students": set(),
+            "career_speakers_students": set(),
+            "career_college_fair_hs_students": set(),
+            "healthstart_students": set(),
+            "bfi_students": set(),
+            "dia_students": set(),
+            "sla_students": set(),
+            "client_connected_students": set(),
+            "p2t_students": set(),
+            "p2gd_students": set(),
+            "virtual_teachers": set(),
+        }
 
         for report in cached_reports:
             district = report.district
@@ -1269,65 +1292,102 @@ def load_routes(bp):
                 "p2gd_students", {}
             ).get("total", 0)
             overall_totals["math_relays_count"] += breakdown.get("math_relays_count", 0)
-            overall_totals["connector_sessions"]["teachers_engaged"]["total"] += (
-                breakdown.get("connector_sessions", {})
+            overall_totals["virtual_sessions"]["teachers_engaged"]["total"] += (
+                breakdown.get("virtual_sessions", {})
                 .get("teachers_engaged", {})
                 .get("total", 0)
             )
-            overall_totals["connector_sessions"]["students_participated"]["total"] += (
-                breakdown.get("connector_sessions", {})
+            overall_totals["virtual_sessions"]["students_participated"]["total"] += (
+                breakdown.get("virtual_sessions", {})
                 .get("students_participated", {})
                 .get("total", 0)
             )
-            overall_totals["connector_sessions"]["session_count"] += breakdown.get(
-                "connector_sessions", {}
+            overall_totals["virtual_sessions"]["session_count"] += breakdown.get(
+                "virtual_sessions", {}
             ).get("session_count", 0)
 
-            # For unique counts, we need to track across districts
-            # Note: This is an approximation - true unique would require cross-district deduplication
-            # For now, we'll sum the unique counts (which may overcount if students/volunteers
-            # participate across districts, but that's acceptable for this view)
-            overall_totals["in_person_students"]["unique"] += breakdown.get(
-                "in_person_students", {}
-            ).get("unique", 0)
-            overall_totals["in_person_volunteers"]["unique"] += breakdown.get(
-                "in_person_volunteers", {}
-            ).get("unique", 0)
-            overall_totals["career_jumping_students"]["unique"] += breakdown.get(
-                "career_jumping_students", {}
-            ).get("unique", 0)
-            overall_totals["career_speakers_students"]["unique"] += breakdown.get(
-                "career_speakers_students", {}
-            ).get("unique", 0)
-            overall_totals["career_college_fair_hs_students"][
-                "unique"
-            ] += breakdown.get("career_college_fair_hs_students", {}).get("unique", 0)
-            overall_totals["healthstart_students"]["unique"] += breakdown.get(
-                "healthstart_students", {}
-            ).get("unique", 0)
-            overall_totals["bfi_students"]["unique"] += breakdown.get(
-                "bfi_students", {}
-            ).get("unique", 0)
-            overall_totals["dia_students"]["unique"] += breakdown.get(
-                "dia_students", {}
-            ).get("unique", 0)
-            overall_totals["sla_students"]["unique"] += breakdown.get(
-                "sla_students", {}
-            ).get("unique", 0)
-            overall_totals["client_connected_students"]["unique"] += breakdown.get(
-                "client_connected_students", {}
-            ).get("unique", 0)
-            overall_totals["p2t_students"]["unique"] += breakdown.get(
-                "p2t_students", {}
-            ).get("unique", 0)
-            overall_totals["p2gd_students"]["unique"] += breakdown.get(
-                "p2gd_students", {}
-            ).get("unique", 0)
-            overall_totals["connector_sessions"]["teachers_engaged"]["unique"] += (
-                breakdown.get("connector_sessions", {})
-                .get("teachers_engaged", {})
-                .get("unique", 0)
+            # For unique counts, track true overall sets across districts
+            unique_sets = breakdown.get("_unique_sets", {})
+            overall_unique_sets["in_person_students"].update(
+                unique_sets.get("in_person_students", set())
             )
+            overall_unique_sets["in_person_volunteers"].update(
+                unique_sets.get("in_person_volunteers", set())
+            )
+            overall_unique_sets["career_jumping_students"].update(
+                unique_sets.get("career_jumping_students", set())
+            )
+            overall_unique_sets["career_speakers_students"].update(
+                unique_sets.get("career_speakers_students", set())
+            )
+            overall_unique_sets["career_college_fair_hs_students"].update(
+                unique_sets.get("career_college_fair_hs_students", set())
+            )
+            overall_unique_sets["healthstart_students"].update(
+                unique_sets.get("healthstart_students", set())
+            )
+            overall_unique_sets["bfi_students"].update(
+                unique_sets.get("bfi_students", set())
+            )
+            overall_unique_sets["dia_students"].update(
+                unique_sets.get("dia_students", set())
+            )
+            overall_unique_sets["sla_students"].update(
+                unique_sets.get("sla_students", set())
+            )
+            overall_unique_sets["client_connected_students"].update(
+                unique_sets.get("client_connected_students", set())
+            )
+            overall_unique_sets["p2t_students"].update(
+                unique_sets.get("p2t_students", set())
+            )
+            overall_unique_sets["p2gd_students"].update(
+                unique_sets.get("p2gd_students", set())
+            )
+            overall_unique_sets["virtual_teachers"].update(
+                unique_sets.get("virtual_teachers", set())
+            )
+
+        # Calculate true overall unique counts
+        overall_totals["in_person_students"]["unique"] = len(
+            overall_unique_sets["in_person_students"]
+        )
+        overall_totals["in_person_volunteers"]["unique"] = len(
+            overall_unique_sets["in_person_volunteers"]
+        )
+        overall_totals["career_jumping_students"]["unique"] = len(
+            overall_unique_sets["career_jumping_students"]
+        )
+        overall_totals["career_speakers_students"]["unique"] = len(
+            overall_unique_sets["career_speakers_students"]
+        )
+        overall_totals["career_college_fair_hs_students"]["unique"] = len(
+            overall_unique_sets["career_college_fair_hs_students"]
+        )
+        overall_totals["healthstart_students"]["unique"] = len(
+            overall_unique_sets["healthstart_students"]
+        )
+        overall_totals["bfi_students"]["unique"] = len(
+            overall_unique_sets["bfi_students"]
+        )
+        overall_totals["dia_students"]["unique"] = len(
+            overall_unique_sets["dia_students"]
+        )
+        overall_totals["sla_students"]["unique"] = len(
+            overall_unique_sets["sla_students"]
+        )
+        overall_totals["client_connected_students"]["unique"] = len(
+            overall_unique_sets["client_connected_students"]
+        )
+        overall_totals["p2t_students"]["unique"] = len(
+            overall_unique_sets["p2t_students"]
+        )
+        overall_totals["p2gd_students"]["unique"] = len(
+            overall_unique_sets["p2gd_students"]
+        )
+        overall_totals["virtual_sessions"]["teachers_engaged"]["unique"] = len(
+            overall_unique_sets["virtual_teachers"]
+        )
 
         # Filter district breakdown based on user scope
         if current_user.scope_type == "district" and current_user.allowed_districts:
@@ -1356,11 +1416,26 @@ def load_routes(bp):
 
         # Organize manual inputs by district and data type
         manual_inputs_by_district = {}
+        manual_inputs_meta = {}
         for mi in manual_inputs:
             if mi.district and mi.district.name not in manual_inputs_by_district:
                 manual_inputs_by_district[mi.district.name] = {}
+                manual_inputs_meta[mi.district.name] = {}
             if mi.district:
                 manual_inputs_by_district[mi.district.name][mi.data_type] = mi.value
+                editor_name = (
+                    getattr(mi.editor, "name", None) or mi.editor.username
+                    if mi.editor
+                    else "Unknown"
+                )
+                manual_inputs_meta[mi.district.name][mi.data_type] = {
+                    "editor": editor_name,
+                    "updated_at": (
+                        mi.updated_at.strftime("%Y-%m-%d %H:%M")
+                        if mi.updated_at
+                        else ""
+                    ),
+                }
 
         # Calculate overall totals for manual inputs
         manual_inputs_overall = {}
@@ -1374,6 +1449,12 @@ def load_routes(bp):
         school_years = [f"{y}{y+1}" for y in range(20, current_year + 2)]
         school_years.reverse()  # Most recent first
 
+        districts_by_name = {
+            report.district.name: report.district
+            for report in cached_reports
+            if report.district and report.district.name in breakdown_data
+        }
+
         return render_template(
             "reports/districts/district_year_end_breakdown.html",
             breakdown_data=breakdown_data,
@@ -1383,8 +1464,378 @@ def load_routes(bp):
             host_filter=host_filter,
             manual_inputs_by_district=manual_inputs_by_district,
             manual_inputs_overall=manual_inputs_overall,
+            manual_inputs_meta=manual_inputs_meta,
             manual_data_types=MANUAL_DATA_TYPES,
+            districts_by_name=districts_by_name,
         )
+
+    @bp.route("/reports/district/year-end/breakdown/export")
+    @login_required
+    def district_year_end_breakdown_export():
+        """Download the breakdown page as a formatted Excel file."""
+        school_year = request.args.get("school_year") or get_current_school_year()
+        host_filter = request.args.get("host_filter", "all")
+
+        # Get cached reports for the school year and host_filter
+        cached_reports = DistrictYearEndReport.query.filter_by(
+            school_year=school_year, host_filter=host_filter
+        ).all()
+
+        # Build breakdown data structure
+        breakdown_data = {}
+        overall_totals = {
+            "in_person_students": {"total": 0, "unique": 0},
+            "in_person_volunteers": {"total": 0, "unique": 0},
+            "in_person_events_count": 0,
+            "career_jumping_students": {"total": 0, "unique": 0},
+            "career_speakers_students": {"total": 0, "unique": 0},
+            "career_college_fair_hs_students": {"total": 0, "unique": 0},
+            "healthstart_students": {"total": 0, "unique": 0},
+            "bfi_students": {"total": 0, "unique": 0},
+            "dia_students": {"total": 0, "unique": 0},
+            "sla_students": {"total": 0, "unique": 0},
+            "client_connected_students": {"total": 0, "unique": 0},
+            "p2t_students": {"total": 0, "unique": 0},
+            "p2gd_students": {"total": 0, "unique": 0},
+            "math_relays_count": 0,
+            "virtual_sessions": {
+                "teachers_engaged": {"total": 0, "unique": 0},
+                "students_participated": {"total": 0, "unique": None},
+                "session_count": 0,
+            },
+        }
+
+        overall_unique_sets = {
+            "in_person_students": set(),
+            "in_person_volunteers": set(),
+            "career_jumping_students": set(),
+            "career_speakers_students": set(),
+            "career_college_fair_hs_students": set(),
+            "healthstart_students": set(),
+            "bfi_students": set(),
+            "dia_students": set(),
+            "sla_students": set(),
+            "client_connected_students": set(),
+            "p2t_students": set(),
+            "p2gd_students": set(),
+            "virtual_teachers": set(),
+        }
+
+        for report in cached_reports:
+            district = report.district
+            stats = report.report_data or {}
+
+            if "program_breakdown" in stats:
+                breakdown = stats["program_breakdown"]
+            else:
+                from routes.reports.common import calculate_program_breakdown
+
+                breakdown = calculate_program_breakdown(
+                    district.id, school_year, host_filter=host_filter
+                )
+
+            breakdown_data[district.name] = breakdown
+
+            # Accumulate overall totals
+            overall_totals["in_person_students"]["total"] += breakdown.get(
+                "in_person_students", {}
+            ).get("total", 0)
+            overall_totals["in_person_volunteers"]["total"] += breakdown.get(
+                "in_person_volunteers", {}
+            ).get("total", 0)
+            overall_totals["in_person_events_count"] += breakdown.get(
+                "in_person_events_count", 0
+            )
+            overall_totals["career_jumping_students"]["total"] += breakdown.get(
+                "career_jumping_students", {}
+            ).get("total", 0)
+            overall_totals["career_speakers_students"]["total"] += breakdown.get(
+                "career_speakers_students", {}
+            ).get("total", 0)
+            overall_totals["career_college_fair_hs_students"]["total"] += breakdown.get(
+                "career_college_fair_hs_students", {}
+            ).get("total", 0)
+            overall_totals["healthstart_students"]["total"] += breakdown.get(
+                "healthstart_students", {}
+            ).get("total", 0)
+            overall_totals["bfi_students"]["total"] += breakdown.get(
+                "bfi_students", {}
+            ).get("total", 0)
+            overall_totals["dia_students"]["total"] += breakdown.get(
+                "dia_students", {}
+            ).get("total", 0)
+            overall_totals["sla_students"]["total"] += breakdown.get(
+                "sla_students", {}
+            ).get("total", 0)
+            overall_totals["client_connected_students"]["total"] += breakdown.get(
+                "client_connected_students", {}
+            ).get("total", 0)
+            overall_totals["p2t_students"]["total"] += breakdown.get(
+                "p2t_students", {}
+            ).get("total", 0)
+            overall_totals["p2gd_students"]["total"] += breakdown.get(
+                "p2gd_students", {}
+            ).get("total", 0)
+            overall_totals["math_relays_count"] += breakdown.get("math_relays_count", 0)
+            overall_totals["virtual_sessions"]["teachers_engaged"]["total"] += (
+                breakdown.get("virtual_sessions", {})
+                .get("teachers_engaged", {})
+                .get("total", 0)
+            )
+            overall_totals["virtual_sessions"]["students_participated"]["total"] += (
+                breakdown.get("virtual_sessions", {})
+                .get("students_participated", {})
+                .get("total", 0)
+            )
+            overall_totals["virtual_sessions"]["session_count"] += breakdown.get(
+                "virtual_sessions", {}
+            ).get("session_count", 0)
+
+            # For unique counts, track true overall sets across districts
+            unique_sets = breakdown.get("_unique_sets", {})
+            overall_unique_sets["in_person_students"].update(
+                unique_sets.get("in_person_students", set())
+            )
+            overall_unique_sets["in_person_volunteers"].update(
+                unique_sets.get("in_person_volunteers", set())
+            )
+            overall_unique_sets["career_jumping_students"].update(
+                unique_sets.get("career_jumping_students", set())
+            )
+            overall_unique_sets["career_speakers_students"].update(
+                unique_sets.get("career_speakers_students", set())
+            )
+            overall_unique_sets["career_college_fair_hs_students"].update(
+                unique_sets.get("career_college_fair_hs_students", set())
+            )
+            overall_unique_sets["healthstart_students"].update(
+                unique_sets.get("healthstart_students", set())
+            )
+            overall_unique_sets["bfi_students"].update(
+                unique_sets.get("bfi_students", set())
+            )
+            overall_unique_sets["dia_students"].update(
+                unique_sets.get("dia_students", set())
+            )
+            overall_unique_sets["sla_students"].update(
+                unique_sets.get("sla_students", set())
+            )
+            overall_unique_sets["client_connected_students"].update(
+                unique_sets.get("client_connected_students", set())
+            )
+            overall_unique_sets["p2t_students"].update(
+                unique_sets.get("p2t_students", set())
+            )
+            overall_unique_sets["p2gd_students"].update(
+                unique_sets.get("p2gd_students", set())
+            )
+            overall_unique_sets["virtual_teachers"].update(
+                unique_sets.get("virtual_teachers", set())
+            )
+
+        # Calculate true overall unique counts
+        overall_totals["in_person_students"]["unique"] = len(
+            overall_unique_sets["in_person_students"]
+        )
+        overall_totals["in_person_volunteers"]["unique"] = len(
+            overall_unique_sets["in_person_volunteers"]
+        )
+        overall_totals["career_jumping_students"]["unique"] = len(
+            overall_unique_sets["career_jumping_students"]
+        )
+        overall_totals["career_speakers_students"]["unique"] = len(
+            overall_unique_sets["career_speakers_students"]
+        )
+        overall_totals["career_college_fair_hs_students"]["unique"] = len(
+            overall_unique_sets["career_college_fair_hs_students"]
+        )
+        overall_totals["healthstart_students"]["unique"] = len(
+            overall_unique_sets["healthstart_students"]
+        )
+        overall_totals["bfi_students"]["unique"] = len(
+            overall_unique_sets["bfi_students"]
+        )
+        overall_totals["dia_students"]["unique"] = len(
+            overall_unique_sets["dia_students"]
+        )
+        overall_totals["sla_students"]["unique"] = len(
+            overall_unique_sets["sla_students"]
+        )
+        overall_totals["client_connected_students"]["unique"] = len(
+            overall_unique_sets["client_connected_students"]
+        )
+        overall_totals["p2t_students"]["unique"] = len(
+            overall_unique_sets["p2t_students"]
+        )
+        overall_totals["p2gd_students"]["unique"] = len(
+            overall_unique_sets["p2gd_students"]
+        )
+        overall_totals["virtual_sessions"]["teachers_engaged"]["unique"] = len(
+            overall_unique_sets["virtual_teachers"]
+        )
+
+        # Filter district breakdown based on user scope
+        if current_user.scope_type == "district" and current_user.allowed_districts:
+            import json
+
+            try:
+                allowed_districts = (
+                    json.loads(current_user.allowed_districts)
+                    if isinstance(current_user.allowed_districts, str)
+                    else current_user.allowed_districts
+                )
+                breakdown_data = {
+                    district_name: breakdown
+                    for district_name, breakdown in breakdown_data.items()
+                    if district_name in allowed_districts
+                }
+            except (json.JSONDecodeError, TypeError):
+                breakdown_data = {}
+
+        # Fetch manual inputs for this school year and host filter
+        manual_inputs = DistrictManualInput.query.filter_by(
+            school_year=school_year, host_filter=host_filter
+        ).all()
+
+        manual_inputs_by_district = {}
+        manual_inputs_meta = {}
+        for mi in manual_inputs:
+            if mi.district and mi.district.name not in manual_inputs_by_district:
+                manual_inputs_by_district[mi.district.name] = {}
+                manual_inputs_meta[mi.district.name] = {}
+            if mi.district:
+                manual_inputs_by_district[mi.district.name][mi.data_type] = mi.value
+                editor_name = (
+                    getattr(mi.editor, "name", None) or mi.editor.username
+                    if mi.editor
+                    else "Unknown"
+                )
+                manual_inputs_meta[mi.district.name][mi.data_type] = {
+                    "editor": editor_name,
+                    "updated_at": (
+                        mi.updated_at.strftime("%Y-%m-%d %H:%M")
+                        if mi.updated_at
+                        else ""
+                    ),
+                }
+
+        from routes.reports.district_year_end.breakdown_export import (
+            generate_breakdown_excel,
+        )
+
+        excel_bytes = generate_breakdown_excel(
+            breakdown_data,
+            overall_totals,
+            manual_inputs_by_district,
+            manual_inputs_meta,
+            MANUAL_DATA_TYPES,
+            school_year,
+            host_filter,
+        )
+
+        filename = f"breakdown_{school_year}_{host_filter}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+        from flask import Response
+
+        return Response(
+            excel_bytes,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+
+    @bp.route("/reports/district/year-end/manual-input", methods=["PUT"])
+    @login_required
+    def update_manual_input():
+        """AJAX endpoint: inline edit of manual input values on the breakdown page."""
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": "No data provided"}), 400
+
+        district_id = data.get("district_id")
+        data_type = data.get("data_type")
+        school_year = data.get("school_year", get_current_school_year())
+        host_filter = data.get("host_filter", "all")
+        raw_value = data.get("value", 0)
+
+        # ── Validate inputs ──
+        if not district_id or not data_type:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "district_id and data_type are required",
+                    }
+                ),
+                400,
+            )
+        if data_type not in MANUAL_DATA_TYPES:
+            return (
+                jsonify({"success": False, "error": f"Unknown data_type: {data_type}"}),
+                400,
+            )
+        try:
+            value = int(raw_value)
+            if not (0 <= value <= 100_000):
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Value must be between 0 and 100,000",
+                        }
+                    ),
+                    400,
+                )
+        except (ValueError, TypeError):
+            return (
+                jsonify(
+                    {"success": False, "error": "Value must be a non-negative integer"}
+                ),
+                400,
+            )
+
+        # ── Authorization: district-scoped users may only edit their own districts ──
+        if current_user.scope_type == "district" and current_user.allowed_districts:
+            import json
+
+            try:
+                allowed = (
+                    json.loads(current_user.allowed_districts)
+                    if isinstance(current_user.allowed_districts, str)
+                    else current_user.allowed_districts
+                )
+            except (json.JSONDecodeError, TypeError):
+                allowed = []
+
+            from models.district import District
+
+            district = District.query.get(district_id)
+            if not district or district.name not in allowed:
+                return jsonify({"success": False, "error": "Unauthorized"}), 403
+
+        # ── Upsert ──
+        manual_input = DistrictManualInput.query.filter_by(
+            district_id=district_id,
+            school_year=school_year,
+            host_filter=host_filter,
+            data_type=data_type,
+        ).first()
+
+        if manual_input:
+            manual_input.value = value
+            manual_input.updated_by = current_user.id
+        else:
+            manual_input = DistrictManualInput(
+                district_id=district_id,
+                school_year=school_year,
+                host_filter=host_filter,
+                data_type=data_type,
+                value=value,
+                updated_by=current_user.id,
+            )
+            db.session.add(manual_input)
+
+        db.session.commit()
+
+        return jsonify({"success": True, "new_value": value, "data_type": data_type})
 
     @bp.route("/reports/district/year-end/input-data", methods=["GET", "POST"])
     @login_required

@@ -633,8 +633,15 @@ class DistrictManualInput(db.Model):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
+    updated_by = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     district = db.relationship("District", backref="manual_inputs")
+    editor = db.relationship("User", foreign_keys=[updated_by])
 
     __table_args__ = (
         db.UniqueConstraint(

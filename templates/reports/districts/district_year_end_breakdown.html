@@ -50,6 +50,25 @@
     text-decoration: none;
 }
 
+.export-button {
+    background-color: #059669;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background-color 0.2s ease;
+    font-weight: 500;
+}
+
+.export-button:hover {
+    background-color: #047857;
+    text-decoration: none;
+    color: white;
+}
+
 .back-link {
     color: var(--ucla-blue);
     text-decoration: none;
@@ -151,6 +170,99 @@
     color: #6c757d;
     font-style: italic;
 }
+/* ── Section header bands ── */
+.breakdown-table .section-header-row td {
+    background: linear-gradient(135deg, var(--ucla-blue), var(--delft-blue)) !important;
+    color: white !important;
+    font-weight: 700;
+    font-size: 0.82rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.55rem 1rem;
+    border-top: 3px solid var(--delft-blue);
+}
+.breakdown-table .section-header-row td i { margin-right: 0.5rem; opacity: 0.85; }
+
+/* Manual input section — amber accent */
+.breakdown-table .section-header-row.manual td {
+    background: linear-gradient(135deg, #b45309, #92400e) !important;
+}
+
+/* ── Sub-section dividers ── */
+.sub-section-header-row td {
+    background: #eef2f7;
+    color: #4a5568;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 0.35rem 1rem 0.35rem 1.5rem;
+    border-top: 1px solid #d1dce8;
+    border-bottom: 1px solid #d1dce8;
+    cursor: pointer;
+}
+
+/* ── Sub-type rows (indented) ── */
+.sub-type-row .metric-name {
+    padding-left: 2rem;
+    font-weight: 500;
+    color: #555e6c;
+}
+.sub-indicator { color: #adb5bd; margin-right: 0.4rem; font-size: 0.9em; }
+
+/* ── Compact inline total / unique ── */
+.metric-inline { white-space: nowrap; }
+.metric-inline .metric-total { font-weight: 600; color: var(--ucla-blue); }
+.metric-inline .metric-sep { color: #adb5bd; margin: 0 0.25rem; font-weight: 400; }
+.metric-inline .metric-unique { font-size: 0.85em; color: #6c757d; }
+
+/* ── Zero-value rows ── */
+tr.all-zeros { opacity: 0.42; transition: opacity 0.15s ease; }
+tr.all-zeros:hover { opacity: 1; }
+
+/* ── Sticky headers + first column ── */
+.breakdown-table thead th {
+    position: sticky; top: 0; z-index: 10; background: var(--ucla-blue);
+}
+.breakdown-table td:first-child,
+.breakdown-table th:first-child {
+    position: sticky; left: 0; z-index: 5;
+    background: white;
+    box-shadow: 2px 0 4px rgba(0,0,0,0.06);
+}
+.breakdown-table thead th:first-child { z-index: 11; background: var(--ucla-blue); }
+
+/* ── Editable cells (manual input) ── */
+.editable-cell {
+    cursor: pointer;
+    position: relative;
+    border-left: 2px solid rgba(180, 83, 9, 0.18); /* persistent amber affordance */
+}
+.editable-cell:hover { background-color: rgba(180, 83, 9, 0.06); }
+.edit-icon {
+    opacity: 0; font-size: 0.7em; color: #b45309;
+    margin-left: 0.3rem; transition: opacity 0.15s;
+}
+.editable-cell:hover .edit-icon { opacity: 1; }
+.inline-manual-input { transition: opacity 0.1s; }
+.inline-manual-input:disabled { opacity: 0.5; }
+.editable-cell .audit-tip {
+    display: none; position: absolute; bottom: 120%; left: 0;
+    background: #1e293b; color: white; font-size: 0.7rem;
+    padding: 0.25rem 0.5rem; border-radius: 4px; white-space: nowrap;
+    z-index: 20; pointer-events: none;
+}
+.editable-cell:hover .audit-tip { display: block; }
+
+/* ── Footnote / info notes ── */
+.table-footnote {
+    font-size: 0.72rem; color: #adb5bd; font-style: italic;
+    padding: 0.4rem 1rem; border-top: 1px dashed #e2e8f0;
+}
+.non-additive-note {
+    font-size: 0.7rem; color: #adb5bd; font-weight: 400;
+    font-style: italic; display: block; margin-top: 0.1rem;
+}
 </style>
 {% endblock %}
 
@@ -164,6 +276,10 @@
             <h1>Detailed Stats Breakdown {{ school_year }}</h1>
         </div>
         <div class="header-controls">
+            <a href="{{ url_for('report.district_year_end_breakdown_export', school_year=school_year, host_filter=host_filter) }}"
+               class="export-button">
+                <i class="fas fa-file-excel"></i> Export Excel
+            </a>
             <a href="{{ url_for('report.district_year_end_input_data', school_year=school_year, host_filter=host_filter) }}"
                class="input-data-button">
                 <i class="fas fa-edit"></i> Input Data
@@ -195,21 +311,44 @@
             </tr>
         </thead>
         <tbody>
+            {# metric_cell: shows total + unique side-by-side (for top-level rows) #}
+            {% macro metric_cell(total, unique=None) %}
+            <div class="metric-inline">
+              <span class="metric-total">{{ total | int }}</span>
+              {% if unique is not none %}
+              <span class="metric-sep">/</span>
+              <span class="metric-unique" title="Unique">{{ unique | int }}</span>
+              {% endif %}
+            </div>
+            {% endmacro %}
+
+            {# unique_cell: shows only the unique count (for program sub-rows) #}
+            {% macro unique_cell(unique) %}
+            <div class="metric-inline">
+              <span class="metric-total">{{ unique | int }}</span>
+            </div>
+            {% endmacro %}
+
+            <!-- SECTION: IN-PERSON EVENTS -->
+            <tr class="section-header-row">
+                <td colspan="{{ breakdown_data|length + 2 }}"><i class="fas fa-users"></i> In-Person Events</td>
+            </tr>
+
             <!-- In-Person Students -->
             <tr>
-                <td class="metric-name">Students Participated in In-Person Events</td>
+                <td class="metric-name">
+                  Students Participated in In-Person Events
+                  <span class="non-additive-note">
+                    <i class="fas fa-info-circle"></i>
+                    Programs below overlap — a student in multiple programs counts in each
+                  </span>
+                </td>
                 <td class="overall-column">
-                    <div class="metric-value">
-                        <span class="metric-total">Total: {{ overall_totals.in_person_students.total }}</span>
-                        <span class="metric-unique">Unique: {{ overall_totals.in_person_students.unique }}</span>
-                    </div>
+                    {{ metric_cell(overall_totals.in_person_students.total, overall_totals.in_person_students.unique) }}
                 </td>
                 {% for district_name, breakdown in breakdown_data.items() %}
                 <td class="district-column">
-                    <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.get('in_person_students', {}).get('total', 0) }}</span>
-                        <span class="metric-unique">{{ breakdown.get('in_person_students', {}).get('unique', 0) }} unique</span>
-                    </div>
+                    {{ unique_cell(breakdown.get('in_person_students', {}).get('unique', 0)) }}
                 </td>
                 {% endfor %}
             </tr>
@@ -218,245 +357,11 @@
             <tr>
                 <td class="metric-name">Volunteers Engaged in In-Person Events</td>
                 <td class="overall-column">
-                    <div class="metric-value">
-                        <span class="metric-total">Total: {{ overall_totals.in_person_volunteers.total }}</span>
-                        <span class="metric-unique">Unique: {{ overall_totals.in_person_volunteers.unique }}</span>
-                    </div>
+                    {{ metric_cell(overall_totals.in_person_volunteers.total, overall_totals.in_person_volunteers.unique) }}
                 </td>
                 {% for district_name, breakdown in breakdown_data.items() %}
                 <td class="district-column">
-                    <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.get('in_person_volunteers', {}).get('total', 0) }}</span>
-                        <span class="metric-unique">{{ breakdown.get('in_person_volunteers', {}).get('unique', 0) }} unique</span>
-                    </div>
-                </td>
-                {% endfor %}
-            </tr>
-
-            <!-- Career Jumping Students -->
-            <tr>
-                <td class="metric-name">Students Participated in Career Jumping</td>
-                <td class="overall-column">
-                    <div class="metric-value">
-                        <span class="metric-total">Total: {{ overall_totals.career_jumping_students.total }}</span>
-                        <span class="metric-unique">Unique: {{ overall_totals.career_jumping_students.unique }}</span>
-                    </div>
-                </td>
-                {% for district_name, breakdown in breakdown_data.items() %}
-                <td class="district-column">
-                    <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.get('career_jumping_students', {}).get('total', 0) }}</span>
-                        <span class="metric-unique">{{ breakdown.get('career_jumping_students', {}).get('unique', 0) }} unique</span>
-                    </div>
-                </td>
-                {% endfor %}
-            </tr>
-
-            <!-- Career Speakers Students -->
-            <tr>
-                <td class="metric-name">Students Participated in Career Speakers</td>
-                <td class="overall-column">
-                    <div class="metric-value">
-                        <span class="metric-total">Total: {{ overall_totals.career_speakers_students.total }}</span>
-                        <span class="metric-unique">Unique: {{ overall_totals.career_speakers_students.unique }}</span>
-                    </div>
-                </td>
-                {% for district_name, breakdown in breakdown_data.items() %}
-                <td class="district-column">
-                    <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.get('career_speakers_students', {}).get('total', 0) }}</span>
-                        <span class="metric-unique">{{ breakdown.get('career_speakers_students', {}).get('unique', 0) }} unique</span>
-                    </div>
-                </td>
-                {% endfor %}
-            </tr>
-
-            <!-- Career/College Fair High School Students -->
-            <tr>
-                <td class="metric-name">High School Students in Career Fair / College Fair</td>
-                <td class="overall-column">
-                    <div class="metric-value">
-                        <span class="metric-total">Total: {{ overall_totals.career_college_fair_hs_students.total }}</span>
-                        <span class="metric-unique">Unique: {{ overall_totals.career_college_fair_hs_students.unique }}</span>
-                    </div>
-                </td>
-                {% for district_name, breakdown in breakdown_data.items() %}
-                <td class="district-column">
-                    <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.get('career_college_fair_hs_students', {}).get('total', 0) }}</span>
-                        <span class="metric-unique">{{ breakdown.get('career_college_fair_hs_students', {}).get('unique', 0) }} unique</span>
-                    </div>
-                </td>
-                {% endfor %}
-            </tr>
-
-            <!-- Health Start Students -->
-            <tr>
-                <td class="metric-name">Students Participated in Health Start</td>
-                <td class="overall-column">
-                    <div class="metric-value">
-                        <span class="metric-total">Total: {{ overall_totals.healthstart_students.total }}</span>
-                        <span class="metric-unique">Unique: {{ overall_totals.healthstart_students.unique }}</span>
-                    </div>
-                </td>
-                {% for district_name, breakdown in breakdown_data.items() %}
-                <td class="district-column">
-                    <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.get('healthstart_students', {}).get('total', 0) }}</span>
-                        <span class="metric-unique">{{ breakdown.get('healthstart_students', {}).get('unique', 0) }} unique</span>
-                    </div>
-                </td>
-                {% endfor %}
-            </tr>
-
-            <!-- BFI Students -->
-            <tr>
-                <td class="metric-name">Students Participated in BFI</td>
-                <td class="overall-column">
-                    <div class="metric-value">
-                        <span class="metric-total">Total: {{ overall_totals.bfi_students.total }}</span>
-                        <span class="metric-unique">Unique: {{ overall_totals.bfi_students.unique }}</span>
-                    </div>
-                </td>
-                {% for district_name, breakdown in breakdown_data.items() %}
-                <td class="district-column">
-                    <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.get('bfi_students', {}).get('total', 0) }}</span>
-                        <span class="metric-unique">{{ breakdown.get('bfi_students', {}).get('unique', 0) }} unique</span>
-                    </div>
-                </td>
-                {% endfor %}
-            </tr>
-
-            <!-- DIA Students -->
-            <tr>
-                <td class="metric-name">Students Enrolled in DIA (Middle School)</td>
-                <td class="overall-column">
-                    <div class="metric-value">
-                        <span class="metric-total">Total: {{ overall_totals.dia_students.total }}</span>
-                        <span class="metric-unique">Unique: {{ overall_totals.dia_students.unique }}</span>
-                    </div>
-                </td>
-                {% for district_name, breakdown in breakdown_data.items() %}
-                <td class="district-column">
-                    <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.get('dia_students', {}).get('total', 0) }}</span>
-                        <span class="metric-unique">{{ breakdown.get('dia_students', {}).get('unique', 0) }} unique</span>
-                    </div>
-                </td>
-                {% endfor %}
-            </tr>
-
-            <!-- SLA Students -->
-            <tr>
-                <td class="metric-name">Students Participated in SLA</td>
-                <td class="overall-column">
-                    <div class="metric-value">
-                        <span class="metric-total">Total: {{ overall_totals.sla_students.total }}</span>
-                        <span class="metric-unique">Unique: {{ overall_totals.sla_students.unique }}</span>
-                    </div>
-                </td>
-                {% for district_name, breakdown in breakdown_data.items() %}
-                <td class="district-column">
-                    <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.get('sla_students', {}).get('total', 0) }}</span>
-                        <span class="metric-unique">{{ breakdown.get('sla_students', {}).get('unique', 0) }} unique</span>
-                    </div>
-                </td>
-                {% endfor %}
-            </tr>
-
-            <!-- Client Connected Projects Students -->
-            <tr>
-                <td class="metric-name">Students in Client Connected Projects</td>
-                <td class="overall-column">
-                    <div class="metric-value">
-                        <span class="metric-total">Total: {{ overall_totals.client_connected_students.total }}</span>
-                        <span class="metric-unique">Unique: {{ overall_totals.client_connected_students.unique }}</span>
-                    </div>
-                </td>
-                {% for district_name, breakdown in breakdown_data.items() %}
-                <td class="district-column">
-                    <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.get('client_connected_students', {}).get('total', 0) }}</span>
-                        <span class="metric-unique">{{ breakdown.get('client_connected_students', {}).get('unique', 0) }} unique</span>
-                    </div>
-                </td>
-                {% endfor %}
-            </tr>
-
-            <!-- P2T Students -->
-            <tr>
-                <td class="metric-name">Students Participated in P2T</td>
-                <td class="overall-column">
-                    <div class="metric-value">
-                        <span class="metric-total">Total: {{ overall_totals.p2t_students.total }}</span>
-                        <span class="metric-unique">Unique: {{ overall_totals.p2t_students.unique }}</span>
-                    </div>
-                </td>
-                {% for district_name, breakdown in breakdown_data.items() %}
-                <td class="district-column">
-                    <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.get('p2t_students', {}).get('total', 0) }}</span>
-                        <span class="metric-unique">{{ breakdown.get('p2t_students', {}).get('unique', 0) }} unique</span>
-                    </div>
-                </td>
-                {% endfor %}
-            </tr>
-
-            <!-- P2GD Students -->
-            <tr>
-                <td class="metric-name">Students Participated in P2GD</td>
-                <td class="overall-column">
-                    <div class="metric-value">
-                        <span class="metric-total">Total: {{ overall_totals.p2gd_students.total }}</span>
-                        <span class="metric-unique">Unique: {{ overall_totals.p2gd_students.unique }}</span>
-                    </div>
-                </td>
-                {% for district_name, breakdown in breakdown_data.items() %}
-                <td class="district-column">
-                    <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.get('p2gd_students', {}).get('total', 0) }}</span>
-                        <span class="metric-unique">{{ breakdown.get('p2gd_students', {}).get('unique', 0) }} unique</span>
-                    </div>
-                </td>
-                {% endfor %}
-            </tr>
-
-            <!-- Connector Sessions: Teachers Engaged -->
-            <tr>
-                <td class="metric-name">Teachers Engaged in Connector Sessions</td>
-                <td class="overall-column">
-                    <div class="metric-value">
-                        <span class="metric-total">Total: {{ overall_totals.connector_sessions.teachers_engaged.total }}</span>
-                        <span class="metric-unique">Unique: {{ overall_totals.connector_sessions.teachers_engaged.unique }}</span>
-                    </div>
-                </td>
-                {% for district_name, breakdown in breakdown_data.items() %}
-                <td class="district-column">
-                    <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.get('connector_sessions', {}).get('teachers_engaged', {}).get('total', 0) }}</span>
-                        <span class="metric-unique">{{ breakdown.get('connector_sessions', {}).get('teachers_engaged', {}).get('unique', 0) }} unique</span>
-                    </div>
-                </td>
-                {% endfor %}
-            </tr>
-
-            <!-- Connector Sessions: Students Participated -->
-            <tr>
-                <td class="metric-name">Students Participated in Connector Sessions</td>
-                <td class="overall-column">
-                    <div class="metric-value">
-                        <span class="metric-total">Total: {{ overall_totals.connector_sessions.students_participated.total }}</span>
-                        <span class="metric-unique not-applicable">Unique: —</span>
-                    </div>
-                </td>
-                {% for district_name, breakdown in breakdown_data.items() %}
-                <td class="district-column">
-                    <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.get('connector_sessions', {}).get('students_participated', {}).get('total', 0) }}</span>
-                        <span class="metric-unique not-applicable">—</span>
-                    </div>
+                    {{ unique_cell(breakdown.get('in_person_volunteers', {}).get('unique', 0)) }}
                 </td>
                 {% endfor %}
             </tr>
@@ -465,97 +370,287 @@
             <tr>
                 <td class="metric-name">Number of In-Person Events</td>
                 <td class="overall-column">
-                    <div class="metric-value">
-                        <span class="metric-total">{{ overall_totals.in_person_events_count }}</span>
-                    </div>
+                    {{ metric_cell(overall_totals.in_person_events_count) }}
                 </td>
                 {% for district_name, breakdown in breakdown_data.items() %}
                 <td class="district-column">
-                    <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.get('in_person_events_count', 0) }}</span>
-                    </div>
+                    {{ metric_cell(breakdown.get('in_person_events_count', 0)) }}
                 </td>
                 {% endfor %}
             </tr>
 
-            <!-- Connector Sessions: Number of Sessions -->
-            <tr>
-                <td class="metric-name">Number of Connector Sessions</td>
+            <tr class="sub-section-header-row" onclick="toggleGroup('in-person-sub')">
+              <td colspan="{{ breakdown_data|length + 2 }}">
+                <i class="fas fa-chevron-down" id="toggle-icon-in-person-sub"
+                   style="margin-right:0.4rem; transition:transform 0.2s;"></i>
+                Program Breakdown
+                <span style="font-size:0.75em; opacity:0.6; margin-left:0.4rem;">(click to collapse)</span>
+              </td>
+            </tr>
+
+            <!-- Career Jumping Students -->
+            {% set is_zero = overall_totals.career_jumping_students.total == 0 %}
+            <tr class="sub-type-row in-person-sub {{ 'all-zeros' if is_zero }}">
+                <td class="metric-name"><span class="sub-indicator">↳</span>Career Jumping</td>
                 <td class="overall-column">
-                    <div class="metric-value">
-                        <span class="metric-total">{{ overall_totals.connector_sessions.session_count }}</span>
-                    </div>
+                    {{ unique_cell(overall_totals.career_jumping_students.unique) }}
                 </td>
                 {% for district_name, breakdown in breakdown_data.items() %}
                 <td class="district-column">
-                    <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.get('connector_sessions', {}).get('session_count', 0) }}</span>
-                    </div>
+                    {{ unique_cell(breakdown.get('career_jumping_students', {}).get('unique', 0)) }}
                 </td>
                 {% endfor %}
+            </tr>
+
+            <!-- Career Speakers Students -->
+            {% set is_zero = overall_totals.career_speakers_students.total == 0 %}
+            <tr class="sub-type-row in-person-sub {{ 'all-zeros' if is_zero }}">
+                <td class="metric-name"><span class="sub-indicator">↳</span>Career Speakers</td>
+                <td class="overall-column">
+                    {{ unique_cell(overall_totals.career_speakers_students.unique) }}
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    {{ unique_cell(breakdown.get('career_speakers_students', {}).get('unique', 0)) }}
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- Career/College Fair High School Students -->
+            {% set is_zero = overall_totals.career_college_fair_hs_students.total == 0 %}
+            <tr class="sub-type-row in-person-sub {{ 'all-zeros' if is_zero }}">
+                <td class="metric-name"><span class="sub-indicator">↳</span>Career / College Fair (HS)</td>
+                <td class="overall-column">
+                    {{ unique_cell(overall_totals.career_college_fair_hs_students.unique) }}
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    {{ unique_cell(breakdown.get('career_college_fair_hs_students', {}).get('unique', 0)) }}
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- Health Start Students -->
+            {% set is_zero = overall_totals.healthstart_students.total == 0 %}
+            <tr class="sub-type-row in-person-sub {{ 'all-zeros' if is_zero }}">
+                <td class="metric-name"><span class="sub-indicator">↳</span>Health Start</td>
+                <td class="overall-column">
+                    {{ unique_cell(overall_totals.healthstart_students.unique) }}
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    {{ unique_cell(breakdown.get('healthstart_students', {}).get('unique', 0)) }}
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- BFI Students -->
+            {% set is_zero = overall_totals.bfi_students.total == 0 %}
+            <tr class="sub-type-row in-person-sub {{ 'all-zeros' if is_zero }}">
+                <td class="metric-name"><span class="sub-indicator">↳</span>BFI</td>
+                <td class="overall-column">
+                    {{ unique_cell(overall_totals.bfi_students.unique) }}
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    {{ unique_cell(breakdown.get('bfi_students', {}).get('unique', 0)) }}
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- DIA Students -->
+            {% set is_zero = overall_totals.dia_students.total == 0 %}
+            <tr class="sub-type-row in-person-sub {{ 'all-zeros' if is_zero }}">
+                <td class="metric-name"><span class="sub-indicator">↳</span>DIA (Middle School)</td>
+                <td class="overall-column">
+                    {{ unique_cell(overall_totals.dia_students.unique) }}
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    {{ unique_cell(breakdown.get('dia_students', {}).get('unique', 0)) }}
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- SLA Students -->
+            {% set is_zero = overall_totals.sla_students.total == 0 %}
+            <tr class="sub-type-row in-person-sub {{ 'all-zeros' if is_zero }}">
+                <td class="metric-name"><span class="sub-indicator">↳</span>SLA</td>
+                <td class="overall-column">
+                    {{ unique_cell(overall_totals.sla_students.unique) }}
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    {{ unique_cell(breakdown.get('sla_students', {}).get('unique', 0)) }}
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- Client Connected Projects Students -->
+            {% set is_zero = overall_totals.client_connected_students.total == 0 %}
+            <tr class="sub-type-row in-person-sub {{ 'all-zeros' if is_zero }}">
+                <td class="metric-name"><span class="sub-indicator">↳</span>Client Connected Projects</td>
+                <td class="overall-column">
+                    {{ unique_cell(overall_totals.client_connected_students.unique) }}
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    {{ unique_cell(breakdown.get('client_connected_students', {}).get('unique', 0)) }}
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- P2T Students -->
+            {% set is_zero = overall_totals.p2t_students.total == 0 %}
+            <tr class="sub-type-row in-person-sub {{ 'all-zeros' if is_zero }}">
+                <td class="metric-name"><span class="sub-indicator">↳</span>P2T</td>
+                <td class="overall-column">
+                    {{ unique_cell(overall_totals.p2t_students.unique) }}
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    {{ unique_cell(breakdown.get('p2t_students', {}).get('unique', 0)) }}
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- P2GD Students -->
+            {% set is_zero = overall_totals.p2gd_students.total == 0 %}
+            <tr class="sub-type-row in-person-sub {{ 'all-zeros' if is_zero }}">
+                <td class="metric-name"><span class="sub-indicator">↳</span>P2GD</td>
+                <td class="overall-column">
+                    {{ unique_cell(overall_totals.p2gd_students.unique) }}
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    {{ unique_cell(breakdown.get('p2gd_students', {}).get('unique', 0)) }}
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- SECTION: VIRTUAL SESSIONS -->
+            <tr class="section-header-row">
+                <td colspan="{{ breakdown_data|length + 2 }}"><i class="fas fa-laptop"></i> Virtual Sessions (Pathful)</td>
+            </tr>
+
+            <!-- Virtual Sessions: Teachers Engaged -->
+            <tr>
+                <td class="metric-name">Teachers Engaged</td>
+                <td class="overall-column">
+                    {{ metric_cell(overall_totals.virtual_sessions.teachers_engaged.total, overall_totals.virtual_sessions.teachers_engaged.unique) }}
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    {{ unique_cell(breakdown.get('virtual_sessions', {}).get('teachers_engaged', {}).get('unique', 0)) }}
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- Virtual Sessions: Students Participated (estimated: teachers × 25) -->
+            <tr>
+                <td class="metric-name">Students Participated
+                  <span class="non-additive-note"><i class="fas fa-info-circle"></i> Estimated — 25 per confirmed teacher</span>
+                </td>
+                <td class="overall-column">
+                    {{ unique_cell(overall_totals.virtual_sessions.students_participated.total) }}
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    {{ unique_cell(breakdown.get('virtual_sessions', {}).get('students_participated', {}).get('total', 0)) }}
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- Virtual Sessions: Number of Sessions -->
+            <tr>
+                <td class="metric-name">Number of Sessions</td>
+                <td class="overall-column">
+                    {{ metric_cell(overall_totals.virtual_sessions.session_count) }}
+                </td>
+                {% for district_name, breakdown in breakdown_data.items() %}
+                <td class="district-column">
+                    {{ metric_cell(breakdown.get('virtual_sessions', {}).get('session_count', 0)) }}
+                </td>
+                {% endfor %}
+            </tr>
+
+            <!-- SECTION: MATH RELAYS -->
+            <tr class="section-header-row">
+                <td colspan="{{ breakdown_data|length + 2 }}"><i class="fas fa-calculator"></i> Math Relays</td>
             </tr>
 
             <!-- Math Relays Events Count -->
-            <tr>
-                <td class="metric-name">Number of Math Relays Events</td>
+            {% set is_zero = overall_totals.math_relays_count == 0 %}
+            <tr class="{{ 'all-zeros' if is_zero }}">
+                <td class="metric-name">Number of Events</td>
                 <td class="overall-column">
-                    <div class="metric-value">
-                        <span class="metric-total">{{ overall_totals.math_relays_count }}</span>
-                    </div>
+                    {{ metric_cell(overall_totals.math_relays_count) }}
                 </td>
                 {% for district_name, breakdown in breakdown_data.items() %}
                 <td class="district-column">
-                    <div class="metric-value">
-                        <span class="metric-total">{{ breakdown.get('math_relays_count', 0) }}</span>
-                    </div>
+                    {{ metric_cell(breakdown.get('math_relays_count', 0)) }}
                 </td>
                 {% endfor %}
             </tr>
-        </tbody>
-    </table>
-    {% endif %}
 
-    <!-- Manual Input Data Section -->
-    {% if breakdown_data and (manual_inputs_overall or manual_inputs_by_district) %}
-    <div style="margin-top: 3rem;">
-        <h2 style="color: var(--ucla-blue); margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--ucla-blue);">
-            Manual Input Data
-        </h2>
-        <table class="breakdown-table">
-            <thead>
-                <tr>
-                    <th>Metric</th>
-                    <th class="overall-column">Overall</th>
-                    {% for district_name in breakdown_data.keys() %}
-                    <th class="district-column">{{ district_name }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for type_key, type_info in manual_data_types.items() %}
-                {% if manual_inputs_overall.get(type_key) is not none or manual_inputs_by_district %}
-                <tr>
-                    <td class="metric-name">{{ type_info.display_name }}</td>
-                    <td class="overall-column">
-                        <div class="metric-value">
-                            <span class="metric-total">{{ manual_inputs_overall.get(type_key, 0) }}</span>
-                        </div>
-                    </td>
-                    {% for district_name, breakdown in breakdown_data.items() %}
-                    <td class="district-column">
-                        <div class="metric-value">
-                            <span class="metric-total">{{ manual_inputs_by_district.get(district_name, {}).get(type_key, 0) }}</span>
-                        </div>
-                    </td>
-                    {% endfor %}
-                </tr>
+            <!-- SECTION: MANUAL INPUT DATA -->
+            {% if manual_data_types %}
+            <tr class="section-header-row manual">
+                <td colspan="{{ breakdown_data|length + 2 }}"><i class="fas fa-keyboard"></i> Manual Input Data</td>
+            </tr>
+
+            {% set categories = [] %}
+            {% for type_key, type_info in manual_data_types.items() %}
+                {% if type_info.category not in categories %}
+                    {% set _ = categories.append(type_info.category) %}
                 {% endif %}
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% endif %}
+            {% endfor %}
 
+            {% for category in categories %}
+                <tr class="sub-section-header-row">
+                    <td colspan="{{ breakdown_data|length + 2 }}">{{ category }}</td>
+                </tr>
+                {% for type_key, type_info in manual_data_types.items() %}
+                    {% if type_info.category == category %}
+                    <tr class="sub-type-row">
+                        <td class="metric-name sub-type"><span class="sub-indicator">↳</span>{{ type_info.display_name }}</td>
+                        <td class="overall-column manual-overall">{{ manual_inputs_overall.get(type_key, 0) }}</td>
+                        {% for district_name in breakdown_data.keys() %}
+                        {% set district_obj = districts_by_name[district_name] %}
+                        {% set mi_meta = manual_inputs_meta.get(district_name, {}).get(type_key) %}
+                        <td class="district-column editable-cell"
+                            data-type="{{ type_key }}"
+                            data-district-id="{{ district_obj.id }}"
+                            data-school-year="{{ school_year }}"
+                            data-host-filter="{{ host_filter }}">
+                            <span class="manual-value">
+                                {{ manual_inputs_by_district.get(district_name, {}).get(type_key, 0) }}
+                            </span>
+                            <i class="fas fa-pencil-alt edit-icon" aria-hidden="true"></i>
+                            <span class="audit-tip">
+                                {% if mi_meta %}
+                                    Last edited: {{ mi_meta.editor }} — {{ mi_meta.updated_at }}
+                                {% else %}
+                                    No edits yet
+                                {% endif %}
+                            </span>
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endif %}
+                {% endfor %}
+            {% endfor %}
+            {% endif %}
+
+            <tr>
+                <td colspan="{{ breakdown_data|length + 2 }}" class="table-footnote">
+                    * For In-Person Students and Volunteers, the Overall column shows <strong>Total / Unique</strong> (deduplicated across all districts); district columns show unique only.
+                    † Virtual student counts are estimated at 25 students per confirmed teacher.
+                </td>
+            </tr>
+        </tbody>
+        </table>
+    {% endif %}
     {% if not breakdown_data %}
     <div class="no-data">
         <p>No breakdown data available for the selected school year.</p>
@@ -563,4 +658,127 @@
     </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+(function () {
+  const EDIT_URL = "{{ url_for('report.update_manual_input') }}";
+
+  // ── Click-to-edit ──
+  document.querySelectorAll('.editable-cell').forEach(cell => {
+    cell.addEventListener('click', () => activateCell(cell));
+  });
+
+  function activateCell(cell) {
+    if (cell.querySelector('input.inline-manual-input')) return; // already editing
+
+    const span = cell.querySelector('.manual-value');
+    const icon = cell.querySelector('.edit-icon');
+    const currentVal = parseInt(span.textContent.trim().replace(/,/g, '')) || 0;
+
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = '0'; input.max = '100000'; input.step = '1';
+    input.value = currentVal;
+    input.className = 'inline-manual-input';
+    input.style.cssText = 'width:70px; padding:2px 4px; border:1.5px solid var(--ucla-blue); border-radius:3px; font-size:inherit;';
+
+    span.style.display = 'none';
+    if (icon) icon.style.display = 'none';
+    cell.insertBefore(input, span);
+    input.focus(); input.select();
+
+    const save = async () => {
+      const newVal = Math.min(100000, Math.max(0, parseInt(input.value) || 0));
+      input.disabled = true;
+      input.style.opacity = '0.5';
+
+      try {
+        const resp = await fetch(EDIT_URL, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            district_id: parseInt(cell.dataset.districtId),
+            data_type: cell.dataset.type,
+            school_year: cell.dataset.schoolYear,
+            host_filter: cell.dataset.hostFilter,
+            value: newVal,
+          }),
+        });
+        const result = await resp.json();
+
+        if (result.success) {
+          span.textContent = result.new_value.toLocaleString();
+          flashCell(cell, '✓', '#10b981');
+          recalcOverall(cell.closest('tr'));
+        } else {
+          span.textContent = currentVal.toLocaleString();
+          flashCell(cell, '✗ ' + (result.error || 'Error'), '#ef4444');
+        }
+      } catch {
+        span.textContent = currentVal.toLocaleString();
+        flashCell(cell, '✗ Network error', '#ef4444');
+      }
+
+      input.remove();
+      span.style.display = '';
+      if (icon) icon.style.display = '';
+    };
+
+    const cancel = () => {
+      input.remove();
+      span.style.display = '';
+      if (icon) icon.style.display = '';
+    };
+
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); save(); }
+      if (e.key === 'Escape') { cancel(); }
+      // Tab: move to next editable cell in same row
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        save().then(() => {
+          const cells = Array.from(cell.closest('tr').querySelectorAll('.editable-cell'));
+          const idx = cells.indexOf(cell);
+          if (cells[idx + 1]) cells[idx + 1].click();
+        });
+      }
+    });
+  }
+
+  function flashCell(cell, msg, color) {
+    const f = document.createElement('span');
+    f.textContent = ' ' + msg;
+    f.style.cssText = `color:${color}; font-size:0.8em; font-weight:600; pointer-events:none;`;
+    cell.appendChild(f);
+    setTimeout(() => f.remove(), 2000);
+  }
+
+  function recalcOverall(row) {
+    let total = 0;
+    row.querySelectorAll('.editable-cell .manual-value').forEach(s => {
+      total += parseInt(s.textContent.replace(/,/g, '')) || 0;
+    });
+    const ov = row.querySelector('.overall-column');
+    if (ov) ov.textContent = total.toLocaleString();
+  }
+
+  window.toggleGroup = function(groupClass) {
+    const rows = document.querySelectorAll('.' + groupClass);
+    const icon = document.getElementById('toggle-icon-' + groupClass);
+    const collapsed = rows[0] && rows[0].style.display === 'none';
+    rows.forEach(r => r.style.display = collapsed ? '' : 'none');
+    if (icon) icon.style.transform = collapsed ? '' : 'rotate(-90deg)';
+  };
+
+  // ── Number formatting on load ──
+  document.querySelectorAll('.metric-total, .metric-unique, .manual-value, .manual-overall').forEach(el => {
+    const n = parseInt(el.textContent.trim().replace(/,/g, ''));
+    if (!isNaN(n)) el.textContent = n.toLocaleString();
+  });
+})();
+</script>
 {% endblock %}

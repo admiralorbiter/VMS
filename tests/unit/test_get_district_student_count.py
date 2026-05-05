@@ -10,12 +10,15 @@ def test_virtual_session_teachers_count():
 
     teacher1 = MagicMock()
     teacher1.teacher.school_id = 1
+    teacher1.status = "attended"
 
     teacher2 = MagicMock()
     teacher2.teacher.school_id = 2
+    teacher2.status = "attended"
 
     teacher3 = MagicMock()
     teacher3.teacher.school_id = 3
+    teacher3.status = "no_show"
 
     event.teacher_registrations = [teacher1, teacher2, teacher3]
 
